@@ -1,15 +1,15 @@
 from django.utils import timezone
 from rest_framework.serializers import SerializerMethodField
 
+from audit_tool.api.serializers.audit_vet_base_serializer import AuditVetBaseSerializer
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.channel_update import channel_update
-from es_components.models import Channel
-from es_components.managers import VideoManager
-from es_components.query_builder import QueryBuilder
 from es_components.constants import Sections
-from audit_tool.api.serializers.audit_vet_base_serializer import AuditVetBaseSerializer
+from es_components.managers import VideoManager
+from es_components.models import Channel
+from es_components.query_builder import QueryBuilder
 
 
 class AuditChannelVetSerializer(AuditVetBaseSerializer):
@@ -26,6 +26,10 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     segment_title = SerializerMethodField()
     url = SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super(AuditChannelVetSerializer, self).__init__(*args, **kwargs)
+        self.has_vetting_history = None
+
     def get_url(self, doc):
         url = f"https://www.youtube.com/channel/{doc.main.id}/"
         return url
@@ -41,8 +45,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         history = None
         if hasattr(doc, "main"):
             channel_id_hash = get_hash_name(doc.main.id)
-            vetting_items = AuditChannelVet.objects\
-                .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False)\
+            vetting_items = AuditChannelVet.objects \
+                .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False) \
                 .select_related("channel__auditchannelmeta")
             history = [{
                 "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
@@ -100,7 +104,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         if self.validated_data["monetization"].get("is_monetizable") is True:
             # Update all channel videos monetization
             query = QueryBuilder().build().must().term().field(f"{Sections.CHANNEL}.id").value(channel_id).get()
-            VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True, conflicts="proceed", wait_for_completion=False)
+            VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True, conflicts="proceed",
+                                                                                wait_for_completion=False)
 
     def update_brand_safety(self, item_id):
         """ Initiate brand safety update task """

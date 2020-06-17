@@ -1,9 +1,12 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from distutils.util import strtobool
+
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from audit_tool.models import AuditProcessor
 from utils.permissions import user_has_permission
-from distutils.util import strtobool
+
 
 class AuditPauseApiView(APIView):
     permission_classes = (
@@ -22,7 +25,7 @@ class AuditPauseApiView(APIView):
                     audit.save(update_fields=['temp_stop'])
                 else:
                     raise ValidationError("invalid action")
-            except Exception as e:
+            except BaseException:
                 raise ValidationError("invalid audit_id: please verify you are pausing or un-pausing a running audit.")
             return Response(audit.to_dict())
         else:

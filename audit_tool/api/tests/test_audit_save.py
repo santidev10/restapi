@@ -1,17 +1,17 @@
-import json
-from mock import patch
-
-from tempfile import mkstemp
 import csv
+import json
+from tempfile import mkstemp
+from uuid import uuid4
+
+from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
-from uuid import uuid4
 
-from audit_tool.models import AuditProcessor
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from utils.unittests.reverse import reverse
@@ -47,7 +47,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditFileS3Exporter.bucket_name,
                 Key=self.key
             )
-        except Exception as e:
+        except BaseException:
             raise KeyError("Failed to delete object. Object with key {} not found in bucket.".format(self.key))
         self.audit.delete()
 
@@ -58,14 +58,14 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditFileS3Exporter.bucket_name,
                 Key=self.key
             )
-        except Exception as e:
+        except BaseException:
             raise KeyError("Object with key {} not found in bucket.".format(self.key))
         self.assertEqual(s3_object['ResponseMetadata']['HTTPStatusCode'], HTTP_200_OK)
 
     def test_seed_file_content_retrieval(self):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(self.key)
-        except Exception as e:
+        except BaseException:
             raise KeyError("Could not get csv from s3 for seed_file: {}.".format(self.audit.params['seed_file']))
         reader = csv.reader(f)
         for row in reader:
@@ -74,8 +74,9 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     def test_reject_permission(self):
         """ Users must have userprofile.audit_vet_admin permission """
         user = self.create_test_user()
-        segment = self.custom_segment_model.objects.create(uuid=uuid4(), owner=user, title="test", segment_type=0, list_type=0)
-        params = {"segment_id": segment.id,}
+        segment = self.custom_segment_model.objects.create(uuid=uuid4(), owner=user, title="test", segment_type=0,
+                                                           list_type=0)
+        params = {"segment_id": segment.id, }
         response = self.client.patch(self.url, data=params)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 

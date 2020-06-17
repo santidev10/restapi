@@ -1,9 +1,11 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
-from audit_tool.models import AuditProcessor
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from audit_tool.models import AuditProcessor
 from utils.permissions import user_has_permission
+
 
 class AuditStopApiView(APIView):
     permission_classes = (
@@ -22,7 +24,7 @@ class AuditStopApiView(APIView):
                 if audit.params.get('audit_type_original'):
                     audit.audit_type = audit.params.get('audit_type_original')
                 audit.save(update_fields=['completed', 'params', 'pause', 'audit_type'])
-            except Exception as e:
+            except BaseException:
                 raise ValidationError("invalid audit_id: please verify you are stopping a running audit.")
             return Response(audit.to_dict())
         else:

@@ -1,21 +1,19 @@
-import csv
-from rest_framework.status import HTTP_200_OK
 from django.utils import timezone
+from rest_framework.status import HTTP_200_OK
 
-from audit_tool.models import AuditProcessor
-from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditChannelProcessor
-from audit_tool.models import AuditVideo
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideoMeta
-from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditLanguage
-from audit_tool.models import AuditCategory
-from audit_tool.models import AuditCountry
 from audit_tool.api.urls.names import AuditPathName
-from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
-
+from audit_tool.api.views.audit_export import AuditS3Exporter
+from audit_tool.models import AuditCategory
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
+from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoMeta
+from audit_tool.models import AuditVideoProcessor
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -45,23 +43,25 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
         channel_language = AuditLanguage.objects.create(language="en")
         test_country = AuditCountry.objects.create(country="CN")
 
-        test_video_meta = AuditVideoMeta.objects.create(video=test_video, name="Dota 2", language=video_language,
-                                                        category=video_category, views=9000, likes=9999, dislikes=1)
-        test_channel_meta = AuditChannelMeta.objects.create(channel=test_channel, name="Valve",
-                                                            language=channel_language, view_count=50000,
-                                                            subscribers=30000, country=test_country, video_count=1
-                                                            )
+        AuditVideoMeta.objects.create(video=test_video, name="Dota 2", language=video_language,
+                                      category=video_category, views=9000, likes=9999, dislikes=1)
+        AuditChannelMeta.objects.create(channel=test_channel, name="Valve",
+                                        language=channel_language, view_count=50000,
+                                        subscribers=30000, country=test_country, video_count=1
+                                        )
 
         self.video_audit = AuditProcessor.objects.create(audit_type=1, params=video_params, completed=timezone.now())
-        self.channel_audit = AuditProcessor.objects.create(audit_type=2, params=channel_params, completed=timezone.now())
+        self.channel_audit = AuditProcessor.objects.create(audit_type=2, params=channel_params,
+                                                           completed=timezone.now())
 
-        video_processor = AuditVideoProcessor.objects.create(audit=self.video_audit, video=test_video, clean=False,
-                                                             word_hits={"exclusion": ["cyka", "blyat", "fuck", "shit"]})
-        channel_processor = AuditChannelProcessor.objects.create(audit=self.channel_audit,
-                                                                 channel=test_channel, clean=True,
-                                                                 word_hits={
-                                                                     "exclusion": ["cyka", "blyat", "fuck", "shit"]
-                                                                 })
+        AuditVideoProcessor.objects.create(audit=self.video_audit, video=test_video, clean=False,
+                                           word_hits={
+                                               "exclusion": ["cyka", "blyat", "fuck", "shit"]})
+        AuditChannelProcessor.objects.create(audit=self.channel_audit,
+                                             channel=test_channel, clean=True,
+                                             word_hits={
+                                                 "exclusion": ["cyka", "blyat", "fuck", "shit"]
+                                             })
 
     def tearDown(self):
         video_audit_key = 'export_{}_{}_false.csv'.format(self.video_audit.id, self.video_audit.params['name'])
@@ -70,7 +70,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditS3Exporter.bucket_name,
                 Key=video_audit_key
             )
-        except Exception as e:
+        except BaseException:
             raise KeyError("Failed to delete object. Object with key {} not found in bucket."
                            .format(video_audit_key))
 
@@ -80,27 +80,24 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditS3Exporter.bucket_name,
                 Key=channel_audit_key
             )
-        except Exception as e:
+        except BaseException:
             raise KeyError(
                 "Failed to delete object. Object with key {} not found in bucket."
                     .format(channel_audit_key))
 
-
     def test_video_export(self):
         try:
             video_response = self.client.get(self.url + "?audit_id={}&clean=False".format(self.video_audit.id))
-        except Exception as e:
+        except BaseException:
             raise KeyError("No Audit with id: {} found.".format(self.video_audit.id))
         self.assertEqual(video_response.status_code, HTTP_200_OK)
-
 
     def test_channel_export(self):
         try:
             channel_response = self.client.get(self.url + "?audit_id={}&clean=True".format(self.channel_audit.id))
-        except Exception as e:
+        except BaseException:
             raise KeyError("No Audit with id: {} found.".format(self.channel_audit.id))
         self.assertEqual(channel_response.status_code, HTTP_200_OK)
-
 
     def test_clean_duration(self):
         clean_duration = AuditExportApiView().clean_duration

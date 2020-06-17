@@ -1,10 +1,13 @@
 from distutils.util import strtobool
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from audit_tool.models import AuditProcessor
-from audit_tool.models import AuditCategory
+
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from audit_tool.models import AuditCategory
+from audit_tool.models import AuditProcessor
 from utils.permissions import user_has_permission
+
 
 class AuditListApiView(APIView):
     permission_classes = (
@@ -27,7 +30,7 @@ class AuditListApiView(APIView):
         try:
             cursor = int(query_params["cursor"]) if "cursor" in query_params else None
             limit = int(query_params["limit"]) if "limit" in query_params else None
-        except Exception as e:
+        except BaseException:
             cursor = None
             limit = None
         if limit and (limit < 15 or limit > 100):
@@ -47,12 +50,14 @@ class AuditListApiView(APIView):
             })
         elif search:
             return Response({
-                'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
+                'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source,
+                                             cursor=cursor, limit=limit),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
             })
         else:
             return Response({
-                'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days, export=export, source=source, cursor=cursor, limit=limit),
+                'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days, export=export,
+                                             source=source, cursor=cursor, limit=limit),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
                 'youtube_categories': AuditCategory.get_all(iab=False),
             })

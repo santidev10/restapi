@@ -1,13 +1,13 @@
 import json
-from mock import patch
+from uuid import uuid4
 
 from django.utils import timezone
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch.exceptions import RequestError
+from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
-from uuid import uuid4
 
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
@@ -22,14 +22,14 @@ from audit_tool.models import AuditVideoVet
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
-from es_components.models import Channel
-from es_components.models import Video
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.models import Channel
+from es_components.models import Video
 from saas.urls.namespaces import Namespace
+from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.int_iterator import int_iterator
 
 
 @patch("audit_tool.api.views.audit_vet_retrieve_update.generate_vetted_segment")
@@ -43,7 +43,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         from segment.models import CustomSegmentFileUpload
         self.custom_segment_model = CustomSegment
         self.custom_segment_export_model = CustomSegmentFileUpload
-        self.patcher = patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._get_document")
+        self.patcher = patch(
+            "audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._get_document")
         self.mock_get_document = self.patcher.start()
 
     def tearDown(self):
@@ -54,7 +55,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         return url
 
     def _create_segment_audit(self, user, audit_params=None, segment_params=None):
-        default_audit_params = dict(source=1, audit_type=2, params=dict(instructions="test instructions"), completed=timezone.now())
+        default_audit_params = dict(source=1, audit_type=2, params=dict(instructions="test instructions"),
+                                    completed=timezone.now())
         default_segment_params = dict(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4()
         )
@@ -75,20 +77,23 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         doc.populate_monetization(**default_monetzation)
         return doc
 
-    def test_reject_permissions(self, mock_generate_vetted):
+    def test_reject_permissions(self):
         self.create_test_user()
         url = self._get_url(kwargs=dict(pk=1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(self.mock_get_document.call_count, 0)
 
-    def test_get_next_video_vetting_item_with_history_success(self, mock_generate_vetted):
+    def test_get_next_video_vetting_item_with_history_success(self, *args):
         """ Test retrieving next vetting item in video audit """
         user = self.create_admin_user()
         before = timezone.now()
-        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
-        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_2"))
-        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_3"))
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_3"))
         v_id = f"video{next(int_iterator)}"
         video_audit = AuditVideo.objects.create(video_id=v_id, video_id_hash=get_hash_name(v_id))
         video_meta = AuditVideoMeta.objects.create(video=video_audit, name="test meta name")
@@ -111,7 +116,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             content_type="1"
         )
         monetization = dict(is_monetizable=True)
-        mock_video_doc = self._create_mock_document(Video, video_audit.video_id, task_us_data=task_us, monetzation_data=monetization)
+        mock_video_doc = self._create_mock_document(Video, video_audit.video_id, task_us_data=task_us,
+                                                    monetzation_data=monetization)
         self.mock_get_document.return_value = mock_video_doc
         url = self._get_url(kwargs=dict(pk=audit_3.id))
         response = self.client.get(url)
@@ -137,13 +143,16 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
         self.assertTrue(video_meta.name in vetting_history[1]["data"])
 
-    def test_get_next_channel_vetting_item_with_history_success(self, mock_generate_vetted):
+    def test_get_next_channel_vetting_item_with_history_success(self, *args):
         """ Test retrieving next vetting item in video audit """
         user = self.create_admin_user()
         before = timezone.now()
-        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
-        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_2"))
-        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_3"))
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_3"))
         c_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
         channel_meta = AuditChannelMeta.objects.create(channel=channel_audit, name="test meta name")
@@ -169,7 +178,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             content_type="2"
         )
         monetization = dict(is_monetizable=False)
-        mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us, monetzation_data=monetization)
+        mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us,
+                                                      monetzation_data=monetization)
         self.mock_get_document.return_value = mock_channel_doc
         url = self._get_url(kwargs=dict(pk=audit_3.id))
         response = self.client.get(url)
@@ -195,12 +205,15 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
 
-    def test_get_next_video_vetting_item_missing(self, mock_generate_vetted):
+    def test_get_next_video_vetting_item_missing(self, *args):
         """ Test handling retrieving next vetting item with missing AuditVideo or invalid video_id """
         user = self.create_admin_user()
-        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
-        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_2"))
-        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_2"))
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=0, title="test_title_2"))
 
         v_id_1 = f"video{next(int_iterator)}"
         v_id_2 = ""
@@ -236,13 +249,16 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["message"])
 
-    def test_get_next_channel_vetting_item_missing(self, mock_generate_vetted):
+    def test_get_next_channel_vetting_item_missing(self, *args):
         """ Test handling retrieving next vetting item with missing AuditChannel or invalid channel_id """
         user = self.create_admin_user()
-        before = timezone.now()
-        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
-        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_2"))
-        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_2"))
+        timezone.now()
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_2"))
 
         c_id_1 = f"channel_test_id_{next(int_iterator)}"
         c_id_2 = ""
@@ -277,7 +293,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["message"])
 
-    def test_patch_required_parameters(self, mock_generate_vetted):
+    def test_patch_required_parameters(self, *args):
         user = self.create_admin_user()
         before = timezone.now()
         audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
@@ -329,8 +345,9 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         }
         BadWordCategory.objects.create(id=12, name="test_category")
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer._update_channel") as mock_update_channel,\
-            patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.save_elasticsearch") as mock_save_es:
+        with patch(
+            "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer._update_channel"), \
+             patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.save_elasticsearch"):
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         vetting_item.refresh_from_db()
         data = response.data
@@ -348,7 +365,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertIsNone(vetting_item.checked_out_at)
 
         blacklist_data = BlacklistItem.objects.get(item_id=audit_item_yt_id)
-        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]), set(blacklist_data.blacklist_category.keys()))
+        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]),
+                         set(blacklist_data.blacklist_category.keys()))
         self.assertEqual(mock_generate_vetted.delay.call_count, 0)
 
     def test_patch_channel_vetting_item_success(self, mock_generate_vetted):
@@ -387,7 +405,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         BadWordCategory.objects.create(id=4, name="test_category_4")
         BadWordCategory.objects.create(id=11, name="test_category_11")
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.save_elasticsearch") as mock_save_es:
+        with patch(
+            "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.save_elasticsearch") as mock_save_es:
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         vetting_item.refresh_from_db()
         data = response.data
@@ -406,9 +425,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(mock_generate_vetted.delay.call_count, 0)
 
         blacklist_data = BlacklistItem.objects.get(item_id=audit_item_yt_id)
-        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]), set(blacklist_data.blacklist_category.keys()))
+        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]),
+                         set(blacklist_data.blacklist_category.keys()))
 
-    def test_handle_video_skip_not_exists(self, mock_generate_vetted):
+    def test_handle_video_skip_not_exists(self, *args):
         """
         Test handling skipping video vet
         If skipped_type is 0, then skipped since item is unavailable e.g. deleted from Youtube
@@ -427,7 +447,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "vetting_id": vetting_item.id,
             "skipped": 0
         }
-        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload),
+                                     content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.clean, False)
@@ -435,7 +456,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertTrue(vetting_item.processed > before)
 
-    def test_handle_video_skip_not_available(self, mock_generate_vetted):
+    def test_handle_video_skip_not_available(self, *args):
         """
         Test handling skipping video vet
         If skipped_type is 0, then skipped since item is unavailable e.g. deleted from Youtube
@@ -454,7 +475,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "vetting_id": vetting_item.id,
             "skipped": 1
         }
-        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload),
+                                     content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.clean, False)
@@ -462,7 +484,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertTrue(vetting_item.processed > before)
 
-    def test_handle_channel_skip_not_exists(self, mock_generate_vetted):
+    def test_handle_channel_skip_not_exists(self, *args):
         """
         Test handling skipping channel vet
         If skipped_type is 0, then skipped since item is unavailable e.g. deleted from Youtube
@@ -481,7 +503,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "vetting_id": vetting_item.id,
             "skipped": 0
         }
-        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload),
+                                     content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.clean, False)
@@ -489,7 +512,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertTrue(vetting_item.processed > before)
 
-    def test_handle_channel_skip_not_available(self, mock_generate_vetted):
+    def test_handle_channel_skip_not_available(self, *args):
         """
         Test handling skipping channel vet
         If skipped_type is 0, then skipped since item is unavailable e.g. deleted from Youtube
@@ -508,7 +531,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "vetting_id": vetting_item.id,
             "skipped": 1
         }
-        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload),
+                                     content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.clean, False)
@@ -516,14 +540,15 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertTrue(vetting_item.processed > before)
 
-    def test_get_video_all_checked_out(self, mock_generate_vetted):
+    def test_get_video_all_checked_out(self, *args):
         """ Test handling all vetting items are checked out """
         user = self.create_admin_user()
         before = timezone.now()
         audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
         audit_item_yt_id = f"video{next(int_iterator)}"
-        audit_item = AuditVideo.objects.create(video_id=audit_item_yt_id, video_id_hash=get_hash_name(audit_item_yt_id))
-        audit_meta = AuditVideoMeta.objects.create(video=audit_item, name="test meta name")
+        audit_item = AuditVideo.objects.create(video_id=audit_item_yt_id,
+                                               video_id_hash=get_hash_name(audit_item_yt_id))
+        AuditVideoMeta.objects.create(video=audit_item, name="test meta name")
         vetting_items = [AuditVideoVet(audit=audit, video=audit_item, checked_out_at=before, processed=before)]
         AuditVideoVet.objects.bulk_create(vetting_items)
         url = self._get_url(kwargs=dict(pk=audit.id))
@@ -532,14 +557,15 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["message"], "All items are checked out. Please request from a different list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
 
-    def test_get_channel_all_checked_out(self, mock_generate_vetted):
+    def test_get_channel_all_checked_out(self, *args):
         """ Test handling all vetting items are checked out """
         user = self.create_admin_user()
         before = timezone.now()
         audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
-        audit_item = AuditChannel.objects.create(channel_id=audit_item_yt_id, channel_id_hash=get_hash_name(audit_item_yt_id))
-        audit_meta = AuditChannelMeta.objects.create(channel=audit_item, name="test meta name")
+        audit_item = AuditChannel.objects.create(channel_id=audit_item_yt_id,
+                                                 channel_id_hash=get_hash_name(audit_item_yt_id))
+        AuditChannelMeta.objects.create(channel=audit_item, name="test meta name")
         vetting_items = [AuditChannelVet(audit=audit, channel=audit_item, checked_out_at=before, processed=before)]
         AuditChannelVet.objects.bulk_create(vetting_items)
         url = self._get_url(kwargs=dict(pk=audit.id))
@@ -548,31 +574,37 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["message"], "All items are checked out. Please request from a different list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
 
-    def test_handle_get_video_vetting_completed(self, mock_generate_vetted):
+    def test_handle_get_video_vetting_completed(self, *args):
         """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
-        before = timezone.now()
-        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title", is_vetting_complete=True))
+        timezone.now()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title",
+                                                                              is_vetting_complete=True))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
+        with patch(
+            "audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
             mock_retrieve.return_value = None
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["message"], "Vetting for this list is complete. Please move on to the next list.")
+        self.assertEqual(response.data["message"],
+                         "Vetting for this list is complete. Please move on to the next list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)
 
-    def test_handle_get_channel_vetting_completed(self, mock_generate_vetted):
+    def test_handle_get_channel_vetting_completed(self, *args):
         """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
         before = timezone.now()
-        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title", is_vetting_complete=True))
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title",
+                                                                              is_vetting_complete=True))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
+        with patch(
+            "audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
             mock_retrieve.return_value = None
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["message"], "Vetting for this list is complete. Please move on to the next list.")
+        self.assertEqual(response.data["message"],
+                         "Vetting for this list is complete. Please move on to the next list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)
 
@@ -601,8 +633,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         }
         BadWordCategory.objects.create(id=12, name="test_category")
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer._update_channel") as mock_update_channel,\
-            patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.save_elasticsearch") as mock_save_es:
+        with patch(
+            "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer._update_channel") as mock_update_channel, \
+            patch(
+                "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.save_elasticsearch") as mock_save_es:
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -634,7 +668,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         BadWordCategory.objects.create(id=4, name="test_category_4")
         BadWordCategory.objects.create(id=11, name="test_category_11")
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch("audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.save_elasticsearch") as mock_save_es:
+        with patch(
+            "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.save_elasticsearch") as mock_save_es:
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)

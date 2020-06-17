@@ -21,6 +21,7 @@ class AdwordsBase:
     # instance properties --->
     accounts = None
     client_options = None
+
     # <---
 
     def __init__(self, accounts: List[AccountDMO]):
@@ -29,7 +30,7 @@ class AdwordsBase:
         self.resolve_clients()
 
     def load_client_options(self) -> None:
-        with open('aw_reporting/ad_words_web.yaml', 'r') as f:
+        with open("aw_reporting/ad_words_web.yaml", "r") as f:
             self.client_options = yaml.load(f, Loader=yaml.FullLoader)
 
     def resolve_clients(self) -> None:
@@ -45,7 +46,7 @@ class AdwordsBase:
                 executor.submit(worker, _)
 
         clients_count = len([1 for a in self.accounts if a.client is not None])
-        logger.info("Resolved {} client(s)".format(clients_count))
+        logger.info("Resolved %s client(s)", clients_count)
 
     def _resolve_client(self, dmo: AccountDMO) -> None:
         for refresh_token in dmo.refresh_tokens:

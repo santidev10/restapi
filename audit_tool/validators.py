@@ -9,7 +9,7 @@ from audit_tool.models import AuditLanguage
 from es_components.iab_categories import IAB_TIER2_SET
 
 
-class AuditToolValidator(object):
+class AuditToolValidator:
 
     @staticmethod
     def validate_category(value, should_raise=True):
@@ -27,8 +27,7 @@ class AuditToolValidator(object):
                 if should_raise:
                     raise ValidationError("Category with ID: {} does not exist. Please enter a valid category ID."
                                           .format(value))
-                else:
-                    category = None
+                category = None
         except ValueError:
             if should_raise:
                 raise ValidationError("Expected Category ID value. Received: {}".format(value))
@@ -92,7 +91,7 @@ class AuditToolValidator(object):
             content_type = AuditContentType.get(value)
         except (KeyError, AuditContentType.DoesNotExist):
             if should_raise:
-                if type(value) is str:
+                if isinstance(value, str):
                     message = f"AuditContentType with channel_type: {value} not found."
                 else:
                     message = f"AuditContentType with id: {value} not found."
@@ -112,7 +111,7 @@ class AuditToolValidator(object):
             age_group = AuditAgeGroup.get(value)
         except (KeyError, AuditAgeGroup.DoesNotExist):
             if should_raise:
-                if type(value) is str:
+                if isinstance(value, str):
                     message = f"AuditAgeGroup with age_group: {value} not found."
                 else:
                     message = f"AuditAgeGroup with id: {value} not found."
@@ -132,7 +131,7 @@ class AuditToolValidator(object):
             gender = AuditGender.get(value)
         except (KeyError, AuditGender.DoesNotExist):
             if should_raise:
-                if type(value) is str:
+                if isinstance(value, str):
                     message = f"AuditGender with gender: {value} not found."
                 else:
                     message = f"AuditGender with id: {value} not found."

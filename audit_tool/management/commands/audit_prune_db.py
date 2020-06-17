@@ -1,30 +1,33 @@
-from django.core.management.base import BaseCommand
 import logging
-from audit_tool.models import AuditProcessor
-from django.utils import timezone
 from datetime import timedelta
-logger = logging.getLogger(__name__)
+
+from django.core.management.base import BaseCommand
+from django.utils import timezone
 from pid import PidFile
+
+from audit_tool.models import AuditProcessor
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
-    remove all audit data that's older than 90 days, for DB sanity
+    remove all audit data that"s older than 90 days, for DB sanity
 process:
     look at AuditProcessor objects older than 90 days, and remove them.
-    this should cascade delete AuditVideoProcessor, AuditChannelProcessor, 
+    this should cascade delete AuditVideoProcessor, AuditChannelProcessor,
     and AuditExporter objects dynamically.
 """
 
-class Command(BaseCommand):
 
+class Command(BaseCommand):
     def handle(self, *args, **options):
-        self.days = 180
-        with PidFile(piddir='.', pidname='audit_prune_db.pid') as p:
-            old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now()-timedelta(days=self.days)).exclude(completed__isnull=True)
+        days = 180
+        with PidFile(piddir=".", pidname="audit_prune_db.pid"):
+            old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now() - timedelta(
+                days=days)).exclude(completed__isnull=True)
             count = 0
             for audit in old_audits:
                 print("Deleting Audit {}".format(audit.id))
                 audit.delete()
-                count+=1
+                count += 1
             print("Deleted {} Audits.".format(count))
-

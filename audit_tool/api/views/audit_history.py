@@ -1,12 +1,15 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from datetime import timedelta
+
+import pytz
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditProcessorCache
 from utils.permissions import user_has_permission
-from datetime import timedelta
-from django.utils import timezone
-import pytz
+
 
 class AuditHistoryApiView(APIView):
     permission_classes = (
@@ -21,17 +24,16 @@ class AuditHistoryApiView(APIView):
             last_time = None
             first_time = None
             first_count = 0
-            last_count = 0
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
-            except Exception as e:
+            except BaseException:
                 raise ValidationError("invalid audit_id: please check")
             history = AuditProcessorCache.objects.filter(audit=audit)
             if hours:
                 history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
             try:
                 first_time = history.order_by("id")[0].created
-            except Exception as e:
+            except BaseException:
                 pass
             history = history.order_by("id")
             res = {
@@ -49,7 +51,6 @@ class AuditHistoryApiView(APIView):
                 if not first_count:
                     first_count = h.count
                 last_time = h.created
-                last_count = h.count
                 rate = h.count - previous if previous else None
                 if position % every_other == 0:
                     res['results'].append({
@@ -68,7 +69,7 @@ class AuditHistoryApiView(APIView):
                     diff = (last_time - first_time)
                     minutes = (diff.total_seconds() / 60)
                     res['rate_average'] = (last_count - first_count) / minutes
-                except Exception as e:
+                except BaseException:
                     pass
             else:
                 res['rate_average'] = audit.params.get('avg_rate_per_minute')
@@ -76,6 +77,6 @@ class AuditHistoryApiView(APIView):
                     res['rate_average'] = 'N/A'
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
-            except Exception as e:
+            except BaseException:
                 res['elapsed_time'] = 'N/A'
             return Response(res)

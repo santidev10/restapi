@@ -1,22 +1,25 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+import csv
+import json
+from datetime import datetime
+from distutils.util import strtobool
+from io import StringIO
+from uuid import uuid4
+
+from django.conf import settings
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.views import APIView
+
 from audit_tool.api.serializers.audit_processor_serializer import AuditProcessorSerializer
 from audit_tool.models import AuditProcessor
-import csv
-from uuid import uuid4
-from io import StringIO
-from distutils.util import strtobool
-import json
-from django.conf import settings
-from utils.aws.s3_exporter import S3Exporter
-from datetime import datetime
-from django.utils import timezone
-from utils.permissions import user_has_permission
+from audit_tool.tasks.generate_audit_items import generate_audit_items
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
-from audit_tool.tasks.generate_audit_items import generate_audit_items
+from utils.aws.s3_exporter import S3Exporter
+from utils.permissions import user_has_permission
+
 
 class AuditSaveApiView(APIView):
     permission_classes = (
@@ -34,7 +37,7 @@ class AuditSaveApiView(APIView):
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
         category = query_params["category"] if "category" in query_params else None
         related_audits = query_params["related_audits"] if "related_audits" in query_params else None
-        source_file = request.data['source_file'] if "source_file" in request.data else None
+        source_file = request.data["source_file"] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
         min_likes = int(query_params["min_likes"]) if "min_likes" in query_params else None
@@ -42,16 +45,19 @@ class AuditSaveApiView(APIView):
         max_dislikes = int(query_params["max_dislikes"]) if "max_dislikes" in query_params else None
         min_date = query_params["min_date"] if "min_date" in query_params else None
         num_videos = int(query_params["num_videos"]) if "num_videos" in query_params else None
-        max_recommended_type = query_params["max_recommended_type"] if "max_recommended_type" in query_params else "video"
+        max_recommended_type = query_params[
+            "max_recommended_type"] if "max_recommended_type" in query_params else "video"
         exclusion_hit_count = query_params["exclusion_hit_count"] if "exclusion_hit_count" in query_params else 1
         inclusion_hit_count = query_params["inclusion_hit_count"] if "inclusion_hit_count" in query_params else 1
-        include_unknown_views = strtobool(query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
-        include_unknown_likes = strtobool(query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
+        include_unknown_views = strtobool(
+            query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
+        include_unknown_likes = strtobool(
+            query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
 
         if name:
             name = name.strip()
         if min_date:
-            if '/' not in min_date:
+            if "/" not in min_date:
                 raise ValidationError("format of min_date must be mm/dd/YYYY")
             v_date = min_date.split("/")
             if len(v_date) < 3:
@@ -68,11 +74,12 @@ class AuditSaveApiView(APIView):
         if move_to_top and audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
-                lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
+                lowest_priority = \
+                AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
                 audit.pause = lowest_priority.pause - 1
-                audit.save(update_fields=['pause'])
+                audit.save(update_fields=["pause"])
                 return Response(audit.to_dict())
-            except Exception as e:
+            except BaseException as e:
                 raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
@@ -97,28 +104,28 @@ class AuditSaveApiView(APIView):
             ))
         # Source File Validation
         params = {
-            'name': name,
-            'language': language,
-            'user_id': user_id,
-            'do_videos': do_videos,
-            'category': category,
-            'related_audits': related_audits,
-            'audit_type_original': audit_type,
-            'min_likes': min_likes,
-            'min_date': min_date,
-            'min_views': min_views,
-            'max_dislikes': max_dislikes,
-            'num_videos': num_videos,
-            'max_recommended_type': max_recommended_type,
-            'files': {
-                'inclusion': None,
-                'exclusion': None,
-                'source': None
+            "name": name,
+            "language": language,
+            "user_id": user_id,
+            "do_videos": do_videos,
+            "category": category,
+            "related_audits": related_audits,
+            "audit_type_original": audit_type,
+            "min_likes": min_likes,
+            "min_date": min_date,
+            "min_views": min_views,
+            "max_dislikes": max_dislikes,
+            "num_videos": num_videos,
+            "max_recommended_type": max_recommended_type,
+            "files": {
+                "inclusion": None,
+                "exclusion": None,
+                "source": None
             },
-            'exclusion_hit_count': exclusion_hit_count,
-            'inclusion_hit_count': inclusion_hit_count,
-            'include_unknown_views': include_unknown_views,
-            'include_unknown_likes': include_unknown_likes,
+            "exclusion_hit_count": exclusion_hit_count,
+            "inclusion_hit_count": inclusion_hit_count,
+            "include_unknown_views": include_unknown_views,
+            "include_unknown_likes": include_unknown_likes,
         }
         if not audit_id:
             if source_file is None:
@@ -128,77 +135,79 @@ class AuditSaveApiView(APIView):
                 raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
             source_type = source_split[1]
             if source_type.lower() != "csv":
-                raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
+                raise ValidationError(
+                    "Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
             # Put Source File on S3
             if source_file:
-                params['seed_file'] = self.put_source_file_on_s3(source_file)
-                params['files']['source'] = source_file.name
+                params["seed_file"] = self.put_source_file_on_s3(source_file)
+                params["files"]["source"] = source_file.name
 
         # Load Keywords from Inclusion File
         if inclusion_file:
-            params['inclusion'] = self.load_keywords(inclusion_file)
-            params['files']['inclusion'] = inclusion_file.name
+            params["inclusion"] = self.load_keywords(inclusion_file)
+            params["files"]["inclusion"] = inclusion_file.name
             try:
-                params['inclusion_size'] = len(params['inclusion'])
-            except Exception as e:
+                params["inclusion_size"] = len(params["inclusion"])
+            except BaseException as e:
                 pass
         # Load Keywords from Exclusion File
         if exclusion_file:
             try:
-                params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
-            except Exception as e:
-                raise ValidationError("Exclusion file includes invalid / unparsable characters.  Please check and try again.")
-            params['files']['exclusion'] = exclusion_file.name
+                params["exclusion"], params["exclusion_category"] = self.load_exclusion_keywords(exclusion_file)
+            except BaseException as e:
+                raise ValidationError(
+                    "Exclusion file includes invalid / unparsable characters.  Please check and try again.")
+            params["files"]["exclusion"] = exclusion_file.name
             try:
-                params['exclusion_size'] = len(params['exclusion'])
-            except Exception as e:
+                params["exclusion_size"] = len(params["exclusion"])
+            except BaseException:
                 pass
         if category:
             c = []
             for a in json.loads(category):
                 c.append(int(a))
             category = c
-            params['category'] = category
+            params["category"] = category
         if language:
             l = []
             for a in json.loads(language):
                 l.append(a)
             language = l
-            params['language'] = language
+            params["language"] = language
         if related_audits:
             c = []
             for a in json.loads(related_audits):
                 c.append(int(a))
             related_audits = c
-            params['related_audits'] = related_audits
+            params["related_audits"] = related_audits
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
-                audit.params['inclusion'] = params['inclusion']
-                audit.params['files']['inclusion'] = params['files']['inclusion']
+                audit.params["inclusion"] = params["inclusion"]
+                audit.params["files"]["inclusion"] = params["files"]["inclusion"]
             if exclusion_file:
-                audit.params['exclusion'] = params['exclusion']
-                audit.params['files']['exclusion'] = params['files']['exclusion']
-                audit.params['exclusion_category'] = params['exclusion_category']
+                audit.params["exclusion"] = params["exclusion"]
+                audit.params["files"]["exclusion"] = params["files"]["exclusion"]
+                audit.params["exclusion_category"] = params["exclusion_category"]
             if name:
-                audit.params['name'] = name
+                audit.params["name"] = name
                 audit.name = name.lower()
             if max_recommended:
                 audit.max_recommended = max_recommended
                 audit.completed = None
-            audit.params['language'] = language
-            audit.params['min_likes'] = min_likes
-            audit.params['min_date'] = min_date
-            audit.params['min_views'] = min_views
-            audit.params['max_dislikes'] = max_dislikes
-            audit.params['category'] = category
-            audit.params['related_audits'] = related_audits
-            audit.params['num_videos'] = num_videos
-            audit.params['max_recommended_type'] = max_recommended_type
-            audit.params['exclusion_hit_count'] = exclusion_hit_count
-            audit.params['inclusion_hit_count'] = inclusion_hit_count
-            audit.params['include_unknown_views'] = include_unknown_views
-            audit.params['include_unknown_likes'] = include_unknown_likes
+            audit.params["language"] = language
+            audit.params["min_likes"] = min_likes
+            audit.params["min_date"] = min_date
+            audit.params["min_views"] = min_views
+            audit.params["max_dislikes"] = max_dislikes
+            audit.params["category"] = category
+            audit.params["related_audits"] = related_audits
+            audit.params["num_videos"] = num_videos
+            audit.params["max_recommended_type"] = max_recommended_type
+            audit.params["exclusion_hit_count"] = exclusion_hit_count
+            audit.params["inclusion_hit_count"] = inclusion_hit_count
+            audit.params["include_unknown_views"] = include_unknown_views
+            audit.params["include_unknown_likes"] = include_unknown_likes
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
@@ -207,7 +216,7 @@ class AuditSaveApiView(APIView):
                 max_recommended=max_recommended
             )
             audit.name = name.lower()
-            audit.save(update_fields=['name'])
+            audit.save(update_fields=["name"])
         return Response(audit.to_dict())
 
     @staticmethod
@@ -218,33 +227,33 @@ class AuditSaveApiView(APIView):
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
     def load_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode('utf-8-sig')
+        file = uploaded_file.read().decode("utf-8-sig")
         keywords = []
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=";", quotechar="|")
         for row in reader:
             try:
                 word = row[0].lower().strip()
-            except Exception as e:
+            except BaseException:
                 pass
             if word:
                 keywords.append(word)
         return keywords
 
     def load_exclusion_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode('utf-8-sig')
+        file = uploaded_file.read().decode("utf-8-sig")
         exclusion_data = []
         categories = []
         io_string = StringIO(file)
-        reader = csv.reader(io_string, delimiter=',', quotechar='"')
+        reader = csv.reader(io_string, delimiter=",", quotechar="\"")
         for row in reader:
             try:
                 word = row[0].lower().strip()
-            except Exception as e:
+            except BaseException:
                 continue
             try:
                 category = row[1].lower().strip()
-            except Exception as e:
+            except BaseException:
                 category = ""
             language = self.find_language(row)
             row_data = [word, category, language]
@@ -264,7 +273,7 @@ class AuditSaveApiView(APIView):
             if language in self.LANGUAGES_REVERSE:
                 return self.LANGUAGES_REVERSE[language]
             return ""
-        except Exception as e:
+        except BaseException:
             return ""
 
     def patch(self, request):
@@ -302,7 +311,7 @@ class AuditSaveApiView(APIView):
             generate_audit_items.delay(segment.id, data_field=segment.data_field)
             if not audit.completed:
                 audit.completed = timezone.now()
-                audit.save(update_fields=['completed'])
+                audit.save(update_fields=["completed"])
         # Update params with instructions
         audit.params.update({
             "instructions": data.pop("instructions", "")
@@ -337,4 +346,4 @@ class AuditFileS3Exporter(S3Exporter):
     @classmethod
     def get_s3_export_csv(cls, name):
         body = cls.get_s3_export_content(name)
-        return body.read().decode('utf-8-sig').split()
+        return body.read().decode("utf-8-sig").split()
