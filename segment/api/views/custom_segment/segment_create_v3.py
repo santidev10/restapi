@@ -96,7 +96,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         try:
             validated = self.validate_options(data)
             validated["segment_type"] = self.validate_segment_type(int(data["segment_type"]))
-            validated["owner"] = user_id
+            validated["owner_id"] = user_id
             validated["title_hash"] = get_hash_name(data["title"].lower().strip())
         except (ValueError, TypeError, AttributeError, KeyError) as error:
             raise SegmentCreationOptionsError(f"{type(error).__name__}: {error}")

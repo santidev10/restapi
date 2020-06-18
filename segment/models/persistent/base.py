@@ -165,5 +165,5 @@ class BasePersistentSegmentRelated(Timestampable):
 
 class PersistentSegmentFileUpload(Model):
     segment_uuid = UUIDField(unique=True)
-    created_at = DateTimeField(db_index=True)
+    created_at = DateTimeField(db_index=True, auto_now_add=True)
     filename = CharField(max_length=200, unique=True)

@@ -28,7 +28,7 @@ class FeaturedImageUrlMixin:
 class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
-    owner = CharField(max_length=50, required=False)
+    owner_id = CharField(max_length=50, required=False)
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
@@ -45,7 +45,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
             "created_at",
             "updated_at",
             "list_type",
-            "owner",
+            "owner_id",
             "segment_type",
             "statistics",
             "title",
@@ -84,7 +84,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def validate_title(self, title):
         hashed = self.initial_data["title_hash"]
-        owner_id = self.initial_data["owner"]
+        owner_id = self.initial_data["owner_id"]
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
@@ -93,8 +93,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data.pop("owner")
-        data.pop("title_hash")
+        data.pop("title_hash", None)
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         data["pending"] = False if data["statistics"] else True
         if not data["statistics"]:
@@ -129,3 +128,14 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         }
         to_id = config[item_type][value]
         return to_id
+
+
+class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
+    def to_representation(self, instance):
+        """
+        overrides CustomSegmentSerializer. Users without certain permissions
+        shouldn't be able to see download_url
+        """
+        data = super().to_representation(instance)
+        data.pop('download_url', None)
+        return data
