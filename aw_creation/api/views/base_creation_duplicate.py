@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-import aw_creation.api.views.utils.is_demo
 from aw_creation.api.serializers import AccountCreationSetupSerializer
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdCreation
@@ -74,8 +73,7 @@ class BaseCreationDuplicateApiView(APIView):
         raise NotImplementedError
 
     @forbidden_for_demo(
-        lambda view, request, pk, **kwargs: view.get_queryset().filter(
-            aw_creation.api.views.utils.is_demo.is_demo & Q(pk=pk)).exists())
+        lambda view, request, pk, **kwargs: view.get_queryset().filter(view.is_demo & Q(pk=pk)).exists())
     def post(self, request, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)

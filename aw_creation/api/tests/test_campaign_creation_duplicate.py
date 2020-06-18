@@ -21,7 +21,7 @@ from userprofile.constants import UserSettingsKey
 from utils.unittests.reverse import reverse
 
 
-class AccountAPITestCase(AwReportingAPITestCase):
+class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
 
     def _get_url(self, campaign_id):
         return reverse(Name.CreationSetup.CAMPAIGN_DUPLICATE, [Namespace.AW_CREATION], args=(campaign_id,))

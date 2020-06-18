@@ -15,7 +15,7 @@ from aw_reporting.models import Campaign
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class AccountNamesAPITestCase(ExtendedAPITestCase):
+class PerformanceTargetingFilterAPITestCase(ExtendedAPITestCase):
     def test_success_get_is_managed_false(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data

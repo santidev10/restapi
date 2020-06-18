@@ -16,7 +16,7 @@ from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 
 
-class AccountAPITestCase(AwReportingAPITestCase):
+class AdGroupCreationDuplicateAPITestCase(AwReportingAPITestCase):
 
     def _get_url(self, ad_group_id):
         return reverse(Name.CreationSetup.AD_GROUP_DUPLICATE, [Namespace.AW_CREATION], args=(ad_group_id,))

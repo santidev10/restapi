@@ -31,7 +31,7 @@ class PerformanceTargetingFiltersAPIView(APIView):
             "end_date",
         )
         rows = Campaign.objects.filter(account__account_creation=item) \
-            .values(campaign_fields) \
+            .values(*campaign_fields) \
             .order_by("name", "id", "ad_groups__name", "ad_groups__id")
         campaigns = []
         for row in rows:
