@@ -1,15 +1,16 @@
+import hashlib
 from datetime import datetime
 from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
 from django.db.models import IntegerField
-from django.db.models import Q
 from django.utils import timezone
+
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
-import hashlib
 
 
 def get_hash_name(s):
@@ -152,7 +153,8 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None, limit=None):
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None,
+            limit=None):
         # if export:
         #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
         #     all = AuditProcessor.objects.filter(id__in=exports)
@@ -173,7 +175,10 @@ class AuditProcessor(models.Model):
         }
         audits = []
         if export:
-            exports = AuditExporter.objects.filter(completed__isnull=True, audit_id__in=all.values_list('id', flat=True)).order_by("started", "audit__pause", "id")
+            exports = AuditExporter.objects.filter(completed__isnull=True,
+                                                   audit_id__in=all.values_list('id', flat=True)).order_by("started",
+                                                                                                           "audit__pause",
+                                                                                                           "id")
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
@@ -183,7 +188,7 @@ class AuditProcessor(models.Model):
             all = all.order_by("pause", "-completed", "id")
             if limit:
                 start = (cursor - 1) * limit
-                all = all[start:start+limit]
+                all = all[start:start + limit]
             for a in all:
                 if not search and date_gte and a.completed and a.completed < date_gte:
                     break
@@ -237,7 +242,8 @@ class AuditProcessor(models.Model):
             'paused': self.temp_stop,
             'num_videos': self.get_num_videos(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
-            'avg_rate_per_minute': self.get_completed_rate() if self.completed else self.params.get('avg_rate_per_minute'),
+            'avg_rate_per_minute': self.get_completed_rate() if self.completed else self.params.get(
+                'avg_rate_per_minute'),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
@@ -328,7 +334,8 @@ class AuditProcessor(models.Model):
         return res
 
     def has_history(self):
-        if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
+        if not self.params.get('error') and self.started and (
+            not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
             return True
         return False
 
@@ -353,6 +360,7 @@ class AuditProcessor(models.Model):
                     })
         return d
 
+
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
@@ -363,6 +371,7 @@ class AuditLanguage(models.Model):
 
     def __str__(self):
         return self.language
+
 
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
@@ -392,6 +401,7 @@ class AuditCategory(models.Model):
                 seen.add(c.category_display_iab)
         return res
 
+
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
 
@@ -399,6 +409,7 @@ class AuditCountry(models.Model):
     def from_string(in_var):
         db_result, _ = AuditCountry.objects.get_or_create(country=in_var.upper())
         return db_result
+
 
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
@@ -421,6 +432,7 @@ class AuditChannel(models.Model):
             except IntegrityError as e:
                 return AuditChannel.objects.get(channel_id=channel_id)
 
+
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -442,6 +454,7 @@ class AuditChannelMeta(models.Model):
                                                on_delete=models.CASCADE)
     synced_with_viewiq = models.NullBooleanField(db_index=True)
     hidden_subscriber_count = models.BooleanField(default=False)
+
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -514,11 +527,13 @@ class AuditVideoMeta(models.Model):
 
 
 class AuditVideoProcessor(models.Model):
+    id = models.BigAutoField(primary_key=True)
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True,
                                      related_name='avp_video_source', on_delete=models.CASCADE)
-    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, related_name='avp_audit_channel', on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, related_name='avp_audit_channel',
+                                on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default=dict, null=True)
@@ -529,7 +544,9 @@ class AuditVideoProcessor(models.Model):
             ("audit", "processed"),
         ]
 
+
 class AuditChannelProcessor(models.Model):
+    id = models.BigAutoField(primary_key=True)
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel', on_delete=models.CASCADE)
     channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True,
@@ -543,6 +560,7 @@ class AuditChannelProcessor(models.Model):
         index_together = [
             ("audit", "processed"),
         ]
+
 
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -596,10 +614,12 @@ class AuditExporter(models.Model):
         if owner:
             self.owner_id = owner.id
 
+
 class AuditProcessorCache(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     count = models.BigIntegerField(default=0, db_index=True)
+
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0
@@ -662,14 +682,16 @@ class AuditVet(models.Model):
 
 
 class AuditChannelVet(AuditVet):
-    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='channel_vets', null=True, default=None, on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='channel_vets', null=True, default=None,
+                                on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ("audit", "channel")
 
 
 class AuditVideoVet(AuditVet):
-    video = models.ForeignKey(AuditVideo, db_index=True, related_name='video_vets', null=True, default=None, on_delete=models.CASCADE)
+    video = models.ForeignKey(AuditVideo, db_index=True, related_name='video_vets', null=True, default=None,
+                              on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ("audit", "video")
@@ -706,8 +728,8 @@ class AuditAgeGroup(models.Model):
         (4, "18 - 35 Adults"),
         (5, "36 - 54 Older Adults"),
         (6, "55+ Seniors"),
-        (7, "Group - Kids (not teens)"), # parent=2
-        (8, "Group - Family Friendly"), # parent=3
+        (7, "Group - Kids (not teens)"),  # parent=2
+        (8, "Group - Family Friendly"),  # parent=3
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
@@ -725,8 +747,9 @@ class AuditAgeGroup(models.Model):
         by_group = [{
             "id": group.id,
             "value": group.age_group,
-            "children": [{"id": child.id, "value": child.age_group} for child in AuditAgeGroup.objects.filter(parent_id=group.id)]
-         } for group in AuditAgeGroup.objects.filter(parent=None)]
+            "children": [{"id": child.id, "value": child.age_group} for child in
+                         AuditAgeGroup.objects.filter(parent_id=group.id)]
+        } for group in AuditAgeGroup.objects.filter(parent=None)]
         return by_group
 
     @staticmethod
