@@ -45,6 +45,16 @@ class IsAuthQueryTokenPermission(permissions.BasePermission):
         return True
 
 
+class IsOwnerPermission(permissions.IsAuthenticated):
+    def has_permission(self, request, view):
+        is_authenticated = super(IsOwnerPermission,
+                                 self).has_permission(request, view)
+        obj = self.get_object()
+        return is_authenticated \
+               and (request.user.is_staff
+                    or obj.owner == request.user)
+
+
 class OrPermissionsBase(permissions.BasePermission):
     """
     Allow to perform action if any class from `classes` allows it
