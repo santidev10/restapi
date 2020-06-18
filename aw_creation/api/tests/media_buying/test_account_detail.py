@@ -3,8 +3,8 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
-from django.db.models import Sum
 from django.conf import settings
+from django.db.models import Sum
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND

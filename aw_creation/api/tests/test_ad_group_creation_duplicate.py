@@ -12,7 +12,6 @@ from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import AdGroup
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 
@@ -66,26 +65,26 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertNotEqual(ad_groups.id, data['id'])
+        self.assertNotEqual(ad_groups.id, data["id"])
 
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'updated_at', 'ad_creations',
-                'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate', 'video_ad_format',
+                "id", "name", "updated_at", "ad_creations",
+                "genders", "parents", "age_ranges",
+                "targeting", "max_rate", "video_ad_format",
             }
         )
-        self.assertEqual(data['max_rate'], ad_groups.max_rate)
+        self.assertEqual(data["max_rate"], ad_groups.max_rate)
         self.assertEqual(
-            set(data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(data["targeting"]),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
         self.assertEqual(
-            set(data['targeting']['keyword']['negative'][0]),
-            {'criteria', 'is_negative', 'type', 'name'}
+            set(data["targeting"]["keyword"]["negative"][0]),
+            {"criteria", "is_negative", "type", "name"}
         )
-        self.assertEqual(data['name'], "{} (1)".format(ad_groups.name))
+        self.assertEqual(data["name"], "{} (1)".format(ad_groups.name))
 
     def test_success_post_increment_name(self):
         ad_group = self.create_ad_group_creation(owner=self.user)
@@ -96,7 +95,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(data['name'], "FF 1 (200)")
+        self.assertEqual(data["name"], "FF 1 (200)")
 
     def test_success_post_demo(self):
         recreate_demo_data()
@@ -127,7 +126,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.assertEqual(campaign_creation_1.ad_group_creations.count(), 1)
         self.assertEqual(campaign_creation_2.ad_group_creations.count(), 1)
-        self.assertEqual(data['name'], ad_group_creation.name)
+        self.assertEqual(data["name"], ad_group_creation.name)
 
     def test_fail_duplicate_to_another_not_found_campaign(self):
         account_creation = AccountCreation.objects.create(

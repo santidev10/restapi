@@ -45,7 +45,7 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         )
         url = "{}?{}".format(
             str(url),
-            urlencode({'auth_token': self.user.tokens.first().key}),
+            urlencode({"auth_token": self.user.tokens.first().key}),
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

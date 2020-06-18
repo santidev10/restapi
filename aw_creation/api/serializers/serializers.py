@@ -3,17 +3,26 @@ import logging
 
 from drf_yasg.utils import swagger_serializer_method
 from rest_framework.serializers import DecimalField
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
-    ListField, ValidationError, DictField
+from rest_framework.serializers import DictField
+from rest_framework.serializers import ListField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import URLField
+from rest_framework.serializers import ValidationError
 
-from aw_creation.models import TargetingItem, AdGroupCreation, \
-    CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdCreation
-from aw_reporting.models import GeoTarget, Topic, Audience
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import LocationRule
+from aw_creation.models import TargetingItem
+from aw_reporting.models import Audience
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import Topic
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
-from utils.datetime import now_in_default_tz
 from utils.lang import convert_sequence_items_to_sting
 
 logger = logging.getLogger(__name__)
@@ -32,62 +41,64 @@ class SimpleGeoTargetSerializer(ModelSerializer):
 
 
 def add_targeting_list_items_info(data, list_type):
-    ids = [i['criteria'] for i in data]
+    ids = [i["criteria"] for i in data]
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
             channel_manager = ChannelManager()
             try:
-                items = channel_manager.search(
-                    filters=channel_manager.ids_query(ids)
-                ). \
-                    source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]).execute().hits
+                items = channel_manager \
+                    .search(filters=channel_manager.ids_query(ids)) \
+                    .source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]) \
+                    .execute() \
+                    .hits
                 info = {i.main.id: i for i in items}
-            except Exception as e:
+            except BaseException as e:
                 logger.error(e)
                 info = {}
 
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['id'] = item_info.main.id if item_info else None
-                item['name'] = item_info.general_data.title if item_info else None
-                item['thumbnail'] = item_info.general_data.thumbnail_image_url if item_info else None
+                item_info = info.get(item["criteria"])
+                item["id"] = item_info.main.id if item_info else None
+                item["name"] = item_info.general_data.title if item_info else None
+                item["thumbnail"] = item_info.general_data.thumbnail_image_url if item_info else None
 
         elif list_type == TargetingItem.VIDEO_TYPE:
             video_manager = VideoManager()
             try:
-                items = video_manager.search(
-                    filters=video_manager.ids_query(ids)
-                ). \
-                    source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]).execute().hits
+                items = video_manager \
+                    .search(filters=video_manager.ids_query(ids)) \
+                    .source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]) \
+                    .execute() \
+                    .hits
                 info = {i.main.id: i for i in items}
-            except Exception as e:
+            except BaseException as e:
                 logger.error(e)
                 info = {}
 
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['id'] = item_info.main.id if item_info else None
-                item['name'] = item_info.general_data.title if item_info else None
-                item['thumbnail'] = item_info.general_data.thumbnail_image_url if item_info else None
+                item_info = info.get(item["criteria"])
+                item["id"] = item_info.main.id if item_info else None
+                item["name"] = item_info.general_data.title if item_info else None
+                item["thumbnail"] = item_info.general_data.thumbnail_image_url if item_info else None
 
         elif list_type == TargetingItem.TOPIC_TYPE:
             info = dict(
                 Topic.objects.filter(
-                    id__in=ids).values_list('id', 'name')
+                    id__in=ids).values_list("id", "name")
             )
             for item in data:
-                item['name'] = info.get(int(item['criteria']))
+                item["name"] = info.get(int(item["criteria"]))
 
         elif list_type == TargetingItem.INTEREST_TYPE:
             info = dict(
                 Audience.objects.filter(
-                    id__in=ids).values_list('id', 'name')
+                    id__in=ids).values_list("id", "name")
             )
             for item in data:
-                item['name'] = info.get(int(item['criteria']))
+                item["name"] = info.get(int(item["criteria"]))
         elif list_type == TargetingItem.KEYWORD_TYPE:
             for item in data:
-                item['name'] = item['criteria']
+                item["name"] = item["criteria"]
 
 
 class AdCreationSetupSerializer(ModelSerializer):
@@ -234,27 +245,27 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
     @staticmethod
     def get_targeting(obj):
         items = obj.targeting_items.all() \
-            .values('type', 'criteria', 'is_negative')
+            .values("type", "criteria", "is_negative")
 
         for t_type, _ in TargetingItem.TYPES:
-            t_items = list(filter(lambda e: e['type'] == t_type, items))
+            t_items = list(filter(lambda e, value=t_type: e["type"] == value, items))
             if t_items:
                 add_targeting_list_items_info(t_items, t_type)
 
         targeting = {k[0]: {"positive": [], "negative": []}
                      for k in TargetingItem.TYPES}
         for item in items:
-            key = "negative" if item['is_negative'] else "positive"
-            targeting[item['type']][key].append(item)
+            key = "negative" if item["is_negative"] else "positive"
+            targeting[item["type"]][key].append(item)
 
         return targeting
 
     class Meta:
         model = AdGroupCreation
         fields = (
-            'id', 'name', 'updated_at', 'max_rate',
-            'age_ranges', 'genders', 'parents', 'targeting',
-            'ad_creations', 'video_ad_format',
+            "id", "name", "updated_at", "max_rate",
+            "age_ranges", "genders", "parents", "targeting",
+            "ad_creations", "video_ad_format",
         )
 
 
@@ -278,13 +289,13 @@ class LocationRuleSerializer(ModelSerializer):
 class AdScheduleSerializer(ModelSerializer):
     class Meta:
         model = AdScheduleRule
-        fields = '__all__'
+        fields = "__all__"
 
 
 class FrequencyCapUpdateSerializer(ModelSerializer):
     class Meta:
         model = FrequencyCap
-        fields = '__all__'
+        fields = "__all__"
 
 
 class FrequencyCapSerializer(ModelSerializer):
@@ -318,7 +329,7 @@ class FrequencyCapSerializer(ModelSerializer):
 
     class Meta:
         model = FrequencyCap
-        exclude = ("id", 'campaign_creation')
+        exclude = ("id", "campaign_creation")
 
 
 class CampaignCreationSetupSerializer(ModelSerializer):
@@ -374,7 +385,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
 
     @staticmethod
     def get_languages(obj):
-        languages = obj.languages.values('id', 'name')
+        languages = obj.languages.values("id", "name")
         return languages
 
     @staticmethod
@@ -390,13 +401,13 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     @staticmethod
     def get_bid_strategy_type(obj) -> dict:
         """
-        Maps Campaign's bidding strategy (str) to dictionary (id, name)
+        Maps Campaign"s bidding strategy (str) to dictionary (id, name)
         """
         bid_strategy_id = obj.bid_strategy_type
         bid_strategy_name = [name for id, name in CampaignCreation.BID_STRATEGY_TYPES if id == bid_strategy_id][0]
         return {
-            'id': bid_strategy_id,
-            'name': bid_strategy_name
+            "id": bid_strategy_id,
+            "name": bid_strategy_name
         }
 
     class Meta:
@@ -438,19 +449,19 @@ class AccountCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            'id', 'name', 'account', 'is_ended', 'is_approved', 'is_paused',
-            'campaign_creations', 'updated_at', "sync_at")
+            "id", "name", "account", "is_ended", "is_approved", "is_paused",
+            "campaign_creations", "updated_at", "sync_at")
 
 
 class AccountCreationUpdateSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            'name',
-            'is_ended',
-            'is_paused',
-            'is_approved',
-            'sync_at'
+            "name",
+            "is_ended",
+            "is_paused",
+            "is_approved",
+            "sync_at"
         )
 
 
@@ -502,24 +513,21 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         return value
 
     def validate(self, data):
-        for f in (
-                'devices', 'video_networks', 'languages', 'genders', 'parents',
-                'age_ranges'):
+        for f in ("devices", "video_networks", "languages", "genders", "parents", "age_ranges"):
             if f in data and not data[f]:
                 raise ValidationError(
                     "{}: empty set is not allowed".format(f))
 
-        if 'video_networks' in data:
-            video_networks = data['video_networks']
+        if "video_networks" in data:
+            video_networks = data["video_networks"]
             if CampaignCreation.VIDEO_PARTNER_DISPLAY_NETWORK in video_networks and \
-                    CampaignCreation.YOUTUBE_VIDEO not in video_networks:
+                CampaignCreation.YOUTUBE_VIDEO not in video_networks:
                 raise ValidationError(
                     "Cannot target display network without first "
                     "targeting YouTube video network")
 
         # if one of the following fields is provided
         if {"start", "end"} & set(data.keys()):
-            today = now_in_default_tz().date()
             start, end = None, None
             if self.instance:
                 start, end = self.instance.start, self.instance.end
@@ -531,7 +539,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
             if start and end and start > end:
                 raise ValidationError(
-                    'Wrong date period: start date > end date')
+                    "Wrong date period: start date > end date")
 
         return super(CampaignCreationUpdateSerializer, self).validate(data)
 
@@ -540,7 +548,7 @@ class AppendCampaignCreationSerializer(ModelSerializer):
     class Meta:
         model = CampaignCreation
         fields = (
-            'name', 'account_creation',
+            "name", "account_creation",
         )
 
 
@@ -591,9 +599,9 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
     def validate_targeting(self, value):
         allowed_keys = set(t for t, _ in TargetingItem.TYPES)
-        error_text = 'Targeting items must be sent in the following format: ' \
-                     '{"keyword": {"positive": ["spam", "ham"], "negative": ["adult films"]}, ...}.\n' \
-                     'Allowed keys are %s' % allowed_keys
+        error_text = """Targeting items must be sent in the following format:
+                     {"keyword": {"positive": ["spam", "ham"], "negative": ["adult films"]}, ...}.
+                     Allowed keys are %s""" % allowed_keys
         unknown_keys = value.keys() - allowed_keys
         if unknown_keys:
             raise ValidationError(error_text)
@@ -635,7 +643,7 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
         return value
 
     def validate(self, data):
-        for f in ('genders', 'parents', 'age_ranges'):
+        for f in ("genders", "parents", "age_ranges"):
             if f in data and not data[f]:
                 raise ValidationError("{}: empty set is not allowed".format(f))
 
@@ -644,15 +652,15 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
     class Meta:
         model = AdGroupCreation
         exclude = (
-            'genders_raw', 'age_ranges_raw', 'parents_raw', 'campaign_creation')
+            "genders_raw", "age_ranges_raw", "parents_raw", "campaign_creation")
 
 
 class AppendAdGroupCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdGroupCreation
         fields = (
-            'name', 'campaign_creation', 'genders_raw', 'age_ranges_raw',
-            'parents_raw',
+            "name", "campaign_creation", "genders_raw", "age_ranges_raw",
+            "parents_raw",
         )
 
 
@@ -661,34 +669,34 @@ class AdCreationUpdateSerializer(ModelSerializer):
 
     class Meta:
         model = AdCreation
-        exclude = ('ad_group_creation',)
+        exclude = ("ad_group_creation",)
 
     @staticmethod
     def validate_custom_params(custom_params):
-        if isinstance(custom_params, list) and len(custom_params) == 1 \
-                and isinstance(custom_params[0], str) and custom_params[
-            0].startswith("["):
+        if isinstance(custom_params, list) \
+            and len(custom_params) == 1 \
+            and isinstance(custom_params[0], str) \
+            and custom_params[0].startswith("["):
             custom_params = json.loads(custom_params[0])
 
         if len(custom_params) > 3:
             raise ValidationError(
-                'You cannot use more than 3 custom parameters'
+                "You cannot use more than 3 custom parameters"
             )
         keys = {"name", "value"}
         for i in custom_params:
-            if type(i) is not dict or set(i.keys()) != keys:
+            if not isinstance(i, dict) or set(i.keys()) != keys:
                 # all(ord(c) < 128 for c in test)  test.isalpha()
                 raise ValidationError(
-                    'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
+                    """Custom parameters format is [{"name": "ad", "value": "demo"}, ..]"""
                 )
-            if not (i["name"].isalnum() and all(
-                    ord(c) < 128 for c in i["name"])):
+            if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
                 raise ValidationError(
-                    'Invalid character in custom parameter key'
+                    "Invalid character in custom parameter key"
                 )
-            if " " in i['value']:
+            if " " in i["value"]:
                 raise ValidationError(
-                    'Invalid character in custom parameter value'
+                    "Invalid character in custom parameter value"
                 )
         return custom_params
 
@@ -706,7 +714,7 @@ class AdCreationUpdateSerializer(ModelSerializer):
 class AppendAdCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdCreation
-        fields = ('name', 'ad_group_creation')
+        fields = ("name", "ad_group_creation")
 
 
 class TopicHierarchySerializer(ModelSerializer):
@@ -739,16 +747,16 @@ class AudienceHierarchySerializer(ModelSerializer):
 class UpdateTargetingDirectionSerializer(ModelSerializer):
     class Meta:
         model = TargetingItem
-        fields = ('is_negative',)
+        fields = ("is_negative",)
 
 
 class AdGroupTargetingListSerializer(ModelSerializer):
     class Meta:
         model = TargetingItem
-        exclude = ('type', 'id', 'ad_group_creation')
+        exclude = ("type", "id", "ad_group_creation")
 
 
 class AdGroupTargetingListUpdateSerializer(ModelSerializer):
     class Meta:
         model = TargetingItem
-        exclude = ('id',)
+        exclude = ("id",)

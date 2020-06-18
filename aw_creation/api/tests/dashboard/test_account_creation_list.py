@@ -97,11 +97,11 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
-        date = datetime.now()
-        VideoCreativeStatistic.objects.create(creative=creative1, date=date,
+        action_date = datetime.now()
+        VideoCreativeStatistic.objects.create(creative=creative1, date=action_date,
                                               ad_group=ad_group,
                                               impressions=10)
-        VideoCreativeStatistic.objects.create(creative=creative2, date=date,
+        VideoCreativeStatistic.objects.create(creative=creative2, date=action_date,
                                               ad_group=ad_group,
                                               impressions=12)
 
@@ -306,20 +306,22 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         )
 
         client_cost = sum(
-            [get_client_cost(
-                goal_type_id=c.salesforce_placement.goal_type_id,
-                dynamic_placement=c.salesforce_placement.dynamic_placement,
-                placement_type=c.salesforce_placement.placement_type,
-                ordered_rate=c.salesforce_placement.ordered_rate,
-                impressions=c.impressions,
-                video_views=c.video_views,
-                aw_cost=c.cost,
-                total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee,
-                start=c.start_date,
-                end=c.end_date
-            )
-                for c in campaigns]
+            [
+                get_client_cost(
+                    goal_type_id=c.salesforce_placement.goal_type_id,
+                    dynamic_placement=c.salesforce_placement.dynamic_placement,
+                    placement_type=c.salesforce_placement.placement_type,
+                    ordered_rate=c.salesforce_placement.ordered_rate,
+                    impressions=c.impressions,
+                    video_views=c.video_views,
+                    aw_cost=c.cost,
+                    total_cost=c.salesforce_placement.total_cost,
+                    tech_fee=c.salesforce_placement.tech_fee,
+                    start=c.start_date,
+                    end=c.end_date
+                )
+                for c in campaigns
+            ]
         )
         aw_cost = sum([c.cost for c in campaigns])
         self.assertNotEqual(client_cost, aw_cost)

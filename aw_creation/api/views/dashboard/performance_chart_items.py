@@ -37,7 +37,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
         return filters
 
     def post(self, request, pk, **kwargs):
-        dimension = kwargs.get('dimension')
+        dimension = kwargs.get("dimension")
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
         if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):

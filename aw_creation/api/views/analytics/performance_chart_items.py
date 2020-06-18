@@ -35,7 +35,7 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
         return filters
 
     def post(self, request, pk, **kwargs):
-        dimension = kwargs.get('dimension')
+        dimension = kwargs.get("dimension")
         user = request.user
         try:
             item = AccountCreation.objects.user_related(user).get(pk=pk)

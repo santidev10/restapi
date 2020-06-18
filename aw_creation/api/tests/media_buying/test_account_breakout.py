@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from django.http import QueryDict
 from django.utils import timezone
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -11,8 +10,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
@@ -62,10 +61,14 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         op = Opportunity.objects.create()
-        pl_1 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}", opportunity=op, goal_type_id=SalesForceGoalType.CPM)
-        pl_2 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}", opportunity=op, goal_type_id=SalesForceGoalType.CPV)
-        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, salesforce_placement=pl_1, budget=12.1, type="video")
-        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, salesforce_placement=pl_2, budget=30.4, type="display")
+        pl_1 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}",
+                                          opportunity=op, goal_type_id=SalesForceGoalType.CPM)
+        pl_2 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}",
+                                          opportunity=op, goal_type_id=SalesForceGoalType.CPV)
+        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account,
+                                             salesforce_placement=pl_1, budget=12.1, type="video")
+        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account,
+                                             salesforce_placement=pl_2, budget=30.4, type="display")
         ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=5000000)
         ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=1000000)
         query_prams = QueryDict(f"ad_group_ids={ad_group_1.id},{ad_group_2.id}").urlencode()
@@ -92,11 +95,14 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         """ Should not be able to create breakout with mixed AdGroup types """
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
-        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=5, type="Standard")
+        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1,
+                                             type="video")
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=5,
+                                            type="Standard")
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=9.2, type="video")
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=1, type="Display")
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=1,
+                                            type="Display")
         payload = {
             "ad_group_ids": [
                 ad_group_1.id,
@@ -114,7 +120,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_fail_start_date_less_today(self):
@@ -122,7 +129,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
-        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5, type="Standard")
+        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5,
+                                          type="Standard")
         today = timezone.now().date()
         start = (today - timedelta(days=1)).strftime("%Y-%m-%d")
         end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -143,7 +151,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_fail_start_date_greater_end_date(self):
@@ -151,7 +160,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
-        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5, type="Standard")
+        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5,
+                                          type="Standard")
         payload = {
             "ad_group_ids": [
                 ad_group.id,
@@ -168,7 +178,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_success_non_skip(self):
@@ -176,10 +187,12 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=7.2, type="video")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=4, type="Standard")
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=4,
+                                            type="Standard")
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=5.5, type="video")
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="Standard")
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1,
+                                            type="Standard")
 
         campaign_3 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.5, type="video")
         today = timezone.now().date()
@@ -202,7 +215,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout = CampaignCreation.objects.get(name__contains=payload["name"])
         self.assertEqual(campaign_breakout.bid_strategy_type, CampaignCreation.TARGET_CPM_STRATEGY)
@@ -227,11 +241,15 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         """ Success create non skip breakout with pausing source ad groups """
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
-        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=8.6, type="display")
-        ad_group_1a = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=3, type="Display")
+        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=8.6,
+                                             type="display")
+        ad_group_1a = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=3,
+                                             type="Display")
 
-        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=3.4, type="display")
-        ad_group_2a = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="Display")
+        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=3.4,
+                                             type="display")
+        ad_group_2a = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1,
+                                             type="Display")
         today = timezone.now().date()
         start = today.strftime("%Y-%m-%d")
         end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -252,7 +270,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout = CampaignCreation.objects.get(name__contains=payload["name"])
         self.assertEqual(campaign_breakout.bid_strategy_type, CampaignCreation.MAX_CPM_STRATEGY)
@@ -262,8 +281,10 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(str(campaign_breakout.start), payload["start"])
         self.assertEqual(str(campaign_breakout.end), payload["end"])
 
-        breakout_ag_1a = AdGroupCreation.objects.get(campaign_creation=campaign_breakout, name__icontains=ad_group_1a.name)
-        breakout_ag_2a = AdGroupCreation.objects.get(campaign_creation=campaign_breakout, name__icontains=ad_group_2a.name)
+        breakout_ag_1a = AdGroupCreation.objects.get(campaign_creation=campaign_breakout,
+                                                     name__icontains=ad_group_1a.name)
+        breakout_ag_2a = AdGroupCreation.objects.get(campaign_creation=campaign_breakout,
+                                                     name__icontains=ad_group_2a.name)
 
         self.assertEqual(breakout_ag_1a.max_rate, payload["max_rate"])
         self.assertEqual(breakout_ag_2a.max_rate, payload["max_rate"])
@@ -279,10 +300,13 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=7.6, type="video")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=2, type="Bumper")
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=2,
+                                            type="Bumper")
 
-        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=16.4, type="video")
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="Bumper")
+        campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=16.4,
+                                             type="video")
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1,
+                                            type="Bumper")
 
         campaign_3 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.5, type="video")
         campaign_4 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=3.3, type="video")
@@ -306,7 +330,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout = CampaignCreation.objects.get(name__contains=payload["name"])
         self.assertEqual(campaign_breakout.bid_strategy_type, CampaignCreation.TARGET_CPM_STRATEGY)
@@ -330,10 +355,12 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.9, type="video")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpv_bid=8, type="Video discovery")
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpv_bid=8,
+                                            type="Video discovery")
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=5.7, type="video")
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=4, type="Video discovery")
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=4,
+                                            type="Video discovery")
         today = timezone.now().date()
         start = today.strftime("%Y-%m-%d")
         end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -354,7 +381,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout = CampaignCreation.objects.get(name__contains=payload["name"])
         self.assertEqual(campaign_breakout.bid_strategy_type, CampaignCreation.MAX_CPV_STRATEGY)
@@ -376,11 +404,14 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
     def test_create_success_instream(self):
         self.create_admin_user()
         account = Account.objects.create(id=1, name="")
-        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=1.23, type="video")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=4, type="In-stream")
+        campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=1.23,
+                                             type="video")
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=4,
+                                            type="In-stream")
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=1.7, type="video")
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="In-stream")
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1,
+                                            type="In-stream")
         today = timezone.now().date()
         start = today.strftime("%Y-%m-%d")
         end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -401,7 +432,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout = CampaignCreation.objects.get(name__contains=payload["name"])
         self.assertEqual(campaign_breakout.bid_strategy_type, CampaignCreation.MAX_CPV_STRATEGY)

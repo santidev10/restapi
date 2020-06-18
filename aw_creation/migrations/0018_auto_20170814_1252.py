@@ -3,11 +3,11 @@
 from __future__ import unicode_literals
 
 import django.core.validators
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0017_auto_20170728_0938'),
     ]
@@ -31,6 +31,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='adcreation',
             name='video_url',
-            field=models.URLField(default='', validators=[django.core.validators.RegexValidator('^(?:https?:/{2})?(?:w{3}\\.)?youtu(?:be)?\\.(?:com|be)(?:/watch\\?v=|/video/|/)([^\\s&\\?]+)$', 'Wrong video url')]),
+            field=models.URLField(default='', validators=[django.core.validators.RegexValidator(
+                '^(?:https?:/{2})?(?:w{3}\\.)?youtu(?:be)?\\.(?:com|be)(?:/watch\\?v=|/video/|/)([^\\s&\\?]+)$',
+                'Wrong video url')]),
         ),
     ]

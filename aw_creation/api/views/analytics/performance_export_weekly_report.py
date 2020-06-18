@@ -22,8 +22,8 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
     def get_filters(self):
         data = self.request.data
         filters = dict(
-            campaigns=data.get('campaigns'),
-            ad_groups=data.get('ad_groups'),
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
         )
         return filters
 

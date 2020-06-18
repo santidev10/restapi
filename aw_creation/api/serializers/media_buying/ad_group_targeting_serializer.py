@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import TargetingStatusEnum
-from aw_reporting.models.ad_words.ad_group_targeting import AGE_RANGE_CRITERIA_MAPPING
 
 
 class AdGroupTargetingSerializer(serializers.ModelSerializer):

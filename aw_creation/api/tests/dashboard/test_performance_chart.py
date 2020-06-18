@@ -25,9 +25,9 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.reverse import reverse
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
@@ -49,8 +49,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         )
 
     def create_test_user(self, auth=True):
-        user = super(DashboardPerformanceChartTestCase, self).create_test_user(
-            auth)
+        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth)
         user.add_custom_user_permission("view_dashboard")
         return user
 
@@ -173,7 +172,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                                            account=account)
         ad_group = AdGroup.objects.create(id=next(int_iterator),
                                           campaign=campaign)
-        impressions, views, aw_cost = 500, 200, 30
+        views, aw_cost = 200, 30
         AdGroupStatistic.objects.create(ad_group=ad_group,
                                         average_position=1,
                                         date=any_date,

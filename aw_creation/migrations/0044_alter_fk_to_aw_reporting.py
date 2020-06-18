@@ -18,6 +18,7 @@ def copy_fks(apps, schema_editor):
         model = apps.get_model(f'aw_creation.{model_name}')
         model.objects.update(**{f'new_{field_name}': Cast(field_name, output_field=BigIntegerField())})
 
+
 class Migration(migrations.Migration):
     dependencies = [
         ('aw_reporting', '0084_alter_account_manager'),

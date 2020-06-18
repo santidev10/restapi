@@ -62,8 +62,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
         campaign2 = Campaign.objects.create(id=2, name="#2", account=account)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
-        date = datetime.now().date() - timedelta(days=1)
-        base_stats = dict(date=date, impressions=100, video_views=10, cost=1)
+        action_date = datetime.now().date() - timedelta(days=1)
+        base_stats = dict(date=action_date, impressions=100, video_views=10, cost=1)
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
@@ -115,31 +115,31 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            {'items', 'summary'}
+            {"items", "summary"}
         )
-        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(len(data["items"]), 1)
         self.assertEqual(
-            set(data['items'][0].keys()),
+            set(data["items"][0].keys()),
             {
-                'name',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'status',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
-                'video50rate',
-                'clicks',
-                'average_position',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
+                "name",
+                "video_view_rate",
+                "conversions",
+                "ctr",
+                "status",
+                "view_through",
+                "all_conversions",
+                "average_cpv",
+                "video100rate",
+                "video_views",
+                "video50rate",
+                "clicks",
+                "average_position",
+                "impressions",
+                "video75rate",
+                "cost",
+                "video25rate",
+                "average_cpm",
+                "ctr_v",
                 "video_clicks",
                 "clicks_end_cap",
                 "clicks_app_store",
@@ -215,32 +215,32 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            {'items', 'summary'}
+            {"items", "summary"}
         )
-        self.assertEqual(len(data['items']), 20)
+        self.assertEqual(len(data["items"]), 20)
         self.assertEqual(
-            set(data['items'][0].keys()),
+            set(data["items"][0].keys()),
             {
-                'name',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'status',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
+                "name",
+                "video_view_rate",
+                "conversions",
+                "ctr",
+                "status",
+                "view_through",
+                "all_conversions",
+                "average_cpv",
+                "video100rate",
+                "video_views",
                 "video_clicks",
-                'video50rate',
-                'clicks',
-                'average_position',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
+                "video50rate",
+                "clicks",
+                "average_position",
+                "impressions",
+                "video75rate",
+                "cost",
+                "video25rate",
+                "average_cpm",
+                "ctr_v",
                 "clicks_end_cap",
                 "clicks_website",
                 "clicks_app_store",
@@ -261,33 +261,33 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            {'items', 'summary'}
+            {"items", "summary"}
         )
-        self.assertGreater(len(data['items']), 1)
+        self.assertGreater(len(data["items"]), 1)
         self.assertEqual(
-            set(data['items'][0].keys()),
+            set(data["items"][0].keys()),
             {
-                'id',
-                'name',
-                'thumbnail',
-                'duration',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
+                "id",
+                "name",
+                "thumbnail",
+                "duration",
+                "video_view_rate",
+                "conversions",
+                "ctr",
+                "view_through",
+                "all_conversions",
+                "average_cpv",
+                "video100rate",
+                "video_views",
                 "video_clicks",
-                'video50rate',
-                'clicks',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
+                "video50rate",
+                "clicks",
+                "impressions",
+                "video75rate",
+                "cost",
+                "video25rate",
+                "average_cpm",
+                "ctr_v",
             }
         )
 
@@ -313,7 +313,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                  campaigns=[1])
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(len(response.data["items"]), 1)
 
         response = self.client.post(
             url,
@@ -322,7 +322,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                  campaigns=[2])
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 0)
+        self.assertEqual(len(response.data["items"]), 0)
 
     def test_get_all_dimensions(self):
         user = self.create_test_user()
@@ -370,8 +370,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        item = data['items'][0]
-        self.assertEqual(item['video_view_rate'], 10)  # 10 %
+        item = data["items"][0]
+        self.assertEqual(item["video_view_rate"], 10)  # 10 %
 
     @generic_test([
         ("Hide dashboard costs = {}. Dimension = {}".format(hide_costs, dimension), (hide_costs, dimension), dict())

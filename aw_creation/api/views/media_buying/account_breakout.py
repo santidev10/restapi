@@ -1,15 +1,14 @@
 from django.db.models import F
 from django.utils import timezone
-from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
 from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
+from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
 from aw_creation.api.views.media_buying.utils import get_account_creation
-from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
-
-from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from utils.permissions import MediaBuyingAddOnPermission
@@ -37,18 +36,19 @@ class AccountBreakoutAPIView(APIView):
         params = request.query_params
         ad_group_ids = params.get("ad_group_ids", "").split(",") or []
         # Get AdGroup settings
-        ad_groups = AdGroup.objects\
-            .filter(campaign__account=account, id__in=ad_group_ids)\
+        ad_groups = AdGroup.objects \
+            .filter(campaign__account=account, id__in=ad_group_ids) \
             .values("id", "campaign_id", "cpv_bid", "cpm_bid", "cpc_bid")
         # Get Campaign settings
-        campaigns = Campaign.objects.filter(account=account, id__in=[item["campaign_id"] for item in ad_groups])\
+        campaigns = Campaign.objects.filter(account=account, id__in=[item["campaign_id"] for item in ad_groups]) \
             .annotate(salesforce_goal_id=F("salesforce_placement__goal_type_id"))
         # Mapping of Campaign to AdGroup bidding values
         campaign_ad_group_bid_mapping = {
             ad_group["campaign_id"]: ad_group
             for ad_group in ad_groups
         }
-        serializer = CampaignSettingSerializer(campaigns, many=True, context={"bid_mapping": campaign_ad_group_bid_mapping})
+        serializer = CampaignSettingSerializer(campaigns, many=True,
+                                               context={"bid_mapping": campaign_ad_group_bid_mapping})
         data = serializer.data
         return Response(data=data)
 
@@ -105,7 +105,7 @@ class AccountBreakoutAPIView(APIView):
             # Get campaigns of breakout ad groups and update their budgets
             params = {"budget": updated_campaign_budget, "updated_at": timezone.now()}
             breakout_campaigns = Campaign.objects \
-                .filter(account=account_creation.account, ad_groups__id__in=breakout_ad_group_ids)\
+                .filter(account=account_creation.account, ad_groups__id__in=breakout_ad_group_ids) \
                 .distinct()
             existing_creations = CampaignCreation.objects \
                 .filter(campaign__in=breakout_campaigns)

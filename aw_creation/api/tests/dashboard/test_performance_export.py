@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 from datetime import date
 from datetime import datetime
@@ -6,7 +7,6 @@ from itertools import cycle
 from itertools import product
 
 from django.test import override_settings
-from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -48,6 +48,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
@@ -932,7 +933,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         campaigns = Campaign.objects.filter()
-        expected_campaigns_names = set([campaign.name for campaign in campaigns])
+        expected_campaigns_names = {campaign.name for campaign in campaigns}
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
@@ -944,7 +945,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         sheet = get_sheet_from_response(response)
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         name_index = get_column_index(headers, DashboardPerformanceReportColumn.NAME)
-        campaigns_names = set([row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        campaigns_names = {row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
         self.assertEqual(campaigns_names, expected_campaigns_names)
 
     def test_campaigns_cta(self):
@@ -982,7 +983,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         section_name_index = 0
-        section_names = set([row[section_name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        section_names = {row[section_name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
         self.assertIn(METRIC_REPRESENTATION[Metric.OVERVIEW], section_names)
 
     def test_week_starts_on_sunday(self):

@@ -3,9 +3,9 @@ from copy import copy
 from datetime import datetime
 from functools import partial
 
-from django.db.models import Sum
-from django.db.models import Min
 from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Sum
 from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -26,8 +26,8 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
-from utils.api.exceptions import PermissionsError
 from utils.api.exceptions import BadRequestError
+from utils.api.exceptions import PermissionsError
 from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission

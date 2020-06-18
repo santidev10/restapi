@@ -6,7 +6,12 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, AWConnectionToUserRelation, AWConnection
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -47,18 +52,18 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'start_date', 'end_date', 'campaigns',
-                'targeting', 'group_by',
+                "start_date", "end_date", "campaigns",
+                "targeting", "group_by",
             }
         )
-        self.assertEqual(response.data['start_date'], start)
-        self.assertEqual(response.data['end_date'], end)
-        self.assertEqual(len(response.data['campaigns']), 1)
-        campaign_data = response.data['campaigns'][0]
-        self.assertEqual(campaign_data['name'], campaign.name)
-        self.assertEqual(campaign_data['start_date'], campaign.start_date)
-        self.assertEqual(campaign_data['end_date'], campaign.end_date)
-        self.assertEqual(campaign_data['status'], campaign.status)
+        self.assertEqual(response.data["start_date"], start)
+        self.assertEqual(response.data["end_date"], end)
+        self.assertEqual(len(response.data["campaigns"]), 1)
+        campaign_data = response.data["campaigns"][0]
+        self.assertEqual(campaign_data["name"], campaign.name)
+        self.assertEqual(campaign_data["start_date"], campaign.start_date)
+        self.assertEqual(campaign_data["end_date"], campaign.end_date)
+        self.assertEqual(campaign_data["status"], campaign.status)
 
     def test_success_no_ad_groups(self):
         user = self.create_test_user()
@@ -77,7 +82,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['campaigns']), 1)
+        self.assertEqual(len(response.data["campaigns"]), 1)
 
     def test_success_get_demo(self):
         recreate_demo_data()
@@ -89,9 +94,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'start_date', 'end_date', 'campaigns',
-                'targeting', 'group_by',
+                "start_date", "end_date", "campaigns",
+                "targeting", "group_by",
             }
         )
-        self.assertEqual(len(response.data['campaigns']), 2)
-        account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
+        self.assertEqual(len(response.data["campaigns"]), 2)
+        Account.objects.get(pk=DEMO_ACCOUNT_ID)

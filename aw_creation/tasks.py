@@ -13,8 +13,11 @@ def add_relation_between_report_and_creation_campaigns():
     we will use it to find relations and link them
     :return:
     """
+
+    # pylint: disable=import-outside-toplevel
     from aw_creation.models import CampaignCreation
     from aw_reporting.models import Campaign
+    # pylint: enable=import-outside-toplevel
 
     # link campaigns
     acc_id_key = "account_creation__account_id"
@@ -34,16 +37,18 @@ def add_relation_between_report_and_creation_campaigns():
             campaign = campaigns.get(name__endswith="#{}".format(c["id"]))
         except Campaign.DoesNotExist:
             pass
-        except Exception as e:
+        except BaseException as e:
             # there might be two campaigns. I want to know if this happens
-            logger.debug("(Error) Unhandled: {}".format(e))
+            logger.debug("(Error) Unhandled: %s", e)
         else:
             CampaignCreation.objects.filter(pk=c["id"]).update(campaign=campaign)
 
 
 def add_relation_between_report_and_creation_ad_groups():
+    # pylint: disable=import-outside-toplevel
     from aw_creation.models import AdGroupCreation
     from aw_reporting.models import AdGroup
+    # pylint: enable=import-outside-toplevel
 
     # link ad groups
     campaign_id_key = "campaign_creation__campaign_id"
@@ -64,15 +69,17 @@ def add_relation_between_report_and_creation_ad_groups():
             ad_group = ad_groups.get(name__endswith="#{}".format(a["id"]))
         except AdGroup.DoesNotExist:
             pass
-        except Exception as e:
-            logger.debug("(Error) Unhandled: {}".format(e))
+        except BaseException as e:
+            logger.debug("(Error) Unhandled: %s", e)
         else:
             AdGroupCreation.objects.filter(pk=a["id"]).update(ad_group=ad_group)
 
 
 def add_relation_between_report_and_creation_ads():
+    # pylint: disable=import-outside-toplevel
     from aw_creation.models import AdCreation
     from aw_reporting.models import Ad
+    # pylint: enable=import-outside-toplevel
 
     ad_group_id_key = "ad_group_creation__ad_group_id"
     ad_creations = AdCreation.objects.filter(
@@ -92,7 +99,7 @@ def add_relation_between_report_and_creation_ads():
             ad = ads.get(creative_name__endswith="#{}".format(a["id"]))
         except Ad.DoesNotExist:
             pass
-        except Exception as e:
-            logger.debug("(Error) Unhandled: {}".format(e))
+        except BaseException as e:
+            logger.debug("(Error) Unhandled: %s", e)
         else:
             AdCreation.objects.filter(pk=a["id"]).update(ad=ad)

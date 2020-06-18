@@ -71,7 +71,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                 ad_groups=[ad_group.id],
                 targeting=["topic", "interest", "keyword", "channel", "video"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -81,10 +81,10 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(report_data.keys()), self.data_keys
         )
-        self.assertEqual(report_data['label'], "All campaigns")
+        self.assertEqual(report_data["label"], "All campaigns")
         self.assertEqual(len(report_data["items"]), 5)
 
-        for n, item in enumerate(report_data['items']):
+        for _, item in enumerate(report_data["items"]):
             self.assertEqual(set(item.keys()), self.item_keys)
 
     def test_targeting_status(self):
@@ -117,13 +117,13 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 targeting=["keyword", "channel", "video"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         report_data = response.data["reports"][0]
         self.assertEqual(len(report_data["items"]), 3)
 
-        for item in report_data['items']:
+        for item in report_data["items"]:
             if item["targeting"] == "Channels":
                 self.assertEqual(item["is_negative"], False)
             elif item["targeting"] == "Videos":
@@ -158,13 +158,13 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 targeting=["interest"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         report_data = response.data["reports"][0]
         self.assertEqual(len(report_data["items"]), 1)
 
-        for item in report_data['items']:
+        for item in report_data["items"]:
             self.assertEqual(item["is_negative"], True)
 
     def test_success_group_by_campaign(self):
@@ -202,22 +202,22 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                 group_by="campaign",
                 targeting=["topic", "interest", "keyword", "channel", "video"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["reports"]
         self.assertEqual(len(data), 2)
 
         self.assertEqual(set(data[0].keys()), self.data_keys)
-        self.assertEqual(data[0]['label'], "A campaign")
+        self.assertEqual(data[0]["label"], "A campaign")
         self.assertEqual(len(data[0]["items"]), 2)
-        for item in data[0]['items']:
+        for item in data[0]["items"]:
             self.assertEqual(set(item.keys()), self.item_keys)
 
         self.assertEqual(set(data[0].keys()), self.data_keys)
-        self.assertEqual(data[1]['label'], "B campaign")
+        self.assertEqual(data[1]["label"], "B campaign")
         self.assertEqual(len(data[1]["items"]), 3)
-        for item in data[0]['items']:
+        for item in data[0]["items"]:
             self.assertEqual(set(item.keys()), self.item_keys)
 
     def test_success_min_max_kpi(self):
@@ -273,7 +273,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                 targeting=[
                     "topic", "interest", "keyword", "channel", "video"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         kpi = response.data["reports"][0]["kpi"]
@@ -307,7 +307,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                 group_by="campaign",
                 targeting=["channel"],
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -320,8 +320,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             set(campaign_data.keys()),
             self.data_keys
         )
-        self.assertEqual(campaign_data['label'], campaign.name)
-        self.assertEqual(len(campaign_data['items']), 2)
+        self.assertEqual(campaign_data["label"], campaign.name)
+        self.assertEqual(len(campaign_data["items"]), 2)
 
-        item = campaign_data['items'][0]
+        item = campaign_data["items"][0]
         self.assertEqual(set(item.keys()), self.item_keys)

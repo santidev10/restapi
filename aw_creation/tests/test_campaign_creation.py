@@ -1,8 +1,10 @@
 from datetime import timedelta
 from time import sleep
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, AdCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from utils.datetime import now_in_default_tz
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -12,7 +14,7 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
     def test_creation_dates_no_dates(self):
         user = self.create_test_user()
         campaign = CampaignCreation.objects.create(
-            name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
+            name="", account_creation=AccountCreation.objects.create(name="", owner=user),
         )
         creation_start, start, end = campaign.get_creation_dates()
         self.assertEqual(creation_start, now_in_default_tz().date())
@@ -23,7 +25,7 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         today = now_in_default_tz().date()
         campaign = CampaignCreation.objects.create(
-            name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
+            name="", account_creation=AccountCreation.objects.create(name="", owner=user),
             start=today - timedelta(days=1),
             end=today + timedelta(days=1),
         )
@@ -38,7 +40,7 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
         start = today - timedelta(days=2)
         end = today - timedelta(days=1)
         campaign = CampaignCreation.objects.create(
-            name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
+            name="", account_creation=AccountCreation.objects.create(name="", owner=user),
             start=start, end=end,
         )
         creation_start, start, end = campaign.get_creation_dates()
