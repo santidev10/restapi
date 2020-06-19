@@ -992,8 +992,10 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data(do_delete=True, do_get=False, do_update=False)
 
         self.assertFalse(Opportunity.objects.filter(id=opp_1.id).exists())
-        self.assertFalse(OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
-        self.assertFalse(Flight.objects.filter(id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
+        self.assertFalse(
+            OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
+        self.assertFalse(Flight.objects.filter(
+            id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
 
         self.assertTrue(Opportunity.objects.filter(id__in=[opp_2.id, opp_3.id]).exists())
         self.assertTrue(OpPlacement.objects.filter(id__in=[placement_2_a.id, placement_3.id]).exists())

@@ -1,11 +1,15 @@
 """
 Segment models utils module
 """
-from django.db.models import Sum, Case, When, IntegerField
+from django.db.models import Case
+from django.db.models import IntegerField
+from django.db.models import Sum
+from django.db.models import When
 
 from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.models import Account, dict_add_calculated_stats, \
-    dict_norm_base_stats
+from aw_reporting.models import Account
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_norm_base_stats
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 

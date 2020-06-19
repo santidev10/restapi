@@ -12,8 +12,8 @@ from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
-from utils.celery.tasks import group_chorded
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import group_chorded
 from utils.celery.tasks import unlock
 from utils.exception import retry
 
@@ -41,7 +41,8 @@ def setup_mcc_update_tasks():
     :param mcc_ids: list
     :return: list
     """
-    mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
+    mcc_ids = list(
+        Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     logger.debug("Starting Google Ads update for campaigns")
     if not settings.IS_TEST:
         CFAccountConnector().update()
@@ -80,7 +81,7 @@ def setup_cid_update_tasks():
 
 
 @celery_app.task
-@retry(count=10, delay=5, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error,))
 def mcc_account_update(mcc_id, index, total):
     """
     Update single MCC account
@@ -91,7 +92,7 @@ def mcc_account_update(mcc_id, index, total):
 
 
 @celery_app.task
-@retry(count=10, delay=5, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error,))
 def cid_campaign_update(cid_id):
     """
     Update single CID account

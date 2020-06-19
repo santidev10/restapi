@@ -1,4 +1,6 @@
-from datetime import timedelta, datetime, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 from django.urls import reverse
 from django.utils import timezone
@@ -7,11 +9,17 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.tests.pricing_tool.base import PricingToolTestCaseBase
 from aw_reporting.api.tests.pricing_tool.base import generate_campaign_statistic
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
-    Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
-    TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
-    Flight, GeoTargeting, device_str, Device
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Campaign
+from aw_reporting.models import Device
+from aw_reporting.models import Genders
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 

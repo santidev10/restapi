@@ -8,16 +8,16 @@ from django.db import migrations
 
 
 def load_data(apps, schema_editor):
-    audience_model = apps.get_model('aw_reporting.Audience')
+    audience_model = apps.get_model("aw_reporting.Audience")
     bulk = []
-    with open('aw_reporting/fixtures/affinity_categories-2018-04-26.csv') as f:
+    with open("aw_reporting/fixtures/affinity_categories-2018-04-26.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
         for uid, name in reader:
             bulk.append(audience_model(
                 id=uid, name=name, type="affinity",
             ))
-    with open('aw_reporting/fixtures/in-market_categories-2018-04-26.csv') as f:
+    with open("aw_reporting/fixtures/in-market_categories-2018-04-26.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
         for uid, name in reader:
@@ -26,10 +26,10 @@ def load_data(apps, schema_editor):
             ))
     audience_model.objects.bulk_create(bulk)
 
-class Migration(migrations.Migration):
 
+class Migration(migrations.Migration):
     dependencies = [
-        ('aw_reporting', '0026_add_campaign_start_end_properties'),
+        ("aw_reporting", "0026_add_campaign_start_end_properties"),
     ]
 
     operations = [

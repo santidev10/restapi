@@ -23,8 +23,8 @@ class PricingToolTestCase(TestCase):
     def test_quarts_to_dates_1(self):
         today = datetime(2017, 4, 1)
         year = today.year
-        p_tool = PricingTool(today=today, quarters=['Q1', 'Q2'])
-        periods = p_tool.kwargs['periods']
+        p_tool = PricingTool(today=today, quarters=["Q1", "Q2"])
+        periods = p_tool.kwargs["periods"]
         self.assertEqual(
             periods,
             [(date(year, 1, 1), date(year, 6, 30))]
@@ -33,8 +33,8 @@ class PricingToolTestCase(TestCase):
     def test_quarts_to_dates_2(self):
         today = datetime(2017, 7, 1)
         year = today.year
-        p_tool = PricingTool(today=today, quarters=['Q2', 'Q3'])
-        periods = p_tool.kwargs['periods']
+        p_tool = PricingTool(today=today, quarters=["Q2", "Q3"])
+        periods = p_tool.kwargs["periods"]
         self.assertEqual(
             periods,
             [(date(year, 4, 1), date(year, 9, 30))]
@@ -44,8 +44,8 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=7)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q3'], today=today)
-        periods = p_tool.kwargs['periods']
+        p_tool = PricingTool(quarters=["Q1", "Q3"], today=today)
+        periods = p_tool.kwargs["periods"]
         self.assertEqual(
             periods,
             [
@@ -58,8 +58,8 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=10)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q4'], today=today)
-        periods = p_tool.kwargs['periods']
+        p_tool = PricingTool(quarters=["Q1", "Q4"], today=today)
+        periods = p_tool.kwargs["periods"]
         self.assertEqual(
             periods,
             [
@@ -72,8 +72,8 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=10)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q2', 'Q4'], today=today)
-        periods = p_tool.kwargs['periods']
+        p_tool = PricingTool(quarters=["Q1", "Q2", "Q4"], today=today)
+        periods = p_tool.kwargs["periods"]
         self.assertEqual(
             periods,
             [
@@ -118,11 +118,11 @@ class PricingToolTestCase(TestCase):
 
         recalculate_de_norm_fields()
 
-        p_tool = PricingTool(quarters=['Q1', 'Q2'], today=today,
+        p_tool = PricingTool(quarters=["Q1", "Q2"], today=today,
                              compare_yoy=True)
         data = p_tool.estimate
 
-        chart_data = [c for c in data["charts"]["cpm"]['data']
+        chart_data = [c for c in data["charts"]["cpm"]["data"]
                       if c["label"] in {"2016", "2017"}]
 
         self.assertEqual(len(chart_data), 2,
@@ -137,9 +137,9 @@ class PricingToolTestCase(TestCase):
         campaign = Campaign.objects.create(
             id="1", name="",
         )
-        expected_types = ('Bumper', 'Display', 'In-stream', 'Video discovery')
+        expected_types = ("Bumper", "Display", "In-stream", "Video discovery")
         for n, product_type in enumerate(
-                ('', ' --', 'Standard') + expected_types):
+            ("", " --", "Standard") + expected_types):
             AdGroup.objects.create(id=n, name="", campaign=campaign,
                                    type=product_type)
 

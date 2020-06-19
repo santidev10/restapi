@@ -1,12 +1,12 @@
 import logging
 
 from aw_reporting.google_ads.constants import CUSTOMER_CLIENT_ACCOUNT_FIELDS
-from aw_reporting.google_ads.google_ads_api import load_settings
 from aw_reporting.google_ads.google_ads_api import get_client
+from aw_reporting.google_ads.google_ads_api import load_settings
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class CFAccountConnector(UpdateMixin):
     """
     Creates AWConnection between promopush account and all directly manageable accounts
     """
+
     def __init__(self, email="promopushmaster@gmail.com"):
         self.email = email
         self.google_ads_settings = load_settings()

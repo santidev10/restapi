@@ -10,11 +10,10 @@ from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
-from utils.celery.tasks import group_chorded
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import group_chorded
 from utils.celery.tasks import unlock
 from utils.exception import retry
-
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ def setup_cid_update_tasks():
 
 
 @celery_app.task
-@retry(count=10, delay=5, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error,))
 def cid_update_all_except_campaigns(cid_id):
     """
     Update single CID account
@@ -69,4 +68,3 @@ def finalize_update():
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
     logger.debug("Google Ads update without campaigns complete")
-

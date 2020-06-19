@@ -3,6 +3,7 @@ from collections import defaultdict
 from functools import reduce
 
 from django.conf import settings
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Case
 from django.db.models import Count
 from django.db.models import F
@@ -15,7 +16,6 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
-from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
@@ -23,15 +23,15 @@ from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
-from aw_reporting.models import Campaign
 from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
@@ -63,10 +63,10 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
 
         if not settings.IS_TEST:
             logger.debug(
-                "Calculating de-norm fields. Model={}, account_id={}".format(
-                    model.__name__,
-                    account_id
-                ))
+                "Calculating de-norm fields. Model=%s, account_id=%s",
+                model.__name__,
+                account_id
+            )
 
         ag_link = "ad_groups__" if model is Campaign else ""
         items = model.objects.filter(id__in=items_ids).values("id").order_by("id")
@@ -93,7 +93,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
         )
 
         if model is Campaign:
-            ad_group_ids_map = AdGroup.objects.filter(campaign_id__in=items_ids)\
+            ad_group_ids_map = AdGroup.objects.filter(campaign_id__in=items_ids) \
                 .values("campaign_id").order_by("campaign_id").annotate(ids=ArrayAgg("id"))
             ad_group_ids_map = {item.get("campaign_id"): item.get("ids") for item in ad_group_ids_map}
         else:
@@ -105,16 +105,16 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             _item_filter = {f"ad_group_id__in": ids}
             aggregated_data[key] = {}
 
-            aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter)\
+            aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter) \
                 .aggregate(count=Count("id")).get("count")
 
-            aggregated_data[key]["keyword_count"] = KeywordStatistic.objects.filter(**_item_filter)\
+            aggregated_data[key]["keyword_count"] = KeywordStatistic.objects.filter(**_item_filter) \
                 .aggregate(count=Count("id")).get("count")
 
-            aggregated_data[key]["channel_count"] = YTChannelStatistic.objects.filter(**_item_filter)\
+            aggregated_data[key]["channel_count"] = YTChannelStatistic.objects.filter(**_item_filter) \
                 .aggregate(count=Count("id")).get("count")
 
-            aggregated_data[key]["video_count"] = YTVideoStatistic.objects.filter(**_item_filter)\
+            aggregated_data[key]["video_count"] = YTVideoStatistic.objects.filter(**_item_filter) \
                 .aggregate(count=Count("id")).get("count")
 
             aggregated_data[key]["rem_count"] = RemarkStatistic.objects.filter(**_item_filter) \
@@ -122,7 +122,6 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
 
             aggregated_data[key]["topic_count"] = TopicStatistic.objects.filter(**_item_filter) \
                 .aggregate(count=Count("id")).get("count")
-
 
         update = {}
         for i in data:

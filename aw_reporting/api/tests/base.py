@@ -8,10 +8,10 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class AwReportingAPITestCase(ExtendedAPITestCase):
     account_list_header_fields = {
-        'id', 'name', 'account_creation', 'end', 'start', 'status',
-        'weekly_chart',
-        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate',
-        'ctr_v',
+        "id", "name", "account_creation", "end", "start", "status",
+        "weekly_chart",
+        "clicks", "cost", "impressions", "video_views", "video_view_rate",
+        "ctr_v",
     }
 
     def create_account(self, user, prefix="", manager=None):

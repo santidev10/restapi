@@ -24,7 +24,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
         set(f["placement__dynamic_placement"] for f in flights)
     )
     if len(dynamic_placements) == 1 \
-            and dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
+        and dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
         margin = 1
     else:
         sum_client_cost = 0  # total delivery cost

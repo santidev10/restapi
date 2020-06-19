@@ -4,7 +4,11 @@ from django.db import models
 from django.db.models import Model
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
-from aw_reporting.models.ad_words.constants import VIEW_RATE_STATS, AgeRange, Gender, Parent, Device
+from aw_reporting.models.ad_words.constants import AgeRange
+from aw_reporting.models.ad_words.constants import Device
+from aw_reporting.models.ad_words.constants import Gender
+from aw_reporting.models.ad_words.constants import Parent
+from aw_reporting.models.ad_words.constants import VIEW_RATE_STATS
 from aw_reporting.models.base import BaseModel
 
 
@@ -38,15 +42,15 @@ class BaseStatisticModel(BaseModel):
     def __getattr__(self, name):
         if name in CALCULATED_STATS:
             data = CALCULATED_STATS[name]
-            dependencies = data['args']
-            receipt = data['receipt']
+            dependencies = data["args"]
+            receipt = data["receipt"]
             return receipt(
                 *[getattr(self, stat_name)
                   for stat_name in dependencies]
             )
         elif name in VIEW_RATE_STATS:
-            quart = re.findall(r'\d+', name)[0]
-            quart_views = getattr(self, 'video_views_%s_quartile' % quart)
+            quart = re.findall(r"\d+", name)[0]
+            quart_views = getattr(self, "video_views_%s_quartile" % quart)
             impressions = self.impressions
             return quart_views / impressions * 100 \
                 if impressions else None

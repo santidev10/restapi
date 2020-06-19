@@ -59,7 +59,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
-        items = response.data['items']
+        items = response.data["items"]
         self.assertGreater(len(items), 0)
         opportunity_data = items[0]
         self.assertEqual(set(opportunity_data.keys()), {
@@ -1678,7 +1678,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_by_video100rate_hides_opportunities_without_impressions(
-            self):
+        self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(impressions=0, video_views_100_quartile=0))
         response = self._request(min_video100rate=1)
@@ -2083,7 +2083,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         sf_cpm = cpm_placement.ordered_rate / 1000
         sf_cpv = cpv_placement.ordered_rate
         expected_margin = (1 - (cpm_cost + cpv_cost) / (
-                cpm_impressions * sf_cpm + cpv_views * sf_cpv)) * 100
+            cpm_impressions * sf_cpm + cpv_views * sf_cpv)) * 100
         response = self._request(start=str(start_end), end=str(start_end))
 
         self.assertAlmostEqual(response.data["items"][0]["margin"],
@@ -2702,7 +2702,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         SQL calculates count of related interests (regarding hierarchy)
         by each group and set `top_count` by &(count1, count2, ...),
         then filters opportunities with `top_count` > 0.
-            ! It's wrong because &(1, 2) == 0
+            ! It"s wrong because &(1, 2) == 0
         """
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
@@ -2736,7 +2736,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         SQL calculates count of related topics (regarding hierarchy)
         by each group and set `top_count` by &(count1, count2, ...),
         then filters opportunities with `top_count` > 0.
-            ! It's wrong because &(1, 2) == 0
+            ! It"s wrong because &(1, 2) == 0
         """
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()

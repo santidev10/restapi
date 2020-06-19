@@ -44,7 +44,7 @@ class Account(models.Model):
     def user_mcc_objects(cls, user):
         return Account.objects.filter(
             mcc_permissions__aw_connection__user_relations__user=user
-        ).order_by('id').distinct()
+        ).order_by("id").distinct()
 
     @classmethod
     def user_objects(cls, user):
@@ -55,10 +55,10 @@ class Account(models.Model):
 
     @property
     def start_date(self):
-        return self.campaigns.aggregate(date=Min('start_date'))['date']
+        return self.campaigns.aggregate(date=Min("start_date"))["date"]
 
     @property
     def end_date(self):
-        dates = self.campaigns.all().values_list('end_date', flat=True)
+        dates = self.campaigns.all().values_list("end_date", flat=True)
         if None not in dates and dates:
             return max(dates)

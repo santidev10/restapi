@@ -17,7 +17,7 @@ class BaseTrackChartApiView(TrackApiBase):
         visible_accounts = self._get_accounts(request)
 
         if filters["accounts"] is not None:
-            visible_accounts = visible_accounts\
+            visible_accounts = visible_accounts \
                 .filter(id__in=filters["accounts"])
         del filters["accounts"]
 

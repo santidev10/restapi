@@ -3,24 +3,25 @@
 from __future__ import unicode_literals
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0020_add_campaign_statistics'),
+        ("aw_reporting", "0020_add_campaign_statistics"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='campaign',
-            name='goal_allocation',
+            model_name="campaign",
+            name="goal_allocation",
             field=models.FloatField(default=0),
         ),
         migrations.AlterField(
-            model_name='campaign',
-            name='account',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='campaigns', to='aw_reporting.Account'),
+            model_name="campaign",
+            name="account",
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name="campaigns",
+                                    to="aw_reporting.Account"),
         ),
     ]

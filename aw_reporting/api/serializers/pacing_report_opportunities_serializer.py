@@ -8,12 +8,6 @@ from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from aw_reporting.reports.pacing_report import get_chart_data
-from aw_reporting.reports.pacing_report import populate_daily_delivery_data
-from utils.datetime import now_in_default_tz
-from utils.lang import flatten
 from utils.serializers.fields import PercentField
 from utils.serializers.fields import SimpleField
 

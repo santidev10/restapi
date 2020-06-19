@@ -2,7 +2,8 @@ from datetime import datetime
 
 import pytz
 from django.conf import settings
-from django.db.models import Min, Max
+from django.db.models import Max
+from django.db.models import Min
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -25,10 +26,10 @@ class HealthCheckApiView(ListAPIView):
         queryset = Opportunity.objects.get_queryset_for_user(self.request.user) \
             .filter(probability=100) \
             .select_related(
-                "ad_ops_manager",
-                "ad_ops_qa_manager",
-                "account_manager"
-            ) \
+            "ad_ops_manager",
+            "ad_ops_qa_manager",
+            "account_manager"
+        ) \
             .order_by("name", "-start")
         return queryset
 
@@ -112,7 +113,7 @@ class HealthCheckFiltersApiView(APIView):
         group_by = ("account__id", "account__name")
         accounts = queryset.filter(account__isnull=False).values(
             *group_by).order_by(*group_by).distinct()
-        date_range = queryset.aggregate(Min('start'), Max('end'))
+        date_range = queryset.aggregate(Min("start"), Max("end"))
         group_by = ("sales_manager__id", "sales_manager__name")
         sales_rep = queryset.filter(sales_manager__is_active=True,
                                     sales_manager__isnull=False) \
@@ -120,31 +121,31 @@ class HealthCheckFiltersApiView(APIView):
             .order_by(*group_by) \
             .distinct()
         brands = queryset.filter(brand__isnull=False).values(
-            'brand').order_by('brand').distinct()
+            "brand").order_by("brand").distinct()
         filters = dict(
             period=[
                 dict(id=status, name=status.capitalize())
                 for status in ("currently running", "past", "future")
             ],
             ad_ops=[
-                dict(id=u['ad_ops_manager__id'],
-                     name=u['ad_ops_manager__name'])
+                dict(id=u["ad_ops_manager__id"],
+                     name=u["ad_ops_manager__name"])
                 for u in ad_ops_users
             ],
             am=[
-                dict(id=u['account_manager__id'],
-                     name=u['account_manager__name'])
+                dict(id=u["account_manager__id"],
+                     name=u["account_manager__name"])
                 for u in am_users
             ],
             account=[
-                dict(id=u['account__id'], name=u['account__name'])
+                dict(id=u["account__id"], name=u["account__name"])
                 for u in accounts
             ],
-            date_range=dict(min=date_range['start__min'],
-                            max=date_range['end__max']),
+            date_range=dict(min=date_range["start__min"],
+                            max=date_range["end__max"]),
             sales_rep=[
-                dict(id=u['sales_manager__id'], name=u['sales_manager__name'])
+                dict(id=u["sales_manager__id"], name=u["sales_manager__name"])
                 for u in sales_rep],
-            brands=[b['brand'] for b in brands]
+            brands=[b["brand"] for b in brands]
         )
         return Response(filters)

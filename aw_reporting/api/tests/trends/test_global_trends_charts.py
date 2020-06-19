@@ -185,7 +185,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
-        self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
+        self.assertEqual(set(i["value"] for i in trend[0]["trend"]),
                          {test_impressions})
 
     def test_success_get_view_rate_calculation(self):
@@ -217,7 +217,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 1)
-        self.assertEqual(set(i['value'] for i in trend),
+        self.assertEqual(set(i["value"] for i in trend),
                          {10})  # 10% video view rate
 
     def test_success_dimension_device(self):
@@ -248,17 +248,17 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertEqual(len(trend), 2)
-        for line in response.data[0]['data']:
-            if line['label'] == "Computers":
-                self.assertEqual(line['average'], test_impressions[0])
+        for line in response.data[0]["data"]:
+            if line["label"] == "Computers":
+                self.assertEqual(line["average"], test_impressions[0])
             else:
-                self.assertEqual(line['average'], test_impressions[1])
+                self.assertEqual(line["average"], test_impressions[1])
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
         with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
-            channel_ids = [i['id'] for i in data['items']]
+            channel_ids = [i["id"] for i in data["items"]]
         test_days = 10
         test_impressions = 100
         for i in range(test_days):
@@ -290,7 +290,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         today = datetime.now().date()
         with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
-            ids = [i['id'] for i in data['items']]
+            ids = [i["id"] for i in data["items"]]
         test_days = 10
         test_impressions = 100
         for i in range(test_days):
@@ -377,7 +377,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             dict(label=start + timedelta(days=2), value=daily_plan_2),
         ]
         expected_planned_value = sum([
-            r.get('value') for r in expected_planned_trend
+            r.get("value") for r in expected_planned_trend
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_planned_trend)
@@ -432,7 +432,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             dict(label=start + timedelta(days=2), value=daily_plan_2),
         ]
         expected_planned_value = sum([
-            r.get('value') for r in expected_daily_planned_trend
+            r.get("value") for r in expected_daily_planned_trend
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_daily_planned_trend)
@@ -495,7 +495,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                 [ordered_units_1, ordered_units_2])),
         ]
         expected_planned_value = sum([
-            r.get('value') for r in expected_planned_trend
+            r.get("value") for r in expected_planned_trend
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_planned_trend)
@@ -550,7 +550,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                      [ordered_units_1 / 1000., ordered_units_2 / 1000.])),
         ]
         expected_planned_value = sum([
-            r.get('value') for r in expected_planned_trend
+            r.get("value") for r in expected_planned_trend
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_planned_trend)
@@ -621,8 +621,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertEqual(planned_trend, expected_planned_trend)
 
     @generic_test((
-            ("Show AW rates", (True,), {}),
-            ("Hide AW rates", (False,), {}),
+        ("Show AW rates", (True,), {}),
+        ("Hide AW rates", (False,), {}),
     ))
     def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
         """
@@ -702,7 +702,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
-        self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
+        self.assertEqual(set(i["value"] for i in trend[0]["trend"]),
                          {test_impressions})
 
     def test_request_without_date_filter(self):

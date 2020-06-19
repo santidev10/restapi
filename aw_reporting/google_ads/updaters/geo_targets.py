@@ -17,7 +17,8 @@ class GeoTargetUpdater(UpdateMixin):
         self.client = None
         self.mcc_account = None
         self.ga_service = None
-        # Dict value for lookup by name since Google Ads API does not provide parent_id values, only parent name strings in canonical_name field
+        # Dict value for lookup by name since Google Ads API does not provide parent_id values, only parent name
+        # strings in canonical_name field
         self.existing_geo_targets = {
             target.name: target.id for target in GeoTarget.objects.all()
         }
@@ -30,7 +31,8 @@ class GeoTargetUpdater(UpdateMixin):
         self.client = client
         self.mcc_account = Account.objects.get(id=self.client.login_customer_id)
         self.ga_service = client.get_service("GoogleAdsService", version="v2")
-        self.geo_target_status_enum = client.get_type("GeoTargetConstantStatusEnum", version="v2").GeoTargetConstantStatus
+        self.geo_target_status_enum = client.get_type("GeoTargetConstantStatusEnum",
+                                                      version="v2").GeoTargetConstantStatus
         geo_target_constants = self._get_geo_target_constants()
 
         for row in self._parse_rows(geo_target_constants):

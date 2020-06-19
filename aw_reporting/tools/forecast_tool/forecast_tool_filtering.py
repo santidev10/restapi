@@ -1,19 +1,36 @@
 from collections import defaultdict
 from functools import reduce
 
-from django.db.models import Count, BooleanField, \
-    QuerySet
-from django.db.models import Q, Min, When, Case, Max, \
-    IntegerField
-from django.db.models.expressions import CombinedExpression, Value, Combinable
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Q
+from django.db.models import QuerySet
+from django.db.models import When
+from django.db.models.expressions import Combinable
+from django.db.models.expressions import CombinedExpression
+from django.db.models.expressions import Value
 
-from aw_reporting.models import AdGroup, Campaign, ParentStatuses, AudienceStatistic, \
-    TopicStatistic, Topic, Audience, AgeRanges, \
-    Genders, Devices
-from aw_reporting.tools.forecast_tool.constants import GENDER_FIELDS, \
-    AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
-from utils.datetime import now_in_default_tz, quarter_days
-from utils.query import build_query_bool, split_request, Operator
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Devices
+from aw_reporting.models import Genders
+from aw_reporting.models import ParentStatuses
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.tools.forecast_tool.constants import AGE_FIELDS
+from aw_reporting.tools.forecast_tool.constants import DEVICE_FIELDS
+from aw_reporting.tools.forecast_tool.constants import GENDER_FIELDS
+from aw_reporting.tools.forecast_tool.constants import PARENT_FIELDS
+from aw_reporting.tools.forecast_tool.constants import TARGETING_TYPES
+from aw_reporting.tools.forecast_tool.constants import VIDEO_LENGTHS
+from utils.datetime import now_in_default_tz
+from utils.datetime import quarter_days
+from utils.query import Operator
+from utils.query import build_query_bool
 
 CONDITIONS = [
     dict(id="or", name="Or"),
@@ -57,9 +74,13 @@ class ForecastToolFiltering:
             genders=list_to_filter(Genders),
             parents=list_to_filter(ParentStatuses),
             demographic_condition=CONDITIONS,
-            topics=[dict(id=i['topic_id'], name=i['topic__name'])
-                    for i in TopicStatistic.objects.filter(topic__parent__isnull=True).values(
-                        'topic_id', 'topic__name').order_by('topic__name', 'topic_id').distinct()],
+            topics=[
+                dict(id=i["topic_id"], name=i["topic__name"])
+                for i in TopicStatistic.objects.filter(topic__parent__isnull=True)
+                    .values("topic_id", "topic__name")
+                    .order_by("topic__name", "topic_id")
+                    .distinct()
+            ],
             topics_condition=CONDITIONS,
             devices=list_to_filter(Devices),
             devices_condition=CONDITIONS,
@@ -102,8 +123,8 @@ class ForecastToolFiltering:
             self._filter_by_creative_length,
             self._filter_by_devices,
         )
-        for filter in filters:
-            queryset, _ = filter(queryset)
+        for query_filter in filters:
+            queryset, _ = query_filter(queryset)
 
         if self.filter_item_ids is not None:
             queryset = queryset.filter(id__in=self.filter_item_ids)
@@ -231,6 +252,7 @@ class ForecastToolFiltering:
 
     def _filter_creative_lengths(self, queryset, creative_lengths, ad_group_link):
         video_lengths_filter = VIDEO_LENGTHS
+
         def get_creative_length_annotation(l_id):
             min_val, max_val = video_lengths_filter[l_id]
             criteria = {
@@ -244,13 +266,14 @@ class ForecastToolFiltering:
             ann = Count(
                 Case(
                     When(
-                        then='{}videos_stats__id'.format(ad_group_link),
+                        then="{}videos_stats__id".format(ad_group_link),
                         **criteria
                     ),
                     output_field=IntegerField(),
                 ),
             )
             return ann
+
         creative_lengths_condition = self.kwargs.get("creative_lengths_condition")
         if creative_lengths_condition == "or":
             operator = "|"
@@ -300,6 +323,7 @@ class ForecastToolFiltering:
                 ),
             )
             return ann
+
         topics_condition = self.kwargs.get("topics_condition",
                                            self.default_condition).upper()
         operator = {Operator.OR: Combinable.BITOR,
@@ -331,7 +355,7 @@ class ForecastToolFiltering:
                     parent_ids = list(
                         Topic.objects.filter(
                             parent__in=parent_ids
-                        ).values_list('id', flat=True)
+                        ).values_list("id", flat=True)
                     )
             self.topic_child_cache[key] = list(topic_groups.values())
         return self.topic_child_cache[key]
@@ -355,6 +379,7 @@ class ForecastToolFiltering:
                 ),
             )
             return ann
+
         interests_condition = self.kwargs.get("interests_condition", self.default_condition).upper()
         operator = {Operator.OR: Combinable.BITOR,
                     Operator.AND: Combinable.BITAND}.get(interests_condition) or Combinable.BITAND
@@ -385,7 +410,7 @@ class ForecastToolFiltering:
                     parent_ids = list(
                         Audience.objects.filter(
                             parent__in=parent_ids
-                        ).values_list('id', flat=True)
+                        ).values_list("id", flat=True)
                     )
             self.interest_child_cache[key] = list(item_groups.values())
         return self.interest_child_cache[key]

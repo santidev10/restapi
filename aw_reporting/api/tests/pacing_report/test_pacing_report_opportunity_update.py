@@ -2,11 +2,16 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_reporting.models import Opportunity, OpPlacement, Campaign, Account, \
-    Category, User
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import Category
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import User
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -36,8 +41,8 @@ class PacingReportTestCase(APITestCase):
         get_user_model().objects.create(email="profile1@mail.kz",
                                         profile_image_url="my_image.jpg")
 
-        category1 = Category.objects.create(id='Automotive')
-        category2 = Category.objects.create(id='Bicycle')
+        category1 = Category.objects.create(id="Automotive")
+        category2 = Category.objects.create(id="Bicycle")
 
         opportunity = Opportunity.objects.create(
             id="1", name="", category=category1, territory="test 1", notes="Hi there",
@@ -58,9 +63,9 @@ class PacingReportTestCase(APITestCase):
                       args=(opportunity.id,))
         with self.patch_user_settings(global_account_visibility=False):
             response = self.client.put(url, json.dumps(update),
-                                       content_type='application/json')
+                                       content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        update['thumbnail'] = "my_image.jpg"
+        update["thumbnail"] = "my_image.jpg"
         for k, v in response.data.items():
             self.assertEqual(update[k], v)
 

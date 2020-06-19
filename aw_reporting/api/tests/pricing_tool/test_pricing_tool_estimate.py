@@ -20,9 +20,9 @@ from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.unittests.patch_now import patch_now
 from utils.unittests.recalculate_de_norm_fields import recalculate_de_norm_fields
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.patch_now import patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):
@@ -63,8 +63,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
-            {'average_cpm', 'charts', 'average_cpv', 'suggested_cpm', 'margin',
-             'suggested_cpv'}
+            {"average_cpm", "charts", "average_cpv", "suggested_cpm", "margin",
+             "suggested_cpv"}
         )
 
     def test_pricing_tool_estimate_empty(self):
@@ -156,7 +156,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         video_views=100, cost=25, **common)
         AdGroupStatistic.objects.create(date=end, video_views=100, cost=15,
                                         **common)
-        # these two below won't be included to the results
+        # these two below won"t be included to the results
         AdGroupStatistic.objects.create(date=end + timedelta(days=1),
                                         video_views=10, cost=150, **common)
         AdGroupStatistic.objects.create(date=start - timedelta(days=1),
@@ -221,7 +221,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         impressions=1000, cost=25, **common)
         AdGroupStatistic.objects.create(date=q3_end, impressions=1000, cost=25,
                                         **common)
-        # these two below won't be included to the results
+        # these two below won"t be included to the results
         AdGroupStatistic.objects.create(date=q1_end + timedelta(days=1),
                                         impressions=100, cost=150, **common)
         AdGroupStatistic.objects.create(date=q3_start - timedelta(days=1),
@@ -237,9 +237,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'average_cpv', 'average_cpm',
-                'suggested_cpm', 'suggested_cpv', 'margin',
-                'charts',
+                "average_cpv", "average_cpm",
+                "suggested_cpm", "suggested_cpv", "margin",
+                "charts",
             }
         )
         self.assertEqual(data["average_cpm"], 20)
@@ -292,7 +292,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1, cost=30,
             date=today + timedelta(days=3), **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, cost=10, date=today, **common)
         AdGroupStatistic.objects.create(
@@ -361,7 +361,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1, cost=30,
             date=today + timedelta(days=3), **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, cost=10, date=today, **common)
         AdGroupStatistic.objects.create(
@@ -428,7 +428,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1,
             date=today + timedelta(days=3), cost=400, **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, date=today, cost=500, **common)
         AdGroupStatistic.objects.create(
@@ -802,7 +802,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         expected_planned_cpm = (
             client_cost_1 * 1000. / ordered_units_1,
             (client_cost_1 + client_cost_2) * 1000. / (
-                    ordered_units_1 + ordered_units_2),
+                ordered_units_1 + ordered_units_2),
         )
         placement_1 = OpPlacement.objects.create(
             id="1", opportunity=opportunity,
@@ -843,7 +843,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         expected_planned_cpv = (
             client_cost_1 / ordered_units_1,
             (client_cost_1 + client_cost_2) / (
-                    ordered_units_1 + ordered_units_2),
+                ordered_units_1 + ordered_units_2),
         )
         placement_1 = OpPlacement.objects.create(
             id="1", opportunity=opportunity,

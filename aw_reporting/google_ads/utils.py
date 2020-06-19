@@ -1,11 +1,11 @@
-from datetime import datetime
-from datetime import timedelta
 import logging
 import re
+from datetime import datetime
+from datetime import timedelta
 
+import pytz
 from django.db.models import Max
 from django.db.models import Min
-import pytz
 
 from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_api import get_web_app_client
@@ -148,9 +148,9 @@ def reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
 def detect_success_aw_read_permissions():
     from aw_reporting.models import AWAccountPermission
     for permission in AWAccountPermission.objects.filter(
-            can_read=False,
-            account__is_active=True,
-            aw_connection__revoked_access=False,
+        can_read=False,
+        account__is_active=True,
+        aw_connection__revoked_access=False,
     ):
         try:
             client = get_web_app_client(

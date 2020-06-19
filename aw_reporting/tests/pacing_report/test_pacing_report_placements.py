@@ -41,7 +41,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         self.assertEqual(len(placements), 1)
 
         data = placements[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.02)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.02)
 
     def test_get_placements_budget_over_50000(self):
         today = timezone.now()
@@ -61,7 +61,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         self.assertEqual(len(placements), 1)
 
         data = placements[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.01)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.01)
 
     def test_cost_hard_cost_outgoing_fee(self):
         today = now_in_default_tz().date()
@@ -99,19 +99,19 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
     def test_placement_chart_data(self):
         """
         Daily Pacing
-        {'label': datetime.date(2017, 1, 1), 'value': 102.0}
-        {'label': datetime.date(2017, 1, 2), 'value': 204.0}
-        {'label': datetime.date(2017, 1, 3), 'value': 306.0}
-        {'label': datetime.date(2017, 1, 4), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 5), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 6), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 7), 'value': 408.0+51.0=459.0}
-        {'label': datetime.date(2017, 1, 8), 'value': 408.0+102.0=510.0}
+        {"label": datetime.date(2017, 1, 1), "value": 102.0}
+        {"label": datetime.date(2017, 1, 2), "value": 204.0}
+        {"label": datetime.date(2017, 1, 3), "value": 306.0}
+        {"label": datetime.date(2017, 1, 4), "value": 408.0}
+        {"label": datetime.date(2017, 1, 5), "value": 408.0}
+        {"label": datetime.date(2017, 1, 6), "value": 408.0}
+        {"label": datetime.date(2017, 1, 7), "value": 408.0+51.0=459.0}
+        {"label": datetime.date(2017, 1, 8), "value": 408.0+102.0=510.0}
 
         Delivery Chart
-        {'label': datetime.date(2017, 1, 1), 'value': 102}
-        {'label': datetime.date(2017, 1, 2), 'value': 204}
-        {'label': datetime.date(2017, 1, 3), 'value': 306}
+        {"label": datetime.date(2017, 1, 1), "value": 102}
+        {"label": datetime.date(2017, 1, 2), "value": 204}
+        {"label": datetime.date(2017, 1, 3), "value": 306}
 
         2017-01-04
         Today goal: 102

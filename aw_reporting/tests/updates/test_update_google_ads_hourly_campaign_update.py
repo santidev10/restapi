@@ -14,8 +14,8 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import Device
-from aw_reporting.models import device_str
 from aw_reporting.models import Opportunity
+from aw_reporting.models import device_str
 from utils.unittests.csv import build_csv_byte_stream
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now

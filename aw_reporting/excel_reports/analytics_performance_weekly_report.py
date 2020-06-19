@@ -41,7 +41,7 @@ class AnalyticsPerformanceWeeklyReport:
         merge_style_options = {
             "border": 1,
             "border_color": "black",
-            'valign': 'top'
+            "valign": "top"
         }
         self.merge_format = self.workbook.add_format(merge_style_options)
 
@@ -173,9 +173,9 @@ class AnalyticsPerformanceWeeklyReport:
         """
         # Prepare document
         self.output = BytesIO()
-        self.workbook = xlsxwriter.Workbook(self.output, {'in_memory': True})
+        self.workbook = xlsxwriter.Workbook(self.output, {"in_memory": True})
         # clean up account name
-        bad_characters = '[]:*?\/'
+        bad_characters = "[]:*?\/"
         account_name = self.account.name[:31] if self.account and self.account.name else ""
         for char in account_name:
             if char in bad_characters:
@@ -212,13 +212,13 @@ class AnalyticsPerformanceWeeklyReport:
             ad_group__campaign__account=self.account,
         )
         if date_filter:
-            filters['date__gte'] = self.date_delta
+            filters["date__gte"] = self.date_delta
 
         if self.ad_groups:
-            filters['ad_group_id__in'] = self.ad_groups
+            filters["ad_group_id__in"] = self.ad_groups
 
         elif self.campaigns:
-            filters['ad_group__campaign__id__in'] = self.campaigns
+            filters["ad_group__campaign__id__in"] = self.campaigns
 
         return filters
 
@@ -280,7 +280,7 @@ class AnalyticsPerformanceWeeklyReport:
         if not self.hide_logo:
             logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
             self.worksheet.insert_image(
-                'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+                "B2", logo_path, {"x_scale": 0.6, "y_scale": 0.5})
         # campaign
         campaign_title = "Campaign: "
         campaign_data = "{}\n".format(
@@ -307,8 +307,8 @@ class AnalyticsPerformanceWeeklyReport:
             self.date_delta.strftime("%m/%d/%y"),
             (datetime.now().date() - timedelta(days=1)).strftime("%m/%d/%y"))
         # Set merge area
-        self.worksheet.merge_range('B1:D4', "")
-        self.worksheet.merge_range('B5:D11', "", self.merge_format)
+        self.worksheet.merge_range("B1:D4", "")
+        self.worksheet.merge_range("B5:D11", "", self.merge_format)
         self.worksheet.write_rich_string(
             "B5",
             self.bold_format,
@@ -339,7 +339,7 @@ class AnalyticsPerformanceWeeklyReport:
             **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
-            i['name'] = i['ad_group__campaign__name']
+            i["name"] = i["ad_group__campaign__name"]
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
@@ -430,7 +430,7 @@ class AnalyticsPerformanceWeeklyReport:
             **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
-            i['name'] = i['ad_group__name']
+            i["name"] = i["ad_group__name"]
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
@@ -485,7 +485,7 @@ class AnalyticsPerformanceWeeklyReport:
             **all_stats_aggregate
         ).order_by("audience__name")
         for i in interest_data:
-            i['name'] = i['audience__name']
+            i["name"] = i["audience__name"]
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
@@ -524,7 +524,7 @@ class AnalyticsPerformanceWeeklyReport:
             **all_stats_aggregate
         )
         for i in topic_data:
-            i['name'] = i['topic__name']
+            i["name"] = i["topic__name"]
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
@@ -563,7 +563,7 @@ class AnalyticsPerformanceWeeklyReport:
             **all_stats_aggregate
         ).order_by("keyword")
         for i in keyword_data:
-            i['name'] = i['keyword']
+            i["name"] = i["keyword"]
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
@@ -585,8 +585,8 @@ class AnalyticsPerformanceWeeklyReport:
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj['name'], obj['impressions'], obj['video_views'],
-             div_by_100(obj['video_view_rate']))
+            (obj["name"], obj["impressions"], obj["video_views"],
+             div_by_100(obj["video_view_rate"]))
             for obj in self.get_keyword_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -598,7 +598,7 @@ class AnalyticsPerformanceWeeklyReport:
             **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("device_id")
         for i in device_data:
-            i['name'] = device_str(i['device_id'])
+            i["name"] = device_str(i["device_id"])
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)

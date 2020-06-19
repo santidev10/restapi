@@ -2,11 +2,12 @@ import json
 from datetime import timedelta
 
 from django.utils import timezone
-from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
-    Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
-    TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
-    Flight, GeoTargeting, device_str, Device
+
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -51,7 +52,7 @@ class PricingToolTestCaseBase(APITestCase):
 
 
 def generate_campaign_statistic(
-        campaign, start, end, predefined_statistics=None):
+    campaign, start, end, predefined_statistics=None):
     for i in range((end - start).days + 1):
         base_stats = {
             "campaign": campaign,

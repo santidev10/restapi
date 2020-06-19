@@ -18,4 +18,3 @@ class ConnectAWAccountListApiView(ListAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-

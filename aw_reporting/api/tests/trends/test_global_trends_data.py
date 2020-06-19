@@ -75,14 +75,14 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(account_data.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account_data['trend']), 2)
+        self.assertEqual(len(account_data["trend"]), 2)
 
     def test_success_filter_account(self):
         _, account, _, ad_group_1 = self._create_test_data()
@@ -117,7 +117,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account_data = response.data[0]
-        self.assertEqual(account_data['label'], account.name)
+        self.assertEqual(account_data["label"], account.name)
 
     def test_success_hourly(self):
         _, account, campaign, _ = self._create_test_data()
@@ -150,14 +150,14 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2 * 24)
+        self.assertEqual(len(account["trend"]), 2 * 24)
 
     def _create_ad_group_statistic(self, uid, manager=None):
         _, account, campaign, ad_group = self._create_test_data(uid, manager)
@@ -180,7 +180,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account_data = response.data[0]
-        self.assertEqual(account_data['label'], account.name)
+        self.assertEqual(account_data["label"], account.name)
 
     def _create_opportunity(self, campaign, **kwargs):
         uid = kwargs.pop("uid", None) or next(int_iterator)
@@ -329,8 +329,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response_ids, {account_1.id, account_2.id})
 
     @generic_test((
-            ("Show AW rates", (True,), {}),
-            ("Hide AW rates", (False,), {}),
+        ("Show AW rates", (True,), {}),
+        ("Hide AW rates", (False,), {}),
     ))
     def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
         """

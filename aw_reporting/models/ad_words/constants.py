@@ -17,8 +17,8 @@ CONVERSIONS = ("all_conversions", "conversions", "view_through")
 
 SUM_STATS = BASE_STATS + CONVERSIONS
 
-QUARTILE_RATES = ('quartile_25_rate', 'quartile_50_rate',
-                  'quartile_75_rate', 'quartile_100_rate')
+QUARTILE_RATES = ("quartile_25_rate", "quartile_50_rate",
+                  "quartile_75_rate", "quartile_100_rate")
 
 QUARTILE_STATS = ("video_views_25_quartile", "video_views_50_quartile",
                   "video_views_75_quartile", "video_views_100_quartile")

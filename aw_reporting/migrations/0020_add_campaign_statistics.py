@@ -3,41 +3,42 @@
 from __future__ import unicode_literals
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0019_add_salesforce'),
+        ("aw_reporting", "0019_add_salesforce"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CampaignStatistic',
+            name="CampaignStatistic",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('impressions', models.IntegerField(default=0)),
-                ('video_views', models.IntegerField(default=0)),
-                ('clicks', models.IntegerField(default=0)),
-                ('cost', models.FloatField(default=0)),
-                ('conversions', models.FloatField(default=0)),
-                ('all_conversions', models.FloatField(default=0)),
-                ('view_through', models.IntegerField(default=0)),
-                ('video_views_25_quartile', models.FloatField(default=0)),
-                ('video_views_50_quartile', models.FloatField(default=0)),
-                ('video_views_75_quartile', models.FloatField(default=0)),
-                ('video_views_100_quartile', models.FloatField(default=0)),
-                ('date', models.DateField(db_index=True)),
-                ('device_id', models.SmallIntegerField(db_index=True, default=0)),
-                ('campaign', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='statistics', to='aw_reporting.Campaign')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("impressions", models.IntegerField(default=0)),
+                ("video_views", models.IntegerField(default=0)),
+                ("clicks", models.IntegerField(default=0)),
+                ("cost", models.FloatField(default=0)),
+                ("conversions", models.FloatField(default=0)),
+                ("all_conversions", models.FloatField(default=0)),
+                ("view_through", models.IntegerField(default=0)),
+                ("video_views_25_quartile", models.FloatField(default=0)),
+                ("video_views_50_quartile", models.FloatField(default=0)),
+                ("video_views_75_quartile", models.FloatField(default=0)),
+                ("video_views_100_quartile", models.FloatField(default=0)),
+                ("date", models.DateField(db_index=True)),
+                ("device_id", models.SmallIntegerField(db_index=True, default=0)),
+                ("campaign", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="statistics",
+                                               to="aw_reporting.Campaign")),
             ],
             options={
-                'ordering': ['-date'],
+                "ordering": ["-date"],
             },
         ),
         migrations.AlterUniqueTogether(
-            name='campaignstatistic',
-            unique_together=set([('campaign', 'date', 'device_id')]),
+            name="campaignstatistic",
+            unique_together=set([("campaign", "date", "device_id")]),
         ),
     ]

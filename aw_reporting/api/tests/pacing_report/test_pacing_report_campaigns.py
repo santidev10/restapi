@@ -354,5 +354,3 @@ class PacingReportTestCase(APITestCase):
 
         self.assertAlmostEqual(get_planned_delivery(campaign_1.id), expected_goal_1)
         self.assertAlmostEqual(get_planned_delivery(campaign_2.id), expected_goal_2)
-
-

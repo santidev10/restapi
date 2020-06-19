@@ -1,9 +1,15 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Account, Campaign, CampaignStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
@@ -17,7 +23,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = timezone.now().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -37,24 +43,24 @@ class PacingReportTestCase(ExtendedAPITestCase):
         flights = report.get_flights(placement)
         self.assertEqual(len(flights), 1)
         expected_goal_views = flight.ordered_units * 1.02
-        self.assertEqual(flights[0]['plan_video_views'], expected_goal_views)
+        self.assertEqual(flights[0]["plan_video_views"], expected_goal_views)
 
-        first_chart = flights[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], expected_goal_views)
+        first_chart = flights[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], expected_goal_views)
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        self.assertEqual(campaigns[0]['plan_video_views'], expected_goal_views)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], expected_goal_views)
+        self.assertEqual(campaigns[0]["plan_video_views"], expected_goal_views)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], expected_goal_views)
 
     def test_cary_over_disabled_over_delivery(self):
         today = timezone.now().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -84,21 +90,21 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 2)
 
         flight_data = flights[1]
-        first_chart = flight_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 0)
+        first_chart = flight_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 0)
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 0)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 0)
 
     def test_cary_over_disabled_over_delivery_and_pre_flight(self):
         today = timezone.now().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -129,10 +135,10 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flights = report.get_flights(placement)
         self.assertEqual(len(flights), 2)
-        first_chart = flights[1]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
+        first_chart = flights[1]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
         self.assertEqual(
-            first_chart['data'][-1]['value'],
+            first_chart["data"][-1]["value"],
             408,  # 400 + 2%
             "Over-delivery = 600 and ordered_units = 1000, "
             "so plan for this flight = 400"
@@ -140,9 +146,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 408)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 408)
 
     def test_cary_over_disabled_with_flights_before_and_after(self):
         """
@@ -155,7 +161,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = timezone.now().date()
         start = today - timedelta(days=19)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -188,7 +194,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
             start=flight.end + timedelta(days=1),
             end=flight.end + timedelta(days=5),  # 5 days
             placement=placement,
-            ordered_units=0,  # this doesn't matter
+            ordered_units=0,  # this doesn"t matter
         )
         recalculate_de_norm_fields_for_account(account.id)
 
@@ -197,11 +203,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 3)
 
         flight_data = flights[1]
-        self.assertEqual(flight_data['id'], flight.id)
-        first_chart = flight_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
+        self.assertEqual(flight_data["id"], flight.id)
+        first_chart = flight_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
         self.assertEqual(
-            first_chart['data'][-1]['value'],
+            first_chart["data"][-1]["value"],
             530.4,  # 520 + 2%
             "Over-delivery = 600 and "
             "total planned days number for two flights = 25"
@@ -212,9 +218,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 530.4)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 530.4)
 
     def test_cary_over_disabled_with_ended_over_and_under_delivered_flights(self):
         """
@@ -227,7 +233,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = datetime(2017, 3, 1).date()
-        opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today)
+        opportunity = Opportunity.objects.create(id="1", name="", start=today, end=today)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
         )
@@ -265,60 +271,60 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 4)
 
         flight_1 = flights[0]
-        self.assertEqual(flight_1['id'], jan.id)
-        self.assertEqual(flight_1['plan_video_views'], 1020)
-        pacing_chart = flight_1['charts'][0]
-        self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
+        self.assertEqual(flight_1["id"], jan.id)
+        self.assertEqual(flight_1["plan_video_views"], 1020)
+        pacing_chart = flight_1["charts"][0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
         self.assertEqual(
-            pacing_chart['data'][-1]['value'], 1020,  # 1000 + 2%
+            pacing_chart["data"][-1]["value"], 1020,  # 1000 + 2%
         )
 
         flight_2 = flights[1]
-        self.assertEqual(flight_2['id'], feb.id)
-        pacing_chart = flight_2['charts'][0]
-        self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
+        self.assertEqual(flight_2["id"], feb.id)
+        pacing_chart = flight_2["charts"][0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
         self.assertEqual(
-            pacing_chart['data'][-1]['value'], 520,
+            pacing_chart["data"][-1]["value"], 520,
         )
 
         flight_3 = flights[2]
-        self.assertEqual(flight_3['id'], march.id)
-        pacing_chart = flight_3['charts'][0]
-        self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
-        self.assertAlmostEqual(pacing_chart['data'][-1]['value'], 770, places=10)
+        self.assertEqual(flight_3["id"], march.id)
+        pacing_chart = flight_3["charts"][0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
+        self.assertAlmostEqual(pacing_chart["data"][-1]["value"], 770, places=10)
 
         flight_4 = flights[3]
-        self.assertEqual(flight_4['id'], april.id)
-        pacing_chart = flight_4['charts'][0]
-        self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
-        self.assertAlmostEqual(pacing_chart['data'][-1]['value'], 770)
+        self.assertEqual(flight_4["id"], april.id)
+        pacing_chart = flight_4["charts"][0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
+        self.assertAlmostEqual(pacing_chart["data"][-1]["value"], 770)
 
         # test campaigns
         campaigns = report.get_campaigns(jan)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 1020)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 1020)
 
         campaigns = report.get_campaigns(feb)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 520)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 520)
 
         campaigns = report.get_campaigns(march)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertAlmostEqual(first_chart['data'][-1]['value'], 770)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertAlmostEqual(first_chart["data"][-1]["value"], 770)
 
         campaigns = report.get_campaigns(april)
-        first_chart = campaigns[0]['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertAlmostEqual(first_chart['data'][-1]['value'], 770)
+        first_chart = campaigns[0]["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertAlmostEqual(first_chart["data"][-1]["value"], 770)
 
     def test_cary_over_enabled(self):
         today = now_in_default_tz().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
             cannot_roll_over=True,
         )
         placement = OpPlacement.objects.create(
@@ -341,23 +347,23 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 1)
 
         flight_data = flights[0]
-        self.assertEqual(flight_data['plan_video_views'], 1020)
-        first_chart = flight_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
+        self.assertEqual(flight_data["plan_video_views"], 1020)
+        first_chart = flight_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
 
         self.assertEqual(
-            first_chart['data'][-1]['value'],
+            first_chart["data"][-1]["value"],
             1020,  # 1000 + 2%
             "Still 1000 because cannot_roll_over is True"
         )
 
         campaigns = report.get_campaigns(flight)
         campaign_data = campaigns[0]
-        self.assertEqual(campaign_data['plan_video_views'], 1020)
-        first_chart = campaign_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
+        self.assertEqual(campaign_data["plan_video_views"], 1020)
+        first_chart = campaign_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
         self.assertEqual(
-            first_chart['data'][-1]['value'],
+            first_chart["data"][-1]["value"],
             1020,  # 1000 + 2%
             "Still 1000 because cannot_roll_over is True"
         )

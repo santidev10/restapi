@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import timedelta
+from math import ceil
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
@@ -11,7 +12,6 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
-from math import ceil
 
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
@@ -133,7 +133,7 @@ class PacingReport:
             **filters
         )
         campaign_id_key = "placement__adwords_campaigns__id"
-        group_by = ("id", )
+        group_by = ("id",)
 
         annotate = self.get_flights_delivery_annotate()
 
@@ -203,9 +203,9 @@ class PacingReport:
             fl["plan_units"] = 0
             fl["sf_ordered_units"] = 0
             if fl["placement__dynamic_placement"] \
-                    in (DynamicPlacementType.BUDGET,
-                        DynamicPlacementType.RATE_AND_TECH_FEE,
-                        DynamicPlacementType.SERVICE_FEE):
+                in (DynamicPlacementType.BUDGET,
+                    DynamicPlacementType.RATE_AND_TECH_FEE,
+                    DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
                 fl["sf_ordered_units"] = fl["plan_units"]
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
@@ -219,7 +219,7 @@ class PacingReport:
             fl["recalculated_plan_units"] = fl["plan_units"]
 
         # we need to check  "cannot_roll_over" option
-        # if it's False, the over-delivery from completed flights should be spread between future ones
+        # if it"s False, the over-delivery from completed flights should be spread between future ones
         # IMPORTANT: the code below supposes that flights sorted by start date ASC (older first)
         flights_by_placement = defaultdict(list)
         for fl in data:
@@ -231,9 +231,9 @@ class PacingReport:
                 "placement__opportunity__cannot_roll_over"]
             goal_type_id = placement_flights[0]["placement__goal_type_id"]
             if cannot_roll_over is True \
-                    or goal_type_id not in (
-                    0,
-                    1):  # Use re-allocation for CPV and CPM placements only for now
+                or goal_type_id not in (
+                0,
+                1):  # Use re-allocation for CPV and CPM placements only for now
                 continue
 
             # first get the over delivery
@@ -251,7 +251,7 @@ class PacingReport:
                     over_delivery -= reallocate_to_flight
                     f["recalculated_plan_units"] -= reallocate_to_flight
 
-            # then reassign between flights that haven't finished
+            # then reassign between flights that haven"t finished
             if over_delivery:
                 not_finished_flights = [f for f in placement_flights if
                                         f["end"] > self.yesterday]
@@ -260,7 +260,7 @@ class PacingReport:
                     # recalculate reassignment
                     for fl in not_finished_flights:
                         flight_can_consume = fl["recalculated_plan_units"] - fl["delivery"]
-                        if flight_can_consume > 0:  # if it hasn't reached the plan yet
+                        if flight_can_consume > 0:  # if it hasn"t reached the plan yet
                             total_days = sum(
                                 f["days"] for f in not_finished_flights if
                                 f["start"] >= fl["start"])
@@ -390,7 +390,7 @@ class PacingReport:
 
     def add_calculated_fields(self, report):
         # border signals
-        border = self.borders['margin']
+        border = self.borders["margin"]
         margin = report["margin"]
         if margin is None or margin >= border[0]:
             margin_quality = 2
@@ -402,7 +402,7 @@ class PacingReport:
             margin_quality = 0
             margin_direction = 1
 
-        low, high = self.borders['pacing']
+        low, high = self.borders["pacing"]
         pacing = report["pacing"]
         if pacing is None or high[0] >= pacing >= low[1]:
             pacing_quality = 2
@@ -415,8 +415,8 @@ class PacingReport:
             pacing_direction = 1 if pacing <= low[0] else -1
 
         video_view_rate_quality = 2
-        low, high = self.borders['video_view_rate']
-        video_view_rate = report['video_view_rate']
+        low, high = self.borders["video_view_rate"]
+        video_view_rate = report["video_view_rate"]
         if video_view_rate is not None and video_view_rate < high:
             if video_view_rate < low:
                 video_view_rate_quality = 0
@@ -424,8 +424,8 @@ class PacingReport:
                 video_view_rate_quality = 1
 
         ctr_quality = 2
-        low, high = self.borders['ctr']
-        ctr = report['ctr']
+        low, high = self.borders["ctr"]
+        ctr = report["ctr"]
         if ctr is not None and ctr < high:
             if ctr < low:
                 ctr_quality = 0
@@ -469,9 +469,9 @@ class PacingReport:
         ad_ops_emails = set()
         opportunity_ids = []
         for o in opportunities:
-            opportunity_ids.append(o['id'])
-            if o['ad_ops_manager__email']:
-                ad_ops_emails.add(o['ad_ops_manager__email'])
+            opportunity_ids.append(o["id"])
+            if o["ad_ops_manager__email"]:
+                ad_ops_emails.add(o["ad_ops_manager__email"])
 
         # thumbnail
         if ad_ops_emails:
@@ -480,7 +480,7 @@ class PacingReport:
                 profile_image_url__isnull=False,
             ).exclude(profile_image_url="").values("email",
                                                    "profile_image_url")
-            thumbnails = {r['email']: r['profile_image_url'] for r in
+            thumbnails = {r["email"]: r["profile_image_url"] for r in
                           user_rows}
         else:
             thumbnails = {}
@@ -519,7 +519,7 @@ class PacingReport:
                 lambda g: g is not None,
                 set([p["goal_type_id"] for p in placements])
             ))
-            o['goal_type_ids'] = goal_type_ids
+            o["goal_type_ids"] = goal_type_ids
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             o.update(delivery_stats)
@@ -531,26 +531,26 @@ class PacingReport:
             o["margin"] = self.get_margin_from_flights(flights, o["cost"],
                                                        o["current_cost_limit"])
 
-            o['thumbnail'] = thumbnails.get(o['ad_ops_manager__email'])
+            o["thumbnail"] = thumbnails.get(o["ad_ops_manager__email"])
 
-            o['ad_ops'] = dict(id=o['ad_ops_manager__id'],
-                               name=o['ad_ops_manager__name'])
-            del o['ad_ops_manager__id'], o['ad_ops_manager__name'], o[
-                'ad_ops_manager__email']
+            o["ad_ops"] = dict(id=o["ad_ops_manager__id"],
+                               name=o["ad_ops_manager__name"])
+            del o["ad_ops_manager__id"], o["ad_ops_manager__name"], o[
+                "ad_ops_manager__email"]
 
-            o['am'] = dict(id=o['account_manager__id'],
-                           name=o['account_manager__name'])
-            del o['account_manager__id'], o['account_manager__name']
+            o["am"] = dict(id=o["account_manager__id"],
+                           name=o["account_manager__name"])
+            del o["account_manager__id"], o["account_manager__name"]
 
-            o['sales'] = dict(id=o['sales_manager__id'],
-                              name=o['sales_manager__name'])
-            del o['sales_manager__id'], o['sales_manager__name']
+            o["sales"] = dict(id=o["sales_manager__id"],
+                              name=o["sales_manager__name"])
+            del o["sales_manager__id"], o["sales_manager__name"]
 
             territory = o["territory"]
-            o['region'] = dict(id=territory, name=territory) \
+            o["region"] = dict(id=territory, name=territory) \
                 if territory is not None else None
-            category_id = o['category']
-            o['category'] = dict(id=category_id, name=category_id) \
+            category_id = o["category"]
+            o["category"] = dict(id=category_id, name=category_id) \
                 if category_id is not None else None
 
             self.add_calculated_fields(o)
@@ -581,7 +581,7 @@ class PacingReport:
         if start and end:
             queryset = queryset.filter(start__lte=end, end__gte=start)
 
-        search = get.get('search')
+        search = get.get("search")
         if search:
             queryset = queryset.filter(name__icontains=search.strip())
 
@@ -808,7 +808,7 @@ class PacingReport:
                                                             flight["current_cost_limit"])
 
             # chart data
-            before_yesterday_stats = all_aw_before_yesterday_stats.get(f['id'],
+            before_yesterday_stats = all_aw_before_yesterday_stats.get(f["id"],
                                                                        {})
             chart_data = get_chart_data(
                 flights=[f],
@@ -821,7 +821,7 @@ class PacingReport:
 
             self.add_calculated_fields(flight)
 
-            flight['budget'] = f['budget']
+            flight["budget"] = f["budget"]
             flights.append(flight)
 
         return flights
@@ -842,7 +842,7 @@ class PacingReport:
 
         campaigns = queryset.values(
             "id", "name", "goal_allocation",
-        ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
+        ).order_by("name").annotate(start=F("start_date"), end=F("end_date"))
 
         total_allocation = sum(campaign["goal_allocation"] for campaign in campaigns)
         # Distribute remaining goal_allocations to campaigns with 0 goal allocation
@@ -870,7 +870,7 @@ class PacingReport:
                         f["id"] == flight.id]
         populate_daily_delivery_data(flights_data)
         for c in campaigns:
-            allocation_ko = c['goal_allocation'] / 100
+            allocation_ko = c["goal_allocation"] / 100
             kwargs = dict(allocation_ko=allocation_ko, campaign_id=c["id"])
 
             plan_stats = self.get_plan_stats_from_flights(flights_data,
@@ -899,7 +899,7 @@ class PacingReport:
 
             self.add_calculated_fields(c)
 
-            c['flight_budget'] = flight.budget
+            c["flight_budget"] = flight.budget
 
         return campaigns
     # ## CAMPAIGNS ## #
@@ -1027,7 +1027,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     sum_today_units = today_goal_views + today_goal_impressions
 
     dict_add_calculated_stats(targeting)
-    del targeting['average_cpv'], targeting['average_cpm']
+    del targeting["average_cpv"], targeting["average_cpm"]
 
     goal_types = set(f["placement__goal_type_id"] for f in flights)
     hard_cost_only = goal_types == {SalesForceGoalType.HARD_COST}
@@ -1059,7 +1059,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         before_yesterday_impressions = before_yesterday_stats.get(
             "sum_impressions")
         data.update(
-            before_yesterday_budget=before_yesterday_stats.get('sum_cost'),
+            before_yesterday_budget=before_yesterday_stats.get("sum_cost"),
             before_yesterday_delivered_views=before_yesterday_views,
             before_yesterday_delivered_impressions=before_yesterday_impressions,
         )
@@ -1254,7 +1254,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
                 for row in f["daily_delivery"]:
                     if date == row["date"]:
                         if campaign_id is None \
-                                or row["campaign_id"] == campaign_id:
+                            or row["campaign_id"] == campaign_id:
                             delivered += row[delivery_field_name]
 
         if delivered:
@@ -1307,9 +1307,9 @@ def get_pacing_from_flights(flights, allocation_ko=1,
     dynamic_placements = list(
         set(flight["placement__dynamic_placement"] for flight in flights))
     if len(goal_type_ids) == 1 \
-            and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
-            and len(dynamic_placements) == 1 and \
-            dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
+        and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
+        and len(dynamic_placements) == 1 and \
+        dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
         pacing = 1
     else:
         total_planned_units = sum_delivery = 0
@@ -1330,9 +1330,9 @@ def get_pacing_from_flights(flights, allocation_ko=1,
 
 def get_delivery_field_name(flight_dict):
     if flight_dict["placement__dynamic_placement"] in (
-            DynamicPlacementType.BUDGET,
-            DynamicPlacementType.SERVICE_FEE,
-            DynamicPlacementType.RATE_AND_TECH_FEE):
+        DynamicPlacementType.BUDGET,
+        DynamicPlacementType.SERVICE_FEE,
+        DynamicPlacementType.RATE_AND_TECH_FEE):
         return "cost"
     elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPM:
         return "impressions"
@@ -1346,7 +1346,7 @@ def populate_daily_delivery_data(flights):
         date__gte=F("campaign__salesforce_placement__flights__start"),
         date__lte=F("campaign__salesforce_placement__flights__end"),
         campaign__salesforce_placement_id__in=placement_ids)
-    fl_id_field = 'campaign__salesforce_placement__flights__id'
+    fl_id_field = "campaign__salesforce_placement__flights__id"
     raw_aw_daily_stats = campaign_stats_qs.values(fl_id_field,
                                                   "campaign_id",
                                                   "date").order_by(

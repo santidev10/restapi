@@ -29,13 +29,13 @@ class AccountUpdater(UpdateMixin):
         created_accounts = []
         accounts = get_all_customers(client)
         for e in accounts:
-            account_id = int(e['customerId'])
+            account_id = int(e["customerId"])
             account_obj = Account(
                 id=account_id,
-                name=e['name'],
-                currency_code=e['currencyCode'],
-                timezone=e['dateTimeZone'],
-                can_manage_clients=e['canManageClients'],
+                name=e["name"],
+                currency_code=e["currencyCode"],
+                timezone=e["dateTimeZone"],
+                can_manage_clients=e["canManageClients"],
             )
             if account_id in self.existing_accounts:
                 accounts_to_update.append(account_obj)

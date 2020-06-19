@@ -1,12 +1,12 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from django.db.models import Max
 
 from aw_reporting.adwords_reports import age_range_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.models import AgeRanges
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AgeRanges
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
 from aw_reporting.update.adwords_utils import format_click_types_report

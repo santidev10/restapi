@@ -26,9 +26,9 @@ class PacingReportOpportunitiesApiView(ListAPIView, PacingReportHelper):
                 sort_by = "name"
 
             if sort_by in (
-                    "margin", "pacing", "plan_cost", "plan_cpm", "plan_cpv",
-                    "plan_impressions", "plan_video_views", "cost", "cpm",
-                    "cpv", "impressions", "video_views", "name",
+                "margin", "pacing", "plan_cost", "plan_cpm", "plan_cpv",
+                "plan_impressions", "plan_video_views", "cost", "cpm",
+                "cpv", "impressions", "video_views", "name",
             ):
                 if sort_by == "name":
                     def sort_key(i):

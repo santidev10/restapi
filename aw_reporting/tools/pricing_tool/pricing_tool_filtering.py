@@ -1,8 +1,10 @@
 from collections import defaultdict
 from functools import reduce
-from operator import or_
 from operator import and_
+from operator import or_
 
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.contrib.postgres.aggregates import StringAgg
 from django.db.models import BooleanField
 from django.db.models import Case
 from django.db.models import F
@@ -17,14 +19,12 @@ from django.db.models import When
 from django.db.models.expressions import Combinable
 from django.db.models.expressions import CombinedExpression
 from django.db.models.expressions import Value
-from django.contrib.postgres.aggregates import ArrayAgg
-from django.contrib.postgres.aggregates import StringAgg
 
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
-from aw_reporting.models import Devices
 from aw_reporting.models import Campaign
+from aw_reporting.models import Devices
 from aw_reporting.models import Genders
 from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatuses
@@ -33,16 +33,15 @@ from aw_reporting.models import Topic
 from aw_reporting.tools.pricing_tool.constants import AGE_FIELDS
 from aw_reporting.tools.pricing_tool.constants import DEVICE_FIELDS
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS
+from aw_reporting.tools.pricing_tool.constants import ModelFiltersOptions
 from aw_reporting.tools.pricing_tool.constants import PARENT_FIELDS
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES
 from aw_reporting.tools.pricing_tool.constants import VIDEO_LENGTHS
-from aw_reporting.tools.pricing_tool.constants import ModelFiltersOptions
 from utils.datetime import now_in_default_tz
 from utils.datetime import quarter_days
 from utils.query import Operator
 from utils.query import build_query_bool
 from utils.query import merge_when
-from utils.query import split_request
 
 CONDITIONS = [
     dict(id="or", name="Or"),
@@ -159,8 +158,8 @@ class PricingToolFiltering:
     def _filter(self, user, ordering_by_aw_budget):
 
         def apply_filters(queryset, filters, model_options):
-            for filter in filters:
-                queryset, _ = filter(queryset, model_options)
+            for query_filter in filters:
+                queryset, _ = query_filter(queryset, model_options)
             return queryset
 
         campaigns_filters = (
@@ -185,10 +184,11 @@ class PricingToolFiltering:
         opportunity_queryset = Opportunity.objects.get_queryset_for_user(user=user)
 
         opportunity_queryset = apply_filters(opportunity_queryset, filters,
-                                             model_options=ModelFiltersOptions.Opportunity).values_list("id", flat=True)
+                                             model_options=ModelFiltersOptions.Opportunity).values_list("id",
+                                                                                                        flat=True)
 
-        campaigns_queryset = Campaign.objects.get_queryset_for_user(user=user)\
-            .values("salesforce_placement__opportunity")\
+        campaigns_queryset = Campaign.objects.get_queryset_for_user(user=user) \
+            .values("salesforce_placement__opportunity") \
             .annotate(ids=ArrayAgg("id"))
 
         campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters,
@@ -197,8 +197,8 @@ class PricingToolFiltering:
         if self.filter_item_ids is not None:
             campaigns_queryset = campaigns_queryset.filter(id__in=self.filter_item_ids)
 
-
-        campaigns_queryset = campaigns_queryset.filter(salesforce_placement__opportunity_id__in=list(opportunity_queryset))
+        campaigns_queryset = campaigns_queryset.filter(
+            salesforce_placement__opportunity_id__in=list(opportunity_queryset))
 
         if ordering_by_aw_budget is True:
             campaigns_queryset = campaigns_queryset.annotate(aw_budget=Sum("cost")).order_by("-aw_budget")
@@ -221,7 +221,6 @@ class PricingToolFiltering:
 
         return queryset.filter(query), True
 
-
     def _filter_by_product_types(self, queryset, model_options):
         product_types = self.kwargs.get("product_types", [])
         if len(product_types) == 0:
@@ -230,7 +229,7 @@ class PricingToolFiltering:
                                                   self.default_condition)
 
         if product_types_condition == "or" and model_options.filtering_or:
-            queryset = queryset.filter(**{f"{model_options.prefix}ad_groups__type__in":product_types})
+            queryset = queryset.filter(**{f"{model_options.prefix}ad_groups__type__in": product_types})
 
         elif product_types_condition == "and" and model_options.filtering_and:
             queryset = reduce(
@@ -247,13 +246,17 @@ class PricingToolFiltering:
         condition = self.kwargs.get("targeting_types_condition",
                                     self.default_condition)
         true_value = Value(1)
-        annotation = {"has_" + t: Max(Case(When(
-            **{
-                f"{model_options.prefix}has_" + t: Value(True),
-                "then": true_value
-            }),
-            output_field=BooleanField(),
-            default=Value(0)))
+        annotation = {
+            "has_" + t: Max(
+                Case(When(
+                    **{
+                        f"{model_options.prefix}has_" + t: Value(True),
+                        "then": true_value
+                    }),
+                    output_field=BooleanField(),
+                    default=Value(0)
+                )
+            )
             for t in TARGETING_TYPES}
         queryset = queryset.annotate(**annotation)
 
@@ -273,7 +276,6 @@ class PricingToolFiltering:
             self._filter_by_age,
             self._filter_parent_status
         ]
-
 
     def __exclude_by_demographic(self, queryset, model_options, exclude_fields):
         if exclude_fields:
@@ -380,8 +382,9 @@ class PricingToolFiltering:
                                  in enumerate(DEVICE_FIELDS)
                                  if i in devices)
 
-            queries_exclude_invalid_types = [Q(**{model_options.prefix + field: True}) for i, field in enumerate(DEVICE_FIELDS)
-                                     if i not in devices]
+            queries_exclude_invalid_types = [Q(**{model_options.prefix + field: True}) for i, field in
+                                             enumerate(DEVICE_FIELDS)
+                                             if i not in devices]
 
             queryset = queryset.exclude(**query_exclude).exclude(reduce(or_, queries_exclude_invalid_types, Q()))
 
@@ -426,14 +429,14 @@ class PricingToolFiltering:
             aw_clicks=Sum(Case(
                 *merge_when(
                     date_filter,
-                    then=f"placements__adwords_campaigns__statistics__clicks"),
+                    then="placements__adwords_campaigns__statistics__clicks"),
                 output_field=IntegerField(),
                 default=0
             )),
             aw_impressions=Sum(Case(
                 *merge_when(
                     date_filter,
-                    then=f"placements__adwords_campaigns__statistics__impressions"),
+                    then="placements__adwords_campaigns__statistics__impressions"),
                 output_field=IntegerField(),
                 default=0
             ))
@@ -613,7 +616,7 @@ class PricingToolFiltering:
         queryset = queryset.annotate(
             creative_length_annotate=creative_length_annotate)
 
-        query = reduce(operator, [Q(**{'creative_length_annotate__contains': l_id}) for l_id in creative_lengths], Q())
+        query = reduce(operator, [Q(**{"creative_length_annotate__contains": l_id}) for l_id in creative_lengths], Q())
 
         queryset = queryset.exclude(creative_length_annotate__contains="None").filter(query)
         return queryset
@@ -690,7 +693,7 @@ class PricingToolFiltering:
                     parent_ids = list(
                         Topic.objects.filter(
                             parent__in=parent_ids
-                        ).values_list('id', flat=True)
+                        ).values_list("id", flat=True)
                     )
 
             self.topic_child_cache[key] = list(topic_groups.values())
@@ -759,7 +762,7 @@ class PricingToolFiltering:
                     parent_ids = list(
                         Audience.objects.filter(
                             parent__in=parent_ids
-                        ).values_list('id', flat=True)
+                        ).values_list("id", flat=True)
                     )
 
             self.interest_child_cache[key] = list(item_groups.values())
@@ -797,5 +800,3 @@ def map_item(item, key_map):
     return {key_map[key]: value
             for key, value in item.items()
             if key in key_map}
-
-

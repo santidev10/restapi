@@ -42,7 +42,8 @@ WRITE_START = datetime(2016, 9, 1).date()
 
 
 @celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
-def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
+def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None,
+                           force_update=False,
                            skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14):
     logger.info("Salesforce update started")
     start = time.time()
@@ -63,40 +64,42 @@ def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_up
                        debug_update=debug_update, skip_flights=skip_flights)
 
     match_using_placement_numbers()
-    logger.info(f"Salesforce update finished. Took: {time.time() - start}")
+    logger.info("Salesforce update finished. Took: %s", time.time() - start)
 
 
 def perform_delete(sc, delete_from_days):
     today = datetime.now(pytz.UTC)
     from_deleted = today - timedelta(days=delete_from_days)
 
-    for model, resource in [
+    model_resource_pairs = [
         (Opportunity, "Opportunity"),
         (OpPlacement, "Placement__c"),
         (Flight, "Flight__c"),
-    ]:
+    ]
+    for model, resource in model_resource_pairs:
         deleted_items = sc.get_deleted_items(resource, from_deleted, today)
         to_delete = [record["id"] for record in deleted_items]
         if to_delete:
             model.objects.filter(id__in=to_delete).delete()
-            logger.debug(f"Deleted {model.__name__} entries: {to_delete}")
+            logger.debug("Deleted %s entries: %s", model.__name__, to_delete)
 
 
 def perform_get(sc):
     opportunity_ids = set()
     placement_ids = set()
     end_date_threshold = datetime.today().date() - timedelta(days=14)
-    for model, method, condition in [
-        (UserRole, 'get_user_roles', None),
-        (User, 'get_users', None),
-        (Contact, 'get_contacts', None),
-        (SFAccount, 'get_accounts', None),
-        (Category, 'get_categories', None),
-        (Opportunity, 'get_opportunities', f"MAX_Placement_End_Date__c > {end_date_threshold}"),
-        (OpPlacement, 'get_placements', f"Placement_End_Date__c > {end_date_threshold}"),
-        (Flight, 'get_flights', f"Flight_End_Date__c > {end_date_threshold}"),
-        (Activity, 'get_activities', None),
-    ]:
+    data = [
+        (UserRole, "get_user_roles", None),
+        (User, "get_users", None),
+        (Contact, "get_contacts", None),
+        (SFAccount, "get_accounts", None),
+        (Category, "get_categories", None),
+        (Opportunity, "get_opportunities", f"MAX_Placement_End_Date__c > {end_date_threshold}"),
+        (OpPlacement, "get_placements", f"Placement_End_Date__c > {end_date_threshold}"),
+        (Flight, "get_flights", f"Flight_End_Date__c > {end_date_threshold}"),
+        (Activity, "get_activities", None),
+    ]
+    for model, method, condition in data:
         logger.debug("Getting %s items" % model.__name__)
         to_create = []
         to_update = []
@@ -107,17 +110,17 @@ def perform_get(sc):
         update_fields = None
         for item_data in rows:
             # save ony children of saved parents
-            if method == 'get_placements' \
-                    and item_data['Insertion_Order__c'] \
-                    not in opportunity_ids:
+            if method == "get_placements" \
+                and item_data["Insertion_Order__c"] \
+                not in opportunity_ids:
                 continue
-            if method == 'get_flights' \
-                    and item_data['Placement__c'] not in placement_ids:
+            if method == "get_flights" \
+                and item_data["Placement__c"] not in placement_ids:
                 continue
             data = model.get_data(item_data)
             if update_fields is None:
                 update_fields = [key for key in data.keys() if key != "id"]
-            item_id = data['id']
+            item_id = data["id"]
             existing = existing_items.get(item_id)
             if existing is None:
                 to_create.append(model(**data))
@@ -139,15 +142,15 @@ def perform_get(sc):
             for item in to_update:
                 pre_save.send(model, instance=item)
             model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
-            logger.debug(f"Updated {len(to_update)} items for: {model}")
+            logger.debug("Updated %s items for: %s", len(to_update), model)
         if to_create:
             model.objects.safe_bulk_create(to_create)
-            logger.debug(f"Created {len(to_create)} items for: {model}")
+            logger.debug("Created %s items for: %s", len(to_create), model)
 
         # save parent ids
-        if method == 'get_opportunities':
+        if method == "get_opportunities":
             opportunity_ids = set(Opportunity.objects.all().values_list("id", flat=True))
-        elif method == 'get_placements':
+        elif method == "get_placements":
             placement_ids = set(OpPlacement.objects.all().values_list("id", flat=True))
 
 
@@ -169,17 +172,17 @@ def update_opportunities(sc, opportunity_ids, debug_update):
     opportunities = Opportunity.not_demo_items().filter(opp_filter)
     for opportunity in opportunities:
         update = {}
-        ids = Campaign.objects.filter(
-            salesforce_placement__opportunity=opportunity).values_list(
-            'account_id',
-            flat=True).distinct()
+        ids = Campaign.objects \
+            .filter(salesforce_placement__opportunity=opportunity) \
+            .values_list("account_id", flat=True) \
+            .distinct()
 
         aw_cid = ",".join([str(campaign_id) for campaign_id in filter(lambda x: x is not None, ids)])
         if not aw_cid:
             continue
 
         if opportunity.aw_cid != aw_cid:
-            update['AdWords_CID__c'] = aw_cid
+            update["AdWords_CID__c"] = aw_cid
 
         if update:
             try:
@@ -190,20 +193,12 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
-                    logger.critical("Unhandled exception: %s" % str(e))
+                    logger.critical("Unhandled exception: %s", str(e))
             else:
                 if r == 204:
-                    logger.debug(
-                        'Opportunity %s was updated: %s' % (
-                            opportunity.id, str(update)
-                        )
-                    )
+                    logger.debug("Opportunity %s was updated: %s", opportunity.id, str(update))
                 else:
-                    logger.critical(
-                        'Update Error: %s %s' % (
-                            opportunity.id, str(r)
-                        )
-                    )
+                    logger.critical("Update Error: %s %s", opportunity.id, str(r))
 
 
 def update_placements(sc, opportunity_ids, debug_update):
@@ -214,9 +209,9 @@ def update_placements(sc, opportunity_ids, debug_update):
         .distinct()
     for placement in placements:
 
-        aw_pl = placement.adwords_campaigns.order_by('id').first().name
+        aw_pl = placement.adwords_campaigns.order_by("id").first().name
         if placement.ad_words_placement != aw_pl:
-            update = {'Adwords_Placement_IQ__c': aw_pl}
+            update = {"Adwords_Placement_IQ__c": aw_pl}
             try:
                 r = 204 \
                     if debug_update \
@@ -225,20 +220,12 @@ def update_placements(sc, opportunity_ids, debug_update):
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
-                    logger.critical("Unhandled exception: %s" % str(e))
+                    logger.critical("Unhandled exception: %s", str(e))
             else:
                 if r == 204:
-                    logger.debug(
-                        'Placement %s %s was updated: %s' % (
-                            placement.id, placement.name, str(update)
-                        )
-                    )
+                    logger.debug("Placement %s %s was updated: %s", placement.id, placement.name, str(update))
                 else:
-                    logger.critical(
-                        'Update Error: %s %s' % (
-                            placement.id, str(r)
-                        )
-                    )
+                    logger.critical("Update Error: %s %s", placement.id, str(r))
 
 
 def update_flights(sc, force_update, opportunity_ids, today, debug_update):
@@ -255,13 +242,13 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         if units != flight.delivered:
             # 0 is not an acceptable value for this field
             units = units or None
-            update['Delivered_Ad_Ops__c'] = units
+            update["Delivered_Ad_Ops__c"] = units
         if cost != flight.cost:
-            update['Total_Flight_Cost__c'] = cost
+            update["Total_Flight_Cost__c"] = cost
 
         if ((pacing is None) ^ (flight.pacing is None)) \
-                or (pacing is not None and not almost_equal(pacing, flight.pacing)):
-            update['Pacing__c'] = pacing
+            or (pacing is not None and not almost_equal(pacing, flight.pacing)):
+            update["Pacing__c"] = pacing
 
         if update:
             try:
@@ -275,19 +262,13 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
                         message = f"{flight.name}: {flight.placement.opportunity.ad_ops_manager}\n{stack_trace}"
                     except (AttributeError, OpPlacement.DoesNotExist, Opportunity.DoesNotExist):
                         message = stack_trace
-                    logger.critical("Unhandled exception: %s" % message)
+                    logger.critical("Unhandled exception: %s", message)
             else:
                 if r == 204:
-                    logger.debug(
-                        'Flight %s %s %s was updated: %s' % (
-                            flight.id, str(flight.start),
-                            str(flight.placement.goal_type_id), str(update)
-                        )
-                    )
+                    logger.debug("Flight %s %s %s was updated: %s",
+                                 flight.id, str(flight.start), str(flight.placement.goal_type_id), str(update))
                 else:
-                    logger.critical(
-                        'Update Error: %s %s' % (flight.id, str(r))
-                    )
+                    logger.critical("Update Error: %s %s", flight.id, str(r))
     # Service Fee Dynamic Placement
     # When the flight is created, IQ needs to put a 0 for costs and 1
     # for delivered units on each of the flights
@@ -304,19 +285,16 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             if getattr(e, "status", 0) == 404:
                 logger.warning(str(e))
             else:
-                logger.critical("Unhandled exception: %s" % str(e))
+                logger.critical("Unhandled exception: %s", str(e))
         else:
             if r == 204:
                 logger.debug(
-                    'Flight %s %s %s was updated: %s' % (
-                        flight.id, str(flight.start),
-                        str(flight.placement.goal_type_id), str(update)
-                    )
+                    "Flight %s %s %s was updated: %s",
+                    flight.id, str(flight.start),
+                    str(flight.placement.goal_type_id), str(update)
                 )
             else:
-                logger.critical(
-                    'Update Error: %s %s' % (flight.id, str(r))
-                )
+                logger.critical("Update Error: %s %s", flight.id, str(r))
 
 
 def flights_to_update_qs(force_update, today):
@@ -334,8 +312,8 @@ def flights_to_update_qs(force_update, today):
     type_filters = regular_placement | dynamic_placement
     flights = Flight.not_demo_items() \
         .filter(
-            start__gte=WRITE_START,
-            placement__adwords_campaigns__isnull=False,
+        start__gte=WRITE_START,
+        placement__adwords_campaigns__isnull=False,
     ) \
         .exclude(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
         .filter(type_filters) \
@@ -354,4 +332,4 @@ def match_using_placement_numbers():
     count = campaigns.update(salesforce_placement_id=F("placement_id"))
     from django.conf import settings
     if not settings.IS_TEST:
-        logger.debug("Matched %d Campaigns" % count)
+        logger.debug("Matched %d Campaigns", count)
