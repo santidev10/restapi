@@ -17,7 +17,9 @@ def safe_run(method, *args, **kwargs):
     for i in range(RETRIES_COUNT):
         try:
             return method(*args, **kwargs)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             if "OperationAccessDenied.ACTION_NOT_PERMITTED" in str(e):
                 logger.error("Skipping operation (OperationAccessDenied)")
                 break
@@ -209,7 +211,9 @@ class AdwordsBlackList(AdwordsBase):
                 campaign_shared_set_service = client.GetService("CampaignSharedSetService")
                 for campaign_id in campaigns_ids:
                     self._attach_shared_set_to_campaign(campaign_shared_set_service, shared_set_id, campaign_id)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.error(e)
 
     def get_accounts(self):

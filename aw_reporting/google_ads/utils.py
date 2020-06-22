@@ -157,7 +157,9 @@ def detect_success_aw_read_permissions():
                 refresh_token=permission.aw_connection.refresh_token,
                 client_customer_id=permission.account_id,
             )
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.error(e)
         else:
             try:
@@ -166,7 +168,9 @@ def detect_success_aw_read_permissions():
                 account = permission.account
                 account.is_active = False
                 account.save()
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.error(e)
             else:
                 permission.can_read = True

@@ -42,5 +42,7 @@ def cache_channel_aggregations():
         cached_channel_aggregations.save()
         logger.info("Finished channel aggregations caching.")
         unlock(LOCK_NAME)
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         pass

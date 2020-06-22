@@ -1133,7 +1133,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                     exclude_opportunities=[],
                     exclude_campaigns=[]
                 )
+            # pylint: disable=broad-except
             except Exception as ex:
+            # pylint: enable=broad-except
                 self.fail("Server error due to {}".format(ex))
 
         self.assertEqual(response.status_code, HTTP_200_OK)

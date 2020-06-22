@@ -107,7 +107,9 @@ class SegmentListGenerator(object):
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_channel_whitelist")
                 new_category_segment.delete()
 
@@ -138,7 +140,9 @@ class SegmentListGenerator(object):
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_video_whitelist")
                 new_category_segment.delete()
 
@@ -167,7 +171,9 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_video_whitelist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_video_whitelist")
                 new_master_video_whitelist.delete()
 
@@ -196,7 +202,9 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_video_blacklist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_video_blacklist")
                 new_master_video_blacklist.delete()
 
@@ -224,7 +232,9 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_channel_whitelist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_channel_whitelist")
                 new_master_channel_whitelist.delete()
 
@@ -252,7 +262,9 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_channel_blacklist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_channel_blacklist")
                 new_master_channel_blacklist.delete()
 

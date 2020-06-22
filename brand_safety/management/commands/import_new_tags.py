@@ -38,7 +38,9 @@ class Command(BaseCommand):
         try:
             if kwargs["delete_all"]:
                 BadWord.objects.all().delete()
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
         overwrite = bool(kwargs.get("overwrite", False))
 
@@ -77,7 +79,9 @@ class Command(BaseCommand):
                                       f"'{language}' already exists in the database."]
                             invalid_rows.append(row + reason)
                             continue
+                        # pylint: disable=broad-except
                         except Exception as e:
+                        # pylint: enable=broad-except
                             pass
 
                     try:
@@ -86,10 +90,14 @@ class Command(BaseCommand):
                         bad_word.category = category
                         bad_word.negative_score = negative_score
                         bad_word.save()
+                    # pylint: disable=broad-except
                     except Exception as e:
+                    # pylint: enable=broad-except
                         BadWord.objects.create(name=word, category=category, language=language,
                                                negative_score=negative_score)
+                # pylint: disable=broad-except
                 except Exception as e:
+                # pylint: enable=broad-except
                     reason = [e]
                     invalid_rows.append(row + reason)
                     continue

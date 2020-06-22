@@ -70,18 +70,24 @@ class Command(BaseCommand):
             self.thread_id = 0
         try:
             self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             self.machine_number = 0
         try:
             with PidFile(piddir=".", pidname="audit_channel_meta_{}.pid".format(self.thread_id)):
                 try:
                     self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2,
                                                                source=0).order_by("pause", "id")[self.machine_number]
+                # pylint: disable=broad-except
                 except Exception as e:
+                # pylint: enable=broad-except
                     logger.exception(e)
                     raise Exception("no audits to process at present")
                 self.process_audit()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             print("problem {} {}".format(self.thread_id, str(e)))
 
     # pylint: disable=too-many-branches,too-many-statements
@@ -148,7 +154,9 @@ class Command(BaseCommand):
     def process_seed_file(self, seed_file):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             self.audit.params["error"] = "can not open seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
@@ -243,7 +251,9 @@ class Command(BaseCommand):
                     data = r.json()
                     channel_id = data["items"][0]["id"]
                     return channel_id
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
         return None
 
@@ -324,7 +334,9 @@ class Command(BaseCommand):
                 try:
                     if "quota" in data["error"]["message"].lower():
                         quota_exceed = True
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 if quota_exceed:
                     logger.info("QUOTA EXCEEDED STOP ASAP!")
@@ -377,7 +389,9 @@ class Command(BaseCommand):
                 language = row[2].lower()
                 if language == "un":
                     language = ""
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
@@ -402,7 +416,9 @@ class Command(BaseCommand):
         if self.exclusion_list:
             try:
                 language = db_channel_meta.language.language.lower()
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 acp.word_hits["exclusion"] = None

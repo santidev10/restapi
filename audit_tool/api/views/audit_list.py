@@ -30,7 +30,9 @@ class AuditListApiView(APIView):
         try:
             cursor = int(query_params["cursor"]) if "cursor" in query_params else None
             limit = int(query_params["limit"]) if "limit" in query_params else None
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             cursor = None
             limit = None
         if limit and (limit < 15 or limit > 100):

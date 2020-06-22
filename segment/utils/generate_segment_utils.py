@@ -31,7 +31,9 @@ class GenerateSegmentUtils:
             vetting = AuditUtils.get_vetting_data(
                 segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
             )
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             vetting = {}
         return vetting
 

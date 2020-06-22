@@ -243,7 +243,9 @@ class GoogleAdsUpdater(object):
                 else:
                     raise
 
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception(f"Unhandled error in execute_with_any_permission")
             else:
                 return
@@ -268,10 +270,14 @@ class GoogleAdsUpdater(object):
             updater.update(client)
         except RefreshError:
             raise
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             try:
                 self._retry(updater, client)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 raise
 
     def _retry(self, updater, client):
@@ -285,7 +291,9 @@ class GoogleAdsUpdater(object):
         while tries_count <= self.MAX_RETRIES:
             try:
                 updater.update(client)
+            # pylint: disable=broad-except
             except Exception as err:
+            # pylint: enable=broad-except
                 tries_count += 1
                 if tries_count <= self.MAX_RETRIES:
                     sleep = tries_count ** self.SLEEP_COEFF

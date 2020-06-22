@@ -51,7 +51,9 @@ def submit_watson_transcripts():
         logger.info(f"yt_category: {yt_categories}")
         logger.info(f"brand_safety_score: {brand_safety_score}")
         logger.info(f"num_vids: {num_vids}")
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         raise e
     youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY, cache_discovery=False)
     vids_submitted = 0
@@ -108,10 +110,14 @@ def submit_watson_transcripts():
                                 else:
                                     videos_watson_transcripts.append(watson_transcript)
                                     videos_request_batch.append(vid_id)
+                            # pylint: disable=broad-except
                             except Exception as e:
+                            # pylint: enable=broad-except
                                 logger.error(e)
                                 continue
+                    # pylint: disable=broad-except
                     except Exception as e:
+                    # pylint: enable=broad-except
                         logger.error(e)
                         continue
                 else:
@@ -157,7 +163,9 @@ def submit_watson_transcripts():
         unlock(LOCK_NAME)
         logger.info("Finished submitting Watson transcripts task.")
         logger.info(f"Submitted {vids_submitted} video ids to Watson.")
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         logger.error(e)
         pass
 

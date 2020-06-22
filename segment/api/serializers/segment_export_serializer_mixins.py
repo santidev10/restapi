@@ -87,7 +87,9 @@ class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
     def get_language(self, obj):
         try:
             lang_code = getattr(obj.general_data, "lang_code", "")
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             lang_code = None
         language = LANGUAGES.get(lang_code, lang_code)
         return language
@@ -101,7 +103,9 @@ class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
     def get_language(self, obj):
         try:
             lang_code = getattr(obj.general_data, "top_lang_code", "")
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             lang_code = None
         language = LANGUAGES.get(lang_code, lang_code)
         return language

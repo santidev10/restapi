@@ -51,5 +51,7 @@ def generate_vetted_segment(segment_id, recipient=None):
             send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])
     except CustomSegment.DoesNotExist:
         logger.error(f"Segment with id: {segment_id} does not exist.")
+    # pylint: disable=broad-except
     except Exception:
+    # pylint: enable=broad-except
         logger.exception(f"Error generating vetted segment for id: {segment_id}")

@@ -26,14 +26,18 @@ class AuditHistoryApiView(APIView):
             first_count = 0
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 raise ValidationError("invalid audit_id: please check")
             history = AuditProcessorCache.objects.filter(audit=audit)
             if hours:
                 history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
             try:
                 first_time = history.order_by("id")[0].created
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
             history = history.order_by("id")
             res = {
@@ -69,7 +73,9 @@ class AuditHistoryApiView(APIView):
                     diff = (last_time - first_time)
                     minutes = (diff.total_seconds() / 60)
                     res['rate_average'] = (last_count - first_count) / minutes
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
             else:
                 res['rate_average'] = audit.params.get('avg_rate_per_minute')
@@ -77,6 +83,8 @@ class AuditHistoryApiView(APIView):
                     res['rate_average'] = 'N/A'
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 res['elapsed_time'] = 'N/A'
             return Response(res)

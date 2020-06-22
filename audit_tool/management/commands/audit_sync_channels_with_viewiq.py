@@ -29,7 +29,9 @@ class Command(BaseCommand):
             num_channels = 100000
         try:
             sync_threshold = settings.AUDIT_SUBSCRIBER_SYNC_THRESHOLD
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             sync_threshold = 4000
         with PidFile(piddir=".", pidname="audit_sync_channels_with_viewiq.pid"):
             pending_channels = AuditChannelMeta.objects \
@@ -51,7 +53,9 @@ class Command(BaseCommand):
                 meta_ids.append(channel_meta.id)
             try:
                 track_channels(channel_ids)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 print((str(e)))
                 raise Exception(e)
             AuditChannelMeta.objects.filter(id__in=meta_ids).update(synced_with_viewiq=True)

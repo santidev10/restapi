@@ -86,7 +86,9 @@ class BadWordListApiView(ListCreateAPIView):
         serializers = []
         try:
             tag_names = request.data["name"].split(",")
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             raise ValidationError("'name' field is required for BadWord object.")
 
         for tag_name in tag_names:

@@ -24,7 +24,9 @@ class AuditStopApiView(APIView):
                 if audit.params.get('audit_type_original'):
                     audit.audit_type = audit.params.get('audit_type_original')
                 audit.save(update_fields=['completed', 'params', 'pause', 'audit_type'])
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 raise ValidationError("invalid audit_id: please verify you are stopping a running audit.")
             return Response(audit.to_dict())
         else:

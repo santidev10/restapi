@@ -69,7 +69,9 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     try:
         cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
         cached_aggregations = cached_aggregations_object.value
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         cached_aggregations = None
 
     def get_queryset(self):

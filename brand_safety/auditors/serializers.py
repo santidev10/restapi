@@ -61,7 +61,9 @@ class BrandSafetyVideoSerializer(Serializer):
         text = ""
         try:
             vid_lang_code = video.general_data.lang_code
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
         if vid_lang_code:
@@ -78,7 +80,9 @@ class BrandSafetyVideoSerializer(Serializer):
     def get_transcript_language(self, video):
         try:
             vid_lang_code = video.general_data.lang_code
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
         if vid_lang_code:

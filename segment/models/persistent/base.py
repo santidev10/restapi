@@ -140,7 +140,9 @@ class BasePersistentSegment(Timestampable):
         try:
             key = self.get_s3_key(from_db=True)
             s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             raise e
         export_content = s3_object.iter_chunks()
         return export_content

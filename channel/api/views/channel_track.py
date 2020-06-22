@@ -26,6 +26,8 @@ class ChannelTrackApiView(APIView, PermissionRequiredMixin):
         channel_ids = [channel_id.strip() for channel_id in channel_ids.split(",")]
         try:
             num_tracked = track_channels(channel_ids)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             raise ValidationError(e)
         return Response(status=HTTP_200_OK, data=f"Added {num_tracked} manually tracked channels.")

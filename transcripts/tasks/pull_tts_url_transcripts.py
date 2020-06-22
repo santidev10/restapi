@@ -43,7 +43,9 @@ def pull_tts_url_transcripts():
         logger.info(f"iab_categories: {iab_categories}")
         logger.info(f"brand_safety_score: {brand_safety_score}")
         logger.info(f"num_vids: {num_vids}")
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         logger.error(e)
         raise e
     try:
@@ -113,7 +115,9 @@ def pull_tts_url_transcripts():
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         if not isinstance(e, Retry):
             logger.error(e)
             if str(e) != "No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.":

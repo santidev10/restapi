@@ -21,7 +21,9 @@ def count_segment_adwords_statistics(segment):
     # obtain user from segment owner field
     try:
         user = segment.owner
+    # pylint: disable=broad-except
     except Exception:
+    # pylint: enable=broad-except
         return {}
 
     # obtain related to segments related ids

@@ -88,7 +88,9 @@ class SegmentMixin(object):
             while tries_count <= retry_amount:
                 try:
                     result = method(*args, **kwargs)
+                # pylint: disable=broad-except
                 except Exception as err:
+                # pylint: enable=broad-except
                     if "ConflictError(409" in str(err):
                         tries_count += 1
                         if tries_count <= retry_amount:
@@ -98,5 +100,7 @@ class SegmentMixin(object):
                         raise err
                 else:
                     return result
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             raise

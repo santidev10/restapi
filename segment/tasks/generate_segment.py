@@ -41,7 +41,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         source_type = segment.source.source_type
     except CustomSegmentSourceFileUpload.DoesNotExist:
         pass
+    # pylint: disable=broad-except
     except Exception:
+    # pylint: enable=broad-except
         logger.exception(f"Error trying to retrieve source list for "
                          f"segment: {segment.title}, segment_type: {segment.segment_type}")
     try:
@@ -92,7 +94,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         }
         return results
 
+    # pylint: disable=broad-except
     except Exception:
+    # pylint: enable=broad-except
         raise
 
     finally:

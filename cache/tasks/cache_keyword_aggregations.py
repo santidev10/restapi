@@ -40,5 +40,7 @@ def cache_keyword_aggregations():
         cached_keyword_aggregations.save()
         logger.info("Finished keyword aggregations caching.")
         unlock(LOCK_NAME)
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         pass

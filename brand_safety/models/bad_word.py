@@ -78,7 +78,9 @@ class BadWord(models.Model):
         if self.id is not None:
             try:
                 prev_instance = BadWord.all_objects.get(id=self.id)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 prev_instance = None
         if self.id is None or prev_instance is None:
             super().save(*args, **kwargs)

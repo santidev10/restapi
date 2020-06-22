@@ -84,7 +84,9 @@ class Command(BaseCommand):
                 c.last_uploaded_view_count = videos[0].views
                 c.last_uploaded_category = videos[0].category
                 c.save(update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
 
     def calc_language(self, channel):
@@ -100,7 +102,9 @@ class Command(BaseCommand):
                 self.cache["languages"][l] = AuditLanguage.from_string(l)
             channel.language = self.cache["languages"][l]
             channel.save(update_fields=["language"])
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
 
     # pylint: disable=too-many-branches,too-many-nested-blocks,too-many-statements
@@ -118,21 +122,29 @@ class Command(BaseCommand):
             for i in data["items"]:
                 try:
                     db_channel_meta = channels[i["id"]]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     db_channel_meta = AuditChannelMeta.objects.get(channel__channel_id=i["id"])
                 if not i.get("brandingSettings"):
                     continue
                 try:
                     db_channel_meta.name = i["brandingSettings"]["channel"]["title"]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     db_channel_meta.description = i["brandingSettings"]["channel"]["description"]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     db_channel_meta.keywords = i["brandingSettings"]["channel"]["keywords"]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     if i["brandingSettings"]["channel"]["defaultLanguage"]:
@@ -142,11 +154,15 @@ class Command(BaseCommand):
                                 in_var=default_language)
                         db_channel_meta.default_language = self.cache["languages"][
                             i["brandingSettings"]["channel"]["defaultLanguage"]]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     country = i["brandingSettings"]["channel"].get("country")
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     country = None
                 if country:
                     if country not in self.cache["countries"]:
@@ -155,24 +171,34 @@ class Command(BaseCommand):
                 db_channel_meta.subscribers = convert_subscriber_count(i["statistics"]["subscriberCount"])
                 try:
                     db_channel_meta.hidden_subscriber_count = i["statistics"]["hiddenSubscriberCount"]
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     db_channel_meta.view_count = int(i["statistics"]["viewCount"])
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     db_channel_meta.video_count = int(i["statistics"]["videoCount"])
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
                 try:
                     db_channel_meta.save()
                     self.calc_language((db_channel_meta))
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.exception(e)
 
     # pylint: enable=too-many-branches,too-many-nested-blocks,too-many-statements

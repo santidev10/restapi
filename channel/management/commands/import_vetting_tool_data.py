@@ -255,7 +255,9 @@ class Command(BaseCommand):
         try:
             with open(os.path.join(settings.BASE_DIR, self.cursor_filename), 'r') as file:
                 self.row_cursor = int(file.readline())
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             self.row_cursor = 0
         print('cursor at:', self.row_cursor)
 

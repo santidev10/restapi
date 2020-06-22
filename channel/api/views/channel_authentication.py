@@ -41,7 +41,9 @@ class ChannelAuthenticationApiView(APIView):
 
         try:
             credentials = self.get_credentials(code)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "Invalid code"})
 
         youtube = YoutubeAPIConnector(access_token=credentials.access_token)
@@ -151,7 +153,9 @@ class ChannelAuthenticationApiView(APIView):
         token_info_url = GOOGLE_API_TOKENINFO_URL_TEMPLATE.format(access_token)
         try:
             response = requests.get(token_info_url)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             return None
         if response.status_code != 200:
             return None
@@ -202,7 +206,9 @@ class ChannelAuthenticationApiView(APIView):
         }
         try:
             response_data = self.call_people_google_api(user_id, token, ["photos", "names"])
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             return user_data
         photos = response_data.get("photos", [])
         user_profile_image_url = self.obtain_user_avatar_from_response(photos)
@@ -222,7 +228,9 @@ class ChannelAuthenticationApiView(APIView):
         # --> obtain token info
         try:
             response = requests.get(token_info_url)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             return
         if response.status_code != 200:
             return
@@ -232,7 +240,9 @@ class ChannelAuthenticationApiView(APIView):
         user_google_id = response.get("sub")
         try:
             response_data = self.call_people_google_api(user_google_id, access_token, ["photos"])
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             return
         # <-- obtain user from people google
         # --> set user avatar

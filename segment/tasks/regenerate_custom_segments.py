@@ -24,7 +24,9 @@ def regenerate_custom_segments_with_lock():
     if is_acquired:
         try:
             regenerate_custom_segments()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.exception("Error in regenerate_custom_segments_with_lock task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

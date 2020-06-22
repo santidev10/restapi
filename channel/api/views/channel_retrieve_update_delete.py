@@ -139,7 +139,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         })
         try:
             result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
 
         try:
@@ -148,7 +150,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 result['stats']['last_day_subscribers'] = None
                 result['stats']['last_7day_subscribers'] = None
                 result['stats']['last_30day_subscribers'] = None
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
 
         return Response(result)

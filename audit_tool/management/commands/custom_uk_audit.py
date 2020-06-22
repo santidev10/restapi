@@ -42,7 +42,9 @@ class AuditUK():
             data = remove_mentions_hashes_urls(data).lower()
             language = fasttext_lang(data)
             return language
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
 
     def check_blacklist(self, text):

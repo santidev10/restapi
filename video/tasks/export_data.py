@@ -60,7 +60,9 @@ def export_videos_data(query_params, export_name, user_emails):
 
     try:
         send_mail(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
     else:
         logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")

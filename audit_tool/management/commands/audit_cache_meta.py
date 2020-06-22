@@ -75,7 +75,9 @@ class Command(BaseCommand):
             try:
                 if count > AuditProcessorCache.objects.filter(audit=audit).order_by("-id")[0].count:
                     do_cache = True
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
         if do_cache:
             AuditProcessorCache.objects.create(

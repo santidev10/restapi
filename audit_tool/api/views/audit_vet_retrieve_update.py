@@ -150,7 +150,9 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             try:
                 o = getattr(next_item, segment.data_field)
                 data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
             next_item.save(update_fields=['checked_out_at'])
         else:

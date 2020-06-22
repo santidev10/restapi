@@ -597,7 +597,9 @@ class DashboardPerformanceWeeklyReport:
                 filters=self.manager.ids_query(ids)
             ). \
                 source(includes=list(self.es_fields_to_load)).execute().hits
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.error(e)
         else:
             videos_info = {i.main.id: i for i in items}
@@ -748,7 +750,9 @@ class DashboardPerformanceWeeklyReport:
                 filters=self.manager.ids_query(ids)
             ). \
                 source(includes=list(self.es_fields_to_load)).execute().hits
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.error(e)
             videos_info = {}
         else:

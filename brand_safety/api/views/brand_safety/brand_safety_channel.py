@@ -76,7 +76,9 @@ class BrandSafetyChannelAPIView(APIView):
             })
         try:
             videos = self._get_channel_video_data(channel_id)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
         # Add flagged videos to channel brand safety
@@ -98,7 +100,9 @@ class BrandSafetyChannelAPIView(APIView):
         if ascending is not None:
             try:
                 ascending = strtobool(ascending)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 raise ValueError("Expected sortAscending to be boolean value. Received {}".format(ascending))
         reverse = True
         if ascending:

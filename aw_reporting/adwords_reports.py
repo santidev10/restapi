@@ -96,7 +96,9 @@ def _get_report(client, name, selector, date_range_type=None, include_zero_impre
         except AccountInactiveError as ex:
             raise ex
 
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             error_str = str(e)
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise

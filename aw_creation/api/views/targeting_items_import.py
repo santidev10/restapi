@@ -42,7 +42,9 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                                     data={
                                         "errors": [DOCUMENT_LOAD_ERROR_TEXT]
                                     })
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data={
                                     "errors": [DOCUMENT_LOAD_ERROR_TEXT,
@@ -52,7 +54,9 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={

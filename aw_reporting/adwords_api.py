@@ -183,7 +183,9 @@ def get_all_customers(client, page_size=1000, limit=None):
     while more_pages:
         try:
             page = managed_customer_service.get(selector)
+        # pylint: disable=broad-except
         except Exception as ex:
+        # pylint: enable=broad-except
             logger.exception(ex)
             break
         if "entries" in page and page["entries"]:

@@ -42,7 +42,9 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 try:
                     language = video.general_data.language or "English"
                     lang_code = video.general_data.lang_code or LANG_CODES[language] or "en"
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     language = "English"
                     lang_code = "en"
                 watson_data = transcripts[video_id]
@@ -57,7 +59,9 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 transcripts_ids.append(video_id)
             manager.upsert(videos)
             rescore_brand_safety_videos.delay(vid_ids=transcripts_ids)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             raise ValidationError(e)
         return Response(
             status=HTTP_200_OK,

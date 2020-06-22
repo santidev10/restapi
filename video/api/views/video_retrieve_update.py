@@ -50,7 +50,9 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         result = VideoWithBlackListSerializer(video).data
         try:
             result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             pass
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")

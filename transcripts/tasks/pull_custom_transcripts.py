@@ -35,12 +35,16 @@ TASK_RETRY_COUNTS = 10
 def pull_custom_transcripts():
     try:
         lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         lang_codes = ['en']
 
     try:
         num_vids = settings.CUSTOM_TRANSCRIPTS_RATE
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         num_vids = 1000
 
     try:
@@ -57,7 +61,9 @@ def pull_custom_transcripts():
             pull_and_update_transcripts(unparsed_vids)
         unlock(LOCK_NAME)
         logger.info("Finished pulling custom transcripts task.")
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         pass
 
 
@@ -183,7 +189,9 @@ async def update_soup_dict(session: ClientSession, vid_id: str, soups_dict):
                 counter += 1
                 logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                       f"Sleeping for {TASK_RETRY_TIME} seconds.")
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.debug(e)
                 raise e
     if lang_code_soups_dict:

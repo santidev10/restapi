@@ -52,7 +52,9 @@ def add_targeting_list_items_info(data, list_type):
                     .execute() \
                     .hits
                 info = {i.main.id: i for i in items}
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.error(e)
                 info = {}
 
@@ -71,7 +73,9 @@ def add_targeting_list_items_info(data, list_type):
                     .execute() \
                     .hits
                 info = {i.main.id: i for i in items}
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.error(e)
                 info = {}
 

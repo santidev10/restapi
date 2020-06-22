@@ -245,7 +245,9 @@ class YTVideo(object):
     def generate_tts_url(self):
         try:
             self.vid_url_response, self.vid_url_status = self.get_vid_url_response(self.vid_url)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 2 (Single-threaded)
@@ -254,14 +256,18 @@ class YTVideo(object):
             self.set_tts_url()
             self.params = self.parse_tts_url_params(self.tts_url)
             self.subtitles_list_url = self.get_list_url(self.params)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 3 (Multithreaded)
     def generate_list_url(self):
         try:
             self.subtitles_list_url_response, status = self.get_list_url_response(self.subtitles_list_url)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 4 (Single-threaded)
@@ -273,7 +279,9 @@ class YTVideo(object):
             self.tracks_lang_codes_dict = self.get_lang_codes_dict(self.tracks_meta)
             self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
             self.subtitles = self.get_top_subtitles()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 5 (Multithreaded)
@@ -281,14 +289,18 @@ class YTVideo(object):
         try:
             for subtitle in self.subtitles:
                 subtitle.get_subtitles()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_vid_url_response(self, vid_url):
         try:
             response, status = self.get_response_through_proxy(self.scraper, vid_url, headers=self.YT_HEADERS)
             return response, status
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_list_url_response(self, list_url):
@@ -297,7 +309,9 @@ class YTVideo(object):
         try:
             response, status = self.get_response_through_proxy(self.scraper, list_url, headers=self.YT_HEADERS)
             return response, status
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_response_through_proxy(self, scraper, url, headers=None):
@@ -334,7 +348,9 @@ class YTVideo(object):
                 if e.message == "All proxies have been blocked.":
                     self.send_yt_blocked_email()
                     raise e
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 raise e
         if counter >= 5:
             raise Exception("Exceeded 5 connection attempts to URL.")

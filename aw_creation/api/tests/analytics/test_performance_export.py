@@ -158,7 +158,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         try:
             get_sheet_from_response(response)
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             self.fail("Report is not an xls")
 
     def test_report_percent_formatted(self):

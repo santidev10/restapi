@@ -67,7 +67,9 @@ class SegmentCreateApiViewV3(CreateAPIView):
                     if request.FILES:
                         self._create_source(segment, request)
                     created.append((validated_data, segment))
+        # pylint: disable=broad-except
         except Exception as error:
+        # pylint: enable=broad-except
             CustomSegment.objects.filter(id__in=[item[1].id for item in created]).delete()
             err = error
         if err:

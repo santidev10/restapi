@@ -17,7 +17,9 @@ def generate_persistent_segments():
     if is_acquired:
         try:
             SegmentListGenerator(0).run()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.exception("Error in generate_persistent_segments task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

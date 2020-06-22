@@ -113,7 +113,9 @@ class UserAuthApiView(APIView):
               "?access_token={}".format(token)
         try:
             response = requests.get(url)
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             return None
         if response.status_code != 200:
             return None

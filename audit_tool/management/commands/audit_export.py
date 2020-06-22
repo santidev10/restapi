@@ -34,7 +34,9 @@ class Command(BaseCommand):
         with PidFile(piddir=".", pidname="export_queue_{}.pid".format(self.thread_id)):
             try:
                 self.machine_number = settings.AUDIT_MACHINE_NUMBER
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 self.machine_number = 0
             sleep(2 * (self.machine_number + self.thread_id))
             if self.machine_number is not None and self.thread_id is not None:
@@ -56,7 +58,9 @@ class Command(BaseCommand):
                     AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("audit__pause",
                                                                                                         "id")[0]
                 self.audit = self.export.audit
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 logger.exception(e)
                 raise Exception("no audits to export at present")
             self.process_export()
@@ -75,7 +79,9 @@ class Command(BaseCommand):
         if self.export.export_as_keywords:
             try:
                 file_name, _, count = export_funcs.export_keywords(self.audit, self.audit.id, export=self.export)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 self.export.started = None
                 self.export.machine = None
                 self.export.thread = None
@@ -88,7 +94,9 @@ class Command(BaseCommand):
             try:
                 file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean,
                                                             export=self.export)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 self.export.started = None
                 self.export.machine = None
                 self.export.thread = None
@@ -104,7 +112,9 @@ class Command(BaseCommand):
             try:
                 file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean,
                                                           export=self.export)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 self.export.started = None
                 self.export.percent_done = 0
                 self.export.machine = None
@@ -118,7 +128,9 @@ class Command(BaseCommand):
             count = count.count()
         try:
             emails = [audit.owner.email] if audit.owner else settings.AUDIT_TOOL_EMAIL_RECIPIENTS
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             emails = settings.AUDIT_TOOL_EMAIL_RECIPIENTS
         self.send_audit_email(file_name, emails, count)
         self.export.completed = timezone.now()

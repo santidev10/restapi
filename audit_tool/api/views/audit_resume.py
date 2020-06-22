@@ -44,9 +44,13 @@ class AuditResumeApiView(APIView):
                             audit=new_audit,
                             video=v.video,
                         )
+                    # pylint: disable=broad-except
                     except Exception:
+                    # pylint: enable=broad-except
                         pass
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 raise ValidationError(
                     "invalid audit_id: please verify you are resuming a completed 'recommendation' audit.")
 

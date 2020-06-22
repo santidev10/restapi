@@ -60,7 +60,9 @@ def export_keywords_data(query_params, export_name, user_emails):
             bcc=bcc,
         )
         email.send(fail_silently=False)
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
     else:
         logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")

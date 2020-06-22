@@ -36,7 +36,9 @@ class Command(BaseCommand):
         try:
             with open(row_file_name, "r") as f:
                 row_number = int(f.readline())
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             row_number = 0
         try:
             file_name = kwargs["filename"]
@@ -74,7 +76,9 @@ class Command(BaseCommand):
                                 iab_category_1 = iab_category_1 \
                                     if iab_category_1 in IAB_TIER3_CATEGORIES_MAPPING \
                                     else ""
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 iab_category_1 = None
                             if not iab_category_1:
                                 valid_row = False
@@ -86,7 +90,9 @@ class Command(BaseCommand):
                                     iab_category_2 = iab_category_2 \
                                         if iab_category_2 in IAB_TIER3_CATEGORIES_MAPPING[iab_category_1] \
                                         else ""
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 iab_category_2 = None
                             if row[2] and not iab_category_2:
                                 valid_row = False
@@ -98,7 +104,9 @@ class Command(BaseCommand):
                                     iab_category_3 = iab_category_3 \
                                         if iab_category_3 in IAB_TIER3_CATEGORIES_MAPPING[iab_category_1][iab_category_2] \
                                         else ""
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 iab_category_3 = None
                             if row[3] and not iab_category_3:
                                 valid_row = False
@@ -128,35 +136,45 @@ class Command(BaseCommand):
                                     else:
                                         flag.blacklist_category = {flag_category.id: 100}
                                     flag.save()
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 invalid_reasons.append("Moderation reason is invalid.")
 
                             try:
                                 content_type = row[6].upper().strip()
                                 is_user_generated_content = True if content_type == "UGC" else False
                                 current_channel_taskus_data['is_user_generated_content'] = is_user_generated_content
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 pass
 
                             try:
                                 is_monetizable = True if row[7].lower().strip() == "monetized" else None
                                 if is_monetizable:
                                     channels_monetization_dict[channel_id] = is_monetizable
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 pass
 
                             try:
                                 scalable = row[8].capitalize().strip()
                                 if scalable:
                                     current_channel_taskus_data['scalable'] = True if scalable == "Scalable" else False
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 pass
 
                             try:
                                 language = row[8].capitalize().strip() if row[9] != "Unknown" else ""
                                 if language:
                                     current_channel_taskus_data['language'] = language
+                            # pylint: disable=broad-except
                             except Exception:
+                            # pylint: enable=broad-except
                                 pass
 
                             if not valid_row:
@@ -187,7 +205,9 @@ class Command(BaseCommand):
                                                 audit_channel = AuditChannel.get_or_create(chan_id, create=False).auditchannelmeta
                                                 audit_channel.monetised = True
                                                 audit_channel.save()
+                                            # pylint: disable=broad-except
                                             except Exception as e:
+                                            # pylint: enable=broad-except
                                                 pass
                                         print(f"Updated fields for {chan_id}")
                                         print(f"Parsed {channel_counter} channels.")
@@ -202,7 +222,9 @@ class Command(BaseCommand):
                                     channels_iab_categories_dict = {}
                                     channels_monetization_dict = {}
                                     return
+                            # pylint: disable=broad-except
                             except Exception as e:
+                            # pylint: enable=broad-except
                                 raise e
         except PidFileError:
             raise PidFileError

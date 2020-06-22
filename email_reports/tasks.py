@@ -50,7 +50,9 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
         try:
             report = report_class(**kwargs)
             report.send()
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             logger.critical('Worker got error: %s' % str(e))
             logger.critical(traceback.format_exc())
 

@@ -38,6 +38,8 @@ class Command(BaseCommand):
                     bad_word.category = category
                     bad_word.negative_score = negative_score
                     bad_word.save()
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     BadWord.objects.create(name=word, category=category, language=language,
                                            negative_score=negative_score)

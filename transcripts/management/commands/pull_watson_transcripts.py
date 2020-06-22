@@ -36,7 +36,9 @@ class Command(BaseCommand):
                         vid_id = url.split("=")[-1]
                         transcript = item["transcript"]
                         vid_transcripts[vid_id] = transcript
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     continue
             vid_ids = [vid_id for vid_id in vid_transcripts]
             batch_size = 1000
@@ -56,7 +58,9 @@ class Command(BaseCommand):
                         vid_transcript.retrieved = timezone.now()
                         vid_transcript.save(update_fields=["submitted", "retrieved"])
                         logger.error(f"Stored AuditVideoTranscript for Video with ID: {video_id}.")
+                    # pylint: disable=broad-except
                     except Exception:
+                    # pylint: enable=broad-except
                         continue
                 logger.error(f"Upserting {len(videos_batch)} videos.")
                 video_manager.upsert(videos_batch)

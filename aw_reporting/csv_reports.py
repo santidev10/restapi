@@ -140,7 +140,9 @@ class PacingReportCSVExport:
                 column_format = FORMATTING.get(column, FORMATS["default"])
                 try:
                     value = column_format.format(value=value)
+                # pylint: disable=broad-except
                 except Exception:
+                # pylint: enable=broad-except
                     # except error with formatting headers (Name.Opportunity, ...)
                     pass
 

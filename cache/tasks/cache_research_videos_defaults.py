@@ -59,7 +59,9 @@ def cache_research_videos_defaults():
         try:
             cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
             cached_aggregations = cached_aggregations_object.value
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             cached_aggregations = None
 
         # Caching for Default Sections (not Admin)
@@ -123,5 +125,7 @@ def cache_research_videos_defaults():
         update_cache(obj, part, options=((0, 0), {}))
         logger.info("Finished admin research videos caching.")
         unlock(LOCK_NAME)
+    # pylint: disable=broad-except
     except Exception as e:
+    # pylint: enable=broad-except
         pass

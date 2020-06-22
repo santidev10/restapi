@@ -79,7 +79,9 @@ class AuditSaveApiView(APIView):
                 audit.pause = lowest_priority.pause - 1
                 audit.save(update_fields=["pause"])
                 return Response(audit.to_dict())
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
@@ -148,19 +150,25 @@ class AuditSaveApiView(APIView):
             params["files"]["inclusion"] = inclusion_file.name
             try:
                 params["inclusion_size"] = len(params["inclusion"])
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 pass
         # Load Keywords from Exclusion File
         if exclusion_file:
             try:
                 params["exclusion"], params["exclusion_category"] = self.load_exclusion_keywords(exclusion_file)
+            # pylint: disable=broad-except
             except Exception as e:
+            # pylint: enable=broad-except
                 raise ValidationError(
                     "Exclusion file includes invalid / unparsable characters.  Please check and try again.")
             params["files"]["exclusion"] = exclusion_file.name
             try:
                 params["exclusion_size"] = len(params["exclusion"])
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
         if category:
             c = []
@@ -234,7 +242,9 @@ class AuditSaveApiView(APIView):
         for row in reader:
             try:
                 word = row[0].lower().strip()
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 pass
             if word:
                 keywords.append(word)
@@ -249,11 +259,15 @@ class AuditSaveApiView(APIView):
         for row in reader:
             try:
                 word = row[0].lower().strip()
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 continue
             try:
                 category = row[1].lower().strip()
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 category = ""
             language = self.find_language(row)
             row_data = [word, category, language]
@@ -273,7 +287,9 @@ class AuditSaveApiView(APIView):
             if language in self.LANGUAGES_REVERSE:
                 return self.LANGUAGES_REVERSE[language]
             return ""
+        # pylint: disable=broad-except
         except Exception:
+        # pylint: enable=broad-except
             return ""
 
     def patch(self, request):
