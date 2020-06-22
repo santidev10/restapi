@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.serializers import AdGroupCreationSetupSerializer
 from aw_creation.api.serializers import AppendAdGroupCreationSetupSerializer
+from aw_creation.api.views.utils.is_demo import is_demo_campaign_creation
 from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
@@ -27,8 +28,7 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
                     )
         return queryset
 
-    @forbidden_for_demo(lambda *args, **kwargs: CampaignCreation.objects.filter(pk=kwargs.get("pk"),
-                                                                                campaign__account_id=DEMO_ACCOUNT_ID).exists())
+    @forbidden_for_demo(is_demo_campaign_creation)
     def create(self, request, *args, **kwargs):
         try:
             campaign_creation = CampaignCreation.objects.filter(

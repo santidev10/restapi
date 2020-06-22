@@ -588,7 +588,8 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
     def test_rates_on_multiple_campaigns(self):
         """
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-278
-        Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement if several placements with the same type are present
+        Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement
+                 if several placements with the same type are present
         Root cause: stats aggregates multiple times on several Campaign-Placement relations
         """
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)

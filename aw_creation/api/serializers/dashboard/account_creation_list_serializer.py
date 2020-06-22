@@ -257,9 +257,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             dict_norm_base_stats(account_data)
             account_data["video_views"] = video_views_impressions.get(account_id, {}).get("video_views",
                                                                                           account_data["video_views"])
-            account_data["video_impressions"] = video_views_impressions.get(account_id, {}).get("video_impressions",
-                                                                                                account_data[
-                                                                                                    "video_impressions"])
+            account_data["video_impressions"] = video_views_impressions.get(account_id, {}) \
+                .get("video_impressions", account_data["video_impressions"])
             dict_add_calculated_stats(account_data)
 
             if show_client_cost:
