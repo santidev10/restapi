@@ -78,7 +78,7 @@ class Command(BaseCommand):
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=["monetised"])
-            except BaseException:
+            except Exception:
                 pass
 
     def mark_monetised_channels(self, audit):
@@ -90,7 +90,7 @@ class Command(BaseCommand):
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=["monetised"])
-            except BaseException:
+            except Exception:
                 pass
 
     def update_es_monetisation(self, channel_ids):
@@ -110,6 +110,6 @@ class Command(BaseCommand):
                     .value(channel_ids[upsert_index:upsert_index + self.upsert_batch_size]).get()
                 self.manager.update_monetization(not_monetized_query + channel_ids_query, is_monetizable=True,
                                                  conflicts="proceed", wait_for_completion=False)
-            except BaseException:
+            except Exception:
                 pass
             upsert_index += self.upsert_batch_size

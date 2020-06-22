@@ -44,9 +44,9 @@ class AuditResumeApiView(APIView):
                             audit=new_audit,
                             video=v.video,
                         )
-                    except BaseException:
+                    except Exception:
                         pass
-            except BaseException:
+            except Exception:
                 raise ValidationError(
                     "invalid audit_id: please verify you are resuming a completed 'recommendation' audit.")
 

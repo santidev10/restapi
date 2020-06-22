@@ -1133,7 +1133,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                     exclude_opportunities=[],
                     exclude_campaigns=[]
                 )
-            except BaseException as ex:
+            except Exception as ex:
                 self.fail("Server error due to {}".format(ex))
 
         self.assertEqual(response.status_code, HTTP_200_OK)

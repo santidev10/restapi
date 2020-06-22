@@ -70,7 +70,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditS3Exporter.bucket_name,
                 Key=video_audit_key
             )
-        except BaseException:
+        except Exception:
             raise KeyError("Failed to delete object. Object with key {} not found in bucket."
                            .format(video_audit_key))
 
@@ -80,7 +80,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditS3Exporter.bucket_name,
                 Key=channel_audit_key
             )
-        except BaseException:
+        except Exception:
             raise KeyError(
                 "Failed to delete object. Object with key {} not found in bucket."
                     .format(channel_audit_key))
@@ -88,14 +88,14 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
     def test_video_export(self):
         try:
             video_response = self.client.get(self.url + "?audit_id={}&clean=False".format(self.video_audit.id))
-        except BaseException:
+        except Exception:
             raise KeyError("No Audit with id: {} found.".format(self.video_audit.id))
         self.assertEqual(video_response.status_code, HTTP_200_OK)
 
     def test_channel_export(self):
         try:
             channel_response = self.client.get(self.url + "?audit_id={}&clean=True".format(self.channel_audit.id))
-        except BaseException:
+        except Exception:
             raise KeyError("No Audit with id: {} found.".format(self.channel_audit.id))
         self.assertEqual(channel_response.status_code, HTTP_200_OK)
 

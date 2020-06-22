@@ -38,7 +38,7 @@ class Youtube:
                     r = requests.get(dmo.url)
                     data = r.json()
                     dmo.parse_page_to_items(data)
-                except BaseException as e:
+                except Exception as e:
                     logger.error("Requests Error (try %s/5): %s", i + 1, e)
                     time.sleep(15)
                 else:
@@ -71,7 +71,7 @@ class Youtube:
                             "subscribers": convert_subscriber_count(i.get("statistics", {}).get("subscriberCount"))
                         } for i in data.get("items", [])
                     ]
-                except BaseException as e:
+                except Exception as e:
                     logger.error("Requests Error (try %s/5): %s", i + 1, e)
                     time.sleep(15)
                 else:

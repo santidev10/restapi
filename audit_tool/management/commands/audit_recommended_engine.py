@@ -94,7 +94,7 @@ class Command(BaseCommand):
             self.thread_id = 0
         try:
             self.machine_number = settings.AUDIT_MACHINE_NUMBER
-        except BaseException:
+        except Exception:
             self.machine_number = 0
         with PidFile(piddir=".", pidname="recommendation_{}.pid".format(self.thread_id)):
             try:
@@ -105,7 +105,7 @@ class Command(BaseCommand):
                             source=0) \
                     .order_by("pause", "id")[self.machine_number]
                 self.load_audit_params()
-            except BaseException as e:
+            except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
@@ -208,7 +208,7 @@ class Command(BaseCommand):
     def process_seed_file(self, seed_file):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
-        except BaseException:
+        except Exception:
             self.audit.params["error"] = "can not open seed file {}".format(seed_file)
             self.audit.completed = timezone.now()
             self.audit.pause = 0
@@ -284,7 +284,7 @@ class Command(BaseCommand):
                 raise Exception("problem with relevance language.")
         try:
             d = data["items"]
-        except BaseException:
+        except Exception:
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
         for i in d:
@@ -294,7 +294,7 @@ class Command(BaseCommand):
             db_video_meta.description = i["snippet"]["description"]
             try:
                 db_video_meta.publish_date = parse(i["snippet"]["publishedAt"])
-            except BaseException:
+            except Exception:
                 print("no video publish date")
             if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
@@ -396,7 +396,7 @@ class Command(BaseCommand):
         if self.exclusion_list:
             try:
                 language = self.get_lang_by_id(db_video_meta.language_id)
-            except BaseException:
+            except Exception:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 return True, hits
@@ -453,7 +453,7 @@ class Command(BaseCommand):
                 return
             try:
                 i = data["items"][0]
-            except BaseException:
+            except Exception:
                 print("problem getting video {}".format(video_id))
                 return
             db_video_meta.description = i["snippet"].get("description")
@@ -467,19 +467,19 @@ class Command(BaseCommand):
             db_video_meta.category = self.categories[category_id]
             try:
                 db_video_meta.views = int(i["statistics"]["viewCount"])
-            except BaseException:
+            except Exception:
                 pass
             try:
                 db_video_meta.likes = int(i["statistics"]["likeCount"])
-            except BaseException:
+            except Exception:
                 pass
             try:
                 db_video_meta.dislikes = int(i["statistics"]["dislikeCount"])
-            except BaseException:
+            except Exception:
                 pass
             try:
                 db_video_meta.made_for_kids = i["status"]["madeForKids"]
-            except BaseException:
+            except Exception:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             if "defaultAudioLanguage" in i["snippet"]:
@@ -488,16 +488,16 @@ class Command(BaseCommand):
                     if lang not in self.db_languages:
                         self.db_languages[lang] = AuditLanguage.from_string(lang)
                     db_video_meta.default_audio_language = self.db_languages[lang]
-                except BaseException:
+                except Exception:
                     pass
             try:
                 db_video_meta.duration = i["contentDetails"]["duration"]
-            except BaseException:
+            except Exception:
                 pass
             try:
                 if i["contentDetails"]["contentRating"]["ytRating"] == "ytAgeRestricted":
                     db_video_meta.age_restricted = True
-            except BaseException:
+            except Exception:
                 pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
@@ -505,7 +505,7 @@ class Command(BaseCommand):
             if db_video_meta.description:
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
-        except BaseException as e:
+        except Exception as e:
             logger.exception(e)
         return
     # pylint: enable=too-many-branches,too-many-statements
@@ -518,7 +518,7 @@ class Command(BaseCommand):
                 if l not in self.db_languages:
                     self.db_languages[l] = AuditLanguage.from_string(l)
                 return self.db_languages[l]
-        except BaseException:
+        except Exception:
             pass
         return None
 
@@ -547,7 +547,7 @@ class Command(BaseCommand):
                 language = row[2].lower()
                 if language == "un":
                     language = ""
-            except BaseException:
+            except Exception:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():

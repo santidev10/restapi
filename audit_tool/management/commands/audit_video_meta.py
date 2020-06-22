@@ -76,14 +76,14 @@ class Command(BaseCommand):
             self.thread_id = 0
         try:
             self.machine_number = settings.AUDIT_MACHINE_NUMBER
-        except BaseException:
+        except Exception:
             self.machine_number = 0
         with PidFile(piddir=".", pidname="audit_video_meta_{}.pid".format(self.thread_id)):
             # self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1,
                                                            source=0).order_by("pause", "id")[self.machine_number]
-            except BaseException as e:
+            except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
@@ -161,7 +161,7 @@ class Command(BaseCommand):
     def process_seed_file(self, seed_file):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
-        except BaseException:
+        except Exception:
             self.audit.params["error"] = "can not open seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
@@ -309,7 +309,7 @@ class Command(BaseCommand):
         if self.exclusion_list:
             try:
                 language = db_video_meta.language.language.lower()
-            except BaseException:
+            except Exception:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 avp.word_hits["exclusion"] = None
@@ -344,7 +344,7 @@ class Command(BaseCommand):
                     audit_id=avp.audit_id,
                     channel_id=channel_id,
                 )
-            except BaseException:
+            except Exception:
                 return
         acp = self.acps[str(channel_id)]
         if node not in acp.word_hits:
@@ -392,14 +392,14 @@ class Command(BaseCommand):
                 if total == 0:
                     return None
                 i = data["items"][0]
-            except BaseException:
+            except Exception:
                 print("problem getting video {}".format(video_id))
                 return None
             db_video_meta.name = i["snippet"]["title"]
             db_video_meta.description = i["snippet"]["description"]
             try:
                 db_video_meta.publish_date = parse(i["snippet"]["publishedAt"])
-            except BaseException:
+            except Exception:
                 print("no video publish date")
             db_video_meta.description = i["snippet"].get("description")
             channel_id = i["snippet"]["channelId"]
@@ -413,20 +413,20 @@ class Command(BaseCommand):
             db_video_meta.category = self.categories[category_id]
             try:
                 db_video_meta.views = int(i["statistics"]["viewCount"])
-            except BaseException:
+            except Exception:
                 pass
             try:
                 db_video_meta.likes = int(i["statistics"]["likeCount"])
-            except BaseException:
+            except Exception:
                 pass
             try:
                 db_video_meta.dislikes = int(i["statistics"]["dislikeCount"])
-            except BaseException:
+            except Exception:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             try:
                 db_video_meta.made_for_kids = i["status"]["madeForKids"]
-            except BaseException:
+            except Exception:
                 pass
             if "defaultAudioLanguage" in i["snippet"]:
                 try:
@@ -434,16 +434,16 @@ class Command(BaseCommand):
                     if lang not in self.db_languages:
                         self.db_languages[lang] = AuditLanguage.from_string(lang)
                     db_video_meta.default_audio_language = self.db_languages[lang]
-                except BaseException:
+                except Exception:
                     pass
             try:
                 db_video_meta.duration = i["contentDetails"]["duration"]
-            except BaseException:
+            except Exception:
                 pass
             try:
                 if i["contentDetails"]["contentRating"]["ytRating"] == "ytAgeRestricted":
                     db_video_meta.age_restricted = True
-            except BaseException:
+            except Exception:
                 pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
@@ -452,7 +452,7 @@ class Command(BaseCommand):
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
             return channel_id
-        except BaseException as e:
+        except Exception as e:
             logger.exception(e)
         return None
     # pylint: enable=too-many-branches,too-many-statements
@@ -464,7 +464,7 @@ class Command(BaseCommand):
             if l not in self.db_languages:
                 self.db_languages[l] = AuditLanguage.from_string(l)
             return self.db_languages[l]
-        except BaseException:
+        except Exception:
             pass
 
     def load_inclusion_list(self):
@@ -492,7 +492,7 @@ class Command(BaseCommand):
                 language = row[2].lower()
                 if language == "un":
                     language = ""
-            except BaseException:
+            except Exception:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():

@@ -25,7 +25,7 @@ class AuditPauseApiView(APIView):
                     audit.save(update_fields=['temp_stop'])
                 else:
                     raise ValidationError("invalid action")
-            except BaseException:
+            except Exception:
                 raise ValidationError("invalid audit_id: please verify you are pausing or un-pausing a running audit.")
             return Response(audit.to_dict())
         else:

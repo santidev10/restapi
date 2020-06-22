@@ -37,7 +37,7 @@ def add_relation_between_report_and_creation_campaigns():
             campaign = campaigns.get(name__endswith="#{}".format(c["id"]))
         except Campaign.DoesNotExist:
             pass
-        except BaseException as e:
+        except Exception as e:
             # there might be two campaigns. I want to know if this happens
             logger.debug("(Error) Unhandled: %s", e)
         else:
@@ -69,7 +69,7 @@ def add_relation_between_report_and_creation_ad_groups():
             ad_group = ad_groups.get(name__endswith="#{}".format(a["id"]))
         except AdGroup.DoesNotExist:
             pass
-        except BaseException as e:
+        except Exception as e:
             logger.debug("(Error) Unhandled: %s", e)
         else:
             AdGroupCreation.objects.filter(pk=a["id"]).update(ad_group=ad_group)
@@ -99,7 +99,7 @@ def add_relation_between_report_and_creation_ads():
             ad = ads.get(creative_name__endswith="#{}".format(a["id"]))
         except Ad.DoesNotExist:
             pass
-        except BaseException as e:
+        except Exception as e:
             logger.debug("(Error) Unhandled: %s", e)
         else:
             AdCreation.objects.filter(pk=a["id"]).update(ad=ad)

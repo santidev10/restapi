@@ -52,7 +52,7 @@ def add_targeting_list_items_info(data, list_type):
                     .execute() \
                     .hits
                 info = {i.main.id: i for i in items}
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
                 info = {}
 
@@ -71,7 +71,7 @@ def add_targeting_list_items_info(data, list_type):
                     .execute() \
                     .hits
                 info = {i.main.id: i for i in items}
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
                 info = {}
 

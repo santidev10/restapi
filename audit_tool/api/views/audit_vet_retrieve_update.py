@@ -150,7 +150,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             try:
                 o = getattr(next_item, segment.data_field)
                 data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
-            except BaseException:
+            except Exception:
                 pass
             next_item.save(update_fields=['checked_out_at'])
         else:

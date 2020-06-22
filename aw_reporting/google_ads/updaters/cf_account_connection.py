@@ -33,7 +33,7 @@ class CFAccountConnector(UpdateMixin):
                 customers = customer_service.list_accessible_customers()
                 ga_service = client.get_service("GoogleAdsService", version="v2")
 
-            except BaseException as e:
+            except Exception as e:
                 logger.critical(f"Unable to get client customers in CFAccountConnector: {e}")
             else:
                 customer_ids = ",".join([row.split("/")[-1] for row in customers.resource_names])

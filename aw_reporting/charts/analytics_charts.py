@@ -295,7 +295,7 @@ class DeliveryChart(BaseChart):
                     filters=self.video_manager.ids_query(ids)
                 ). \
                     source(includes=list(self.es_fields_to_load_video_info)).execute().hits
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
                 videos_info = {}
             else:
@@ -335,7 +335,7 @@ class DeliveryChart(BaseChart):
                 filters=self.video_manager.ids_query(ids)
             ). \
                 source(includes=list(self.es_fields_to_load_video_info)).execute().hits
-        except BaseException as e:
+        except Exception as e:
             logger.error(e)
             videos_info = {}
         else:
@@ -366,7 +366,7 @@ class DeliveryChart(BaseChart):
             ). \
                 source(includes=list(self.es_fields_to_load_channel_info)).execute().hits
 
-        except BaseException as e:
+        except Exception as e:
             logger.error(e)
             channels_info = {}
         else:

@@ -29,7 +29,7 @@ class Command(BaseCommand):
             num_channels = 100000
         try:
             sync_threshold = settings.AUDIT_SUBSCRIBER_SYNC_THRESHOLD
-        except BaseException:
+        except Exception:
             sync_threshold = 4000
         with PidFile(piddir=".", pidname="audit_sync_channels_with_viewiq.pid"):
             pending_channels = AuditChannelMeta.objects \

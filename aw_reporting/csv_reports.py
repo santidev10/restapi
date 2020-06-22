@@ -140,7 +140,7 @@ class PacingReportCSVExport:
                 column_format = FORMATTING.get(column, FORMATS["default"])
                 try:
                     value = column_format.format(value=value)
-                except BaseException:
+                except Exception:
                     # except error with formatting headers (Name.Opportunity, ...)
                     pass
 

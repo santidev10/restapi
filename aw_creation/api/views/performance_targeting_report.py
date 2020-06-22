@@ -188,7 +188,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 ). \
                     source(includes=list(self.es_fields_to_load_channel_info)).execute().hits
                 info = {r.main.id: r for r in items}
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
 
         for i in items:
@@ -219,7 +219,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 ). \
                     source(includes=list(self.es_fields_to_load_video_info)).execute().hits
                 info = {r.main.id: r for r in items}
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
 
         for i in items:

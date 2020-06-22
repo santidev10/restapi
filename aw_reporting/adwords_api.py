@@ -183,7 +183,7 @@ def get_all_customers(client, page_size=1000, limit=None):
     while more_pages:
         try:
             page = managed_customer_service.get(selector)
-        except BaseException as ex:
+        except Exception as ex:
             logger.exception(ex)
             break
         if "entries" in page and page["entries"]:

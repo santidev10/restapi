@@ -53,7 +53,7 @@ class UserListAdminApiView(ListAPIView):
     def get(self, request, *args, **kwargs):
         try:
             self.validate_query_params()
-        except BaseException as e:
+        except Exception as e:
             return Response(data={"query_param_value_invalid": str(e)}, status=HTTP_400_BAD_REQUEST)
         return super(UserListAdminApiView, self).get(request, *args, **kwargs)
 

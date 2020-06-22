@@ -140,7 +140,7 @@ class SegmentAuditGenerator:
                     for _id in vetting_to_create_ids
                 ]
                 safe_bulk_create(self.audit_vetting_model, audit_vetting_to_create, batch_size=self.CREATE_BATCH_SIZE)
-            except BaseException:
+            except Exception:
                 logger.exception("Error generating audit items")
 
     @staticmethod

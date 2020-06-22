@@ -79,7 +79,7 @@ class AuditSaveApiView(APIView):
                 audit.pause = lowest_priority.pause - 1
                 audit.save(update_fields=["pause"])
                 return Response(audit.to_dict())
-            except BaseException as e:
+            except Exception as e:
                 raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
@@ -148,19 +148,19 @@ class AuditSaveApiView(APIView):
             params["files"]["inclusion"] = inclusion_file.name
             try:
                 params["inclusion_size"] = len(params["inclusion"])
-            except BaseException as e:
+            except Exception as e:
                 pass
         # Load Keywords from Exclusion File
         if exclusion_file:
             try:
                 params["exclusion"], params["exclusion_category"] = self.load_exclusion_keywords(exclusion_file)
-            except BaseException as e:
+            except Exception as e:
                 raise ValidationError(
                     "Exclusion file includes invalid / unparsable characters.  Please check and try again.")
             params["files"]["exclusion"] = exclusion_file.name
             try:
                 params["exclusion_size"] = len(params["exclusion"])
-            except BaseException:
+            except Exception:
                 pass
         if category:
             c = []
@@ -234,7 +234,7 @@ class AuditSaveApiView(APIView):
         for row in reader:
             try:
                 word = row[0].lower().strip()
-            except BaseException:
+            except Exception:
                 pass
             if word:
                 keywords.append(word)
@@ -249,11 +249,11 @@ class AuditSaveApiView(APIView):
         for row in reader:
             try:
                 word = row[0].lower().strip()
-            except BaseException:
+            except Exception:
                 continue
             try:
                 category = row[1].lower().strip()
-            except BaseException:
+            except Exception:
                 category = ""
             language = self.find_language(row)
             row_data = [word, category, language]
@@ -273,7 +273,7 @@ class AuditSaveApiView(APIView):
             if language in self.LANGUAGES_REVERSE:
                 return self.LANGUAGES_REVERSE[language]
             return ""
-        except BaseException:
+        except Exception:
             return ""
 
     def patch(self, request):

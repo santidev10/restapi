@@ -96,7 +96,7 @@ def _get_report(client, name, selector, date_range_type=None, include_zero_impre
         except AccountInactiveError as ex:
             raise ex
 
-        except BaseException as e:
+        except Exception as e:
             error_str = str(e)
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise

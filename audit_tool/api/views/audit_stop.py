@@ -24,7 +24,7 @@ class AuditStopApiView(APIView):
                 if audit.params.get('audit_type_original'):
                     audit.audit_type = audit.params.get('audit_type_original')
                 audit.save(update_fields=['completed', 'params', 'pause', 'audit_type'])
-            except BaseException:
+            except Exception:
                 raise ValidationError("invalid audit_id: please verify you are stopping a running audit.")
             return Response(audit.to_dict())
         else:

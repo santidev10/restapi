@@ -47,7 +47,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditFileS3Exporter.bucket_name,
                 Key=self.key
             )
-        except BaseException:
+        except Exception:
             raise KeyError("Failed to delete object. Object with key {} not found in bucket.".format(self.key))
         self.audit.delete()
 
@@ -58,14 +58,14 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
                 Bucket=AuditFileS3Exporter.bucket_name,
                 Key=self.key
             )
-        except BaseException:
+        except Exception:
             raise KeyError("Object with key {} not found in bucket.".format(self.key))
         self.assertEqual(s3_object['ResponseMetadata']['HTTPStatusCode'], HTTP_200_OK)
 
     def test_seed_file_content_retrieval(self):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(self.key)
-        except BaseException:
+        except Exception:
             raise KeyError("Could not get csv from s3 for seed_file: {}.".format(self.audit.params['seed_file']))
         reader = csv.reader(f)
         for row in reader:

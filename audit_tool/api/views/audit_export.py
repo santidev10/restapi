@@ -61,7 +61,7 @@ class AuditExportApiView(APIView):
                 clean = None
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
-        except BaseException:
+        except Exception:
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
         a = AuditExporter.objects.filter(
@@ -153,7 +153,7 @@ class AuditExportApiView(APIView):
             else:
                 time_string = str(time_duration)
             return time_string
-        except BaseException:
+        except Exception:
             return ""
 
     def get_lang(self, obj_id):
@@ -183,7 +183,7 @@ class AuditExportApiView(APIView):
             clean_string = 'true' if clean else 'false'
         try:
             name = audit.params['name'].replace("/", "-")
-        except BaseException:
+        except Exception:
             name = audit_id
         file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_videos))
         exports = AuditExporter.objects.filter(
@@ -241,7 +241,7 @@ class AuditExportApiView(APIView):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
                     bad_words_category_mapping[bad_word] = category
-        except BaseException:
+        except Exception:
             pass
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
@@ -256,7 +256,7 @@ class AuditExportApiView(APIView):
             vid = avp.video
             try:
                 v = vid.auditvideometa
-            except BaseException:
+            except Exception:
                 v = None
             v_channel = vid.channel
             acm = v_channel.auditchannelmeta if v_channel else None
@@ -264,39 +264,39 @@ class AuditExportApiView(APIView):
                 continue
             try:
                 language = self.get_lang(v.language_id)
-            except BaseException:
+            except Exception:
                 language = ""
             try:
                 category = self.get_category(v.category_id)
-            except BaseException:
+            except Exception:
                 category = ""
             try:
                 country = self.get_country(acm.country_id)
-            except BaseException:
+            except Exception:
                 country = ""
             try:
                 channel_lang = self.get_lang(acm.language_id)
-            except BaseException:
+            except Exception:
                 channel_lang = ""
             try:
                 video_count = acm.video_count
-            except BaseException:
+            except Exception:
                 video_count = ""
             try:
                 last_uploaded = acm.last_uploaded.strftime("%m/%d/%Y")
-            except BaseException:
+            except Exception:
                 last_uploaded = ""
             try:
                 last_uploaded_view_count = acm.last_uploaded_view_count
-            except BaseException:
+            except Exception:
                 last_uploaded_view_count = ''
             try:
                 last_uploaded_category = self.get_category(acm.last_uploaded_category_id)
-            except BaseException:
+            except Exception:
                 last_uploaded_category = ''
             try:
                 default_audio_language = self.get_lang(v.default_audio_language_id)
-            except BaseException:
+            except Exception:
                 default_audio_language = ""
             v_word_hits = avp.word_hits
             if do_inclusion:
@@ -318,7 +318,7 @@ class AuditExportApiView(APIView):
                     "tags": v.keywords,
                 }, full_audit=False)
                 mapped_score = map_brand_safety_score(video_audit_score)
-            except BaseException:
+            except Exception:
                 mapped_score = ""
                 print("Problem calculating video score")
             data = [
@@ -358,14 +358,14 @@ class AuditExportApiView(APIView):
                         try:
                             word_category = bad_words_category_mapping.get(word)
                             bad_word_category_dict[word_category].append(word)
-                        except BaseException:
+                        except Exception:
                             pass
                     for category in bad_word_categories:
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:
                             data.append(0)
-            except BaseException:
+            except Exception:
                 pass
             rows.append(data)
             num_done += 1
@@ -398,7 +398,7 @@ class AuditExportApiView(APIView):
                 try:
                     avp.channel = avp.video.channel
                     avp.save(update_fields=['channel'])
-                except BaseException:
+                except Exception:
                     pass
 
     def get_scores_for_channels(self, channel_ids, chunk_size=10000):
@@ -429,7 +429,7 @@ class AuditExportApiView(APIView):
             clean_string = 'true' if clean else 'false'
         try:
             name = audit.params['name'].replace("/", "-")
-        except BaseException:
+        except Exception:
             name = audit_id
         file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_channels))
         # If audit already exported, simply generate and return temp link
@@ -487,7 +487,7 @@ class AuditExportApiView(APIView):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
                     bad_words_category_mapping[bad_word] = category
-        except BaseException:
+        except Exception:
             pass
         good_hit_words = {}
         bad_hit_words = {}
@@ -508,7 +508,7 @@ class AuditExportApiView(APIView):
             if audit.params.get('do_videos'):
                 try:
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
-                except BaseException:
+                except Exception:
                     pass
             if do_inclusion:
                 try:
@@ -518,20 +518,20 @@ class AuditExportApiView(APIView):
                     i_v = cid.word_hits.get('inclusion_videos')
                     if i_v:
                         good_video_hit_words[full_channel_id] = set(i_v)
-                except BaseException:
+                except Exception:
                     pass
             try:
                 kid_videos_count[full_channel_id] = len(cid.word_hits.get('made_for_kids'))
-            except BaseException:
+            except Exception:
                 pass
             try:
                 age_restricted_videos_count[full_channel_id] = len(cid.word_hits.get('age_restricted_videos'))
-            except BaseException:
+            except Exception:
                 pass
             if do_exclusion:
                 try:
                     bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
-                except BaseException:
+                except Exception:
                     pass
                 try:
                     e = cid.word_hits.get('exclusion')
@@ -540,7 +540,7 @@ class AuditExportApiView(APIView):
                     e_v = cid.word_hits.get('exclusion_videos')
                     if e_v:
                         bad_video_hit_words[full_channel_id] = set(e_v)
-                except BaseException:
+                except Exception:
                     pass
         channel_scores = self.get_scores_for_channels(channel_ids)
         rows = [cols]
@@ -552,22 +552,22 @@ class AuditExportApiView(APIView):
             v = channel.auditchannelmeta
             try:
                 language = self.get_lang(v.language_id)
-            except BaseException:
+            except Exception:
                 language = ""
             try:
                 country = self.get_country(v.country_id)
-            except BaseException:
+            except Exception:
                 country = ""
             try:
                 last_category = self.get_category(v.last_uploaded_category_id)
-            except BaseException:
+            except Exception:
                 last_category = ""
             mapped_score = channel_scores.get(channel.channel_id, None)
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:
                     error_str = ""
-            except BaseException:
+            except Exception:
                 error_str = ""
             data = [
                 v.name,
@@ -611,14 +611,14 @@ class AuditExportApiView(APIView):
                         try:
                             word_category = bad_words_category_mapping.get(word)
                             bad_word_category_dict[word_category].append(word)
-                        except BaseException:
+                        except Exception:
                             pass
                     for category in sorted(bad_word_categories):
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:
                             data.append(0)
-            except BaseException:
+            except Exception:
                 pass
             rows.append(data)
             num_done += 1

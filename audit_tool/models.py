@@ -217,7 +217,7 @@ class AuditProcessor(models.Model):
             lang = [lang]
         try:
             owner = str(self.owner)
-        except BaseException:
+        except Exception:
             owner = "N/A"
         d = {
             "id": self.id,
@@ -286,7 +286,7 @@ class AuditProcessor(models.Model):
             diff = (last_time - first_time)
             minutes = (diff.total_seconds() / 60)
             avg_rate_per_minute = (last_count - first_count) / minutes
-        except BaseException:
+        except Exception:
             avg_rate_per_minute = "N/A"
         return avg_rate_per_minute
 
@@ -326,11 +326,11 @@ class AuditProcessor(models.Model):
                 res["thread"] = e[0].thread
                 try:
                     res["owner"] = str(e[0].owner)
-                except BaseException as e:
+                except Exception as e:
                     res["owner"] = ""
                 try:
                     res["elapsed_time"] = str(timezone.now() - e[0].started).replace(",", "").split(".")[0]
-                except BaseException:
+                except Exception:
                     pass
             else:
                 res["status"] = "Export Queued"
@@ -358,7 +358,7 @@ class AuditProcessor(models.Model):
                         "id": related,
                         "name": a.params["name"]
                     })
-                except BaseException:
+                except Exception:
                     d.append({
                         "id": related,
                         "name": "deleted audit",
@@ -395,7 +395,7 @@ class AuditCategory(models.Model):
                     try:
                         c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())[-1]
                         c.save(update_fields=["category_display_iab"])
-                    except BaseException:
+                    except Exception:
                         c.category_display_iab = ""
                         c.save(update_fields=["category_display_iab"])
                 if unique is False:
@@ -598,7 +598,7 @@ class AuditExporter(models.Model):
     def to_dict(self):
         try:
             owner = str(self.owner)
-        except BaseException:
+        except Exception:
             owner = ""
         d = {
             "started": self.started,

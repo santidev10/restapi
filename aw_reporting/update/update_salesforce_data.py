@@ -192,7 +192,7 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                 r = 204 \
                     if debug_update \
                     else sc.sf.Opportunity.update(opportunity.id, update)
-            except BaseException as e:
+            except Exception as e:
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
@@ -219,7 +219,7 @@ def update_placements(sc, opportunity_ids, debug_update):
                 r = 204 \
                     if debug_update \
                     else sc.sf.Placement__c.update(placement.id, update, )
-            except BaseException as e:
+            except Exception as e:
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
@@ -257,7 +257,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         if update:
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
-            except BaseException as e:
+            except Exception as e:
                 stack_trace = str(e)
                 if getattr(e, "status", 0) == 404:
                     logger.info(stack_trace)
@@ -285,7 +285,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         update = dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0)
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
-        except BaseException as e:
+        except Exception as e:
             if getattr(e, "status", 0) == 404:
                 logger.warning(str(e))
             else:

@@ -42,7 +42,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                                     data={
                                         "errors": [DOCUMENT_LOAD_ERROR_TEXT]
                                     })
-            except BaseException as e:
+            except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data={
                                     "errors": [DOCUMENT_LOAD_ERROR_TEXT,
@@ -52,7 +52,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
-            except BaseException as e:
+            except Exception as e:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={

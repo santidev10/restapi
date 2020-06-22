@@ -157,7 +157,7 @@ def detect_success_aw_read_permissions():
                 refresh_token=permission.aw_connection.refresh_token,
                 client_customer_id=permission.account_id,
             )
-        except BaseException as e:
+        except Exception as e:
             logger.error(e)
         else:
             try:
@@ -166,7 +166,7 @@ def detect_success_aw_read_permissions():
                 account = permission.account
                 account.is_active = False
                 account.save()
-            except BaseException as e:
+            except Exception as e:
                 logger.error(e)
             else:
                 permission.can_read = True

@@ -41,6 +41,6 @@ class Command(BaseCommand):
                     bad_word.category = category
                     bad_word.negative_score = negative_score
                     bad_word.save()
-                except BaseException:
+                except Exception:
                     BadWord.objects.create(name=word, category=category, language=language,
                                            negative_score=negative_score)
