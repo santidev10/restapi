@@ -586,4 +586,18 @@ class Activity(BaseModel):
         return res
 
 
+class FlightPacingGoal(models.Model):
+    flight = models.ForeignKey(Flight, related_name="goals", on_delete=models.CASCADE)
+    date = models.DateField()
+    allocation = models.FloatField(default=1)
+    suggested_units = models.IntegerField(default=0)
+    suggested_budget = models.DecimalField(default=0, max_digits=10, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["flight", "date"], name="unique_goal")
+        ]
+
+
+
 init_signals()
