@@ -63,7 +63,6 @@ confidence=
 # fixme (W0511)
 # too-few-public-methods (R0903)
 # unused-wildcard-import (W0614)
-# line-too-long (C0301)
 # wildcard-import (W0401)
 # relative-import (W0403)
 # invalid-name (C0103)
@@ -73,8 +72,9 @@ confidence=
 # arguments-differ (W0221)
 # unused-argument (W0613)
 # duplicate-code (R0801)
+# broad-except (W0703)
 
-disable=C0103,C0111,C0112,W0511,R0903,W0614,C0301,W0403,W0401,E1103,R0201,W1113,W0221,W0613,R0801
+disable=C0103,C0111,C0112,W0511,R0903,W0614,W0403,W0401,E1103,R0201,W1113,W0221,W0613,R0801,W0703
 
 
 
