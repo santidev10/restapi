@@ -4,8 +4,8 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 
 
 class BrandSafetyChannelSerializer(Serializer):

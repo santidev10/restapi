@@ -5,6 +5,7 @@ class BrandSafetyChannelScore(object):
     """
         Class to encapsulate brand safety score logic for Channel brand safety audits
         """
+
     def __init__(self, video_id, num_videos, default_category_scores):
         self.video_id = video_id
         self.videos_scored = num_videos
@@ -78,7 +79,8 @@ class BrandSafetyChannelScore(object):
     def add_metadata_score(self, keyword, category, score):
         """
         Add Channel metadata scores
-            This method must be called after calculate_average_scores as channel metadata scores must be calculated with
+            This method must be called after calculate_average_scores as channel metadata scores must be calculated
+            with
             the channel's average scores
         :param keyword: str
         :param category: str
@@ -86,7 +88,8 @@ class BrandSafetyChannelScore(object):
         :return: None
         """
         if not self.average_calculated:
-            raise BrandSafetyChannelScoreException("You must call calculate_average_scores before calling add_metadata_score.")
+            raise BrandSafetyChannelScoreException(
+                "You must call calculate_average_scores before calling add_metadata_score.")
         if str(category) not in BadWordCategory.EXCLUDED:
             self.overall_score -= score
             self.add_keyword_score(keyword, category, score, 1)

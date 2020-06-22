@@ -1,10 +1,11 @@
+import csv
 import logging
 
 from django.core.management.base import BaseCommand
-import csv
+
+from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from audit_tool.models import AuditLanguage
 from utils.utils import remove_tags_punctuation
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,6 @@ class Command(BaseCommand):
                     bad_word.category = category
                     bad_word.negative_score = negative_score
                     bad_word.save()
-                except Exception as e:
+                except BaseException:
                     BadWord.objects.create(name=word, category=category, language=language,
                                            negative_score=negative_score)

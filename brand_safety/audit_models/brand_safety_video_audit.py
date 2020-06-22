@@ -1,7 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 from brand_safety.models import BadWordCategory
-from es_components.models import Video
 
 
 class BrandSafetyVideoAudit(object):
@@ -48,7 +47,7 @@ class BrandSafetyVideoAudit(object):
             detected["transcript_language"] = self.audit_utils.get_language(transcript_text)
         data.update(detected)
         self.metadata = data
-        
+
     def run(self):
         """
         Call all required audit methods here
@@ -72,18 +71,25 @@ class BrandSafetyVideoAudit(object):
             transcript_processor = keyword_processor
         tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, keyword_processor)
         title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, keyword_processor)
-        description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION, keyword_processor)
-        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, transcript_processor)
+        description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION,
+                                                  keyword_processor)
+        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT,
+                                                 transcript_processor)
         all_hits = tag_hits + title_hits + description_hits + transcript_hits
         # Calculate Universal keywords hits, if not all processor
         if universal_processor:
-            universal_tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, universal_processor)
-            universal_title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, universal_processor)
-            universal_description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION,
+            universal_tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS,
+                                                        universal_processor)
+            universal_title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE,
+                                                          universal_processor)
+            universal_description_hits = self.audit_utils.audit(self.metadata.get("description", ""),
+                                                                constants.DESCRIPTION,
                                                                 universal_processor)
-            universal_transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT,
+            universal_transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""),
+                                                               constants.TRANSCRIPT,
                                                                universal_processor)
-            all_hits += universal_tag_hits + universal_title_hits + universal_description_hits + universal_transcript_hits
+            all_hits += universal_tag_hits + universal_title_hits + universal_description_hits + \
+                        universal_transcript_hits
 
         score = self.calculate_brand_safety_score(*all_hits)
         setattr(self, constants.BRAND_SAFETY_SCORE, score)

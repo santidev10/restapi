@@ -1,15 +1,14 @@
+import csv
+import re
 from collections import defaultdict
 from collections import namedtuple
-import csv
 from datetime import datetime
 from datetime import timezone
-import re
 
 import pytz
-
-from flashtext import KeywordProcessor
 from django.db.models import F
 from emoji import UNICODE_EMOJI
+from flashtext import KeywordProcessor
 
 from brand_safety.constants import ENGLISH_CHARACTERS_SET
 from brand_safety.constants import EUROPEAN_CHARACTERS_SET
@@ -18,10 +17,9 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
+from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
-
 
 KeywordHit = namedtuple("KeywordHit", "name location")
 
@@ -29,11 +27,13 @@ KeywordHit = namedtuple("KeywordHit", "name location")
 class AuditUtils(object):
     def __init__(self):
         """
-        Many of these configurations are shared amongst Video and Channel audit objects, so it is more efficient to initialize
+        Many of these configurations are shared amongst Video and Channel audit objects, so it is more efficient to
+        initialize
         these values once and use as reference values
         """
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
-        # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
+        # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g.
+        # Kid's Content)
         self._default_zero_score = {
             str(category_id): 0
             for category_id in self.bad_word_categories
@@ -171,8 +171,10 @@ class AuditUtils(object):
         :param keywords: List of keyword strings
         :return: Compiled Regular expression
         """
-        regexp = re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]), re.IGNORECASE)) \
-            if case_insensitive else re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords])))
+        regexp = re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]), re.IGNORECASE)) \
+            if case_insensitive else re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords])))
         return regexp
 
     @staticmethod
