@@ -222,6 +222,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(first_chart["title"], "Ideal Pacing")
         self.assertEqual(first_chart["data"][-1]["value"], 530.4)
 
+    # pylint: disable=too-many-statements
     def test_cary_over_disabled_with_ended_over_and_under_delivered_flights(self):
         """
         CASE:
@@ -320,6 +321,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(first_chart["title"], "Ideal Pacing")
         self.assertAlmostEqual(first_chart["data"][-1]["value"], 770)
 
+    # pylint: enable=too-many-statements
+    
     def test_cary_over_enabled(self):
         today = now_in_default_tz().date()
         start = today - timedelta(days=1)

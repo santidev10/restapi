@@ -17,7 +17,7 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTATION
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.dashboard_charts import DateSegment
+from aw_reporting.charts.dashboard_charts import DateSegment
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME

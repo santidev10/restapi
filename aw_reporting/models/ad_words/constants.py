@@ -160,8 +160,10 @@ def get_device_id_by_name(device_repr):
             return device_id
         if device_repr == "Devices streaming video content to TV screens":
             return Device.CONNECTED_TV
-    logger.debug("Undefined device name <{}>".format(device_repr))
+    logger.debug("Undefined device name <%s>", device_repr)
+    # pylint: disable=protected-access
     return Device._UNDETERMINED
+    # pylint: enable=protected-access
 
 
 class BudgetType(ExtendedEnum):
@@ -176,8 +178,4 @@ CAMPAIGN_BIDDING_STRATEGY_TYPES = {
 
 
 def get_bidding_strategy_type(strategy_type):
-    if strategy_type in CAMPAIGN_BIDDING_STRATEGY_TYPES:
-        value = CAMPAIGN_BIDDING_STRATEGY_TYPES[strategy_type]
-    else:
-        value = strategy_type
-    return value
+    return CAMPAIGN_BIDDING_STRATEGY_TYPES.get(strategy_type, strategy_type)

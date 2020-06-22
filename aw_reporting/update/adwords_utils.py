@@ -22,9 +22,8 @@ def format_click_types_report(report, unique_field_name, ref_id_name="AdGroupId"
     return result
 
 
-def update_stats_with_click_type_data(
-    stats, click_type_data, row_obj, unique_field_name, ignore_a_few_records=False,
-    ref_id_name="AdGroupId"):
+def update_stats_with_click_type_data(stats, click_type_data, row_obj, unique_field_name, ignore_a_few_records=False,
+                                      ref_id_name="AdGroupId"):
     if click_type_data:
         key = prepare_click_type_key(row_obj, ref_id_name, unique_field_name)
         if ignore_a_few_records:

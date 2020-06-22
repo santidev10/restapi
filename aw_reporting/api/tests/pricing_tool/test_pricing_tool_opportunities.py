@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
@@ -37,6 +38,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 
 
+# pylint: disable=too-many-public-methods
 class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     _url = reverse(
         Namespace.AW_REPORTING + ":" + Name.PricingTool.OPPORTUNITIES)
@@ -924,7 +926,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         self.assertEqual(opportunities[0]["id"], opportunity_1.id)
 
     def test_pricing_tool_opportunity_filters_by_creative_length(self):
-        opportunity_1, campaign_1 = self._create_opportunity_campaign("1")
+        _, campaign_1 = self._create_opportunity_campaign("1")
         opportunity_2, campaign_2 = self._create_opportunity_campaign("2")
         self._create_opportunity_campaign("3")
 
@@ -963,13 +965,13 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         response = self._request(creative_lengths=[0])
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(set([i["id"] for i in response.data["items"]]),
+        self.assertEqual({i["id"] for i in response.data["items"]},
                          {opportunity_2.id})
 
     def test_pricing_tool_opportunity_filters_by_creative_length_or(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign("1")
         opportunity_2, campaign_2 = self._create_opportunity_campaign("2")
-        opportunity_3, campaign_3 = self._create_opportunity_campaign("3")
+        _, campaign_3 = self._create_opportunity_campaign("3")
 
         ad_group_1 = AdGroup.objects.create(id="1", name="",
                                             campaign=campaign_1)
@@ -1013,13 +1015,13 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                                  creative_lengths_condition="or")
 
         self.assertEqual(len(response.data["items"]), 2)
-        self.assertEqual(set([i["id"] for i in response.data["items"]]),
+        self.assertEqual({i["id"] for i in response.data["items"]},
                          {opportunity_1.id, opportunity_2.id})
 
     def test_pricing_tool_opportunity_filters_by_creative_length_and(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign("1")
-        opportunity_2, campaign_2 = self._create_opportunity_campaign("2")
-        opportunity_3, campaign_3 = self._create_opportunity_campaign("3")
+        _, campaign_2 = self._create_opportunity_campaign("2")
+        _, campaign_3 = self._create_opportunity_campaign("3")
 
         ad_group_1 = AdGroup.objects.create(id="1", name="",
                                             campaign=campaign_1)
@@ -1062,13 +1064,13 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
 
     def test_pricing_tool_opportunity_filter_devices(self):
-        opportunity_1, campaign_1 = self._create_opportunity_campaign(
+        opportunity_1, _ = self._create_opportunity_campaign(
             "1", camp_data=dict(device_computers=True, device_mobile=True))
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        opportunity_2, _ = self._create_opportunity_campaign(
             "2", camp_data=dict(device_tablets=True))
         self._create_opportunity_campaign(
             "3", camp_data=dict(device_other=True))
-        opportunity_4, campaign_4 = self._create_opportunity_campaign(
+        opportunity_4, _ = self._create_opportunity_campaign(
             "4", camp_data=dict(device_mobile=True))
 
         # test OR
@@ -1101,7 +1103,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     def test_pricing_tool_opportunity_filter_ctr(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False)
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False)
 
         CampaignStatistic.objects.create(campaign=campaign_1,
@@ -1122,7 +1124,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     def test_pricing_tool_opportunity_filter_ctr_v(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False)
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False)
 
         CampaignStatistic.objects.create(campaign=campaign_1,
@@ -1227,7 +1229,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_pricing_tool_opportunity_aggregated_products(self):
         start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        opportunity, campaign = self._create_opportunity_campaign(
+        _, campaign = self._create_opportunity_campaign(
             "1", opp_data=dict(start=start_date, end=end_date))
         test_type_1 = "test_type_1"
         test_type_2 = "test_type_2"
@@ -1246,7 +1248,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_pricing_tool_opportunity_aggregated_targeting(self):
         start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        opportunity, campaign = self._create_opportunity_campaign(
+        _, campaign = self._create_opportunity_campaign(
             "1", opp_data=dict(start=start_date, end=end_date))
 
         campaign.has_interests = True
@@ -1265,7 +1267,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_pricing_tool_opportunity_aggregated_demographic(self):
         start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        opportunity, campaign = self._create_opportunity_campaign(
+        _, campaign = self._create_opportunity_campaign(
             "1", opp_data=dict(start=start_date, end=end_date))
 
         campaign.age_18_24 = True
@@ -1293,7 +1295,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_pricing_tool_opportunity_aggregated_creative_length(self):
         start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        opportunity, campaign = self._create_opportunity_campaign(
+        _, campaign = self._create_opportunity_campaign(
             "1", opp_data=dict(start=start_date, end=end_date))
         ad_group = AdGroup.objects.create(id="1", campaign=campaign)
         creative_duration = 123
@@ -1621,7 +1623,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         Summary: Pricing tool > Creative length borders improvement
         """
         opportunity_1, campaign_1 = self._create_opportunity_campaign("1")
-        opportunity_2, campaign_2 = self._create_opportunity_campaign("2")
+        _, campaign_2 = self._create_opportunity_campaign("2")
         self._create_opportunity_campaign("3")
 
         ad_group_1 = AdGroup.objects.create(id="1", name="",
@@ -1647,7 +1649,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         response = self._request(creative_lengths=[0])
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(set([i["id"] for i in response.data["items"]]),
+        self.assertEqual({i["id"] for i in response.data["items"]},
                          {opportunity_1.id})
 
     def test_filter_by_ctr_hides_opportunities_without_impressions(self):
@@ -1677,8 +1679,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         response = self._request(min_video_view_rate=1)
         self.assertEqual(len(response.data["items"]), 0)
 
-    def test_filter_by_video100rate_hides_opportunities_without_impressions(
-        self):
+    def test_filter_by_video100rate_hides_opportunities_without_impressions(self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(impressions=0, video_views_100_quartile=0))
         response = self._request(min_video100rate=1)
@@ -1686,7 +1687,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_compare_yoy_only(self):
         now = datetime(2017, 1, 3, 13, 0, 0)
-        opportunity_1, _ = self._create_opportunity_campaign(
+        self._create_opportunity_campaign(
             "1", camp_data=dict(start_date=datetime(2015, 1, 1),
                                 end_date=datetime(2015, 2, 1)))
         opportunity_2, _ = self._create_opportunity_campaign(
@@ -1744,7 +1745,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False,
             opp_data=dict(start=start, end=end))
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False,
             opp_data=dict(start=start, end=end))
         CampaignStatistic.objects.create(date=start - timedelta(days=1),
@@ -1774,7 +1775,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False,
             opp_data=dict(start=start, end=end))
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False,
             opp_data=dict(start=start, end=end))
         CampaignStatistic.objects.create(date=start - timedelta(days=1),
@@ -1861,7 +1862,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_opportunity_budget_for_period(self):
         start = end = date(2017, 1, 1)
-        opportunity, campaign = self._create_opportunity_campaign(
+        _, campaign = self._create_opportunity_campaign(
             "1", opp_data=dict(start=start, end=end), generate_statistic=False)
         expected_cost = 1234
         extra_cost = 4421
@@ -2225,18 +2226,16 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                 stats["clicks"] / stats["impressions"] * 100)
         expected_opportunity_ctr_v = sum(
             (predefined_cpv_statistics["clicks"],
-             predefined_cpm_statistics["clicks"])) / \
-                                     sum((predefined_cpv_statistics[
-                                              "video_views"],
-                                          predefined_cpm_statistics[
-                                              "video_views"])) * 100
+             predefined_cpm_statistics["clicks"])) \
+                                     / sum((predefined_cpv_statistics["video_views"],
+                                            predefined_cpm_statistics["video_views"])) \
+                                     * 100
         expected_opportunity_ctr = sum(
             (predefined_cpv_statistics["clicks"],
-             predefined_cpm_statistics["clicks"])) / \
-                                   sum((
-                                       predefined_cpv_statistics["impressions"],
-                                       predefined_cpm_statistics[
-                                           "impressions"])) * 100
+             predefined_cpm_statistics["clicks"])) \
+                                   / sum((predefined_cpv_statistics["impressions"],
+                                          predefined_cpm_statistics["impressions"])) \
+                                   * 100
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -2350,7 +2349,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     def test_filter_by_ctr_with_zero_impressions(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False)
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False)
 
         CampaignStatistic.objects.create(campaign=campaign_1,
@@ -2370,7 +2369,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     def test_filter_by_ctr_v_with_zero_video_views(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", generate_statistic=False)
-        opportunity_2, campaign_2 = self._create_opportunity_campaign(
+        _, campaign_2 = self._create_opportunity_campaign(
             "2", generate_statistic=False)
 
         CampaignStatistic.objects.create(campaign=campaign_1,
@@ -2840,3 +2839,4 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         response = self._request(product_types=[type_2], ages=[1])
         self.assertEqual(len(response.data["items"]), 0)
+# pylint: enable=too-many-public-methods

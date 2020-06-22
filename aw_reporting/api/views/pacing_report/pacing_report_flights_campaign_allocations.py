@@ -48,7 +48,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="You must provide a flight budget as \"flight_budget\""
             )
-        if set([int(key) for key in request.data.keys()]) != expected_keys:
+        if {int(key) for key in request.data.keys()} != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)

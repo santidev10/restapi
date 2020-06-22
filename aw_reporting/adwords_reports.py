@@ -91,7 +91,7 @@ def _get_report(client, name, selector, date_range_type=None, include_zero_impre
                 if e.type == AWErrorType.NOT_ACTIVE:
                     raise AccountInactiveError()
                 if e.type in FATAL_AW_ERRORS:
-                    return
+                    return None
                 raise
         except AccountInactiveError as ex:
             raise ex
@@ -113,7 +113,6 @@ def _get_report(client, name, selector, date_range_type=None, include_zero_impre
                 raise e
         else:
             return stream_iterator(result)
-        return None
 
 
 def _get_csv_reader(output):

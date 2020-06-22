@@ -61,7 +61,7 @@ class AdGroupTargeting(models.Model):
     status = models.IntegerField(choices=STATUS_CHOICES)
 
     class Meta:
-        unique_together = (('ad_group', 'type', 'criteria'),)
+        unique_together = (("ad_group", "type", "criteria"),)
 
 
 class TargetingStatusEnum(enum.IntEnum):

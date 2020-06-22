@@ -8,11 +8,11 @@ from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
-from aw_reporting.analytics_charts import Breakdown
-from aw_reporting.analytics_charts import Indicator
-from aw_reporting.analytics_charts import TrendId
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import Breakdown
+from aw_reporting.charts.base_chart import TrendId
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
@@ -137,7 +137,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def test_filter_by_sales(self):
         today = datetime.now().date()
-        account, campaign, ad_group = self.account, self.campaign, self.ad_group
+        _, campaign, ad_group = self.account, self.campaign, self.ad_group
         AdGroupStatistic.objects.create(
             ad_group=ad_group,
             average_position=1,
@@ -490,9 +490,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         placement_1.save()
         placement_2.save()
         expected_planned_trend = [
-            dict(label=any_date, value=sum([total_cost_1, total_cost_2])
-                                       / sum(
-                [ordered_units_1, ordered_units_2])),
+            dict(label=any_date, value=sum([total_cost_1, total_cost_2]) / sum([ordered_units_1, ordered_units_2])),
         ]
         expected_planned_value = sum([
             r.get("value") for r in expected_planned_trend
@@ -545,9 +543,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         placement_2.save()
         expected_planned_trend = [
             dict(label=any_date,
-                 value=sum([total_cost_1, total_cost_2])
-                       / sum(
-                     [ordered_units_1 / 1000., ordered_units_2 / 1000.])),
+                 value=sum([total_cost_1, total_cost_2]) / sum([ordered_units_1 / 1000., ordered_units_2 / 1000.])),
         ]
         expected_planned_value = sum([
             r.get("value") for r in expected_planned_trend
@@ -599,8 +595,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         placement_2.save()
         expected_planned_trend = [
             dict(label=as_datetime(any_date) + timedelta(hours=i),
-                 value=sum([total_cost_1, total_cost_2])
-                       / sum([ordered_units_1, ordered_units_2]))
+                 value=sum([total_cost_1, total_cost_2]) / sum([ordered_units_1, ordered_units_2]))
             for i in range(24)
         ]
 

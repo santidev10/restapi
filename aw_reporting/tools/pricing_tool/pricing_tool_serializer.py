@@ -68,6 +68,10 @@ class PricingToolCampaignSerializer(PricingToolSerializarBase):
     def __init__(self, kwargs, campaigns_ids: list):
         super(PricingToolCampaignSerializer, self).__init__(kwargs)
         self.campaigns_ids = campaigns_ids
+        self.ad_group_types = None
+        self.creatives = None
+        self.geographics = None
+        self.campaign_thumbs = None
 
     def get_data(self):
         self.__prepare_campaign_thumbnails()
@@ -189,10 +193,10 @@ class PricingToolCampaignSerializer(PricingToolSerializarBase):
             statistics__ad_group__campaign_id__in=self.campaigns_ids) \
             .distinct(campaign_id_ref) \
             .values(campaign_id_ref, "id")
-        build_thumb = lambda _id: "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(_id)
-
-        self.campaign_thumbs = dict((c[campaign_id_ref], build_thumb(c["id"]))
-                                    for c in creatives)
+        self.campaign_thumbs = {
+            c[campaign_id_ref]: "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(c["id"])
+            for c in creatives
+        }
 
     def __prepare_campaigns(self):
         opp_id_key = "salesforce_placement__opportunity_id"
@@ -215,7 +219,7 @@ class PricingToolCampaignSerializer(PricingToolSerializarBase):
 
 class PricingToolOpportunitySerializer(PricingToolSerializarBase):
     def __init__(self, kwargs, opportunities: list):
-        self.kwargs = kwargs
+        super(PricingToolOpportunitySerializer, self).__init__(kwargs)
         self.opportunities_ids = []
         self.campaigns_ids_map = {}
         self.hard_cost_flights = None
@@ -296,7 +300,7 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             .annotate(**annotation) \
             .values("id", *annotation.keys())
         hard_cost_dict = {o["id"]: o for o in opportunities}
-        empty_stats = {k: 0 for k in annotation.keys()}
+        empty_stats = {k: 0 for k in annotation}
         self.hard_cost_flights = {uid: hard_cost_dict.get(uid, empty_stats)
                                   for uid in self.opportunities_ids}
 
@@ -339,6 +343,7 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
 
         return total_statistic, cpv_stats, cpm_stats
 
+    # pylint: disable=too-many-locals
     def __get_opportunity_data(self, opportunity):
         hard_cost_data = self.hard_cost_flights.get(opportunity.id)
 
@@ -432,6 +437,7 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             view_rate=view_rate,
             video100rate=video100rate
         )
+    # pylint: enable=too-many-locals
 
     def __prepare_campaign_extra_data(self, campaigns_ids):
         ad_group_types = AdGroup.objects \
@@ -455,12 +461,13 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
 
 
 def statistic_date_filter(periods):
-    return [
-               dict(
-                   date__gte=start,
-                   date__lte=end)
-               for start, end in periods
-           ] or [dict()]
+    date_filter = [
+        dict(
+            date__gte=start,
+            date__lte=end)
+        for start, end in periods
+    ]
+    return date_filter or [dict()]
 
 
 def get_campaign_start_end(campaign):
@@ -481,33 +488,41 @@ def get_campaign_start_end(campaign):
 
 
 def placement_date_filter(periods):
-    return [
-               dict(
-                   placements__start__lte=end,
-                   placements__end__gte=start)
-               for start, end in periods
-           ] or [dict()]
+    date_filter = [
+        dict(
+            placements__start__lte=end,
+            placements__end__gte=start)
+        for start, end in periods
+    ]
+    return date_filter or [dict()]
 
 
 def flight_date_filter(periods, max_start_date=None):
-    return [
-               dict(
-                   placements__flights__start__lte=min(end, max_start_date or end),
-                   placements__flights__end__gte=start)
-               for start, end in periods
-           ] or [dict()]
+    date_filter = [
+        dict(
+            placements__flights__start__lte=min(end, max_start_date or end),
+            placements__flights__end__gte=start)
+        for start, end in periods
+    ]
+    return date_filter or [dict()]
 
 
 class Aggregation:
-    TARGETING = dict(
-        ("has_" + t, Max(Case(When(
-            **{
-                "has_" + t: True,
-                "then": Value(1)
-            }),
-            output_field=BooleanField(),
-            default=Value(0))))
-        for t in TARGETING_TYPES)
+    TARGETING = {
+        "has_" + t: Max(
+            Case(
+                When(
+                    **{
+                        "has_" + t: True,
+                        "then": Value(1)
+                    }
+                ),
+                output_field=BooleanField(),
+                default=Value(0)
+            )
+        )
+        for t in TARGETING_TYPES
+    }
     AGES = dict(
         (a, Max(Case(When(**{
             a: True,

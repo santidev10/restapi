@@ -198,7 +198,9 @@ AGE_RANGE_ENUM_TO_ID = {
 }
 
 DEVICE_ENUM_TO_ID = {
+    # pylint: disable=protected-access
     DeviceEnum.Device.UNKNOWN: Device._UNDETERMINED,
+    # pylint: enable=protected-access
     DeviceEnum.Device.DESKTOP: Device.COMPUTER,
     DeviceEnum.Device.MOBILE: Device.MOBILE,
     DeviceEnum.Device.TABLET: Device.TABLET,

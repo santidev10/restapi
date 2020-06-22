@@ -243,7 +243,7 @@ class GoogleAdsUpdater(object):
                 else:
                     raise
 
-            except Exception:
+            except BaseException:
                 logger.exception(f"Unhandled error in execute_with_any_permission")
             else:
                 return
@@ -268,10 +268,10 @@ class GoogleAdsUpdater(object):
             updater.update(client)
         except RefreshError:
             raise
-        except Exception:
+        except BaseException:
             try:
                 self._retry(updater, client)
-            except Exception:
+            except BaseException:
                 raise
 
     def _retry(self, updater, client):
@@ -285,7 +285,7 @@ class GoogleAdsUpdater(object):
         while tries_count <= self.MAX_RETRIES:
             try:
                 updater.update(client)
-            except Exception as err:
+            except BaseException as err:
                 tries_count += 1
                 if tries_count <= self.MAX_RETRIES:
                     sleep = tries_count ** self.SLEEP_COEFF

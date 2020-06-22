@@ -7,10 +7,10 @@ from django.utils.http import urlencode
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
-from aw_reporting.analytics_charts import Breakdown
-from aw_reporting.analytics_charts import Indicator
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import Breakdown
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -194,8 +194,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         am_2 = User.objects.create(id=2)
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  account_manager=am_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
@@ -214,8 +214,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         ad_ops_2 = User.objects.create(id=2)
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  ad_ops_manager=ad_ops_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
@@ -234,8 +234,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         sales_2 = User.objects.create(id=2)
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  sales_manager=sales_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
@@ -253,8 +253,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         brand_2 = "Test Brand 2"
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  brand=brand_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
@@ -271,8 +271,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_goal_types(self):
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1)
         self._create_opportunity(uid=2, campaign=campaign_2)
         campaign_1.salesforce_placement.goal_type_id = SalesForceGoalType.CPV
@@ -293,8 +293,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         category_2 = Category.objects.create(id="Test Category 2")
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("222",
-                                                                manager=manager)
+        _, campaign_2 = self._create_ad_group_statistic("222",
+                                                        manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  category=category_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
@@ -314,7 +314,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
         account_2, campaign_2 = self._create_ad_group_statistic("222", manager=manager)
-        account_3, campaign_3 = self._create_ad_group_statistic("333", manager=manager)
+        _, campaign_3 = self._create_ad_group_statistic("333", manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1, territory=test_region_1)
         self._create_opportunity(uid=2, campaign=campaign_2, territory=test_region_2)
         self._create_opportunity(uid=3, campaign=campaign_3, territory=test_region_3)
@@ -325,7 +325,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
-        response_ids = set([acc["id"] for acc in response.data])
+        response_ids = {acc["id"] for acc in response.data}
         self.assertEqual(response_ids, {account_1.id, account_2.id})
 
     @generic_test((

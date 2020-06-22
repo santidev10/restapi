@@ -248,11 +248,12 @@ class PricingToolFiltering:
         true_value = Value(1)
         annotation = {
             "has_" + t: Max(
-                Case(When(
-                    **{
-                        f"{model_options.prefix}has_" + t: Value(True),
-                        "then": true_value
-                    }),
+                Case(
+                    When(
+                        **{
+                            f"{model_options.prefix}has_" + t: Value(True),
+                            "then": true_value
+                        }),
                     output_field=BooleanField(),
                     default=Value(0)
                 )
@@ -642,8 +643,7 @@ class PricingToolFiltering:
                 Case(
                     When(
                         **{
-                            "{}topics__topic_id__in".format(
-                                ad_group_link): t_ids,
+                            f"{ad_group_link}topics__topic_id__in": t_ids,
                         },
                         then=Value(1),
                     ),
@@ -653,12 +653,14 @@ class PricingToolFiltering:
             )
             return ann
 
-        topics_condition = self.kwargs.get("topics_condition",
-                                           self.default_condition).upper()
-        operator = {
-                       Operator.OR: Combinable.BITOR,
-                       Operator.AND: Combinable.BITAND
-                   }.get(topics_condition) or Combinable.BITAND
+        topics_condition = self.kwargs \
+            .get("topics_condition", self.default_condition) \
+            .upper()
+        opps = {
+            Operator.OR: Combinable.BITOR,
+            Operator.AND: Combinable.BITAND
+        }
+        operator = opps.get(topics_condition) or Combinable.BITAND
 
         top_topics_annotate = get_topics_annotation(topic_groups[0])
         for topic_ids in topic_groups[1:]:
@@ -691,9 +693,9 @@ class PricingToolFiltering:
                 while parent_ids:
                     topic_groups[topic_id].extend(parent_ids)
                     parent_ids = list(
-                        Topic.objects.filter(
-                            parent__in=parent_ids
-                        ).values_list("id", flat=True)
+                        Topic.objects \
+                            .filter(parent__in=parent_ids) \
+                            .values_list("id", flat=True)
                     )
 
             self.topic_child_cache[key] = list(topic_groups.values())
@@ -720,12 +722,14 @@ class PricingToolFiltering:
             )
             return ann
 
-        interests_condition = self.kwargs.get("interests_condition",
-                                              self.default_condition).upper()
-        operator = {
-                       Operator.OR: Combinable.BITOR,
-                       Operator.AND: Combinable.BITAND
-                   }.get(interests_condition) or Combinable.BITAND
+        interests_condition = self.kwargs \
+            .get("interests_condition", self.default_condition) \
+            .upper()
+        opps = {
+            Operator.OR: Combinable.BITOR,
+            Operator.AND: Combinable.BITAND
+        }
+        operator = opps.get(interests_condition) or Combinable.BITAND
 
         top_interests_annotate = get_interests_annotation(item_groups[0])
         for item_ids in item_groups[1:]:
@@ -760,9 +764,9 @@ class PricingToolFiltering:
                 while parent_ids:
                     item_groups[item_id].extend(parent_ids)
                     parent_ids = list(
-                        Audience.objects.filter(
-                            parent__in=parent_ids
-                        ).values_list("id", flat=True)
+                        Audience.objects \
+                            .filter(parent__in=parent_ids) \
+                            .values_list("id", flat=True)
                     )
 
             self.interest_child_cache[key] = list(item_groups.values())
@@ -781,11 +785,13 @@ def _get_interests_filters():
 
 
 def opportunity_statistic_date_filter(periods):
-    return [dict(
-        placements__adwords_campaigns__statistics__date__gte=start,
-        placements__adwords_campaigns__statistics__date__lte=end)
-               for start, end in periods
-           ] or [dict()]
+    filters = [
+        dict(
+            placements__adwords_campaigns__statistics__date__gte=start,
+            placements__adwords_campaigns__statistics__date__lte=end)
+        for start, end in periods
+    ]
+    return filters or [dict()]
 
 
 def list_to_filter(items):

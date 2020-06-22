@@ -102,7 +102,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
         aggregated_data = {}
 
         for key, ids in ad_group_ids_map.items():
-            _item_filter = {f"ad_group_id__in": ids}
+            _item_filter = {"ad_group_id__in": ids}
             aggregated_data[key] = {}
 
             aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter) \
@@ -307,7 +307,7 @@ def _recalculate_de_norm_fields_for_account_flights(account_id):
     for flight in flights_annotated.values():
         defaults = {
             key: flight.get(key) or 0
-            for key in FLIGHTS_DELIVERY_ANNOTATE.keys()
+            for key in FLIGHTS_DELIVERY_ANNOTATE
         }
         FlightStatistic.objects.update_or_create(
             flight_id=flight["id"],

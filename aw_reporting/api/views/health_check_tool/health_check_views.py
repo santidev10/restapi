@@ -25,11 +25,10 @@ class HealthCheckApiView(ListAPIView):
     def get_queryset(self):
         queryset = Opportunity.objects.get_queryset_for_user(self.request.user) \
             .filter(probability=100) \
-            .select_related(
-            "ad_ops_manager",
-            "ad_ops_qa_manager",
-            "account_manager"
-        ) \
+            .select_related("ad_ops_manager",
+                            "ad_ops_qa_manager",
+                            "account_manager"
+                            ) \
             .order_by("name", "-start")
         return queryset
 

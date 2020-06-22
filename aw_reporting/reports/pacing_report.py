@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from collections import defaultdict
 from datetime import timedelta
 from math import ceil
@@ -126,6 +127,7 @@ class PacingReport:
         raw_data = queryset.values(*placement_fields)
         return raw_data
 
+    # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
     def get_flights_data(self, with_campaigns=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
@@ -202,10 +204,9 @@ class PacingReport:
                     goal_factor = self.goal_factor
             fl["plan_units"] = 0
             fl["sf_ordered_units"] = 0
-            if fl["placement__dynamic_placement"] \
-                in (DynamicPlacementType.BUDGET,
-                    DynamicPlacementType.RATE_AND_TECH_FEE,
-                    DynamicPlacementType.SERVICE_FEE):
+            if fl["placement__dynamic_placement"] in (DynamicPlacementType.BUDGET,
+                                                      DynamicPlacementType.RATE_AND_TECH_FEE,
+                                                      DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
                 fl["sf_ordered_units"] = fl["plan_units"]
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
@@ -231,9 +232,7 @@ class PacingReport:
                 "placement__opportunity__cannot_roll_over"]
             goal_type_id = placement_flights[0]["placement__goal_type_id"]
             if cannot_roll_over is True \
-                or goal_type_id not in (
-                0,
-                1):  # Use re-allocation for CPV and CPM placements only for now
+                or goal_type_id not in (0, 1):  # Use re-allocation for CPV and CPM placements only for now
                 continue
 
             # first get the over delivery
@@ -274,6 +273,8 @@ class PacingReport:
                             fl["recalculated_plan_units"] -= assigned_over_delivery
                             over_delivery -= assigned_over_delivery
         return data
+
+    # pylint: enable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
 
     @staticmethod
     def get_delivery_stats_from_flights(flights, campaign_id=None):
@@ -445,7 +446,7 @@ class PacingReport:
 
         )
 
-    # ## OPPORTUNITIES ## #
+    # pylint: disable=too-many-statements
     def get_opportunities(self, get, user=None, aw_cid=None):
         queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
@@ -517,7 +518,7 @@ class PacingReport:
             o["status"] = status
             goal_type_ids = sorted(filter(
                 lambda g: g is not None,
-                set([p["goal_type_id"] for p in placements])
+                {p["goal_type_id"] for p in placements}
             ))
             o["goal_type_ids"] = goal_type_ids
 
@@ -563,6 +564,8 @@ class PacingReport:
                 o["cpm_buffer"] = (self.goal_factor - 1) * 100 if o["cpm_buffer"] is None else o["cpm_buffer"]
                 o["cpv_buffer"] = (self.goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
         return opportunities
+
+    # pylint: enable=too-many-statements
 
     def get_opportunities_queryset(self, get, user, aw_cid):
         if not isinstance(get, QueryDict):
@@ -629,6 +632,7 @@ class PacingReport:
 
         return queryset.order_by("name", "id").distinct()
 
+    # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
     def get_period_dates(self, period, custom_start, custom_end):
         if period is None or period == "custom":
             return custom_start, custom_end
@@ -643,12 +647,11 @@ class PacingReport:
 
             if period.startswith("this"):
                 return this_start, next_start - timedelta(days=1)
-            elif period.startswith("next"):
+            if period.startswith("next"):
                 following_start = (next_start + timedelta(days=31)).replace(
                     day=1)
                 return next_start, following_start - timedelta(days=1)
-            else:
-                raise PeriodError(period)
+            raise PeriodError(period)
 
         if period.endswith("year"):
             this_start = self.today.replace(month=1, day=1)
@@ -656,12 +659,11 @@ class PacingReport:
 
             if period.startswith("this"):
                 return this_start, next_start - timedelta(days=1)
-            elif period.startswith("next"):
+            if period.startswith("next"):
                 following_start = (next_start + timedelta(days=366)).replace(
                     day=1)
                 return next_start, following_start - timedelta(days=1)
-            else:
-                raise PeriodError(period)
+            raise PeriodError(period)
 
         if period.endswith("quarter"):
             #  1    2    3     4
@@ -681,7 +683,7 @@ class PacingReport:
                 day=1, year=year_of_next_quarter)
             if period.startswith("this"):
                 return this_start, next_start - timedelta(days=1)
-            elif period.startswith("next"):
+            if period.startswith("next"):
                 year_of_following_quarter = year_of_next_quarter
                 if next_quarter_num < 4:
                     following_quarter_num = next_quarter_num + 1
@@ -692,11 +694,11 @@ class PacingReport:
                     month=(following_quarter_num - 1) * 3 + 1,
                     day=1, year=year_of_following_quarter)
                 return next_start, following_start - timedelta(days=1)
-            else:
-                raise PeriodError(period)
+            raise PeriodError(period)
         raise PeriodError(period)
 
-    # ## PLACEMENTS ## #
+    # pylint: enable=too-many-statements,too-many-branches,too-many-return-statements
+
     # todo: remove this method. Calculate these vales on general logic. Ensure that FE can handle them.
     def _set_none_hard_cost_properties(self, placement_dict_data):
         placement_dict_data.update(
@@ -774,12 +776,10 @@ class PacingReport:
             date__gte=F("campaign__salesforce_placement__flights__start"),
             date__lte=F("campaign__salesforce_placement__flights__end"),
             campaign__salesforce_placement=placement)
-        all_aw_before_yesterday_stats = campaign_stats_qs.values(
-            id_field).order_by(id_field).annotate(
-            **get_flight_delivery_annotate(
-                ("sum_video_views", "sum_impressions", "sum_cost"),
-            )
-        )
+        all_aw_before_yesterday_stats = campaign_stats_qs \
+            .values(id_field) \
+            .order_by(id_field) \
+            .annotate(**get_flight_delivery_annotate(("sum_video_views", "sum_impressions", "sum_cost"), ))
         all_aw_before_yesterday_stats = {i[id_field]: i for i in
                                          all_aw_before_yesterday_stats}
 
@@ -835,7 +835,7 @@ class PacingReport:
 
         # status = "serving" | "paused" | "ended"
         if status:
-            if type(status) is str:
+            if isinstance(status, str):
                 queryset = queryset.filter(status=status)
             else:
                 queryset = queryset.filter(status__in=status)
@@ -983,6 +983,7 @@ def get_yesterday_delivery(flights, today):
     return {flight["id"]: flight for flight in flights_yesterday_delivery}
 
 
+# pylint: disable=too-many-locals
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
                    allocation_ko=1, campaign_id=None, cpm_buffer=0, cpv_buffer=0):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
@@ -1066,15 +1067,16 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     return data
 
 
+# pylint: enable=too-many-locals
+
 def get_pacing_goal_for_today(flight, today, allocation_ko=1, campaign_id=None):
     # fixme: requirements inconsistency
     dynamic_placement = flight["placement__dynamic_placement"]
     if dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
         return get_rate_and_tech_fee_today_goal(flight, today, allocation_ko,
                                                 campaign_id)
-    else:
-        return get_pacing_goal_for_date(flight, today, today, allocation_ko,
-                                        campaign_id)
+    return get_pacing_goal_for_date(flight, today, today, allocation_ko,
+                                    campaign_id)
 
 
 def get_rate_and_tech_fee_today_goal(flight, today, allocation_ko=1,
@@ -1156,9 +1158,9 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
                                                  start=yesterday,
                                                  end=yesterday)
         if goal_type_id == SalesForceGoalType.CPV:
-            cpv = DefaultRate.CPV if yesterdays_stats[
-                                         "cpv"] is None else \
-                yesterdays_stats["cpv"]
+            cpv = DefaultRate.CPV \
+                if yesterdays_stats["cpv"] is None \
+                else yesterdays_stats["cpv"]
             today_budget = cpv * today_units
         else:
             cpm = DefaultRate.CPM \
@@ -1168,6 +1170,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
+# pylint: disable=too-many-branches,too-many-statements,too-many-nested-blocks
 def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     charts = []
     if not flights:
@@ -1299,7 +1302,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
             )
         )
     return charts
-
+# pylint: enable=too-many-branches,too-many-statements,too-many-nested-blocks
 
 def get_pacing_from_flights(flights, allocation_ko=1,
                             campaign_id=None):
@@ -1329,15 +1332,17 @@ def get_pacing_from_flights(flights, allocation_ko=1,
 
 
 def get_delivery_field_name(flight_dict):
-    if flight_dict["placement__dynamic_placement"] in (
+    dynamic_placement_types = (
         DynamicPlacementType.BUDGET,
         DynamicPlacementType.SERVICE_FEE,
-        DynamicPlacementType.RATE_AND_TECH_FEE):
+        DynamicPlacementType.RATE_AND_TECH_FEE)
+    if flight_dict["placement__dynamic_placement"] in dynamic_placement_types:
         return "cost"
-    elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPM:
+    if flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPM:
         return "impressions"
-    elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPV:
+    if flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPV:
         return "video_views"
+    return None
 
 
 def populate_daily_delivery_data(flights):
@@ -1347,15 +1352,12 @@ def populate_daily_delivery_data(flights):
         date__lte=F("campaign__salesforce_placement__flights__end"),
         campaign__salesforce_placement_id__in=placement_ids)
     fl_id_field = "campaign__salesforce_placement__flights__id"
-    raw_aw_daily_stats = campaign_stats_qs.values(fl_id_field,
-                                                  "campaign_id",
-                                                  "date").order_by(
-        fl_id_field,
-        "campaign_id",
-        "date").annotate(
-        **{k: v for k, v in get_flight_delivery_annotate().items()
-           if k in ("sum_video_views", "sum_impressions", "sum_cost")}
-    )
+    raw_aw_daily_stats = campaign_stats_qs \
+        .values(fl_id_field, "campaign_id", "date") \
+        .order_by(fl_id_field, "campaign_id", "date") \
+        .annotate(**{k: v for k, v in get_flight_delivery_annotate().items()
+                     if k in ("sum_video_views", "sum_impressions", "sum_cost")}
+                  )
     all_aw_daily_stats = defaultdict(list)
     for row in raw_aw_daily_stats:
         all_aw_daily_stats[row[fl_id_field]].append(row)

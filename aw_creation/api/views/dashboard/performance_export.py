@@ -12,8 +12,8 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.dashboard_charts import DeliveryChart
+from aw_reporting.charts.dashboard_charts import DateSegment
+from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.excel_reports import DashboardPerformanceReport
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import AdGroup

@@ -62,3 +62,4 @@ class Account(models.Model):
         dates = self.campaigns.all().values_list("end_date", flat=True)
         if None not in dates and dates:
             return max(dates)
+        return None

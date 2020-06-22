@@ -59,6 +59,12 @@ class PacingReportOpportunitiesSerializer(Serializer):
     aw_update_time = DateTimeField()
     margin_cap_required = BooleanField()
 
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
     def get_region(self, obj):
         territory = obj["territory"]
         return dict(

@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import logging
 from datetime import date
 from datetime import datetime
@@ -74,8 +75,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         pl_1 = OpPlacement.objects.create(id="1", name="", opportunity=current_op,
                                           goal_type_id=SalesForceGoalType.CPM)
-        pl_2 = OpPlacement.objects.create(id="2", name="", opportunity=current_op,
-                                          goal_type_id=SalesForceGoalType.CPV)
+        OpPlacement.objects.create(id="2", name="", opportunity=current_op,
+                                   goal_type_id=SalesForceGoalType.CPV)
         Campaign.objects.create(name="c", salesforce_placement=pl_1)
         Opportunity.objects.create(id="2", name="2", start=month_ago,
                                    end=month_ago, probability=100)
@@ -150,7 +151,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     def test_get_opportunities_buffers_default(self):
         today = timezone.now()
         first_day = today.replace(day=1)
-        month_ago, month_after = first_day - timedelta(
+        month_ago, _ = first_day - timedelta(
             days=1), first_day + timedelta(days=32)
 
         Opportunity.objects.create(id="1", name="1", start=today, end=today,
@@ -519,7 +520,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             goal_type_id=SalesForceGoalType.CPM,
             opportunity=opportunity, total_cost=0)
-        flight = Flight.objects.create(placement=placement, start=today, end=today)
+        Flight.objects.create(placement=placement, start=today, end=today)
 
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
@@ -1262,7 +1263,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=pl_1, start_date=any_date,
                                 end_date=any_date)
 
-        opp_2 = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        Opportunity.objects.create(id=next(int_iterator), probability=100)
         pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1,
                                           goal_type_id=SalesForceGoalType.CPM)
         Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)

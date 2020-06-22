@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -605,8 +606,7 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(
-        self):
+    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -699,8 +699,7 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(
-        self):
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -811,6 +810,7 @@ class PacingReportFlightsTestCase(APITestCase):
         pl = response.data[0]
         self.assertEqual(pl["plan_cost"], placement.total_cost)
 
+    # pylint: disable=too-many-locals
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
         timezone_str = "UTC"
@@ -883,6 +883,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertEqual(fl["video_views"], views)
         self.assertAlmostEqual(fl["margin"], expected_margin)
         self.assertAlmostEqual(fl["pacing"], expected_pacing)
+    # pylint: enable=too-many-locals
 
     def test_dynamic_placement_rate_and_tech_fee_daily_chart(self):
         today = date(2017, 1, 1)

@@ -233,6 +233,7 @@ class ImpressionsBasedChart(BenchMarkChart):
             return queryset.annotate(**data)
         if self.aggregate:
             return queryset.aggregate(**data)
+        return None
 
     def get_chart(self):
         queryset = self.get_queryset()

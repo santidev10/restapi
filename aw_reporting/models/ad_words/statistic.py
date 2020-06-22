@@ -48,14 +48,13 @@ class BaseStatisticModel(BaseModel):
                 *[getattr(self, stat_name)
                   for stat_name in dependencies]
             )
-        elif name in VIEW_RATE_STATS:
+        if name in VIEW_RATE_STATS:
             quart = re.findall(r"\d+", name)[0]
             quart_views = getattr(self, "video_views_%s_quartile" % quart)
             impressions = self.impressions
             return quart_views / impressions * 100 \
                 if impressions else None
-        else:
-            raise AttributeError(self, name)
+        raise AttributeError(self, name)
 
 
 class ModelPlusDeNormFields(BaseStatisticModel):

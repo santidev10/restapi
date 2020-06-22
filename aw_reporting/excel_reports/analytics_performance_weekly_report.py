@@ -1,3 +1,4 @@
+import re
 from copy import copy
 from datetime import datetime
 from datetime import timedelta
@@ -29,6 +30,7 @@ def get_all_stats_aggregate_with_clicks_stats():
     return base_stats
 
 
+# pylint: disable=too-many-instance-attributes
 class AnalyticsPerformanceWeeklyReport:
     hide_logo = False
 
@@ -175,11 +177,9 @@ class AnalyticsPerformanceWeeklyReport:
         self.output = BytesIO()
         self.workbook = xlsxwriter.Workbook(self.output, {"in_memory": True})
         # clean up account name
-        bad_characters = "[]:*?\/"
+        bad_characters = r"[]:*?\/"
         account_name = self.account.name[:31] if self.account and self.account.name else ""
-        for char in account_name:
-            if char in bad_characters:
-                account_name = account_name.replace(char, "")
+        account_name = re.sub("[" + re.escape(bad_characters) + "]", "", account_name)
         self.worksheet = self.workbook.add_worksheet(
             "{}".format(account_name))
         # Set columns width
@@ -228,6 +228,20 @@ class AnalyticsPerformanceWeeklyReport:
         self.campaigns = campaigns or []
         self.ad_groups = ad_groups or []
         self.date_delta = datetime.now().date() - timedelta(days=7)
+        self.merge_format = None
+        self.bold_format = None
+        self.annotation_format = None
+        self.header_format = None
+        self.footer_format_with_click_types = None
+        self.footer_format = None
+        self.data_cell_options_with_click_types = None
+        self.data_cell_options = None
+        self.output = None
+        self.workbook = None
+        self.worksheet = None
+        self.start_column = None
+        self.start_row = None
+        self.data_cell_options_with_cta = None
 
     def get_content(self):
         # Init document
@@ -307,8 +321,10 @@ class AnalyticsPerformanceWeeklyReport:
             self.date_delta.strftime("%m/%d/%y"),
             (datetime.now().date() - timedelta(days=1)).strftime("%m/%d/%y"))
         # Set merge area
+        # pylint: disable=no-value-for-parameter
         self.worksheet.merge_range("B1:D4", "")
         self.worksheet.merge_range("B5:D11", "", self.merge_format)
+        # pylint: enable=no-value-for-parameter
         self.worksheet.write_rich_string(
             "B5",
             self.bold_format,
@@ -507,11 +523,12 @@ class AnalyticsPerformanceWeeklyReport:
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj["name"],
-             obj["impressions"],
-             obj["video_views"],
-             div_by_100(obj["video_view_rate"])
-             )
+            (
+                obj["name"],
+                obj["impressions"],
+                obj["video_views"],
+                div_by_100(obj["video_view_rate"])
+            )
             for obj in self.get_interest_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -519,10 +536,10 @@ class AnalyticsPerformanceWeeklyReport:
 
     def get_topic_data(self):
         queryset = TopicStatistic.objects.filter(**self.get_filters())
-        topic_data = queryset.values("topic__name").order_by(
-            "topic__name").annotate(
-            **all_stats_aggregate
-        )
+        topic_data = queryset \
+            .values("topic__name") \
+            .order_by("topic__name") \
+            .annotate(**all_stats_aggregate)
         for i in topic_data:
             i["name"] = i["topic__name"]
             dict_norm_base_stats(i)
@@ -547,11 +564,12 @@ class AnalyticsPerformanceWeeklyReport:
         # Write content
 
         rows = [
-            (obj["name"],
-             obj["impressions"],
-             obj["video_views"],
-             div_by_100(obj["video_view_rate"])
-             )
+            (
+                obj["name"],
+                obj["impressions"],
+                obj["video_views"],
+                div_by_100(obj["video_view_rate"])
+            )
             for obj in self.get_topic_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -656,6 +674,8 @@ class AnalyticsPerformanceWeeklyReport:
         ]
         self.write_rows(annotation_row, start_row, self.annotation_format)
 
+
+# pylint: enable=too-many-instance-attributes
 
 def div_by_100(value):
     return value / 100. if value is not None else ""

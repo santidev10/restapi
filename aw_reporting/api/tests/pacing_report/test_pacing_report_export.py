@@ -1,5 +1,3 @@
-from unittest import mock
-
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name

@@ -109,7 +109,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = datetime.now()
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end, probability=100,
             budget=10  # margin will be 33%

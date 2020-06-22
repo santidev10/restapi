@@ -13,7 +13,6 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
-from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
 from utils.db.models.persistent_entities import DemoEntityModelMixin
 
@@ -83,6 +82,7 @@ class User(BaseModel):
     def photo_url(self):
         if self.photo_id:
             return static("/".join(("img", "sf", self.photo_name)))
+        return None
 
     @classmethod
     def get_data(cls, data):
@@ -248,11 +248,13 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     def cpv(self):
         if self.video_views is not None and self.cpv_cost is not None:
             return self.cpv_cost / self.video_views
+        return None
 
     @property
     def cpm(self):
         if self.impressions is not None and self.cpm_cost is not None:
             return self.cpm_cost / self.impressions
+        return None
 
     @property
     def views(self):
@@ -457,11 +459,13 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     def video_views(self):
         if self.goal_type_id == SalesForceGoalType.CPV:
             return self.ordered_units
+        return None
 
     @property
     def impressions(self):
         if self.goal_type_id == SalesForceGoalType.CPM:
             return self.ordered_units
+        return None
 
 
 class Flight(BaseModel, DemoEntityModelMixin):
@@ -518,8 +522,9 @@ class Flight(BaseModel, DemoEntityModelMixin):
 
         if goal_type_id == SalesForceGoalType.CPM:
             return self.stats["impressions"]
-        elif goal_type_id == SalesForceGoalType.CPV:
+        if goal_type_id == SalesForceGoalType.CPV:
             return self.stats["video_views"]
+        return None
 
     @classmethod
     def get_data(cls, data):
@@ -585,6 +590,3 @@ class Activity(BaseModel):
             account_id=data[Fields.ACCOUNT_ID],
         )
         return res
-
-
-init_signals()

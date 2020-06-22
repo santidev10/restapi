@@ -7,11 +7,11 @@ from urllib.parse import urlencode
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.analytics_charts import Breakdown
-from aw_reporting.analytics_charts import Indicator
-from aw_reporting.analytics_charts import TrendId
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import Breakdown
+from aw_reporting.charts.base_chart import TrendId
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign

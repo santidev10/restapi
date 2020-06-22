@@ -91,7 +91,7 @@ def test_response(test_data, url, *args, **kwargs):
     return MockResponse(text=test_csv)
 
 
-class MockResponse(object):
+class MockResponse:
     def __init__(self, status_code=HTTP_200_OK, text=None, **kwargs):
         self.status_code = status_code
         self.text = text

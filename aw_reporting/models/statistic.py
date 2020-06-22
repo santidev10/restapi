@@ -1,11 +1,11 @@
 from django.db import models
 
-from aw_reporting.models import Device
 from aw_reporting.models.ad_words import Ad
 from aw_reporting.models.ad_words import AdGroup
 from aw_reporting.models.ad_words import Audience
 from aw_reporting.models.ad_words import BaseStatisticModel
 from aw_reporting.models.ad_words import Campaign
+from aw_reporting.models.ad_words import Device
 from aw_reporting.models.ad_words import GeoTarget
 from aw_reporting.models.ad_words import RemarkList
 from aw_reporting.models.ad_words import Topic

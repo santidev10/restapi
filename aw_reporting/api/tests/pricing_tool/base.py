@@ -51,8 +51,7 @@ class PricingToolTestCaseBase(APITestCase):
         return opportunity, campaign
 
 
-def generate_campaign_statistic(
-    campaign, start, end, predefined_statistics=None):
+def generate_campaign_statistic(campaign, start, end, predefined_statistics=None):
     for i in range((end - start).days + 1):
         base_stats = {
             "campaign": campaign,

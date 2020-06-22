@@ -29,11 +29,10 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             .values_list("id", flat=True)
         now = timezone.now()
         running_campaigns = Campaign.objects \
-            .filter(
-            Q(sync_time__lte=F("update_time")) | Q(sync_time=None),
-            salesforce_placement__start__lte=now,
-            salesforce_placement__end__gte=now,
-        )
+            .filter(Q(sync_time__lte=F("update_time")) | Q(sync_time=None),
+                    salesforce_placement__start__lte=now,
+                    salesforce_placement__end__gte=now,
+                    )
 
         all_updated_campaign_budgets = defaultdict(dict)
         for campaign in running_campaigns:

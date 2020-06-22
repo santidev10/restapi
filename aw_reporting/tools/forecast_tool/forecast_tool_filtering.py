@@ -58,6 +58,10 @@ class ForecastToolFiltering:
         start, end = cls._get_default_dates()
         product_types = AdGroup.objects.all().values_list("type", flat=True).order_by("type").distinct()
         product_types = [dict(id=t, name=t) for t in sorted(product_types) if t not in ["", " --", "Standard"]]
+        topics = TopicStatistic.objects.filter(topic__parent__isnull=True) \
+            .values("topic_id", "topic__name") \
+            .order_by("topic__name", "topic_id") \
+            .distinct()
         filters = dict(
             quarters=[dict(id=c, name=c) for c in list(sorted(quarter_days.keys()))],
             quarters_condition=CONDITIONS,
@@ -76,10 +80,7 @@ class ForecastToolFiltering:
             demographic_condition=CONDITIONS,
             topics=[
                 dict(id=i["topic_id"], name=i["topic__name"])
-                for i in TopicStatistic.objects.filter(topic__parent__isnull=True)
-                    .values("topic_id", "topic__name")
-                    .order_by("topic__name", "topic_id")
-                    .distinct()
+                for i in topics
             ],
             topics_condition=CONDITIONS,
             devices=list_to_filter(Devices),
@@ -423,11 +424,13 @@ def _get_interests_filters():
 
 
 def opportunity_statistic_date_filter(periods):
-    return [dict(
-        placements__adwords_campaigns__statistics__date__gte=start,
-        placements__adwords_campaigns__statistics__date__lte=end)
-               for start, end in periods
-           ] or [dict()]
+    filters = [
+        dict(
+            placements__adwords_campaigns__statistics__date__gte=start,
+            placements__adwords_campaigns__statistics__date__lte=end)
+        for start, end in periods
+    ]
+    return filters or [dict()]
 
 
 def list_to_filter(items):

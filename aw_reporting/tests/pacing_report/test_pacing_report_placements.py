@@ -83,7 +83,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
             id="2", name="", placement=placement,
             start=today - timedelta(days=days_pass), end=today + timedelta(days=days_left - 1),
             cost=10)
-        future_flight = Flight.objects.create(
+        Flight.objects.create(
             id="3", name="", placement=placement,
             start=today + timedelta(days=12), end=today + timedelta(days=24),
             cost=100)

@@ -143,8 +143,8 @@ class ForecastToolTestCase(TestCase):
             id="1", name="",
         )
         expected_types = ("Bumper", "Display", "In-stream", "Video discovery")
-        for n, product_type in enumerate(
-            ("", " --", "Standard") + expected_types):
+        product_types = ("", " --", "Standard") + expected_types
+        for n, product_type in enumerate(product_types):
             AdGroup.objects.create(id=n, name="", campaign=campaign,
                                    type=product_type)
 
@@ -201,8 +201,7 @@ class ForecastToolTestCase(TestCase):
                          {campaign1.id, campaign2.id})
 
     def test_filter_by_parent_status(self):
-
-        campaign1 = Campaign.objects.create(id=1, name="", parent_not_parent=True)
+        Campaign.objects.create(id=1, name="", parent_not_parent=True)
         campaign2 = Campaign.objects.create(id=2, name="", parent_parent=True)
         Campaign.objects.create(id=3, name="", parent_not_parent=True)
 

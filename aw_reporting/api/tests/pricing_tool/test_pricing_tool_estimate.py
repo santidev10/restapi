@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 from datetime import date
 from datetime import datetime
@@ -251,9 +252,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(len(cpm_charts), 1)
         cpm_chart = cpm_charts[0]
         self.assertEqual(len(cpm_chart["trend"]), 4)
-        self.assertEqual(tuple(
-            i["value"] for i in cpm_chart["trend"]),
-            (15, 15, 25, 25))
+        self.assertEqual(
+            tuple(i["value"] for i in cpm_chart["trend"]),
+            (15, 15, 25, 25)
+        )
 
     def test_estimate_filter_ctr(self):
         opportunity_1 = Opportunity.objects.create(id="1")
@@ -319,9 +321,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         cpm_chart = cpm_charts[0]
         self.assertEqual(len(cpm_chart["trend"]), 4)
         self.assertEqual(
-            tuple(
-                i["value"] for i in cpm_chart["trend"]),
-            (15, 20, 25, 30))
+            tuple(i["value"] for i in cpm_chart["trend"]),
+            (15, 20, 25, 30)
+        )
 
     def test_estimate_filter_ctr_v(self):
         today = now_in_default_tz().date()
@@ -385,9 +387,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(len(cpv_charts), 1)
         cpv_chart = cpv_charts[0]
         self.assertEqual(len(cpv_chart["trend"]), 4)
-        self.assertEqual(tuple(
-            i["value"] for i in cpv_chart["trend"]),
-            (0.015, 0.02, 0.025, 0.03))
+        self.assertEqual(
+            tuple(i["value"] for i in cpv_chart["trend"]),
+            (0.015, 0.02, 0.025, 0.03)
+        )
 
     def test_estimate_filter_view_rate(self):
         opportunity_1 = Opportunity.objects.create(id="1")
@@ -974,7 +977,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_opportunities_applied_to_planned_chart(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1006,7 +1009,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_campaigns_applied_to_planned_chart(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1040,7 +1043,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_campaigns_applied_to_planned_chart_partially(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1054,16 +1057,16 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             **placement_data)
-        campaign_1 = Campaign.objects.create(id=1,
-                                             salesforce_placement=placement_1,
-                                             **campaign_data)
+        Campaign.objects.create(id=1,
+                                salesforce_placement=placement_1,
+                                **campaign_data)
         campaign_2 = Campaign.objects.create(id=2,
                                              salesforce_placement=placement_1,
                                              **campaign_data)
 
-        campaign_3 = Campaign.objects.create(id=3,
-                                             salesforce_placement=placement_2,
-                                             **campaign_data)
+        Campaign.objects.create(id=3,
+                                salesforce_placement=placement_2,
+                                **campaign_data)
         campaign_4 = Campaign.objects.create(id=4,
                                              salesforce_placement=placement_2,
                                              **campaign_data)
@@ -1081,7 +1084,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_opportunities_without_campaigns(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1107,7 +1110,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_success_on_empty_exclude_filters(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1130,7 +1133,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                     exclude_opportunities=[],
                     exclude_campaigns=[]
                 )
-            except Exception as ex:
+            except BaseException as ex:
                 self.fail("Server error due to {}".format(ex))
 
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -84,6 +84,7 @@ def perform_delete(sc, delete_from_days):
             logger.debug("Deleted %s entries: %s", model.__name__, to_delete)
 
 
+# pylint: disable=too-many-branches
 def perform_get(sc):
     opportunity_ids = set()
     placement_ids = set()
@@ -100,7 +101,7 @@ def perform_get(sc):
         (Activity, "get_activities", None),
     ]
     for model, method, condition in data:
-        logger.debug("Getting %s items" % model.__name__)
+        logger.debug("Getting %s items", model.__name__)
         to_create = []
         to_update = []
         rows = getattr(sc, method)(where=condition)
@@ -119,15 +120,15 @@ def perform_get(sc):
                 continue
             data = model.get_data(item_data)
             if update_fields is None:
-                update_fields = [key for key in data.keys() if key != "id"]
+                update_fields = [key for key in data if key != "id"]
             item_id = data["id"]
             existing = existing_items.get(item_id)
             if existing is None:
                 to_create.append(model(**data))
                 continue
             # Compare values since Contact and SFAccount models are easily compared and contain many entries
-            if method == "get_contacts" or method == "get_accounts":
-                existing_values = set(getattr(existing, key) for key in data.keys())
+            if method in ("get_contacts", "get_accounts"):
+                existing_values = set(getattr(existing, key) for key in data)
                 if existing_values != set(data.values()):
                     to_update.append(model(**data))
             elif method == "get_categories":
@@ -153,6 +154,8 @@ def perform_get(sc):
         elif method == "get_placements":
             placement_ids = set(OpPlacement.objects.all().values_list("id", flat=True))
 
+
+# pylint: enable=too-many-branches
 
 def perform_update(sc, today, opportunity_ids, force_update, skip_placements, skip_opportunities,
                    skip_flights, debug_update):
@@ -189,7 +192,7 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                 r = 204 \
                     if debug_update \
                     else sc.sf.Opportunity.update(opportunity.id, update)
-            except Exception as e:
+            except BaseException as e:
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
@@ -216,7 +219,7 @@ def update_placements(sc, opportunity_ids, debug_update):
                 r = 204 \
                     if debug_update \
                     else sc.sf.Placement__c.update(placement.id, update, )
-            except Exception as e:
+            except BaseException as e:
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
@@ -228,6 +231,7 @@ def update_placements(sc, opportunity_ids, debug_update):
                     logger.critical("Update Error: %s %s", placement.id, str(r))
 
 
+# pylint: disable=too-many-branches
 def update_flights(sc, force_update, opportunity_ids, today, debug_update):
     opp_filter = Q(placement__opportunity__number__in=opportunity_ids) if opportunity_ids else Q()
     pacing_report = PacingReport()
@@ -253,7 +257,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         if update:
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
-            except Exception as e:
+            except BaseException as e:
                 stack_trace = str(e)
                 if getattr(e, "status", 0) == 404:
                     logger.info(stack_trace)
@@ -281,7 +285,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         update = dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0)
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
-        except Exception as e:
+        except BaseException as e:
             if getattr(e, "status", 0) == 404:
                 logger.warning(str(e))
             else:
@@ -295,6 +299,9 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
                 )
             else:
                 logger.critical("Update Error: %s %s", flight.id, str(r))
+
+
+# pylint: enable=too-many-branches
 
 
 def flights_to_update_qs(force_update, today):
@@ -311,10 +318,8 @@ def flights_to_update_qs(force_update, today):
                                                             DynamicPlacementType.RATE_AND_TECH_FEE))
     type_filters = regular_placement | dynamic_placement
     flights = Flight.not_demo_items() \
-        .filter(
-        start__gte=WRITE_START,
-        placement__adwords_campaigns__isnull=False,
-    ) \
+        .filter(start__gte=WRITE_START,
+                placement__adwords_campaigns__isnull=False, ) \
         .exclude(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
         .filter(type_filters) \
         .filter(date_filters) \
@@ -324,12 +329,12 @@ def flights_to_update_qs(force_update, today):
 
 
 def match_using_placement_numbers():
-    placements = OpPlacement.objects.filter(
-        number=OuterRef("placement_code")).values("pk")[:1]
+    placements = OpPlacement.objects \
+                     .filter(number=OuterRef("placement_code")) \
+                     .values("pk")[:1]
     campaigns = Campaign.objects \
         .filter(placement_code__isnull=False) \
         .annotate(placement_id=Subquery(placements))
     count = campaigns.update(salesforce_placement_id=F("placement_id"))
-    from django.conf import settings
     if not settings.IS_TEST:
         logger.debug("Matched %d Campaigns", count)

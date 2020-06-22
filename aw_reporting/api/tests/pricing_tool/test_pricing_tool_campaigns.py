@@ -32,7 +32,7 @@ class PricingToolCampaignTestCase(PricingToolTestCaseBase):
         start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
         pl_rate = 1.03
         new_id = next(int_iterator)
-        opportunity, _ = self._create_opportunity_campaign(
+        self._create_opportunity_campaign(
             new_id,
             opp_data=dict(start=start_date, end=end_date),
             pl_data=dict(ordered_rate=pl_rate,

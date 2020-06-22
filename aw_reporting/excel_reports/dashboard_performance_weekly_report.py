@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from datetime import timedelta
 from functools import partial
@@ -48,6 +49,7 @@ def div_by_100(value):
 FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected TV Devices, Non-smart phones etc."
 
 
+# pylint: disable=too-many-instance-attributes
 class DashboardPerformanceWeeklyReport:
     hide_logo = False
     manager = VideoManager()
@@ -304,11 +306,9 @@ class DashboardPerformanceWeeklyReport:
         self.output = BytesIO()
         self.workbook = xlsxwriter.Workbook(self.output, {"in_memory": True})
         # clean up account name
-        bad_characters = "[]:*?\/"
+        bad_characters = r"[]:*?\/"
         account_name = self.account.name[:31] if self.account and self.account.name else ""
-        for char in account_name:
-            if char in bad_characters:
-                account_name = account_name.replace(char, "")
+        account_name = re.sub("[" + re.escape(bad_characters) + "]", "", account_name)
         self.worksheet = self.workbook.add_worksheet(
             "{}".format(account_name))
         # Set columns width
@@ -359,6 +359,19 @@ class DashboardPerformanceWeeklyReport:
         self.ad_groups = ad_groups or []
         self.date_delta = now_in_default_tz().date() - timedelta(days=7)
         self.show_conversions = show_conversions
+        self.merge_format = None
+        self.bold_format = None
+        self.annotation_format = None
+        self.header_format = None
+        self.footer_format_with_click_types = None
+        self.footer_format = None
+        self.data_cell_options_with_click_types = None
+        self.data_cell_options = None
+        self.output = None
+        self.workbook = None
+        self.worksheet = None
+        self.start_column = None
+        self.start_row = None
 
     def get_content(self):
         # Init document
@@ -461,8 +474,10 @@ class DashboardPerformanceWeeklyReport:
             self.date_delta.strftime("%m/%d/%y"),
             (datetime.now().date() - timedelta(days=1)).strftime("%m/%d/%y"))
         # Set merge area
+        # pylint: disable=no-value-for-parameter
         self.worksheet.merge_range("B1:D4", "")
         self.worksheet.merge_range("B5:D11", "", self.merge_format)
+        # pylint: enable=no-value-for-parameter
         self.worksheet.write_rich_string(
             "B5",
             self.bold_format,
@@ -582,7 +597,7 @@ class DashboardPerformanceWeeklyReport:
                 filters=self.manager.ids_query(ids)
             ). \
                 source(includes=list(self.es_fields_to_load)).execute().hits
-        except Exception as e:
+        except BaseException as e:
             logger.error(e)
         else:
             videos_info = {i.main.id: i for i in items}
@@ -733,7 +748,7 @@ class DashboardPerformanceWeeklyReport:
                 filters=self.manager.ids_query(ids)
             ). \
                 source(includes=list(self.es_fields_to_load)).execute().hits
-        except Exception as e:
+        except BaseException as e:
             logger.error(e)
             videos_info = {}
         else:
@@ -841,10 +856,9 @@ class DashboardPerformanceWeeklyReport:
 
     def get_topic_data(self):
         queryset = TopicStatistic.objects.filter(**self.get_filters())
-        topic_data = queryset.values("topic__name").order_by(
-            "topic__name").annotate(
-            **get_all_stats_aggregate_with_clicks_stats()
-        )
+        topic_data = queryset.values("topic__name") \
+            .order_by("topic__name") \
+            .annotate(**get_all_stats_aggregate_with_clicks_stats())
         for i in topic_data:
             i["name"] = i["topic__name"]
             dict_norm_base_stats(i)
@@ -955,3 +969,4 @@ class DashboardPerformanceWeeklyReport:
             [FOOTER_ANNOTATION]
         ]
         self.write_rows(annotation_row, start_row, self.annotation_format)
+# pylint: enable=too-many-instance-attributes

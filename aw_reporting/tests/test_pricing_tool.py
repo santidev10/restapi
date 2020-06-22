@@ -138,8 +138,8 @@ class PricingToolTestCase(TestCase):
             id="1", name="",
         )
         expected_types = ("Bumper", "Display", "In-stream", "Video discovery")
-        for n, product_type in enumerate(
-            ("", " --", "Standard") + expected_types):
+        product_types = ("", " --", "Standard") + expected_types
+        for n, product_type in enumerate(product_types):
             AdGroup.objects.create(id=n, name="", campaign=campaign,
                                    type=product_type)
 
@@ -187,7 +187,7 @@ class PricingToolTestCase(TestCase):
         q2_2015 = datetime(2015, 4, 21).date()
 
         category_1 = Category.objects.create(id="Home & garden")
-        category_2 = Category.objects.create(id="Travel")
+        Category.objects.create(id="Travel")
         opportunity = Opportunity.objects.create(id="1", name="",
                                                  category=category_1)
         placement = OpPlacement.objects.create(id="1", name="",

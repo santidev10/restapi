@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from contextlib import contextmanager
 from datetime import date
 from datetime import timedelta
@@ -1003,8 +1004,10 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
 
 class MockSalesforceConnection(Connection):
+    # pylint: disable=super-init-not-called
     def __init__(self):
         self._storage = dict()
+    # pylint: enable=super-init-not-called
 
     def add_mocked_items(self, name, items):
         self._storage[name] = self._storage.get(name, []) + items
@@ -1013,7 +1016,7 @@ class MockSalesforceConnection(Connection):
         for item in self._storage.get(name, []):
             yield item
 
-    def describe(self, *_):
+    def describe(self, name=None):
         return {
             "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]
         }

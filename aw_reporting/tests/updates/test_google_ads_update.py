@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -70,6 +71,7 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import device_str
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.exception import ExceptionWithArgs
 from utils.unittests.csv import build_csv_byte_stream
 from utils.unittests.generic_test import generic_test
@@ -204,6 +206,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertEqual(campaign.clicks_cards, cards_clicks * dates_len)
         self.assertEqual(campaign.clicks_end_cap, end_cap_clicks * dates_len)
 
+    # pylint: disable=too-many-locals,too-many-statements
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
@@ -319,6 +322,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertEqual(ad_group.clicks_app_store, app_store_clicks * dates_len)
         self.assertEqual(ad_group.clicks_cards, cards_clicks * dates_len)
         self.assertEqual(ad_group.clicks_end_cap, end_cap_clicks * dates_len)
+
+    # pylint: enable=too-many-locals,too-many-statements
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)
@@ -1011,7 +1016,6 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         mock_update.side_effect = exception
 
         with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            mcc_id = Account.objects.get(can_manage_clients=True).id
             cid_campaign_update(account.id)
 
     def test_budget_daily(self):
@@ -1205,7 +1209,6 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
     def test_update_account_struck_fields(self):
-        from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
         any_date = date(2019, 1, 1)
         account = self._create_account()
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
@@ -1232,12 +1235,12 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ended = today - timedelta(days=31)
         acc = Account.objects.create(id=next(int_iterator), name="account_1")
 
-        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
+        Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
         op_2 = Opportunity.objects.create(id=next(int_iterator), name="test_2", aw_cid=acc.id, end=today)
 
         pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_2, number="test_pl", end=today)
-        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
-                                       account=acc)
+        Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                account=acc)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(acc.id, to_update)
@@ -1271,8 +1274,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=aw_cid, end=will_end)
 
         pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_1, number="test_pl", end=today)
-        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
-                                       account=acc_1)
+        Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                account=acc_1)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(acc_1.id, to_update)

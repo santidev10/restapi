@@ -61,6 +61,7 @@ class ConnectAWAccountApiView(APIView):
         return Response(dict(authorize_url=authorize_url))
 
     # second step
+    # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
         # get refresh token
         redirect_url = self.request.query_params.get("redirect_url")
@@ -185,6 +186,7 @@ class ConnectAWAccountApiView(APIView):
 
                 response = AWAccountConnectionRelationsSerializer(relation).data
                 return Response(data=response)
+    # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()

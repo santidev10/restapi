@@ -129,31 +129,34 @@ def optimize_keyword(query, client=None, request_type="IDEAS"):
             for result in page["entries"]:
                 keyword_data = {}
                 for attribute in result["data"]:
-                    value = getattr(attribute["value"], "value", None)
-                    key = attribute["key"]
-                    if key == "CATEGORY_PRODUCTS_AND_SERVICES":
-                        keyword_data["interests"] = value or []
-                    elif key == "AVERAGE_CPC":
-                        v = value.microAmount if value else None
-                        keyword_data["average_cpc"] = v / 1000000 \
-                            if v else v
-                    elif key == "TARGETED_MONTHLY_SEARCHES":
-                        keyword_data["monthly_searches"] = sorted([
-                            dict(
-                                label="%s-%02d" % (v.year, int(v.month)),
-                                value=v.count
-                            ) for v in value
-                            if hasattr(v, "count")
-                        ], key=lambda i: i["label"])
-                    elif value:
-                        keyword_data[key.lower()] = value
-
+                    _update_keyword_data(attribute, keyword_data)
                 result_data.append(keyword_data)
         offset += page_size
         selector["paging"]["startIndex"] = str(offset)
         more_pages = offset < total_count
 
     return result_data
+
+
+def _update_keyword_data(attribute, keyword_data):
+    value = getattr(attribute["value"], "value", None)
+    key = attribute["key"]
+    if key == "CATEGORY_PRODUCTS_AND_SERVICES":
+        keyword_data["interests"] = value or []
+    elif key == "AVERAGE_CPC":
+        v = value.microAmount if value else None
+        keyword_data["average_cpc"] = v / 1000000 \
+            if v else v
+    elif key == "TARGETED_MONTHLY_SEARCHES":
+        keyword_data["monthly_searches"] = sorted([
+            dict(
+                label="%s-%02d" % (v.year, int(v.month)),
+                value=v.count
+            ) for v in value
+            if hasattr(v, "count")
+        ], key=lambda i: i["label"])
+    elif value:
+        keyword_data[key.lower()] = value
 
 
 def get_all_customers(client, page_size=1000, limit=None):
@@ -180,7 +183,7 @@ def get_all_customers(client, page_size=1000, limit=None):
     while more_pages:
         try:
             page = managed_customer_service.get(selector)
-        except Exception as ex:
+        except BaseException as ex:
             logger.exception(ex)
             break
         if "entries" in page and page["entries"]:

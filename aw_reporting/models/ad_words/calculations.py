@@ -49,6 +49,7 @@ def get_video_view_rate(*args, **kwargs):
 
     if impressions:
         return views / impressions
+    return None
 
 
 def get_ctr(*args, **kwargs):
@@ -62,6 +63,7 @@ def get_ctr(*args, **kwargs):
 
     if impressions:
         return clicks / impressions
+    return None
 
 
 def get_ctr_v(*args, **kwargs):
@@ -74,6 +76,7 @@ def get_ctr_v(*args, **kwargs):
         return None
     if video_views:
         return clicks / video_views
+    return None
 
 
 def get_margin(*_, plan_cost, cost, client_cost=None):
