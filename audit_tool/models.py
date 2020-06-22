@@ -339,7 +339,8 @@ class AuditProcessor(models.Model):
     def has_history(self):
         if not self.params.get("error") \
             and self.started \
-            and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
+            and (not self.completed
+                 or self.completed > timezone.now() - timedelta(hours=1)):
             return True
         return False
 
@@ -438,6 +439,7 @@ class AuditChannel(models.Model):
         return None
 
 
+
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -532,6 +534,7 @@ class AuditVideoMeta(models.Model):
 
 
 class AuditVideoProcessor(models.Model):
+    id = models.BigAutoField(primary_key=True)
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     video = models.ForeignKey(AuditVideo, db_index=True, related_name="avp_video", on_delete=models.CASCADE)
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True,
@@ -550,6 +553,7 @@ class AuditVideoProcessor(models.Model):
 
 
 class AuditChannelProcessor(models.Model):
+    id = models.BigAutoField(primary_key=True)
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     channel = models.ForeignKey(AuditChannel, db_index=True, related_name="avp_channel", on_delete=models.CASCADE)
     channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True,
