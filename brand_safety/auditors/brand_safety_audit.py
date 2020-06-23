@@ -411,6 +411,8 @@ class BrandSafetyAudit(object):
         :param video_audit: BrandSafetyVideoAudit
         :return:
         """
+        if self.ignore_vetted_channels is True and channel.task_us_data:
+            return
         video_overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
         channel_overall_score = getattr(channel.brand_safety, "overall_score", None)
         if channel_overall_score and channel_overall_score > 0 and video_overall_score < \

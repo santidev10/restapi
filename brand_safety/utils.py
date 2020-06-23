@@ -38,6 +38,7 @@ class BrandSafetyQueryBuilder:
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
+        self.countries_include_na = data.get("countries_include_na", None)
         self.languages = data.get("languages", [])
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
@@ -65,6 +66,7 @@ class BrandSafetyQueryBuilder:
             "content_categories": self.content_categories,
             "languages": self.languages,
             "countries": self.countries,
+            "countries_include_na": self.countries_include_na,
             "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
             "minimum_views_include_na": self.minimum_views_include_na,
@@ -170,6 +172,8 @@ class BrandSafetyQueryBuilder:
 
         if self.countries:
             country_queries = Q("bool")
+            if self.countries_include_na:
+                country_queries |= QueryBuilder().build().must_not().exists().field("general_data.country_code").get()
             for country in self.countries:
                 country_code = COUNTRY_CODES.get(country)
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(

@@ -30,6 +30,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
         "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
+        "countries_include_na",
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
@@ -140,7 +141,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["age_groups"] = [validate_numeric(value) for value in opts.get("age_groups", [])]
         # validate boolean fields
         for field_name in ["minimum_views_include_na", "minimum_videos_include_na", "minimum_subscribers_include_na",
-                           "age_groups_include_na", "is_vetted", "mismatched_language"]:
+                           "age_groups_include_na", "is_vetted", "mismatched_language", "countries_include_na",]:
             value = opts.get(field_name, None)
             opts[field_name] = validate_boolean(value) if value is not None else None
         # validate all numeric fields
