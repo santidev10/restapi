@@ -155,6 +155,42 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_invalid_overlapping_dates(self):
+        self.create_admin_user()
+        today = timezone.now()
+        flight_start = today - timedelta(days=3)
+        border = flight_start + timedelta(days=1)
+        flight_end = today + timedelta(days=2)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=today - timedelta(days=3),
+            end=today + timedelta(days=3),
+        )
+        placement = OpPlacement.objects.create(
+            id="2", name="pl", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            start=flight_start, end=today + timedelta(days=2),
+        )
+        flight = Flight.objects.create(
+            id="3", placement=placement, total_cost=200,
+            start=flight_start, end=flight_end, ordered_units=10,
+        )
+        FlightPacingGoal.get_flight_pacing_goals(flight.id)
+        payload = [
+            dict(
+                start=str(flight.start.date()),
+                end=str(border.date()),
+                allocation=80
+            ),
+            dict(
+                start=str(border.date()),
+                end=str(flight_end.date()),
+                allocation=20
+            )
+        ]
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_test_success(self):
         self.create_admin_user()
         today = timezone.now()
