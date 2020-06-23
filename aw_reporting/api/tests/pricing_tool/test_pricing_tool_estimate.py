@@ -643,11 +643,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
 
-        campaign = Campaign.objects.create(id="2",
-                                           start_date=today, end_date=today,
+        campaign = Campaign.objects.create(start_date=today, end_date=today,
                                            video_views=2)
-        ad_group = AdGroup.objects.create(id="2",
-                                          campaign=campaign, video_views=2)
+        ad_group = AdGroup.objects.create(campaign=campaign, video_views=2)
         AdGroupStatistic.objects.create(ad_group=ad_group,
                                         date=today, cost=1,
                                         video_views=2,
