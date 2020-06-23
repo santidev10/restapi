@@ -56,7 +56,7 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
                   for i in geo_targets]
         undefined = list(items - set(i["name"] for i in geo_targets))
         if undefined:
-            # let"s search for zip+4 postal codes
+            # let's search for zip+4 postal codes
             re_sub = re.sub
             numeric_values = [re_sub(r"\D", "", i) for i in undefined]
             plus_4_zips = filter(lambda i: len(i) == 9, numeric_values)

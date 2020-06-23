@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 """
 requirements:
-    remove all audit data that"s older than 90 days, for DB sanity
+    remove all audit data that's older than 90 days, for DB sanity
 process:
     look at AuditProcessor objects older than 90 days, and remove them.
     this should cascade delete AuditVideoProcessor, AuditChannelProcessor,

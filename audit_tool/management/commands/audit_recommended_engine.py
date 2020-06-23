@@ -34,13 +34,13 @@ logger = logging.getLogger(__name__)
 
 """
 requirements:
-    we receive a list of video URLs as a "seed list".
+    we receive a list of video URLs as a 'seed list'.
     we receive a list of blacklist keywords
     we receive a list of inclusion keywords
 process:
-    we use the seed list of video URL"s to retrieve "recommended videos" from YT.
+    we use the seed list of video URL's to retrieve 'recommended videos' from YT.
     for each video on the recommended list we check that it doesnt contain
-    blacklist keywords, and that it includes "inclusion keywords" if present.
+    blacklist keywords, and that it includes 'inclusion keywords' if present.
     once the # of videos reaches the max_recommended value it stops.
 """
 
@@ -185,7 +185,7 @@ class Command(BaseCommand):
                 if unique_channels.count() > self.audit.max_recommended:
                     self.complete_audit()
         pending_videos = pending_videos.filter(processed__isnull=True)
-        if pending_videos.count() == 0:  # we"ve processed ALL of the items so we close the audit
+        if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.complete_audit()
         else:
             pending_videos = pending_videos.order_by("id")

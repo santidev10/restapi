@@ -220,7 +220,7 @@ class PacingReport:
             fl["recalculated_plan_units"] = fl["plan_units"]
 
         # we need to check  "cannot_roll_over" option
-        # if it"s False, the over-delivery from completed flights should be spread between future ones
+        # if it's False, the over-delivery from completed flights should be spread between future ones
         # IMPORTANT: the code below supposes that flights sorted by start date ASC (older first)
         flights_by_placement = defaultdict(list)
         for fl in data:

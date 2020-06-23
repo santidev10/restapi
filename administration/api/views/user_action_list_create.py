@@ -19,8 +19,8 @@ from utils.api_paginator import CustomPageNumberPaginator
 
 class UserActionPermission(permissions.BasePermission):
     """
-    require admin access for GET requests (to see who"s taken what actions)
-    and authenticated access for POST requests (to tell us what actions they"ve taken)
+    require admin access for GET requests (to see who's taken what actions)
+    and authenticated access for POST requests (to tell us what actions they've taken)
     """
 
     def has_permission(self, request, view):

@@ -2701,7 +2701,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         SQL calculates count of related interests (regarding hierarchy)
         by each group and set `top_count` by &(count1, count2, ...),
         then filters opportunities with `top_count` > 0.
-            ! It"s wrong because &(1, 2) == 0
+            ! It's wrong because &(1, 2) == 0
         """
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
@@ -2735,7 +2735,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         SQL calculates count of related topics (regarding hierarchy)
         by each group and set `top_count` by &(count1, count2, ...),
         then filters opportunities with `top_count` > 0.
-            ! It"s wrong because &(1, 2) == 0
+            ! It's wrong because &(1, 2) == 0
         """
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()

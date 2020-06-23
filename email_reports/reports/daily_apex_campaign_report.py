@@ -42,7 +42,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, is_historical=False, **kwargs):
         """
         is_historical: Bool: If True, fetches ALL VideoCreativeStatistic records
-        for the given Accounts ids, rather than just the previous day"s
+        for the given Accounts ids, rather than just the previous day's
         """
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
@@ -145,7 +145,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         """
         get stats day-by-day, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
-        yesterday"s.
+        yesterday's.
         """
         filter_kwargs = {"ad_group__campaign__id__in": campaign_ids, }
         if not self.is_historical:

@@ -128,7 +128,7 @@ class Command(BaseCommand):
                 raise Exception("waiting to process seed list on thread 0")
         else:
             pending_channels = pending_channels.filter(processed__isnull=True)
-        if pending_channels.count() == 0:  # we"ve processed ALL of the items so we close the audit
+        if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
                 # if self.audit.params.get("do_videos") == True:
                 self.audit.audit_type = 1

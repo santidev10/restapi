@@ -119,7 +119,7 @@ urlpatterns = [
     # >>> Setup
 
     # <<< Performance
-    # Regarding SAAS-793 we return DEMO data if user has no connected MCC"s for all the performance endpoints below
+    # Regarding SAAS-793 we return DEMO data if user has no connected MCC's for all the performance endpoints below
     url(r"^performance_targeting_list/$",
         views.PerformanceTargetingListAPIView.as_view(),
         name="performance_targeting_list"),
