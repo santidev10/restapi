@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAdminUser
 
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models import CustomSegment
-from utils.permissions import user_has_permission
+from utils.permissions import IsOwnerPermission
 from utils.permissions import or_permission_classes
 
 
@@ -14,7 +14,7 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
     permission_classes = (
         or_permission_classes(
             IsAdminUser,
-
+            IsOwnerPermission
         ),
     )
 
