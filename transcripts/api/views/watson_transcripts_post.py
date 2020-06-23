@@ -1,18 +1,17 @@
-from django.utils import timezone
-
 from django.conf import settings
+from django.utils import timezone
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from es_components.managers.video import VideoManager
-from es_components.constants import Sections
 from audit_tool.models import AuditVideoTranscript
-from brand_safety.languages import LANG_CODES, LANGUAGES
-from utils.transform import populate_video_custom_captions
+from brand_safety.languages import LANG_CODES
+from es_components.constants import Sections
+from es_components.managers.video import VideoManager
 from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
+from utils.transform import populate_video_custom_captions
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
@@ -33,7 +32,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
         transcripts = request.data
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
-        video_ids = [vid_id for vid_id in transcripts]
+        video_ids = list(transcripts)
         videos = manager.get(video_ids, skip_none=True)
         transcripts_ids = []
         try:
@@ -44,11 +43,11 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                     lang_code = video.general_data.lang_code or LANG_CODES[language] or "en"
                 # pylint: disable=broad-except
                 except Exception:
-                # pylint: enable=broad-except
                     language = "English"
                     lang_code = "en"
+                # pylint: enable=broad-except
                 watson_data = transcripts[video_id]
-                transcript = watson_data['transcript']
+                transcript = watson_data["transcript"]
 
                 watson_transcript = AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
                                                                        transcript=transcript, source=1)
@@ -61,8 +60,8 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
             rescore_brand_safety_videos.delay(vid_ids=transcripts_ids)
         # pylint: disable=broad-except
         except Exception as e:
-        # pylint: enable=broad-except
             raise ValidationError(e)
+        # pylint: enable=broad-except
         return Response(
             status=HTTP_200_OK,
             data=f"Stored transcripts for {len(transcripts_ids)} videos: {', '.join(transcripts_ids)}"
