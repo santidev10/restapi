@@ -6,6 +6,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import ANY
 from unittest.mock import MagicMock
+from unittest.mock import PropertyMock
 from unittest.mock import patch
 
 from django.db import Error
@@ -999,7 +1000,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
         downloader_mock.side_effect = exception
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
@@ -1015,7 +1017,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         mock_update.__self__ = SimpleNamespace(__class__=SimpleNamespace())
         mock_update.side_effect = exception
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()), \
+             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
             cid_campaign_update(account.id)
 
     def test_budget_daily(self):
