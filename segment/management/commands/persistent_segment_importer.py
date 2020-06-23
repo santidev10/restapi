@@ -1,4 +1,5 @@
 import logging
+
 from django.core.management import BaseCommand
 
 from segment.persistent_segment_importer import PersistentSegmentImporter

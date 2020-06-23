@@ -2,8 +2,8 @@ import logging
 
 from saas import celery_app
 from segment.segment_list_generator import SegmentListGenerator
-from utils.celery.tasks import unlock
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import unlock
 
 LOCK_NAME = "generate_persistent_segments"
 EXPIRE = 60 * 60 * 24 * 2
@@ -18,8 +18,8 @@ def generate_persistent_segments():
         try:
             SegmentListGenerator(0).run()
         # pylint: disable=broad-except
-        except Exception as e:
-        # pylint: enable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             logger.exception("Error in generate_persistent_segments task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

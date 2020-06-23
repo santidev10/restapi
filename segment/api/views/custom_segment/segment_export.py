@@ -21,7 +21,9 @@ class SegmentExport(APIView):
                 response["download_url"] = segment.s3_exporter.generate_temporary_url(s3_key)
             else:
                 generate_vetted_segment.delay(segment.id, recipient=request.user.email)
-                response["message"] = f"Processing. You will receive an email when your export for: {segment.title} is ready."
+                response[
+                    "message"] = f"Processing. You will receive an email when your export for: {segment.title} is " \
+                                 f"ready."
         else:
             if hasattr(segment, "export"):
                 s3_key = segment.get_s3_key()
@@ -33,4 +35,3 @@ class SegmentExport(APIView):
 
 class DynamicGenerationLimitExceeded(Exception):
     """ Exception to raise if export is too large to dynamically generate """
-    pass

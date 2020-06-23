@@ -10,10 +10,10 @@ class SegmentExportSerializerMixin:
 
     def get_category(self, obj):
         categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join([category for category in categories if type(category) == str])
+        joined = ", ".join([category for category in categories if isinstance(category, str)])
         return joined
 
-    def get_brand_safety(self,  obj):
+    def get_brand_safety(self, obj):
         try:
             categories = self.context["brand_safety_categories"]
             ids = [int(_id) for _id in obj.task_us_data.brand_safety if _id is not None]
@@ -89,7 +89,7 @@ class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
             lang_code = getattr(obj.general_data, "lang_code", "")
         # pylint: disable=broad-except
         except Exception:
-        # pylint: enable=broad-except
+            # pylint: enable=broad-except
             lang_code = None
         language = LANGUAGES.get(lang_code, lang_code)
         return language
@@ -105,7 +105,7 @@ class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
             lang_code = getattr(obj.general_data, "top_lang_code", "")
         # pylint: disable=broad-except
         except Exception:
-        # pylint: enable=broad-except
+            # pylint: enable=broad-except
             lang_code = None
         language = LANGUAGES.get(lang_code, lang_code)
         return language

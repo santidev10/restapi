@@ -24,6 +24,7 @@ def generate_vetted_segment(segment_id, recipient=None):
     Else, vetting is complete. Create CustomSegmentVettedFileUpload and notify admins
     :return:
     """
+    # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         if segment.segment_type == 0:
@@ -50,8 +51,7 @@ def generate_vetted_segment(segment_id, recipient=None):
             segment.save()
             send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])
     except CustomSegment.DoesNotExist:
-        logger.error(f"Segment with id: {segment_id} does not exist.")
-    # pylint: disable=broad-except
+        logger.error("Segment with id: % does not exist.", segment_id)
     except Exception:
+        logger.exception("Error generating vetted segment for id: %s", segment_id)
     # pylint: enable=broad-except
-        logger.exception(f"Error generating vetted segment for id: {segment_id}")

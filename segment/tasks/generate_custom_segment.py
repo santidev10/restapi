@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task
 def generate_custom_segment(segment_id, results=None, tries=0):
+# pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
@@ -26,16 +27,15 @@ def generate_custom_segment(segment_id, results=None, tries=0):
         segment.save()
         export.refresh_from_db()
         send_export_email(segment.owner.email, segment.title, export.download_url)
-        logger.info(f"Successfully generated export for custom list: id: {segment.id}, title: {segment.title}")
+        logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id, segment.title)
     except OperationalError as e:
         if tries < 2:
             tries += 1
-            default_connection = connections['default']
+            default_connection = connections["default"]
             default_connection.connect()
             generate_custom_segment(segment_id, results=results, tries=tries)
         else:
             raise e
-    # pylint: disable=broad-except
-    except Exception as e:
-    # pylint: enable=broad-except
+    except Exception:
         logger.exception("Error in generate_custom_segment task")
+# pylint: enable=broad-except

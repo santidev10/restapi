@@ -1,14 +1,14 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone
 
 from saas import celery_app
-from segment.tasks.generate_segment import generate_segment
 from segment.models import CustomSegmentFileUpload
-from utils.celery.tasks import unlock
+from segment.tasks.generate_segment import generate_segment
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import unlock
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,10 @@ def update_custom_segment():
                 export_to_update.updated_at = timezone.now()
                 export_to_update.save()
                 segment.save()
-                logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
+                logger.info("Successfully updated export for custom list: id: %s, title: %s", segment.id, segment.title)
         # pylint: disable=broad-except
         except Exception:
-        # pylint: enable=broad-except
+            # pylint: enable=broad-except
             logger.exception("Error in update_custom_segment task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

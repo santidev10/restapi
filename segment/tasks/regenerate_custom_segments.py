@@ -1,13 +1,15 @@
+import logging
 from datetime import timedelta
+
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
+
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.tasks.generate_segment import generate_segment
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
-import logging
-from django.conf import settings
 
 LOCK_NAME = "regenerate_custom_segments"
 EXPIRE = 60 * 60 * 24 * 2
@@ -25,8 +27,8 @@ def regenerate_custom_segments_with_lock():
         try:
             regenerate_custom_segments()
         # pylint: disable=broad-except
-        except Exception as e:
-        # pylint: enable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             logger.exception("Error in regenerate_custom_segments_with_lock task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)
@@ -42,10 +44,8 @@ def regenerate_custom_segments():
     All non-featured segments are Custom Target Lists.
     """
     date_threshold = timezone.now() - timedelta(days=settings.CUSTOM_SEGMENT_REGENERATION_DAYS_THRESHOLD)
-    for segment in CustomSegment.objects.filter(
-            Q(is_regenerating=True) & Q(updated_at__lte=date_threshold)
-    ):
-        logger.debug(f"Processing regenerating segment titled: {segment.title}")
+    for segment in CustomSegment.objects.filter(Q(is_regenerating=True) & Q(updated_at__lte=date_threshold)):
+        logger.debug("Processing regenerating segment titled: %s", segment.title)
         export = segment.export
         results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=False)
         segment.statistics = results["statistics"]

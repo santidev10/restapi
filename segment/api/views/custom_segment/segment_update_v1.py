@@ -8,11 +8,10 @@ from segment.models import CustomSegment
 
 
 class CustomSegmentUpdateApiView(UpdateAPIView):
-
     permission_classes = (IsAuthenticated,)
 
     def get_object(self):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get("pk", None)
         return CustomSegment.objects.get(pk=pk)
 
     def get_serializer(self, instance, *args, **kwargs):
@@ -23,7 +22,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         pass the correct serializer
         """
         serializer_class = self.get_serializer_class(instance)
-        kwargs['context'] = self.get_serializer_context()
+        kwargs["context"] = self.get_serializer_context()
         return serializer_class(instance, *args, **kwargs)
 
     def get_serializer_class(self, instance):
