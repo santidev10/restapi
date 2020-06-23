@@ -88,7 +88,7 @@ def mcc_account_update(mcc_id, index, total):
     """
     mcc_account = Account.objects.get(id=mcc_id)
     GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
-    logger.debug(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
+    logger.debug("ACCOUNTS UPDATE COMPLETE %s/%s FOR MCC: %s", index, total, mcc_id)
 
 
 @celery_app.task
@@ -100,7 +100,7 @@ def cid_campaign_update(cid_id):
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
     GoogleAdsUpdater(cid_account).update_campaigns()
-    logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE FOR CID: {cid_id}. Took: {time.time() - start}")
+    logger.debug("CID CAMPAIGNS UPDATE COMPLETE FOR CID: %s. Took: %s", cid_id, time.time() - start)
 
 
 @celery_app.task

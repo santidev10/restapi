@@ -52,7 +52,7 @@ class GoogleAdsErrors:
     EXPIRED_PAGE_TOKEN = "EXPIRED_PAGE_TOKEN"
 
 
-class GoogleAdsUpdater(object):
+class GoogleAdsUpdater:
     CACHE_KEY_PREFIX = "restapi.GoogleAdsUpdater"
     MAX_RETRIES = 5
     SLEEP_COEFF = 2
@@ -101,9 +101,9 @@ class GoogleAdsUpdater(object):
         recalculate_de_norm_fields_for_account(self.account.id)
 
     def update_accounts_as_mcc(self, mcc_account=None):
+        """ Update /Save accounts managed by MCC """
         if mcc_account:
             self.account = mcc_account
-        """ Update /Save accounts managed by MCC """
         account_updater = AccountUpdater(self.account)
         self.execute_with_any_permission(account_updater, mcc_account=self.account)
 
@@ -152,12 +152,12 @@ class GoogleAdsUpdater(object):
         else:
             order_by_field = "update_time"
 
-        active_ids_from_placements = set(
-            OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account",
-                                                                                flat=True).distinct())
-        active_accounts_from_placements = Account.objects.filter(id__in=active_ids_from_placements,
-                                                                 can_manage_clients=False, is_active=True).order_by(
-            F(order_by_field).asc(nulls_first=True))
+        active_ids_from_placements = set(OpPlacement.objects.filter(end__gte=end_date_threshold) \
+                                         .values_list("adwords_campaigns__account", flat=True) \
+                                         .distinct())
+        active_accounts_from_placements = Account.objects \
+            .filter(id__in=active_ids_from_placements, can_manage_clients=False, is_active=True) \
+            .order_by(F(order_by_field).asc(nulls_first=True))
 
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
         active_ids_from_opportunities = []
@@ -168,9 +168,9 @@ class GoogleAdsUpdater(object):
                     [_id.strip() for _id in aw_cid if _id and _id.strip() not in active_ids_from_placements])
             except AttributeError:
                 continue
-        active_accounts_from_opportunities = Account.objects.filter(id__in=active_ids_from_opportunities,
-                                                                    can_manage_clients=False, is_active=True).order_by(
-            F(order_by_field).asc(nulls_first=True))
+        active_accounts_from_opportunities = Account.objects \
+            .filter(id__in=active_ids_from_opportunities, can_manage_clients=False, is_active=True) \
+            .order_by(F(order_by_field).asc(nulls_first=True))
 
         for account in active_accounts_from_placements | active_accounts_from_opportunities:
             try:
@@ -235,8 +235,7 @@ class GoogleAdsUpdater(object):
                 continue
 
             except WebFault as e:
-                if "AuthorizationError.USER_PERMISSION_DENIED" in \
-                    e.fault.faultstring:
+                if "AuthorizationError.USER_PERMISSION_DENIED" in e.fault.faultstring:
                     logger.warning((permission, e))
                     permission.can_read = False
                     permission.save()
@@ -245,18 +244,18 @@ class GoogleAdsUpdater(object):
 
             # pylint: disable=broad-except
             except Exception:
+                logger.exception("Unhandled error in execute_with_any_permission")
             # pylint: enable=broad-except
-                logger.exception(f"Unhandled error in execute_with_any_permission")
             else:
                 return
 
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
         if updater.__class__ == AccountUpdater and mcc_account:
             Account.objects.filter(id=mcc_account.id).update(is_active=False)
-            logger.info(f"Account access revoked for MCC: {mcc_account.id}")
+            logger.info("Account access revoked for MCC: %s", mcc_account.id)
 
-        logger.warning(
-            f"Unable to find AWConnection for CID: {self.account.id} with updater: {updater.__class__.__name__}")
+        logger.warning("Unable to find AWConnection for CID: %s with updater: %s",
+                       self.account.id, updater.__class__.__name__)
 
     def execute(self, updater, client):
         """
@@ -266,19 +265,14 @@ class GoogleAdsUpdater(object):
         :param client:
         :return:
         """
+        # pylint: disable=broad-except
         try:
             updater.update(client)
         except RefreshError:
             raise
-        # pylint: disable=broad-except
         except Exception:
+            self._retry(updater, client)
         # pylint: enable=broad-except
-            try:
-                self._retry(updater, client)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                raise
 
     def _retry(self, updater, client):
         """
@@ -293,7 +287,7 @@ class GoogleAdsUpdater(object):
                 updater.update(client)
             # pylint: disable=broad-except
             except Exception as err:
-            # pylint: enable=broad-except
+                # pylint: enable=broad-except
                 tries_count += 1
                 if tries_count <= self.MAX_RETRIES:
                     sleep = tries_count ** self.SLEEP_COEFF

@@ -146,12 +146,15 @@ def reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
 
 
 def detect_success_aw_read_permissions():
+    # pylint: disable=import-outside-toplevel
     from aw_reporting.models import AWAccountPermission
-    for permission in AWAccountPermission.objects.filter(
+    # pylint: enable=import-outside-toplevel
+    aw_permissions = AWAccountPermission.objects.filter(
         can_read=False,
         account__is_active=True,
         aw_connection__revoked_access=False,
-    ):
+    )
+    for permission in aw_permissions:
         try:
             client = get_web_app_client(
                 refresh_token=permission.aw_connection.refresh_token,
@@ -159,7 +162,7 @@ def detect_success_aw_read_permissions():
             )
         # pylint: disable=broad-except
         except Exception as e:
-        # pylint: enable=broad-except
+            # pylint: enable=broad-except
             logger.error(e)
         else:
             try:
@@ -170,7 +173,7 @@ def detect_success_aw_read_permissions():
                 account.save()
             # pylint: disable=broad-except
             except Exception as e:
-            # pylint: enable=broad-except
+                # pylint: enable=broad-except
                 logger.error(e)
             else:
                 permission.can_read = True

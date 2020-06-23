@@ -55,7 +55,7 @@ def cid_update_all_except_campaigns(cid_id):
     cid_account = Account.objects.get(id=cid_id)
     updater = GoogleAdsUpdater(cid_account)
     updater.update_all_except_campaigns()
-    logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
+    logger.debug("Finish update without campaigns for CID: %s Took: %s", cid_id, time.time() - start)
 
 
 @celery_app.task

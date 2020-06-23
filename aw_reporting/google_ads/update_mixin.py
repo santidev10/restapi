@@ -14,7 +14,7 @@ from aw_reporting.google_ads.utils import max_ready_date
 from aw_reporting.google_ads.utils import reset_denorm_flag
 
 
-class UpdateMixin(object):
+class UpdateMixin:
     MIN_FETCH_DATE = MIN_FETCH_DATE
 
     @staticmethod
