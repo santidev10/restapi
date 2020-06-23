@@ -591,8 +591,6 @@ class FlightPacingGoal(models.Model):
     flight = models.ForeignKey(Flight, related_name="goals", on_delete=models.CASCADE)
     date = models.DateField()
     allocation = models.FloatField(default=1)
-    suggested_units = models.IntegerField(default=0)
-    suggested_budget = models.DecimalField(default=0, max_digits=10, decimal_places=2)
 
     class Meta:
         constraints = [
@@ -601,6 +599,12 @@ class FlightPacingGoal(models.Model):
 
     @staticmethod
     def get_flight_pacing_goals(flight_id):
+        """
+        Retrieve all related FlightPacingGoals for flight
+        Dynamically will create any missing dates as Flight duration may change erratically from Salesforce updates
+        :param flight_id:
+        :return:
+        """
         flight = Flight.objects.get(id=flight_id)
         goal_mapping = {
             plan.date: plan for plan in FlightPacingGoal.objects.filter(flight_id=flight_id)
