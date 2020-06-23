@@ -14,7 +14,7 @@ def get_views_keyword_history_chart(keyword):
             items_count += 1
             if views:
                 items.append(
-                    {"created_at": timestamp.strftime('%Y-%m-%d'),
+                    {"created_at": timestamp.strftime("%Y-%m-%d"),
                      "views": views}
                 )
     return items

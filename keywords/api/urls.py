@@ -10,9 +10,10 @@ from keywords.api.views import KeywordRetrieveUpdateApiView
 from .names import KeywordPathName
 
 urlpatterns = [
-    url(r'^keywords/$', KeywordListApiView.as_view(), name=KeywordPathName.KEYWORD_LIST),
-    url(r'^keywords/export/$', KeywordListExportApiView.as_view(), name=KeywordPathName.KEYWORD_PREPARE_EXPORT),
-    url(r'^keywords/export/(?P<export_name>.+)/$', KeywordListExportApiView.as_view(), name=KeywordPathName.KEYWORD_EXPORT),
-    url(r'^keywords/(?P<pk>[^/]+)/$', KeywordRetrieveUpdateApiView.as_view(), name=KeywordPathName.KEYWORD_ITEM),
-    url(r'^keywords/(?P<pk>[^/]+)/aw_stats/$', KeywordAWStatsApiView.as_view(), name=KeywordPathName.KEYWORD_AW_STATS),
+    url(r"^keywords/$", KeywordListApiView.as_view(), name=KeywordPathName.KEYWORD_LIST),
+    url(r"^keywords/export/$", KeywordListExportApiView.as_view(), name=KeywordPathName.KEYWORD_PREPARE_EXPORT),
+    url(r"^keywords/export/(?P<export_name>.+)/$", KeywordListExportApiView.as_view(),
+        name=KeywordPathName.KEYWORD_EXPORT),
+    url(r"^keywords/(?P<pk>[^/]+)/$", KeywordRetrieveUpdateApiView.as_view(), name=KeywordPathName.KEYWORD_ITEM),
+    url(r"^keywords/(?P<pk>[^/]+)/aw_stats/$", KeywordAWStatsApiView.as_view(), name=KeywordPathName.KEYWORD_AW_STATS),
 ]
