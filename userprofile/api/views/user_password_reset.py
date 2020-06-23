@@ -2,8 +2,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
-from rest_framework.status import HTTP_403_FORBIDDEN
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from administration.notifications import send_html_email

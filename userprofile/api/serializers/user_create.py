@@ -15,12 +15,12 @@ from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
-from userprofile.models import get_default_accesses
-from userprofile.models import WhiteLabel
-from utils.lang import get_request_prefix
 from userprofile.models import UserDeviceToken
-
+from userprofile.models import WhiteLabel
+from userprofile.models import get_default_accesses
 from userprofile.validators import password_validators
+from utils.lang import get_request_prefix
+
 
 class UserCreateSerializer(ModelSerializer):
     """

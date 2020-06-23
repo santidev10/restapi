@@ -1,16 +1,15 @@
-from botocore.exceptions import ClientError
-from botocore.exceptions import ParamValidationError
-import boto3
 from datetime import timedelta
 
+import boto3
 import requests
+from botocore.exceptions import ClientError
+from botocore.exceptions import ParamValidationError
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.utils import timezone
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -19,9 +18,9 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.views import APIView
 
 from userprofile.api.serializers import UserSerializer
+from userprofile.models import UserDeviceToken
 from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
-from userprofile.models import UserDeviceToken
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",
@@ -114,9 +113,9 @@ class UserAuthApiView(APIView):
         try:
             response = requests.get(url)
         # pylint: disable=broad-except
-        except Exception as e:
-        # pylint: enable=broad-except
+        except Exception:
             return None
+        # pylint: enable=broad-except
         if response.status_code != 200:
             return None
         response = response.json()
@@ -142,7 +141,7 @@ class UserAuthApiView(APIView):
         :return: Response
         """
         mfa_type = data.get("mfa_type", "")
-        if mfa_type != "email" and mfa_type != "text":
+        if mfa_type not in ("email", "text"):
             raise LoginException("mfa_type option must either be email or text.")
 
         user_attributes = [{"Name": "custom:mfa_type", "Value": mfa_type}]
@@ -182,24 +181,23 @@ class UserAuthApiView(APIView):
 
         if error:
             raise LoginException(error)
+        try:
+            response = client.admin_initiate_auth(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                ClientId=settings.COGNITO_CLIENT_ID,
+                AuthFlow="CUSTOM_AUTH",
+                AuthParameters={
+                    "USERNAME": user.email,
+                },
+            )
+        except ClientError as error:
+            raise LoginException(error.response["Error"]["Message"])
         else:
-            try:
-                response = client.admin_initiate_auth(
-                    UserPoolId=settings.COGNITO_USER_POOL_ID,
-                    ClientId=settings.COGNITO_CLIENT_ID,
-                    AuthFlow="CUSTOM_AUTH",
-                    AuthParameters={
-                        "USERNAME": user.email,
-                    },
-                )
-            except ClientError as error:
-                raise LoginException(error.response["Error"]["Message"])
-            else:
-                res = {
-                    "session": response["Session"],
-                    "retries": response["ChallengeParameters"]["retries"]
-                }
-                status_code = HTTP_200_OK
+            res = {
+                "session": response["Session"],
+                "retries": response["ChallengeParameters"]["retries"]
+            }
+            status_code = HTTP_200_OK
         return Response(data=res, status=status_code)
 
     def mfa_submit_challenge(self, client, user, data, device_auth_token):
@@ -349,7 +347,7 @@ class UserAuthApiView(APIView):
             if device_token.created_at < threshold:
                 raise ValueError
         except (UserDeviceToken.DoesNotExist, ValueError):
-            raise LoginException(f"Invalid token. Please log in again.")
+            raise LoginException("Invalid token. Please log in again.")
         return device_token
 
     def _get_invalid_response(self):
@@ -378,4 +376,3 @@ class LoginException(ValidationError):
             "message": message,
         }
         super().__init__(data)
-

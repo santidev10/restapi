@@ -4,7 +4,6 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_406_NOT_ACCEPTABLE
 from rest_framework.views import APIView
 
@@ -22,10 +21,11 @@ class UserPasswordSetApiView(APIView):
         """
         Update user password
         """
+
         def get_generic_invalid_response():
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data={'error': 'That username / token is not valid.'}
+                data={"error": "That username / token is not valid."}
             )
 
         serializer = self.serializer_class(data=request.data)
