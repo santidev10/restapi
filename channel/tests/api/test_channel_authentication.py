@@ -10,8 +10,8 @@ from channel.models import AuthChannel
 from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserProfile
 from userprofile.models import UserDeviceToken
+from userprofile.models import UserProfile
 from utils.unittests.celery import mock_send_task
 from utils.unittests.response import MockResponse
 from utils.unittests.reverse import reverse
@@ -36,10 +36,10 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         On sign in server return server error 500.
         Message:
         NotImplementedError:
-        Django doesn't provide a DB representation for AnonymousUser.
+        Django doesn"t provide a DB representation for AnonymousUser.
         """
 
-        user = self.create_test_user(True)
+        user = self.create_test_user(auth=True)
 
         youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
         requests_mock.get.return_value = MockResponse(
@@ -55,7 +55,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
-        self.assertIn('auth_token', data)
+        self.assertIn("auth_token", data)
         self.assertEqual(len(mail.outbox), 2)
 
     @mock_send_task()
@@ -73,10 +73,10 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         On sign in server return server error 500.
         Message:
         NotImplementedError:
-        Django doesn't provide a DB representation for AnonymousUser.
+        Django doesn"t provide a DB representation for AnonymousUser.
         """
 
-        user = self.create_test_user(True)
+        user = self.create_test_user(auth=True)
         AuthChannel.objects.create(
             channel_id="channel_id",
             refresh_token="^test_refresh_token$",
@@ -99,7 +99,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
-        self.assertIn('auth_token', data)
+        self.assertIn("auth_token", data)
         self.assertEqual(len(mail.outbox), 1)
 
         auth_channel = AuthChannel.objects.filter(channel_id="channel_id").first()
@@ -120,7 +120,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1718
         Profile Page > Authorize > 408 error when user try
-        to Authenticate YT channel on account which doesn't have It
+        to Authenticate YT channel on account which doesn"t have It
         """
         test_error = {
             "detail": "This account doesn't include any channels. "
@@ -193,12 +193,13 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         mock_youtube().own_channels.return_value = youtube_own_channel_test_value
 
-        with patch("channel.api.views.channel_authentication.requests.get", return_value=MockResponse(json=user_details)):
+        with patch("channel.api.views.channel_authentication.requests.get",
+                   return_value=MockResponse(json=user_details)):
             response = self.client.post(self.url, dict(code="code"))
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
-        self.assertIn('auth_token', data)
+        self.assertIn("auth_token", data)
         self.assertFalse(data["auth_token"].startswith("temp_"))
         device_auth_token = UserDeviceToken.objects.get(user=user, key=data["auth_token"])
         self.assertFalse(device_auth_token.key.startswith("temp_"))

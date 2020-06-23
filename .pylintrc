@@ -10,7 +10,7 @@
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
 # todo: fix pylint and unignore modules
-ignore=lid.176.bin,README.md,Dockerfile,dist,static,channel,email_reports,es_components,healthcheck,keywords,related_tool,segment,transcripts,userprofile,video,saas/local_settings.py
+ignore=lid.176.bin,README.md,Dockerfile,dist,static,email_reports,es_components,healthcheck,keywords,related_tool,segment,transcripts,userprofile,video,saas/local_settings.py
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.

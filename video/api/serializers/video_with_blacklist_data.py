@@ -14,7 +14,13 @@ class VideoWithBlackListSerializer(VideoSerializer):
             videos = instance if isinstance(instance, list) else [instance]
             self.blacklist_data = self.fetch_blacklist_items(videos)
 
-    def fetch_blacklist_items(cls, videos):
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def fetch_blacklist_items(self, videos):
         doc_ids = [doc.meta.id for doc in videos]
         blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.VIDEO_ITEM)
         blacklist_items_by_id = {

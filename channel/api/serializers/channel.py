@@ -1,13 +1,19 @@
 from rest_framework.fields import SerializerMethodField
 
-from utils.datetime import date_to_chart_data_str
 from utils.brand_safety import get_brand_safety_data
+from utils.datetime import date_to_chart_data_str
 from utils.es_components_api_utils import ESDictSerializer
 
 
 class ChannelSerializer(ESDictSerializer):
     chart_data = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
 
     def get_chart_data(self, channel):
         return get_chart_data(channel)

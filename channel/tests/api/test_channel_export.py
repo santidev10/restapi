@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+import brand_safety.constants as constants
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -18,11 +19,8 @@ from utils.brand_safety import map_brand_safety_score
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
-from utils.unittests.test_case import ExtendedAPITestCase
-
-import brand_safety.constants as constants
-
 from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 
 EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 

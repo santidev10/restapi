@@ -14,7 +14,13 @@ class ChannelWithBlackListSerializer(ChannelSerializer):
             channels = instance if isinstance(instance, list) else [instance]
             self.blacklist_data = self.fetch_blacklist_items(channels)
 
-    def fetch_blacklist_items(cls, channels):
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def fetch_blacklist_items(self, channels):
         doc_ids = [doc.meta.id for doc in channels]
         blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.CHANNEL_ITEM)
         blacklist_items_by_id = {
