@@ -14,6 +14,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
+from aw_reporting.utils import get_dates_range
 from userprofile.managers import UserRelatedManagerMixin
 from utils.db.models.persistent_entities import DemoEntityModelMixin
 
@@ -598,6 +599,22 @@ class FlightPacingGoal(models.Model):
             models.UniqueConstraint(fields=["flight", "date"], name="unique_goal")
         ]
 
+    @staticmethod
+    def get_flight_pacing_goals(flight_id):
+        flight = Flight.objects.get(id=flight_id)
+        goal_mapping = {
+            plan.date: plan for plan in FlightPacingGoal.objects.filter(flight_id=flight_id)
+        }
+        to_create = {}
+        for date in get_dates_range(flight.start, flight.end):
+            try:
+                goal_mapping[date]
+            except KeyError:
+                to_create[date] = FlightPacingGoal(flight_id=flight_id, date=date)
+
+        FlightPacingGoal.objects.bulk_create(to_create.values())
+        goal_mapping.update(to_create)
+        return goal_mapping
 
 
 init_signals()

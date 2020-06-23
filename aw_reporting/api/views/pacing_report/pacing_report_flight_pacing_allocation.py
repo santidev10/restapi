@@ -1,5 +1,3 @@
-import datetime
-from datetime import timedelta
 from datetime import datetime
 from collections import namedtuple
 
@@ -11,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightPacingGoal
+from aw_reporting.utils import get_dates_range
 from utils.views import get_object
 
 Range = namedtuple("Range", ["start", "end"])
@@ -27,10 +26,7 @@ class PacingReportFlightAllocationAPIView(APIView):
 
     def _validate(self, flight, data):
         today = timezone.now().date()
-        allocations = {
-            goal.date: goal
-            for goal in flight.goals.all()
-        }
+        allocations = FlightPacingGoal.get_flight_pacing_goals(flight.id)
         total_allocation = sum(int(item["allocation"]) for item in data)
         if total_allocation != 100:
             raise ValidationError("Allocations must have a sum of 100.")
@@ -44,19 +40,16 @@ class PacingReportFlightAllocationAPIView(APIView):
         with transaction.atomic():
             for i, updated_allocation in enumerate(data):
                 to_update = []
-                curr_date = self._parse_date(updated_allocation["start"])
+                start_date = self._parse_date(updated_allocation["start"])
                 end_date = self._parse_date(updated_allocation["end"])
-                delta = timedelta(days=1)
-                # Update each goal date obj
-                while curr_date <= end_date:
-                    allocation_obj = allocations[curr_date]
+                for date in get_dates_range(start_date, end_date):
+                    allocation_obj = allocations[date]
                     updated_allocation_value = float(updated_allocation["allocation"])
                     # Reject modifying past allocations
-                    if curr_date < today and updated_allocation_value != allocation_obj.allocation:
+                    if date < today and updated_allocation_value != allocation_obj.allocation:
                         raise ValidationError("You can not modify a past allocation.")
                     allocation_obj.allocation = updated_allocation_value
                     to_update.append(allocation_obj)
-                    curr_date += delta
                 try:
                     # Check if overlapping date
                     overlap = self._get_overlap(

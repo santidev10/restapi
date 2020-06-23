@@ -1,3 +1,4 @@
+from collections import Counter
 from collections import defaultdict
 from datetime import timedelta
 
@@ -11,6 +12,7 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
+from django.utils import timezone
 from math import ceil
 
 from aw_reporting.calculations.margin import get_margin_from_flights
@@ -26,6 +28,7 @@ from aw_reporting.models import get_average_cpv
 from aw_reporting.models import get_ctr
 from aw_reporting.models import get_ctr_v
 from aw_reporting.models import get_video_view_rate
+from aw_reporting.models import FlightPacingGoal
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
@@ -822,6 +825,9 @@ class PacingReport:
             self.add_calculated_fields(flight)
 
             flight['budget'] = f['budget']
+
+            pacing_goals = get_flight_historical_pacing_chart(f)
+            flight.update(pacing_goals)
             flights.append(flight)
 
         return flights
@@ -1039,7 +1045,6 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     else:
         charts = get_flight_charts(flights, today, allocation_ko,
                                    campaign_id=campaign_id)
-
     data = dict(
         today_goal=sum_today_units,
         today_goal_views=today_goal_views,
@@ -1127,6 +1132,20 @@ def get_rate_and_tech_fee_today_goal(flight, today, allocation_ko=1,
 
 def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
                              campaign_id=None):
+    """
+
+    :param flight:
+    :param date:
+    :param today:
+    :param allocation_ko: Decimal percentage to multiply total flight cost / ordered units to determine
+    :param campaign_id:
+    pacing goal
+
+    allocation_ko is used to dynamically spread a flight's total cost or ordered units across dates.
+    For example, if a flight is 30 days long, it's total units could be split so that 75% of it's units could be
+    delivered in the first 15 days and the remaining 25% of the units delivered in the last 15% days.
+    :return:
+    """
     stats_total = get_stats_from_flight(flight, campaign_id=campaign_id,
                                         end=date - timedelta(days=1))
     last_day = max(min(date, today), flight["start"])
@@ -1414,3 +1433,63 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     can_consume = sum(f["plan_units"] for f in not_started_flights)
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
+
+
+def get_flight_historical_pacing_chart(flight_data):
+    today = timezone.now().date()
+    historical_units_chart = dict(
+        id="historical_units",
+        title="Historical Units",
+        data=[],
+    )
+    historical_spend_chart = dict(
+        id="historical_spend",
+        title="Historical Spend",
+        data=[],
+    )
+    today_goal_units = None
+    today_goal_spend = None
+    goal_mapping = FlightPacingGoal.get_flight_pacing_goals(flight_data["id"])
+    allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
+    delivery_mapping = {
+        delivery["date"]: delivery for delivery in flight_data["daily_delivery"]
+    }
+    end = min(flight_data["end"], today)
+    plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
+    cost = flight_data["cost"] if flight_data["cost"] else 0
+    for date in get_dates_range(flight_data["start"], end):
+        goal_obj = goal_mapping[date]
+        # Get the count of allocation amounts to divide total plan units by
+        allocation_date_range_count = allocation_count[goal_obj.allocation]
+        goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count)
+        goal_spend = round(cost * goal_obj.allocation / allocation_date_range_count)
+        units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
+        try:
+            actual_units = delivery_mapping[date][units_key]
+            actual_spend = delivery_mapping[date]["cost"]
+        except KeyError:
+            # If KeyError, Flight did not delivery for the current date
+            actual_units = 0
+            actual_spend = 0
+        if date == today:
+            today_goal_units = goal_units
+            today_goal_spend = goal_spend
+            break
+        else:
+            historical_units_chart["data"].append(dict(
+                label=date,
+                goal=goal_units,
+                actual=actual_units,
+            ))
+            historical_spend_chart["data"].append(dict(
+                label=date,
+                goal=goal_spend,
+                actual=actual_spend,
+            ))
+    data = dict(
+        historical_units_chart=historical_units_chart,
+        historical_spend_chart=historical_spend_chart,
+        today_goal_units=today_goal_units,
+        today_goal_spend=today_goal_spend,
+    )
+    return data

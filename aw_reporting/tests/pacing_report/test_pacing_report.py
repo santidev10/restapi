@@ -14,6 +14,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.utils import get_dates_range
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -388,3 +389,43 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # 700 + 2% ordered by yesterday and 700 delivered views = 100% - 2% = 98%
         self.assertAlmostEqual(placement["pacing"], .98, places=3)
+
+    def test_pacing_report_flight_historical_goal_charts(self):
+        today = now_in_default_tz().date()
+        start = today - timedelta(days=3)
+        opportunity = Opportunity.objects.create(
+            id='1', name="", start=start, end=today,
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+        )
+        flight = Flight.objects.create(
+            id="1", name="", placement=placement, ordered_units=40, cost=80,
+            total_cost=80, start=start, end=today,
+        )
+        account = Account.objects.create(id="1", name="Visible Account")
+        campaign = Campaign.objects.create(
+            id="1", name="", salesforce_placement=placement, account=account,
+        )
+        stats = []
+        for date in get_dates_range(flight.start, flight.end):
+            stats.append(CampaignStatistic(
+                campaign=campaign, date=date, impressions=10, cost=10,
+            ))
+        CampaignStatistic.objects.bulk_create(stats)
+        report = PacingReport()
+        flight = report.get_flights(placement)[0]
+        goal_units = []
+        actual_units = []
+        goal_spend = []
+        actual_spend = []
+        for item in flight["historical_units_chart"]["data"]:
+            goal_units.append(item["goal"])
+            actual_units.append(item["actual"])
+        for item in flight["historical_spend_chart"]["data"]:
+            goal_spend.append(item["goal"])
+            actual_spend.append(item["actual"])
+        self.assertEqual(set(actual_units), set(stat.impressions for stat in stats))
+        self.assertEqual(set(actual_spend), set(stat.cost for stat in stats))
+        self.assertEqual(set(goal_units), {10})
+        self.assertEqual(set(goal_spend), {20})

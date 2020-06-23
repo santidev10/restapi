@@ -38,7 +38,7 @@ urlpatterns = [
     # Pacing report
     url(r'^pacing_report_flights/(?P<pk>\w+)/allocations/$',
         views.PacingReportFlightAllocationAPIView.as_view(),
-        name=Name.PacingReport.FLIGHT_ALLOCATIONS),
+        name=Name.PacingReport.FLIGHT_PACING_ALLOCATIONS),
     url(r'^pacing_report/status/$',
         views.PacingReportStatusApiView.as_view(),
         name="pacing_report_status"),
