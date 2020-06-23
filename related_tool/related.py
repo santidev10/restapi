@@ -1,3 +1,5 @@
+# pylint: skip-file
+# FIXME: Consider removing the file. Looks unused
 from utils.youtube_api import YoutubeAPIConnector
 from audit_tool.audit import AuditProvider
 from audit_tool.auditor import AuditService
