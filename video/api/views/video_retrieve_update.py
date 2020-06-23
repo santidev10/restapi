@@ -3,18 +3,17 @@ Video api views module
 """
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from elasticsearch.exceptions import NotFoundError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-
-from elasticsearch.exceptions import NotFoundError
 
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 from utils.utils import prune_iab_categories
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -29,7 +28,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         return self.__video_manager
 
     def get(self, request, *args, **kwargs):
-        video_id = kwargs.get('pk')
+        video_id = kwargs.get("pk")
 
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
@@ -40,7 +39,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         try:
             video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
         except NotFoundError:
-             return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
+            return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
 
         if not video:
             return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
@@ -49,11 +48,11 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         result = VideoWithBlackListSerializer(video).data
         try:
-            result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+            result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
         # pylint: disable=broad-except
         except Exception:
-        # pylint: enable=broad-except
             pass
+        # pylint: enable=broad-except
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):

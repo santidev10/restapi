@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from copy import deepcopy
 
 from rest_framework.generics import ListAPIView
@@ -19,6 +18,7 @@ from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -191,10 +191,3 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         return None
 
 
-@contextmanager
-def mutate_query_params(query_params):
-    # pylint: disable=protected-access
-    query_params._mutable = True
-    yield query_params
-    query_params._mutable = False
-    # pylint: enable=protected-access
