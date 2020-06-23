@@ -49,7 +49,7 @@ class IsOwnerPermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
         is_authenticated = super(IsOwnerPermission,
                                  self).has_permission(request, view)
-        obj = self.get_object()
+        obj = view.get_object()
         return is_authenticated \
                and (request.user.is_staff
                     or obj.owner == request.user)
