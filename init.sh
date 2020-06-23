@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-DB_HOST=$(./manage.py shell -c "from django.conf import settings; print(settings.DATABASES['default']['HOST'])")
+DB_HOST=$(./manage.py shell -c "from django.conf import settings; print(settings.DATABASES['default']['HOST'])") | sed -e 's/\s$//g'
 
-if [[ ${DB_HOST} != 'pg' ]] ;
-then
+if [ "${DB_HOST}" != "pg" ]; then
     echo "WARNING: non-docker database detected. Skipping init.sh script"
     exit 0
 fi
