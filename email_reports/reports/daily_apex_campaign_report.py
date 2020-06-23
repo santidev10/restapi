@@ -1,29 +1,27 @@
 import csv
 import logging
-
-from io import StringIO
 from datetime import timedelta
+from io import StringIO
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
+from django.core.mail import EmailMessage
 from django.db.models import Max
+from django.db.models import Sum
 
-from aw_reporting.models import device_str
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
+from email_reports.reports.base import BaseEmailReport
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from email_reports.reports.base import BaseEmailReport
-from utils.datetime import now_in_default_tz
 from userprofile.constants import UserSettingsKey
+from utils.datetime import now_in_default_tz
 from utils.youtube_api import resolve_videos_info
 
 logger = logging.getLogger(__name__)
-
 
 CAMPAIGNS_FIELDS = ("id", "account__name", "account__currency_code", "salesforce_placement__ordered_rate",
                     "salesforce_placement__goal_type_id", "salesforce_placement__opportunity__ias_campaign_name")
@@ -44,7 +42,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, is_historical=False, **kwargs):
         """
         is_historical: Bool: If True, fetches ALL VideoCreativeStatistic records
-        for the given Accounts ids, rather than just the previous day's
+        for the given Accounts ids, rather than just the previous day"s
         """
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
@@ -65,15 +63,15 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return
 
         msg = EmailMessage(
-                subject=self._get_subject(),
-                body=self._get_body(),
-                from_email=settings.EXPORTS_EMAIL_ADDRESS,
-                to=self.get_to(settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES),
-                cc=self.get_cc(settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES),
-                bcc=self.get_bcc(),
+            subject=self._get_subject(),
+            body=self._get_body(),
+            from_email=settings.EXPORTS_EMAIL_ADDRESS,
+            to=self.get_to(settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES),
+            cc=self.get_cc(settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES),
+            bcc=self.get_bcc(),
         )
 
-        msg.attach('daily_campaign_report.csv', csv_context, 'text/csv')
+        msg.attach("daily_campaign_report.csv", csv_context, "text/csv")
         msg.send(fail_silently=False)
 
     def _get_subject(self):
@@ -105,16 +103,15 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
         return csv_file.getvalue()
 
-
     def __get_revenue(self, obj, campaign_prefix):
         goal_type_id = getattr(obj, f"{campaign_prefix}salesforce_placement__goal_type_id")
         ordered_rate = getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
 
         if goal_type_id == SalesForceGoalType.CPV:
             return round(ordered_rate * obj.video_views, 2)
-        elif goal_type_id == SalesForceGoalType.CPM:
+        if goal_type_id == SalesForceGoalType.CPM:
             return round(ordered_rate * obj.impressions / 1000, 2)
-
+        return None
 
     def get_campaign_name(self, account_name):
         return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name, None)
@@ -124,7 +121,6 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             .filter(campaign_id__in=campaign_ids, date=self.yesterday) \
             .values_list(*[f"campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS), "device_id",
                          named=True)
-
 
     def __get_campaign_statistics_rows(self, campaigns_statistics):
         rows = []
@@ -149,29 +145,28 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         """
         get stats day-by-day, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
-        yesterday's.
+        yesterday"s.
         """
-        filter_kwargs = {"ad_group__campaign__id__in": campaign_ids,}
+        filter_kwargs = {"ad_group__campaign__id__in": campaign_ids, }
         if not self.is_historical:
-            filter_kwargs['date'] = self.yesterday
+            filter_kwargs["date"] = self.yesterday
 
         return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
             .filter(**filter_kwargs) \
-            .annotate(
-                impressions=Sum("impressions"),
-                clicks=Sum("clicks"),
-                video_views=Sum("video_views"),
-                video_views_50_quartile=Sum("video_views_50_quartile"),
-                video_views_100_quartile=Sum("video_views_100_quartile"),
-                ad_group__campaign__salesforce_placement__goal_type_id=Max(
-                    "ad_group__campaign__salesforce_placement__goal_type_id"
-                ),
-                ad_group__campaign__salesforce_placement__ordered_rate=Max(
-                    "ad_group__campaign__salesforce_placement__ordered_rate"
-                ),
-                ad_group__campaign__account__name=Max("ad_group__campaign__account__name"),
-                ad_group__campaign__account__currency_code=Max("ad_group__campaign__account__currency_code")
-            ) \
+            .annotate(impressions=Sum("impressions"),
+                      clicks=Sum("clicks"),
+                      video_views=Sum("video_views"),
+                      video_views_50_quartile=Sum("video_views_50_quartile"),
+                      video_views_100_quartile=Sum("video_views_100_quartile"),
+                      ad_group__campaign__salesforce_placement__goal_type_id=Max(
+                          "ad_group__campaign__salesforce_placement__goal_type_id"
+                      ),
+                      ad_group__campaign__salesforce_placement__ordered_rate=Max(
+                          "ad_group__campaign__salesforce_placement__ordered_rate"
+                      ),
+                      ad_group__campaign__account__name=Max("ad_group__campaign__account__name"),
+                      ad_group__campaign__account__currency_code=Max("ad_group__campaign__account__currency_code")
+                      ) \
             .order_by("date") \
             .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS),
                          "creative_id", named=True)
@@ -191,7 +186,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                           "ad_group__campaign__salesforce_placement__ordered_rate"),
                       ad_group__campaign__account__name=Max("ad_group__campaign__account__name"),
                       ad_group__campaign__account__currency_code=Max("ad_group__campaign__account__currency_code")) \
-            .order_by("date")\
+            .order_by("date") \
             .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS),
                          "creative_id", named=True)
 
@@ -216,7 +211,6 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 *self._get_stats_metrics(stats)
             ])
         return rows
-
 
     def __get_creative_info(self, creative_ids):
         manager = VideoManager(Sections.GENERAL_DATA)

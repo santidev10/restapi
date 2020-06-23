@@ -1,9 +1,8 @@
 import logging
 import traceback
-import pytz
-
 from datetime import datetime
 
+import pytz
 from django.conf import settings
 
 from administration.notifications import send_email
@@ -11,12 +10,12 @@ from aw_reporting.models import Account
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
-from email_reports.reports import ESMonitoringEmailReport
-from email_reports.reports import TechFeeCapExceeded
 from email_reports.reports import DailyApexCampaignEmailReport
+from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import FlightDeliveredReport
-from utils.datetime import from_local_to_utc
+from email_reports.reports import TechFeeCapExceeded
 from saas import celery_app
+from utils.datetime import from_local_to_utc
 
 __all__ = [
     "send_daily_email_reports",
@@ -52,8 +51,8 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
             report.send()
         # pylint: disable=broad-except
         except Exception as e:
-        # pylint: enable=broad-except
-            logger.critical('Worker got error: %s' % str(e))
+            # pylint: enable=broad-except
+            logger.critical("Worker got error: %s", str(e))
             logger.critical(traceback.format_exc())
 
 
@@ -70,8 +69,10 @@ EMAIL_REPORT_CLASSES = (
 
 @celery_app.task
 def notify_opportunity_targeting_report_is_ready(report_id):
+    # pylint: disable=import-outside-toplevel
     from ads_analyzer.models import OpportunityTargetingReport
     from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+    # pylint: enable=import-outside-toplevel
     try:
         report = OpportunityTargetingReport.objects.get(pk=report_id)
     except OpportunityTargetingReport.DoesNotExist:
@@ -86,11 +87,12 @@ def notify_opportunity_targeting_report_is_ready(report_id):
             recipient_list=[email],
         )
 
+
 @celery_app.task
 def schedule_daily_reports(**kwargs):
     utc_now = datetime.now(pytz.utc)
     local_execution_time = datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
-                                    hour=HOUR_SEND_DAILY_REPORTS,)
+                                    hour=HOUR_SEND_DAILY_REPORTS, )
 
     timezones = Account.objects.values_list("timezone", flat=True).distinct()
 
