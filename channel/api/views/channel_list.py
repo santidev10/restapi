@@ -189,5 +189,3 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
             return channels_ids
         return None
-
-
