@@ -1,5 +1,6 @@
-from django.core.management import BaseCommand
 import logging
+
+from django.core.management import BaseCommand
 from pid.decorator import pidfile
 
 from segment.models.persistent import PersistentSegmentChannel

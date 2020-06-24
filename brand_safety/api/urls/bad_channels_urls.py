@@ -7,7 +7,7 @@ Names = BrandSafetyPathName.BadChannel
 
 urlpatterns = [
     url(
-        r'^$',
+        r"^$",
         views.BadChannelListApiView.as_view(),
         name=Names.LIST_AND_CREATE,
     ),
@@ -17,12 +17,12 @@ urlpatterns = [
         name=Names.CATEGORY_LIST
     ),
     url(
-        r'^export/$',
+        r"^export/$",
         views.BadChannelExportApiView.as_view(),
         name=Names.EXPORT,
     ),
     url(
-        r'^(?P<pk>.+)/$',
+        r"^(?P<pk>.+)/$",
         views.BadChannelUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
     ),

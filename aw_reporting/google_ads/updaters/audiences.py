@@ -28,7 +28,7 @@ def update_audiences():
 def get_audience_data_by_link(link, audience_type):
     response = requests.get(link)
     lines = response.text.splitlines()
-    reader = csv.DictReader(lines, dialect='excel-tab')
+    reader = csv.DictReader(lines, dialect="excel-tab")
     for row in reader:
         yield dict(
             id=row["Criterion ID"],
@@ -38,7 +38,7 @@ def get_audience_data_by_link(link, audience_type):
 
 
 def update_parents():
-    audiences = Audience.objects.filter(parent__isnull=True).order_by('id')
+    audiences = Audience.objects.filter(parent__isnull=True).order_by("id")
     for audience in audiences:
         if audience.name.count("/") > 1:
             parent_name = "/".join(

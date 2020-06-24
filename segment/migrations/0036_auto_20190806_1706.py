@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('segment', '0035_auto_20190719_2125'),
     ]

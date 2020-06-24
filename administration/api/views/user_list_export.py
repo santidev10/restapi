@@ -1,7 +1,6 @@
 import pytz
-
-from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.permissions import IsAdminUser
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from aw_reporting.models import Account
 from userprofile.models import UserProfile
@@ -67,7 +66,7 @@ class UserListExportApiView(FileListApiView):
         timestamp = now_utc.strftime("%Y%m%d %H%M%S")
         return "User List {}.csv".format(timestamp)
 
-    def data_generator(self):
+    def data_generator(self, *_, **__):
         queryset = self.filter_queryset(self.get_queryset())
         for user in queryset:
             yield {

@@ -7,7 +7,7 @@ Names = BrandSafetyPathName.BadWord
 
 urlpatterns = [
     url(
-        r'^$',
+        r"^$",
         views.BadWordListApiView.as_view(),
         name=Names.LIST_AND_CREATE,
     ),
@@ -17,22 +17,22 @@ urlpatterns = [
         name=Names.CATEGORY_LIST
     ),
     url(
-        r'^history/$',
+        r"^history/$",
         views.BadWordHistoryApiView.as_view(),
         name=Names.HISTORY,
     ),
     url(
-        r'^export/$',
+        r"^export/$",
         views.BadWordExportApiView.as_view(),
         name=Names.EXPORT,
     ),
     url(
-        r'^(?P<pk>.+)/recover/$',
+        r"^(?P<pk>.+)/recover/$",
         views.BadWordRecoverApiView.as_view(),
         name=Names.RECOVER,
     ),
     url(
-        r'^(?P<pk>.+)/$',
+        r"^(?P<pk>.+)/$",
         views.BadWordUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
     )

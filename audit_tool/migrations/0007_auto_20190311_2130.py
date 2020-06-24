@@ -3,12 +3,12 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields.jsonb
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0006_auto_20190306_2136'),
     ]
@@ -42,7 +42,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='comment',
             name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to='audit_tool.YoutubeUser'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments',
+                                    to='audit_tool.YoutubeUser'),
         ),
         migrations.AlterUniqueTogether(
             name='comment',

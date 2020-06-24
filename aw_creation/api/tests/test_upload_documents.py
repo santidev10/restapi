@@ -1,5 +1,6 @@
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import GeoTarget
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -60,14 +61,14 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/tests/example_zip_codes.xlsx',
-                  'rb') as fp:
-            response = self.client.post(url, {'file': fp},
-                                        format='multipart')
+        with open("aw_creation/fixtures/tests/example_zip_codes.xlsx",
+                  "rb") as fp:
+            response = self.client.post(url, {"file": fp},
+                                        format="multipart")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['result']), 5)
+        self.assertEqual(len(response.data["result"]), 5)
         self.assertEqual(
-            set(i['id'] for i in response.data['result']),
+            set(i["id"] for i in response.data["result"]),
             {
                 9004056,
                 9016368,
@@ -77,13 +78,13 @@ class DocumentsTestCase(ExtendedAPITestCase):
             },
         )
         self.assertEqual(
-            set(response.data['undefined']),
+            set(response.data["undefined"]),
             {
-                'Input',
-                '123456789',
-                'Output',
-                '12345',
-                '9016351',
+                "Input",
+                "123456789",
+                "Output",
+                "12345",
+                "9016351",
             },
         )
 
@@ -92,8 +93,8 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/tests/example_zip_codes.xls', 'rb') as fp:
-            response = self.client.post(url, {'file': fp}, format='multipart')
+        with open("aw_creation/fixtures/tests/example_zip_codes.xls", "rb") as fp:
+            response = self.client.post(url, {"file": fp}, format="multipart")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -120,12 +121,12 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/tests/zip_codes.csv', 'rb') as fp:
-            response = self.client.post(url, {'file': fp},
-                                        format='multipart')
+        with open("aw_creation/fixtures/tests/zip_codes.csv", "rb") as fp:
+            response = self.client.post(url, {"file": fp},
+                                        format="multipart")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            set(i['id'] for i in response.data['result']),
+            set(i["id"] for i in response.data["result"]),
             {9031988, 9032054},
         )

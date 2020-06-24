@@ -39,7 +39,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
     Visible account list view/edit
     """
     permission_classes = (IsAdminUser,)
-    queryset = Account.objects.filter(managers__isnull=False).order_by('name')
+    queryset = Account.objects.filter(managers__isnull=False).order_by("name")
     serializer_class = AdWordsTopManagerSerializer
 
     def get(self, request):
@@ -47,7 +47,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             self._get_accounts(),
             many=True
         ).data
-        user_id = self.request.query_params.get('user_id')
+        user_id = self.request.query_params.get("user_id")
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -57,11 +57,11 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
 
         for ac_info in data:
-            account_id = ac_info['id']
-            ac_info['visible'] = account_id in visible_ids
+            account_id = ac_info["id"]
+            ac_info["visible"] = account_id in visible_ids
 
             hidden_types = types_settings.get(str(account_id), [])
-            ac_info['campaign_types_visibility'] = [
+            ac_info["campaign_types_visibility"] = [
                 dict(
                     id=ct,
                     name=campaign_type_str(ct),
@@ -82,30 +82,30 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             .order_by("-is_demo", "name")
 
     def put(self, request):
-        user_id = self.request.query_params.get('user_id')
+        user_id = self.request.query_params.get("user_id")
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
         settings_obj = user.get_aw_settings()
-        if 'accounts' in request.data:
-            accounts = request.data.get('accounts')
+        if "accounts" in request.data:
+            accounts = request.data.get("accounts")
 
             visible_accounts = set(settings_obj.get(UserSettingsKey.VISIBLE_ACCOUNTS))
             hidden_types = settings_obj.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
 
             for account in accounts:
                 # account visibility
-                uid = int(account['id'])
-                if account['visible']:
+                uid = int(account["id"])
+                if account["visible"]:
                     visible_accounts |= {uid}
                 else:
                     visible_accounts -= {uid}
 
                 # campaign visibility
-                if 'campaign_types_visibility' in account:
+                if "campaign_types_visibility" in account:
                     hidden_types[str(uid)] = [
                         k for k, v in
-                        account['campaign_types_visibility'].items()
+                        account["campaign_types_visibility"].items()
                         if not v
                     ]
 
@@ -125,7 +125,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
     permission_classes = (IsAdminUser,)
 
     def get(self, request):
-        user_id = self.request.query_params.get('user_id')
+        user_id = self.request.query_params.get("user_id")
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -134,7 +134,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
 
     def put(self, request):
         # get user settings
-        user_id = self.request.query_params.get('user_id')
+        user_id = self.request.query_params.get("user_id")
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)

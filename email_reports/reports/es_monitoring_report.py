@@ -1,14 +1,14 @@
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import get_template
-from django.template.defaultfilters import striptags
 from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
+from django.template.defaultfilters import striptags
+from django.template.loader import get_template
 
 from email_reports.reports.base import BaseEmailReport
-from es_components.managers import ChannelManager
-from es_components.managers import VideoManager
-from es_components.managers import KeywordManager
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import KeywordManager
+from es_components.managers import VideoManager
 from utils.datetime import now_in_default_tz
 
 

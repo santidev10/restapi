@@ -69,10 +69,10 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
         cursor = attrgetter(cursor_field)(first)
     except IndexError:
         return
-    if type(query) is dict:
+    if isinstance(query, dict):
         query = Q(query)
-    if direction != 0 and direction != 1:
-        raise ValueError(f"direction kwarg must be 0 or 1")
+    if direction not in (0, 1):
+        raise ValueError("direction kwarg must be 0 or 1")
 
     if direction == 0:
         range_opt = "lte"

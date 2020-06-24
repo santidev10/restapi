@@ -11,7 +11,7 @@ from utils.utils import convert_subscriber_count
 
 logger = logging.getLogger(__name__)
 
-logging.getLogger("requests")\
+logging.getLogger("requests") \
     .setLevel(logging.WARNING)
 
 
@@ -32,14 +32,16 @@ class Youtube:
 
         def worker(dmo, n):
             if n % 50 == 0:
-                logger.info("  chunk {} / {}".format(n, len(self.chunks)))
+                logger.info("  chunk %s / %s", n, len(self.chunks))
             for i in range(5):
                 try:
                     r = requests.get(dmo.url)
                     data = r.json()
                     dmo.parse_page_to_items(data)
+                # pylint: disable=broad-except
                 except Exception as e:
-                    logger.error(f"Requests Error (try {i + 1}/5):" + str(e))
+                # pylint: enable=broad-except
+                    logger.error("Requests Error (try %s/5): %s", i + 1, e)
                     time.sleep(15)
                 else:
                     break
@@ -60,7 +62,7 @@ class Youtube:
 
         def worker(dmo, n):
             if n % 50 == 0:
-                logger.info("  chunk {} / {}".format(n, len(self.chunks)))
+                logger.info("  chunk %s / %s", n, len(self.chunks))
             for i in range(5):
                 try:
                     r = requests.get(dmo["url"])
@@ -71,8 +73,10 @@ class Youtube:
                             "subscribers": convert_subscriber_count(i.get("statistics", {}).get("subscriberCount"))
                         } for i in data.get("items", [])
                     ]
+                # pylint: disable=broad-except
                 except Exception as e:
-                    logger.error(f"Requests Error (try {i + 1}/5):" + str(e))
+                # pylint: enable=broad-except
+                    logger.error("Requests Error (try %s/5): %s", i + 1, e)
                     time.sleep(15)
                 else:
                     break

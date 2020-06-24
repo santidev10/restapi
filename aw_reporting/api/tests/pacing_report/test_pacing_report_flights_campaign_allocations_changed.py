@@ -1,10 +1,17 @@
-from utils.unittests.reverse import reverse
-from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
-from saas.urls.namespaces import Namespace
-from utils.unittests.test_case import ExtendedAPITestCase
-from django.utils import timezone
 from datetime import timedelta
+
+from django.utils import timezone
+
+from aw_reporting.api.urls.names import Name
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from saas.urls.namespaces import Namespace
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
+
 
 class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
     @staticmethod
@@ -38,11 +45,14 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
         campaign_3_budget = flight.budget * campaign_3_goal_allocation / 100
 
         campaign_1 = Campaign.objects.create(
-            id=1, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_1_goal_allocation, budget=campaign_1_budget, update_time=future, sync_time=past)
+            id=1, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_1_goal_allocation,
+            budget=campaign_1_budget, update_time=future, sync_time=past)
         campaign_2 = Campaign.objects.create(
-            id=2, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_2_goal_allocation, budget=campaign_2_budget, update_time=future, sync_time=past)
+            id=2, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_2_goal_allocation,
+            budget=campaign_2_budget, update_time=future, sync_time=past)
         campaign_3 = Campaign.objects.create(
-            id=3, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_3_goal_allocation, budget=campaign_3_budget, update_time=future, sync_time=None)
+            id=3, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_3_goal_allocation,
+            budget=campaign_3_budget, update_time=future, sync_time=None)
 
         response = self.client.get(self._get_url(1))
 
@@ -50,5 +60,3 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data[2][1], campaign_1.budget)
         self.assertEqual(response.data[2][2], campaign_2.budget)
         self.assertEqual(response.data[2][3], campaign_3.budget)
-
-

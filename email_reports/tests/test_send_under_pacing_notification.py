@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.conf import settings
 from django.core import mail
 
@@ -12,6 +11,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from email_reports.tasks import send_daily_email_reports
 from utils.datetime import now_in_default_tz
 from utils.unittests.patch_now import patch_now
@@ -163,8 +163,8 @@ class SendDailyEmailsTestCase(APITestCase):
         Flight.objects.create(id=4, name=flight_2_name, **flight_data)
         stats = dict(cost=.5, video_views=10)
         campaign_2 = Campaign.objects.create(pk=2, name="", account=account_2,
-                                           salesforce_placement=placement_2,
-                                           **stats)
+                                             salesforce_placement=placement_2,
+                                             **stats)
         CampaignStatistic.objects.create(campaign=campaign_2, date=today_manila_timezone - timedelta(days=2),
                                          **stats)
         recalculate_de_norm_fields_for_account(account_2.id)

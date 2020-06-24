@@ -72,7 +72,7 @@ class AddRelationsTestCase(ExtendedAPITestCase):
         ad_group_creation_3 = AdGroupCreation.objects.create(name="", campaign_creation=campaign_creation_2,
                                                              sync_at=sync_at)
 
-        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign, name="-$#2 #{}".format(ad_group_creation_3.id))
+        AdGroup.objects.create(id=1, campaign=campaign, name="-$#2 #{}".format(ad_group_creation_3.id))
         ad_group_2 = AdGroup.objects.create(id=2, campaign=campaign, name="AG #{}".format(ad_group_creation_2.id))
 
         # run tasks
@@ -115,8 +115,8 @@ class AddRelationsTestCase(ExtendedAPITestCase):
 
         ad_1 = Ad.objects.create(id=1, ad_group=ad_group_1, creative_name="-$#2 #{}".format(ad_creation_1.id))
         ad_2 = Ad.objects.create(id=2, ad_group=ad_group_1, creative_name="AG #{}".format(ad_creation_2.id))
-        ad_3 = Ad.objects.create(id=3, ad_group=ad_group_1, creative_name="AG #{}".format(ad_creation_3.id))
-        ad_4 = Ad.objects.create(id=4, ad_group=ad_group_2, creative_name="AG #{}".format(ad_creation_4.id))
+        Ad.objects.create(id=3, ad_group=ad_group_1, creative_name="AG #{}".format(ad_creation_3.id))
+        Ad.objects.create(id=4, ad_group=ad_group_2, creative_name="AG #{}".format(ad_creation_4.id))
 
         # run tasks
         add_relation_between_report_and_creation_ads()

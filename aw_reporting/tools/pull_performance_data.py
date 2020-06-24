@@ -1,17 +1,17 @@
 import csv
 
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Count
 from django.db.models import Sum
-from django.contrib.postgres.aggregates import ArrayAgg
+
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import get_average_cpv
 from aw_reporting.models import get_average_cpm
-from utils.utils import chunks_generator
-
+from aw_reporting.models import get_average_cpv
+from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.constants import Sections
+from utils.utils import chunks_generator
 
 CHUNK_SIZE = 1000
 
@@ -54,7 +54,7 @@ def pull_performance_data(year, data_type, file_path):
                 if not entity:
                     continue
 
-                yt_id, impressions, views, clicks, cost, product_types = entity_data
+                _, impressions, views, clicks, cost, product_types = entity_data
 
                 writer.writerow([
                     entity.general_data.title,
@@ -67,5 +67,3 @@ def pull_performance_data(year, data_type, file_path):
                     get_average_cpm(impressions=impressions, cost=cost),
                     ", ".join(product_types)
                 ])
-
-

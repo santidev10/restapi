@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0023_auditchannelmeta_video_count'),
         ('brand_safety', '0012_auto_20190529_0001'),

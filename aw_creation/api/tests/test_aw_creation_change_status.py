@@ -3,9 +3,12 @@ from datetime import timedelta
 
 from django.urls import reverse
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, AdCreation
-from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_reporting.api.tests.base import Account
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
 class ChangedAccountsAPITestCase(AwReportingAPITestCase):
@@ -37,7 +40,7 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
             url, json.dumps(
                 {"updated_at": str(account_creation.updated_at - timedelta(seconds=2))}
             ),
-            content_type='application/json',
+            content_type="application/json",
         )
         account_creation.refresh_from_db()
         self.assertEqual(account_creation.is_changed, True)
@@ -54,7 +57,7 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
                     "updated_at": str(account_creation.updated_at),
                     "campaigns": campaigns,
                 }
-            ), content_type='application/json',
+            ), content_type="application/json",
         )
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_changed, False)
@@ -68,6 +71,6 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
         self.assertIs(empty_ad_creation.is_changed, True)
 
         # check campaign and ad group objects and relations
-        self.assertEqual(campaign_creation.campaign_id, campaigns[0]['id'])
+        self.assertEqual(campaign_creation.campaign_id, campaigns[0]["id"])
         self.assertEqual(ad_group_creation.ad_group_id,
-                         campaigns[0]['ad_groups'][0]['id'])
+                         campaigns[0]["ad_groups"][0]["id"])

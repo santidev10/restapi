@@ -1,6 +1,5 @@
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -8,7 +7,6 @@ from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.api.views.bad_word import BadWordListApiView
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -52,7 +50,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
         return self.client.get(url)
 
     def test_bad_word_manager_objects(self):
-        word1 = BadWord.objects.create(**self.words[0])
+        BadWord.objects.create(**self.words[0])
         word2 = BadWord(**self.words[1])
         word2.deleted_at = timezone.now()
         word2.save()
@@ -133,7 +131,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
         response = self._request(language="en")
         data = response.data["items"]
 
-        self.assertEqual(len(self.words)-1, len(data))
+        self.assertEqual(len(self.words) - 1, len(data))
         self.assertEqual(True, all([word["language"] == "en" for word in data]))
 
     def test_filter_by_search(self):
@@ -166,5 +164,3 @@ class BadWordListTestCase(ExtendedAPITestCase):
         response = self._request(search=test_search_query)
 
         self.assertEqual(len(response.data["items"]), 0)
-
-

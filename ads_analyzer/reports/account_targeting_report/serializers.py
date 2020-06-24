@@ -7,19 +7,19 @@ from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSe
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CriteriaTypeEnum
 from aw_reporting.models import GenderStatistic
-from aw_reporting.models import ParentStatistic
-from aw_reporting.models import age_range_str
-from aw_reporting.models import device_str
-from aw_reporting.models import gender_str
-from aw_reporting.models import parent_str
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import ParentStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import CriteriaTypeEnum
+from aw_reporting.models import age_range_str
+from aw_reporting.models import device_str
+from aw_reporting.models import gender_str
+from aw_reporting.models import parent_str
 
 
 class AdGroupSerializer(BaseSerializer):

@@ -1,8 +1,10 @@
-from django.test import TestCase
-from cache.models import CacheItem
+from time import sleep
 
 from django.db import IntegrityError
-from time import sleep
+from django.test import TestCase
+
+from cache.models import CacheItem
+
 
 class CacheTestCase(TestCase):
     def setUp(self):
@@ -22,7 +24,7 @@ class CacheTestCase(TestCase):
     def test_cache_update_time_changes(self):
         updated_at_before = self.item_1.updated_at
         sleep(1)
-        self.item_1.value['new_val'] = 'newtestval'
+        self.item_1.value["new_val"] = "newtestval"
         self.item_1.save()
         self.assertEqual(self.item_1.value, {
             "val": "testval1",

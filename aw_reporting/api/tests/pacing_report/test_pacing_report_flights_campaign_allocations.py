@@ -1,12 +1,18 @@
 import json
 
 from django.urls import reverse
-from rest_framework.status import HTTP_401_UNAUTHORIZED, \
-    HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
-from aw_reporting.api.views.pacing_report.pacing_report_flights_campaign_allocations import PacingReportFlightsCampaignAllocationsView
+from aw_reporting.api.views.pacing_report.pacing_report_flights_campaign_allocations import \
+    PacingReportFlightsCampaignAllocationsView
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from utils.unittests.test_case import ExtendedAPITestCase
 

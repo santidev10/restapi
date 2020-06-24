@@ -4,7 +4,7 @@ from django.db import migrations
 
 
 def change_enum_to_str(apps, schema_editor):
-    AdGroupStatistic = apps.get_model('aw_reporting', 'AdGroupStatistic')
+    AdGroupStatistic = apps.get_model("aw_reporting", "AdGroupStatistic")
     AdGroupStatistic.objects.filter(ad_network="0").update(ad_network="unspecified")
     AdGroupStatistic.objects.filter(ad_network="1").update(ad_network="unknown")
     AdGroupStatistic.objects.filter(ad_network="2").update(ad_network="Search Network")
@@ -20,9 +20,8 @@ def reverse_code(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0064_auto_20191018_2201'),
+        ("aw_reporting", "0064_auto_20191018_2201"),
     ]
 
     operations = [

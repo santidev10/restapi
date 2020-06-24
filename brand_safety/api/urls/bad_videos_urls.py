@@ -7,7 +7,7 @@ Names = BrandSafetyPathName.BadVideo
 
 urlpatterns = [
     url(
-        r'^$',
+        r"^$",
         views.BadVideoListCreateApiView.as_view(),
         name=Names.LIST_AND_CREATE,
     ),
@@ -17,12 +17,12 @@ urlpatterns = [
         name=Names.CATEGORY_LIST
     ),
     url(
-        r'^export/$',
+        r"^export/$",
         views.BadVideoExportApiView.as_view(),
         name=Names.EXPORT,
     ),
     url(
-        r'^(?P<pk>.+)/$',
+        r"^(?P<pk>.+)/$",
         views.BadVideoUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
     ),

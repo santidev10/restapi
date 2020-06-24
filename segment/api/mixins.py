@@ -1,7 +1,7 @@
 from segment.utils.utils import get_persistent_segment_model_by_type
 
 
-class DynamicPersistentModelViewMixin(object):
+class DynamicPersistentModelViewMixin:
     def dispatch(self, request, segment_type, **kwargs):
         self.model = get_persistent_segment_model_by_type(segment_type)
         if hasattr(self, "serializer_class"):

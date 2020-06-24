@@ -9,35 +9,35 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--no_delete',
-            dest='no_delete',
+            "--no_delete",
+            dest="no_delete",
             default=False,
             type=bool,
-            help='Do not delete in database from salesforce'
+            help="Do not delete in database from salesforce"
         )
 
         parser.add_argument(
-            '--no_update',
-            dest='no_update',
+            "--no_update",
+            dest="no_update",
             default=False,
             type=bool,
-            help='Do not update any data on salesforce'
+            help="Do not update any data on salesforce"
         )
 
         parser.add_argument(
-            '--no_get',
-            dest='no_get',
+            "--no_get",
+            dest="no_get",
             default=False,
             type=bool,
-            help='Do not get any data from salesforce'
+            help="Do not get any data from salesforce"
         )
 
         parser.add_argument(
-            '--debug_update',
-            dest='debug_update',
+            "--debug_update",
+            dest="debug_update",
             default=False,
             type=bool,
-            help='Do not update any data on salesforce, just write to the log'
+            help="Do not update any data on salesforce, just write to the log"
         )
 
         parser.add_argument("--force", "-f", dest="force", action="store_true", help="Update for whole period")
@@ -46,7 +46,8 @@ class Command(BaseCommand):
         parser.add_argument("--no-opp", dest="no_opportunities", action="store_true",
                             help="Update excluding opportunities")
         parser.add_argument("--opp", dest="opportunities", action="append", help="Opportunity ids for updating")
-        parser.add_argument("--delete_from_days", default=1, dest="delete_from_days", help="Number of days past to delete from")
+        parser.add_argument("--delete_from_days", default=1, dest="delete_from_days",
+                            help="Number of days past to delete from")
 
     def handle(self, *args, **options):
         signature = update_salesforce_data.si(

@@ -5,10 +5,10 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Sum
 
-from aw_reporting.models import OpPlacement, dict_add_calculated_stats
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
-from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class TechFeeCapExceeded(BaseCampaignEmailReport):
         )
 
         if self.timezone_accounts() is not None:
-            placements = placements.filter(opportunity__aw_cid__in=self.timezone_accounts(),)
+            placements = placements.filter(opportunity__aw_cid__in=self.timezone_accounts(), )
 
         for placement in placements:
 
@@ -54,8 +54,7 @@ class TechFeeCapExceeded(BaseCampaignEmailReport):
             elif placement["tech_fee_type"] == OpPlacement.TECH_FEE_CPM_TYPE:
                 effective_rate = placement["average_cpm"]
             else:
-                logger.critical("Unknown tech fee type: {}".format(
-                    placement["tech_fee_type"]))
+                logger.critical("Unknown tech fee type: %s", placement["tech_fee_type"])
                 effective_rate = None
 
             if effective_rate is None:

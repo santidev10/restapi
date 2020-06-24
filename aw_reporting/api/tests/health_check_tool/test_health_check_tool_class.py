@@ -1,10 +1,19 @@
-from datetime import datetime, date
+from datetime import date
+from datetime import datetime
 
-from aw_reporting.models import AgeRanges, CampaignGenderTargeting, \
-    CampaignAgeRangeTargeting, Opportunity, OpPlacement, Campaign, \
-    GeoTarget, CampaignLocationTargeting
-from aw_reporting.tools.health_check_tool import HealthCheckTool, \
-    MALE_GENDER, FEMALE_GENDER, UNDETERMINED_GENDER, GENDERS
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignAgeRangeTargeting
+from aw_reporting.models import CampaignGenderTargeting
+from aw_reporting.models import CampaignLocationTargeting
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.tools.health_check_tool import FEMALE_GENDER
+from aw_reporting.tools.health_check_tool import GENDERS
+from aw_reporting.tools.health_check_tool import HealthCheckTool
+from aw_reporting.tools.health_check_tool import MALE_GENDER
+from aw_reporting.tools.health_check_tool import UNDETERMINED_GENDER
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 AGE_18_24 = "18-24"

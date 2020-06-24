@@ -23,10 +23,10 @@ from aw_reporting.tools.health_check_tool import AGE_RANGES
 from aw_reporting.tools.health_check_tool import GENDERS
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class AWSetupHealthCheckListTestCase(APITestCase):
@@ -231,9 +231,10 @@ class AWSetupHealthCheckListTestCase(APITestCase):
             date(2016, 12, 30),
             date(2017, 1, 8))
         expected_opportunities_count = 3
-        opportunities = [Opportunity.objects.create(
-            id=str(opp_id), name="", probability=100, start=start_date)
-            for opp_id, start_date in enumerate(start_dates)]
+        opportunities = [
+            Opportunity.objects.create(id=str(opp_id), name="", probability=100, start=start_date)
+            for opp_id, start_date in enumerate(start_dates)
+        ]
         expected_opportunities_ids = {
             opportunity.id for opportunity
             in opportunities[:expected_opportunities_count]}
@@ -254,7 +255,7 @@ class AWSetupHealthCheckListTestCase(APITestCase):
 
     def __create_not_auth_user(self):
         self.user.delete()
-        self.create_test_user(False)
+        self.create_test_user(auth=False)
 
     @generic_test([
         (global_account_visibility, (global_account_visibility, count), dict())
@@ -281,7 +282,7 @@ class AWSetupHealthCheckFiltersTestCase(APITestCase):
 
     def __create_not_auth_user(self):
         self.user.delete()
-        self.create_test_user(False)
+        self.create_test_user(auth=False)
 
     def test_fail_get_filters(self):
         self.__create_not_auth_user()

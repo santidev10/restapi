@@ -51,21 +51,21 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'start', 'end', 'status', 'ad_ops', 'am', 'sales',
-                'goal_type', 'period', 'category', 'region',
+                "start", "end", "status", "ad_ops", "am", "sales",
+                "goal_type", "period", "category", "region",
             }
         )
-        self.assertEqual(len(data['period']), 7)
-        self.assertEqual(len(data['status']), 3)
+        self.assertEqual(len(data["period"]), 7)
+        self.assertEqual(len(data["status"]), 3)
 
         self.assertEqual(
-            set(u['id'] for u in data['ad_ops']), {"Jah"}
+            set(u["id"] for u in data["ad_ops"]), {"Jah"}
         )
         self.assertEqual(
-            set(u['id'] for u in data['am']), {"Ith"}
+            set(u["id"] for u in data["am"]), {"Ith"}
         )
         self.assertEqual(
-            set(u['id'] for u in data['sales']), {"Ral"}
+            set(u["id"] for u in data["sales"]), {"Ral"}
         )
 
     def test_category(self):
@@ -143,7 +143,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         """
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
         Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
-        Root cause: select query includes 'start' column
+        Root cause: select query includes "start" column
         """
         self.create_test_user()
         test_territory = "test region"

@@ -1,21 +1,18 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.test import APITestCase
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import UserTypeRegular
 from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
+from userprofile.constants import UserTypeRegular
 from userprofile.models import UserProfile
 from utils.unittests.generic_test import generic_test
 from utils.unittests.reverse import reverse
-from userprofile.permissions import PermissionGroupNames
 
 
 class UserRegistrationTestCase(APITestCase):
@@ -44,17 +41,17 @@ class UserRegistrationTestCase(APITestCase):
         change validation rules
         """
         bad_passwords = [
-            'Short1!',
-            'no_capitalization1!',
-            'Nospecialchars1',
-            'No_numbers!'
+            "Short1!",
+            "no_capitalization1!",
+            "Nospecialchars1",
+            "No_numbers!"
         ]
         for bad_password in bad_passwords:
             user_data = self._user_data(password=bad_password)
             response = None
             response = self.client.post(self.registration_url, data=user_data)
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-            self.assertIsNotNone(response.data.get('verify_password', None))
+            self.assertIsNotNone(response.data.get("verify_password", None))
 
     def test_registration_procedure_success(self):
         password = "Testing1!"

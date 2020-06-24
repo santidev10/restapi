@@ -1,11 +1,12 @@
 from django.db.models import F
+from django.utils import timezone
 
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditContentType
 from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditContentType
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
@@ -16,11 +17,11 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditVideoVet
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
+from cache.models import CacheItem
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from segment.models.constants import VETTED_MAPPING
-from django.utils import timezone
+
 
 class AuditUtils(object):
     video_config = {

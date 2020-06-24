@@ -1,7 +1,8 @@
+from distutils.util import strtobool
+
+from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
-from rest_framework.serializers import CharField
-from distutils.util import strtobool
 
 from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
@@ -72,4 +73,3 @@ class BadWordSerializer(ModelSerializer):
     class Meta:
         model = BadWord
         fields = ("id", "name", "category", "negative_score", "language", "meta_scoring", "comment_scoring")
-

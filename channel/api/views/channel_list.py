@@ -3,31 +3,31 @@ from copy import deepcopy
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from cache.constants import CHANNEL_AGGREGATIONS_KEY
+from cache.models import CacheItem
 from channel.api.serializers.channel import ChannelSerializer
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
-from channel.constants import TERMS_FILTER
+from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
-from channel.constants import EXISTS_FILTER
+from channel.constants import TERMS_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
+from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
-from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.permissions import BrandSafetyDataVisible
-
-from cache.models import CacheItem
-from cache.constants import CHANNEL_AGGREGATIONS_KEY
-from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 
 
 class ChannelsNotFound(Exception):
@@ -54,14 +54,15 @@ class ChannelESFilterBackend(ESFilterBackend):
                 raise ChannelsNotFound
 
             return similar_channels_ids
+        return None
 
     def filter_queryset(self, request, queryset, view):
         try:
             similar_channels_ids = self.__get_similar_channels(deepcopy(request.query_params))
 
             if similar_channels_ids:
-                request.query_params._mutable = True
-                request.query_params["main.id"] = list(similar_channels_ids)
+                with mutate_query_params(request.query_params):
+                    request.query_params["main.id"] = list(similar_channels_ids)
         except ChannelsNotFound:
             queryset = ESEmptyResponseAdapter(ChannelManager())
 
@@ -131,12 +132,13 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     try:
         cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
         cached_aggregations = cached_aggregations_object.value
+    # pylint: disable=broad-except
     except Exception as e:
+        # pylint: enable=broad-except
         cached_aggregations = None
 
     def get_serializer_class(self):
-        if self.request and self.request.user and (
-                self.request.user.is_staff):
+        if self.request and self.request.user and self.request.user.is_staff:
             return ChannelWithBlackListSerializer
         return ChannelSerializer
 
@@ -150,26 +152,23 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             return ESEmptyResponseAdapter(ChannelManager())
 
         if channels_ids:
-            self.request.query_params._mutable = True
-            self.request.query_params["main.id"] = channels_ids
-            self.request.query_params._mutable = False
+            with mutate_query_params(self.request.query_params):
+                self.request.query_params["main.id"] = channels_ids
 
         if not BrandSafetyDataVisible().has_permission(self.request):
 
             if "brand_safety" in self.request.query_params:
-                self.request.query_params._mutable = True
-                self.request.query_params["brand_safety"] = None
-                self.request.query_params._mutable = False
+                with mutate_query_params(self.request.query_params):
+                    self.request.query_params["brand_safety"] = None
 
         if self.request.user.is_staff or self.request.user.has_perm("userprofile.monetization_filter"):
             sections += (Sections.MONETIZATION,)
         else:
-            self.request.query_params._mutable = True
-            try:
-                del self.request.query_params["monetization.is_monetizable"]
-            except KeyError:
-                pass
-            self.request.query_params._mutable = False
+            with mutate_query_params(self.request.query_params):
+                try:
+                    del self.request.query_params["monetization.is_monetizable"]
+                except KeyError:
+                    pass
 
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
         return result
@@ -189,3 +188,4 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 raise UserChannelsNotAvailable
 
             return channels_ids
+        return None

@@ -2,12 +2,12 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from itertools import product
 
 import pytz
 from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
-from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -216,7 +216,7 @@ class PacingReportPlacementsTestCase(APITestCase):
 
         data = response.data
         self.assertEqual(len(data), 2)
-        response_ids = [op['id'] for op in data]
+        response_ids = [op["id"] for op in data]
         self.assertEqual(response_ids, [placement_2.id, placement_1.id])
 
     def test_returns_dynamic_placement_type(self):

@@ -56,7 +56,7 @@ class VideoDMO(BaseDMO):
     tags = None
     category_id = None
 
-    RE_CLEANUP = re.compile("\W+")
+    RE_CLEANUP = re.compile(r"\W+")
 
     def get_text(self, clean=True):
         lines = [

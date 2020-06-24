@@ -4,8 +4,8 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -61,7 +61,9 @@ class BrandSafetyVideoSerializer(Serializer):
         text = ""
         try:
             vid_lang_code = video.general_data.lang_code
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
         if vid_lang_code:
@@ -78,7 +80,9 @@ class BrandSafetyVideoSerializer(Serializer):
     def get_transcript_language(self, video):
         try:
             vid_lang_code = video.general_data.lang_code
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
         if vid_lang_code:

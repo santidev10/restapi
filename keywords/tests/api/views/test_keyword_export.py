@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from unittest import mock
 
@@ -10,15 +9,14 @@ from es_components.constants import Sections
 from es_components.managers import KeywordManager
 from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
+from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.reverse import reverse
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.s3_mock import mock_s3
-
-from keywords.api.names import KeywordPathName
+from utils.unittests.test_case import ExtendedAPITestCase
 
 EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 
@@ -100,7 +98,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
-                    return_value=EXPORT_FILE_HASH)
+                return_value=EXPORT_FILE_HASH)
     def test_success_allowed_user(self, *args):
         user = self.create_test_user()
         user.add_custom_user_permission("research_exports")

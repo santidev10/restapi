@@ -1,6 +1,5 @@
 from datetime import date
 from datetime import timedelta
-from unittest.case import skip
 
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Device
@@ -9,6 +8,7 @@ from aw_reporting.models import device_str
 from utils.unittests.patch_now import patch_now
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
+from .base import common_column_declaration
 
 
 class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTargetingReportSheetTestCase):
@@ -17,31 +17,7 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
     columns = ColumnsDeclaration(
         (
             ("type", "Type"),
-            ("campaign_name", "Ads Campaign"),
-            ("ad_group_name", "Ads Ad group"),
-            ("placement_name", "Salesforce Placement"),
-            ("placement_start", "Placement Start Date"),
-            ("placement_end", "Placement End Date"),
-            ("days_remaining", "Days remaining"),
-            ("margin_cap", "Margin Cap"),
-            ("cannot_roll_over", "Cannot Roll over Delivery"),
-            ("goal_type", "Rate Type"),
-            ("contracted_rate", "Contracted Rate"),
-            ("max_bid", "Max bid"),
-            ("avg_rate", "Avg. Rate"),
-            ("cost", "Cost"),
-            ("cost_delivered_percentage", "Cost delivery percentage"),
-            ("impressions", "Impressions"),
-            ("views", "Views"),
-            ("delivery_percentage", "Delivery percentage"),
-            ("revenue", "Revenue"),
-            ("profit", "Profit"),
-            ("margin", "Margin"),
-            ("video_played_100", "Video played to 100%"),
-            ("view_rate", "View rate"),
-            ("clicks", "Clicks"),
-            ("ctr", "CTR"),
-        )
+        ) + common_column_declaration
     )
 
     def get_data_dict(self, *args, **kwargs):

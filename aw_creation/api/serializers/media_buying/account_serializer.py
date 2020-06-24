@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
+from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypeStr

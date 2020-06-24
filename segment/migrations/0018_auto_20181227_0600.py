@@ -3,13 +3,12 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields
-import django.contrib.postgres.fields.jsonb
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('segment', '0017_auto_20181003_1238'),
     ]
@@ -22,8 +21,11 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('title', models.CharField(blank=True, max_length=255, null=True)),
-                ('shared_with', django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=200), blank=True, default=list, size=None)),
-                ('category', models.CharField(choices=[('blacklist', 'blacklist'), ('whitelist', 'whitelist')], max_length=255)),
+                ('shared_with',
+                 django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=200), blank=True,
+                                                           default=list, size=None)),
+                ('category',
+                 models.CharField(choices=[('blacklist', 'blacklist'), ('whitelist', 'whitelist')], max_length=255)),
             ],
             options={
                 'ordering': ['pk'],
@@ -42,7 +44,8 @@ class Migration(migrations.Migration):
                 ('tags', models.TextField(default='')),
                 ('thumbnail_image_url', models.TextField(default='')),
                 ('statistics', django.contrib.postgres.fields.jsonb.JSONField(default={})),
-                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related', to='segment.PersistentSegmentChannel')),
+                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related',
+                                              to='segment.PersistentSegmentChannel')),
             ],
             options={
                 'abstract': False,
@@ -72,8 +75,11 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('title', models.CharField(blank=True, max_length=255, null=True)),
-                ('shared_with', django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=200), blank=True, default=list, size=None)),
-                ('category', models.CharField(choices=[('blacklist', 'blacklist'), ('whitelist', 'whitelist')], max_length=255)),
+                ('shared_with',
+                 django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=200), blank=True,
+                                                           default=list, size=None)),
+                ('category',
+                 models.CharField(choices=[('blacklist', 'blacklist'), ('whitelist', 'whitelist')], max_length=255)),
             ],
             options={
                 'ordering': ['pk'],
@@ -83,7 +89,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='persistentsegmentrelatedvideo',
             name='segment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related', to='segment.PersistentSegmentVideo'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related',
+                                    to='segment.PersistentSegmentVideo'),
         ),
         migrations.AlterUniqueTogether(
             name='persistentsegmentrelatedvideo',

@@ -1,10 +1,10 @@
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
 
 

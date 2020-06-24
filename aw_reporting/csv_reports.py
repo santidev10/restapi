@@ -71,7 +71,6 @@ CSV_COLUMN_ORDER = (
     OpportunityColumn.REGION,
 )
 
-
 REPORT_HEADERS = {
     OPPORTUNITY_COLUMN_NAME: "Name.Opportunity",
     PLACEMENT_COLUMN_NAME: "Name.Placement",
@@ -141,7 +140,9 @@ class PacingReportCSVExport:
                 column_format = FORMATTING.get(column, FORMATS["default"])
                 try:
                     value = column_format.format(value=value)
-                except:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     # except error with formatting headers (Name.Opportunity, ...)
                     pass
 
@@ -214,6 +215,7 @@ class PacingReportExportContent:
 
     def __init__(self, export_generator):
         self.export_generator = export_generator
+        self.filename = None
 
     def __enter__(self):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)

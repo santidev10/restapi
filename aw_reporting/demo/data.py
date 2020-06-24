@@ -93,7 +93,7 @@ TARGETING = {
         {"name": "/Beauty Products & Services", "criteria": 80546},
         {"name": "/Family-Focused", "criteria": 91000},
         {"name": "/News Junkies & Avcriteria Readers/Entertainment & Celebrity News Junkies", "criteria": 92006},
-        {"name": "/News Junkies & Avcriteria Readers/Women\"s Media Fans", "criteria": 92007},
+        {"name": "/News Junkies & Avid Readers/Women's Media Fans", "criteria": 92007},
         {"name": "/Foodies", "criteria": 92300},
         {"name": "/Sports & Fitness/Outdoor Recreational Equipment", "criteria": 80549},
         {"name": "/Sports Fans", "criteria": 90200},

@@ -101,5 +101,5 @@ class BadVideoExportTestCase(ExtendedAPITestCase):
             "Thumbnail URL",
             "Reason",
         ])
-        data = [row for row in csv_data]
+        data = list(csv_data)
         self.assertEqual(len(data), 0)

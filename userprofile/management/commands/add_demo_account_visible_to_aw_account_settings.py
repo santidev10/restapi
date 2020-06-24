@@ -18,4 +18,4 @@ class Command(BaseCommand):
                 count += 1
                 user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS].insert(0, DEMO_ACCOUNT_ID)
                 user.save()
-        logger.info("DONE add_demo_account_visible_to_aw_account_settings. {} users processed.".format(count))
+        logger.info("DONE add_demo_account_visible_to_aw_account_settings. %s users processed.", count)

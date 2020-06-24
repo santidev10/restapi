@@ -3,12 +3,12 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields.jsonb
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0010_auto_20190312_2055'),
     ]
@@ -39,7 +39,8 @@ class Migration(migrations.Migration):
                 ('keywords', models.TextField(default=None)),
                 ('subscribers', models.BigIntegerField(db_index=True, default=0)),
                 ('emoji', models.BooleanField(db_index=True, default=False)),
-                ('channel', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditChannel')),
+                ('channel',
+                 models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditChannel')),
             ],
         ),
         migrations.CreateModel(
@@ -73,7 +74,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('video_id', models.CharField(max_length=50, unique=True)),
                 ('video_id_hash', models.BigIntegerField(db_index=True, default=0)),
-                ('channel', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditChannel')),
+                ('channel', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                              to='audit_tool.AuditChannel')),
             ],
         ),
         migrations.CreateModel(
@@ -88,9 +90,12 @@ class Migration(migrations.Migration):
                 ('dislikes', models.BigIntegerField(db_index=True, default=0)),
                 ('emoji', models.BooleanField(db_index=True, default=False)),
                 ('publish_date', models.DateTimeField(db_index=True, default=None, null=True)),
-                ('category', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditCategory')),
-                ('language', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditLanguage')),
-                ('video', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditVideo')),
+                ('category', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                               to='audit_tool.AuditCategory')),
+                ('language', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                               to='audit_tool.AuditLanguage')),
+                ('video',
+                 models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditVideo')),
             ],
         ),
         migrations.CreateModel(
@@ -98,20 +103,26 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('processed', models.DateTimeField(db_index=True, default=None, null=True)),
-                ('audit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditProcessor')),
-                ('video', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='avp_video', to='audit_tool.AuditVideo')),
-                ('video_source', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='avp_video_source', to='audit_tool.AuditVideo')),
+                ('audit',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditProcessor')),
+                ('video', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='avp_video',
+                                            to='audit_tool.AuditVideo')),
+                ('video_source',
+                 models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                   related_name='avp_video_source', to='audit_tool.AuditVideo')),
             ],
         ),
         migrations.AddField(
             model_name='auditchannelmeta',
             name='country',
-            field=models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditCountry'),
+            field=models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                    to='audit_tool.AuditCountry'),
         ),
         migrations.AddField(
             model_name='auditchannelmeta',
             name='language',
-            field=models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditLanguage'),
+            field=models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                    to='audit_tool.AuditLanguage'),
         ),
         migrations.AlterUniqueTogether(
             name='auditvideoprocessor',

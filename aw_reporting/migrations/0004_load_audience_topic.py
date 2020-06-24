@@ -9,9 +9,9 @@ from django.db import migrations
 
 def load_data(apps, schema_editor):
     # topics
-    topic_model = apps.get_model('aw_reporting.Topic')
+    topic_model = apps.get_model("aw_reporting.Topic")
     bulk = []
-    with open('aw_reporting/fixtures/verticals.csv') as f:
+    with open("aw_reporting/fixtures/verticals.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
 
@@ -23,9 +23,9 @@ def load_data(apps, schema_editor):
     topic_model.objects.bulk_create(bulk)
 
     # interests
-    audience_model = apps.get_model('aw_reporting.Audience')
+    audience_model = apps.get_model("aw_reporting.Audience")
     bulk = []
-    with open('aw_reporting/fixtures/affinity_categories.csv') as f:
+    with open("aw_reporting/fixtures/affinity_categories.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
         for uid, name in reader:
@@ -33,7 +33,7 @@ def load_data(apps, schema_editor):
                 id=uid, name=name, type="affinity",
             ))
 
-    with open('aw_reporting/fixtures/in-market_categories.csv') as f:
+    with open("aw_reporting/fixtures/in-market_categories.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
         for uid, name in reader:
@@ -47,13 +47,13 @@ def load_data(apps, schema_editor):
     limit = 100
     while True:
         audiences = audience_model.objects.filter(
-            parent__isnull=True).order_by('id')[offset:offset + limit]
+            parent__isnull=True).order_by("id")[offset:offset + limit]
         if not audiences:
             break
         for audience in audiences:
-            if audience.name.count('/') > 1:
+            if audience.name.count("/") > 1:
                 parent_name = "/".join(
-                    audience.name.split('/')[:audience.name.count('/')]
+                    audience.name.split("/")[:audience.name.count("/")]
                 )
                 parent = audience_model.objects.get(name=parent_name)
                 audience.parent = parent
@@ -64,9 +64,8 @@ def load_data(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0003_audience_topic'),
+        ("aw_reporting", "0003_audience_topic"),
     ]
 
     operations = [
