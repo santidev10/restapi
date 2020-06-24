@@ -188,7 +188,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         source = request.FILES["file"]
         key = f"{segment.title}_source_type_{source_type}_{uuid4()}.csv"
         segment.s3_exporter.export_object_to_s3(source, key)
-        source_upload = CustomSegmentSourceFileUpload.objects.create(segment=segment, source_type=source_type, key=key)
+        source_upload = CustomSegmentSourceFileUpload.objects.create(
+            segment=segment,
+            source_type=source_type,
+            filename=key
+        )
         return source_upload
 
 
