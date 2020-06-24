@@ -4,8 +4,8 @@ from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
 from django.db.models import IntegerField
-from django.db.models import OneToOneField
 from django.db.models import Model
+from django.db.models import OneToOneField
 from django.db.models import TextField
 from elasticsearch_dsl import Q
 
@@ -77,7 +77,7 @@ class CustomSegmentFileUpload(Model):
 
     def parse_download_url(self):
         try:
-            s3_key = unquote(self.download_url.split('.com/')[1].split('?X-Amz-Algorithm')[0])
+            s3_key = unquote(self.download_url.split(".com/")[1].split("?X-Amz-Algorithm")[0])
         except AttributeError:
             s3_key = None
         return s3_key

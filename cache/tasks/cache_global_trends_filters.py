@@ -4,9 +4,9 @@ from django.contrib.auth import get_user_model
 
 from aw_reporting.api.views.trends.base_global_trends import get_account_queryset
 from aw_reporting.tools.trends_tool.global_filters import GlobalTrendsFilters
-from saas import celery_app
-from cache.models import CacheItem
 from cache.constants import GLOBAL_TRENDS_FILTERS_KEY
+from cache.models import CacheItem
+from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 

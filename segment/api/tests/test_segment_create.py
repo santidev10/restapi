@@ -1,4 +1,5 @@
 import json
+import uuid
 from io import BytesIO
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -7,15 +8,14 @@ from django.urls import reverse
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
-import uuid
 
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 @patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment")
@@ -147,7 +147,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(query["params"]["minimum_views"], data["minimum_views"])
 
-    def test_reject_duplicate_title_create(self, mock_generate):
+    def test_reject_duplicate_title_create(self, *_):
         self.create_admin_user()
         payload_1 = {
             "languages": ["en"],
@@ -173,7 +173,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response_1.status_code, HTTP_201_CREATED)
         self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_segment_creation(self, mock_generate):
+    def test_segment_creation(self, *_):
         self.create_admin_user()
         payload = {
             "languages": ["pt"],
@@ -225,8 +225,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
                 "ar"
             ],
             "severity_counts": {
-                "1": [1,2,3],
-                "4": [1,3],
+                "1": [1, 2, 3],
+                "4": [1, 3],
                 "6": [2]
             },
             "segment_type": 2
@@ -239,8 +239,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             segment_type=0,
             uuid=uuid.uuid4()
         )
-        with patch("segment.api.views.custom_segment.segment_create_v3.SegmentCreateApiViewV3._create") as mock_create,\
-                patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
+        with patch("segment.api.views.custom_segment.segment_create_v3.SegmentCreateApiViewV3._create") as \
+            mock_create, \
+            patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
             mock_create_success = MagicMock()
             mock_create_success.id = segment.id
             mock_create.side_effect = [mock_create_success, Exception]

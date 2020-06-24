@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -5,6 +6,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import ANY
 from unittest.mock import MagicMock
+from unittest.mock import PropertyMock
 from unittest.mock import patch
 
 from django.db import Error
@@ -12,10 +14,10 @@ from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
 from google.auth.exceptions import RefreshError
 from googleads.errors import AdWordsReportBadRequestError
-from requests import HTTPError
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from pytz import timezone
 from pytz import utc
+from requests import HTTPError
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
@@ -26,6 +28,19 @@ from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIEL
 from aw_reporting.adwords_reports import DateRangeType
 from aw_reporting.adwords_reports import GEO_LOCATION_REPORT_FIELDS
 from aw_reporting.adwords_reports import date_formatted
+from aw_reporting.google_ads.constants import MIN_FETCH_DATE
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
+from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
+from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
+from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
+from aw_reporting.google_ads.updaters.ads import AdUpdater
+from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
+from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
+from aw_reporting.google_ads.updaters.interests import AudienceAWType
+from aw_reporting.google_ads.updaters.interests import InterestUpdater
+from aw_reporting.google_ads.updaters.parents import ParentUpdater
+from aw_reporting.google_ads.updaters.topics import TopicUpdater
+from aw_reporting.google_ads.utils import max_ready_date
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -57,19 +72,7 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import device_str
-from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.updaters.interests import AudienceAWType
-from aw_reporting.google_ads.constants import MIN_FETCH_DATE
-from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
-from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
-from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
-from aw_reporting.google_ads.updaters.ads import AdUpdater
-from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
-from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
-from aw_reporting.google_ads.updaters.interests import InterestUpdater
-from aw_reporting.google_ads.updaters.parents import ParentUpdater
-from aw_reporting.google_ads.updaters.topics import TopicUpdater
-from aw_reporting.google_ads.utils import max_ready_date
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.exception import ExceptionWithArgs
 from utils.unittests.csv import build_csv_byte_stream
 from utils.unittests.generic_test import generic_test
@@ -96,7 +99,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         return account
 
     def setUp(self):
-        self.redis_mock = patch('utils.celery.tasks.REDIS_CLIENT', MockRedis())
+        self.redis_mock = patch("utils.celery.tasks.REDIS_CLIENT", MockRedis())
         self.redis_mock.start()
 
     def tearDown(self):
@@ -189,7 +192,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             return test_stream_statistic
 
         downloader_mock.DownloadReportAsStream = test_router
-        with patch_now(now),\
+        with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             GoogleAdsUpdater(account).update_campaigns()
 
@@ -204,6 +207,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertEqual(campaign.clicks_cards, cards_clicks * dates_len)
         self.assertEqual(campaign.clicks_end_cap, end_cap_clicks * dates_len)
 
+    # pylint: disable=too-many-locals,too-many-statements
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
@@ -300,8 +304,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             return test_statistic_stream
 
         downloader_mock.DownloadReportAsStream = test_router
-        with patch_now(now),\
-            patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch_now(now), \
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -319,6 +323,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertEqual(ad_group.clicks_app_store, app_store_clicks * dates_len)
         self.assertEqual(ad_group.clicks_cards, cards_clicks * dates_len)
         self.assertEqual(ad_group.clicks_end_cap, end_cap_clicks * dates_len)
+
+    # pylint: enable=too-many-locals,too-many-statements
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)
@@ -350,7 +356,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (CampaignLocationTargetUpdater,)
             updater.update_all_except_campaigns()
@@ -714,7 +720,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         YTVideoStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
 
         with patch_now(now), \
-                patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
             updater = GoogleAdsUpdater(account)
             updater.update_all_except_campaigns()
 
@@ -737,7 +743,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(campaign=campaign, **common_values)
 
         with patch_now(now), \
-                patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
             updater = GoogleAdsUpdater(account)
             updater.update_all_except_campaigns()
 
@@ -768,7 +774,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -889,7 +895,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now_utc), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client"),\
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client"), \
              patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
             updater = GoogleAdsUpdater(account)
             updater.full_update()
@@ -913,8 +919,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream([], [])
         with patch_now(now), \
-                patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now), \
-                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now), \
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater, AdUpdater, ParentUpdater)
             updater.update_all_except_campaigns()
@@ -988,13 +994,14 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         account = self._create_account(is_active=True)
 
         exception = AdWordsReportBadRequestError(AWErrorType.NOT_ACTIVE, "<null>", None, HTTP_400_BAD_REQUEST,
-                                                 HTTPError(), 'XML Body')
+                                                 HTTPError(), "XML Body")
 
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
         downloader_mock.side_effect = exception
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
@@ -1010,8 +1017,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         mock_update.__self__ = SimpleNamespace(__class__=SimpleNamespace())
         mock_update.side_effect = exception
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            mcc_id = Account.objects.get(can_manage_clients=True).id
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()), \
+             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
             cid_campaign_update(account.id)
 
     def test_budget_daily(self):
@@ -1199,13 +1206,12 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
 
         with patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute), \
-                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
     def test_update_account_struck_fields(self):
-        from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
         any_date = date(2019, 1, 1)
         account = self._create_account()
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
@@ -1232,12 +1238,12 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ended = today - timedelta(days=31)
         acc = Account.objects.create(id=next(int_iterator), name="account_1")
 
-        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
+        Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
         op_2 = Opportunity.objects.create(id=next(int_iterator), name="test_2", aw_cid=acc.id, end=today)
 
         pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_2, number="test_pl", end=today)
-        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
-                                       account=acc)
+        Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                account=acc)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(acc.id, to_update)
@@ -1271,8 +1277,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=aw_cid, end=will_end)
 
         pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_1, number="test_pl", end=today)
-        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
-                                       account=acc_1)
+        Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                account=acc_1)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(acc_1.id, to_update)

@@ -1,14 +1,16 @@
-from audit_tool.models import AuditCategory
 from elasticsearch_dsl import Q
+
+import brand_safety.constants as constants
+from audit_tool.models import AuditCategory
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
-import brand_safety.constants as constants
 
 
-class BrandSafetyQueryBuilder(object):
+# pylint: disable=too-many-instance-attributes
+class BrandSafetyQueryBuilder:
     MAX_RETRIES = 1000
     MAX_SIZE = 10000
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
@@ -36,6 +38,7 @@ class BrandSafetyQueryBuilder(object):
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
+        self.countries_include_na = data.get("countries_include_na", None)
         self.languages = data.get("languages", [])
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
@@ -47,7 +50,8 @@ class BrandSafetyQueryBuilder(object):
         self.mismatched_language = data.get("mismatched_language", None)
 
         self.options = self._get_segment_options()
-        self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
+        self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(
+            sections=self.SECTIONS)
         self.query_body = self._construct_query()
         self.query_params = self._get_query_params()
 
@@ -62,6 +66,7 @@ class BrandSafetyQueryBuilder(object):
             "content_categories": self.content_categories,
             "languages": self.languages,
             "countries": self.countries,
+            "countries_include_na": self.countries_include_na,
             "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
             "minimum_views_include_na": self.minimum_views_include_na,
@@ -102,6 +107,7 @@ class BrandSafetyQueryBuilder(object):
         }
         return options[self.segment_type]
 
+    # pylint: disable=too-many-branches,too-many-statements
     def _construct_query(self):
         """
         Construct Elasticsearch query for segment items
@@ -138,32 +144,40 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
 
         if self.last_upload_date:
-            must_queries.append(QueryBuilder().build().must().range().field(f"{self.options['published_at']}").gte(self.last_upload_date).get())
+            must_queries.append(QueryBuilder().build().must().range().field(f"{self.options['published_at']}").gte(
+                self.last_upload_date).get())
 
         if self.sentiment:
-            must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
+            must_queries.append(
+                QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
         if self.gender is not None:
-            must_queries.append(QueryBuilder().build().must().term().field("task_us_data.gender").value(self.gender).get())
+            must_queries.append(
+                QueryBuilder().build().must().term().field("task_us_data.gender").value(self.gender).get())
 
         if self.languages:
             lang_code_field = "lang_code" if self.segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |= QueryBuilder().build().should().term().field(f"general_data.{lang_code_field}").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field(f"general_data.{lang_code_field}").value(
+                    lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
             content_queries = Q("bool")
             for category in self.content_categories:
-                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(category).get()
+                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
+                    category).get()
             must_queries.append(content_queries)
 
         if self.countries:
             country_queries = Q("bool")
+            if self.countries_include_na:
+                country_queries |= QueryBuilder().build().must_not().exists().field("general_data.country_code").get()
             for country in self.countries:
                 country_code = COUNTRY_CODES.get(country)
-                country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(country_code).get()
+                country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(
+                    country_code).get()
             must_queries.append(country_queries)
 
         if self.age_groups:
@@ -171,7 +185,8 @@ class BrandSafetyQueryBuilder(object):
             if self.age_groups_include_na:
                 age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
             for age_group_id in self.age_groups:
-                age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
+                age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(
+                    age_group_id).get()
             must_queries.append(age_queries)
 
         if self.severity_filters:
@@ -179,17 +194,20 @@ class BrandSafetyQueryBuilder(object):
             for category, scores in self.severity_filters.items():
                 for score in scores:
                     # Querying for categories with at least one unique word of target severity score
-                    severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").lte(0).get()
+                    severity_queries &= QueryBuilder().build().must().range().field(
+                        f"brand_safety.categories.{category}.severity_counts.{score}").lte(0).get()
             must_queries.append(severity_queries)
 
         if self.score_threshold is not None:
-            overall_score_query = QueryBuilder().build().must().range().field("brand_safety.overall_score").gt(self.score_threshold).get()
+            overall_score_query = QueryBuilder().build().must().range().field("brand_safety.overall_score").gt(
+                self.score_threshold).get()
             must_queries.append(overall_score_query)
 
             if self.brand_safety_categories:
                 safety_queries = Q("bool")
                 for category in self.brand_safety_categories:
-                    safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
+                    safety_queries &= QueryBuilder().build().must().range().field(
+                        f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
                 must_queries.append(safety_queries)
 
         if self.is_vetted is not None:
@@ -199,7 +217,8 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(vetted_query)
 
         if self.vetted_after:
-            vetted_after_query = QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
+            vetted_after_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.TASK_US_DATA}.last_vetted_at") \
                 .gte(self.vetted_after).get()
             must_queries.append(vetted_after_query)
 
@@ -218,6 +237,8 @@ class BrandSafetyQueryBuilder(object):
 
         return query
 
+    # pylint: enable=too-many-branches,too-many-statements
+
     def get_numeric_include_na_queries(self, attr_name: str, flag_name: str, field_name: str):
         """
         get the combined queries for a gte field that supports the "include n/a" option
@@ -229,7 +250,8 @@ class BrandSafetyQueryBuilder(object):
         queries = Q("bool")
         if getattr(self, flag_name):
             if flag_name == "minimum_subscribers_include_na":
-                queries |= QueryBuilder().build().should().term().field("stats.hidden_subscriber_count").value(True).get()
+                queries |= QueryBuilder().build().should().term().field("stats.hidden_subscriber_count").value(
+                    True).get()
             else:
                 queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
         queries |= QueryBuilder().build().should().range().field(field_name) \
@@ -272,9 +294,7 @@ class BrandSafetyQueryBuilder(object):
 
     @staticmethod
     def map_content_categories(content_category_ids: list):
-        mapping = {
-            _id: category for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
-        }
+        mapping = AuditCategory.get_all(iab=True, unique=True)
         to_string = [mapping[str(_id)] for _id in content_category_ids] or []
         return to_string
 
@@ -290,3 +310,4 @@ class BrandSafetyQueryBuilder(object):
         else:
             threshold = None
         return threshold
+# pylint: enable=too-many-instance-attributes

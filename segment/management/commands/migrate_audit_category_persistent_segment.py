@@ -22,9 +22,9 @@ class Command(BaseCommand):
         file_path = options.get("file_path")
         model_type = options.get("model_type")
 
-        if model_type == 'channel':
+        if model_type == "channel":
             model = PersistentSegmentChannel
-        elif model_type == 'video':
+        elif model_type == "video":
             model = PersistentSegmentVideo
         else:
             raise Exception("Model type not recognised")
@@ -38,7 +38,7 @@ def migrate(file_path, model):
             segment_id, auth_category_id = row
             try:
                 obj = model.objects.get(id=int(segment_id))
-                obj.audit_category_id=int(auth_category_id)
+                obj.audit_category_id = int(auth_category_id)
                 obj.save()
             except (model.DoesNotExist, ValueError):
                 continue

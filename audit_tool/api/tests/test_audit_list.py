@@ -2,9 +2,8 @@ from datetime import datetime
 
 from rest_framework.status import HTTP_200_OK
 
-from audit_tool.models import AuditProcessor
-
 from audit_tool.api.urls.names import AuditPathName
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -15,11 +14,11 @@ class AuditListAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.create_admin_user()
-        audit_1 = AuditProcessor.objects.create(audit_type=0)
-        audit_2 = AuditProcessor.objects.create(audit_type=1, completed=datetime.now())
-        audit_2 = AuditProcessor.objects.create(audit_type=2)
-        audit_3 = AuditProcessor.objects.create(audit_type=2, completed=datetime.now())
-        audit_3 = AuditProcessor.objects.create(audit_type=2, completed=datetime.now())
+        AuditProcessor.objects.create(audit_type=0)
+        AuditProcessor.objects.create(audit_type=1, completed=datetime.now())
+        AuditProcessor.objects.create(audit_type=2)
+        AuditProcessor.objects.create(audit_type=2, completed=datetime.now())
+        AuditProcessor.objects.create(audit_type=2, completed=datetime.now())
 
     def test_success_get(self):
         response = self.client.get(self.url)

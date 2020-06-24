@@ -89,9 +89,10 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         account_creation.save()
         return customer
 
+    # pylint: disable=too-many-nested-blocks,too-many-return-statements
     @forbidden_for_demo(is_demo)
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop("partial", False)
         instance = self.get_object()
         data = request.data
         # approve rules
@@ -136,10 +137,10 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
             if connection:
                 _, error = handle_aw_api_errors(
                     update_customer_account,
-                    connection['mcc_permissions__account_id'],
-                    connection['refresh_token'],
+                    connection["mcc_permissions__account_id"],
+                    connection["refresh_token"],
                     instance.account.id,
-                    data['name'],
+                    data["name"],
                 )
                 if error:
                     return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
@@ -147,6 +148,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
+
+    # pylint: enable=too-many-nested-blocks,too-many-return-statements
 
     @forbidden_for_demo(is_demo)
     def delete(self, request, *args, **kwargs):

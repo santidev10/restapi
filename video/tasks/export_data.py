@@ -1,23 +1,23 @@
 import logging
 
-from saas import celery_app
 from django.conf import settings
 from django.core.mail import send_mail
 
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from utils.es_components_api_utils import BrandSafetyParamAdapter
-from utils.es_components_api_utils import ExportDataGenerator
-from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.es_components_exporter import ESDataS3Exporter
+from saas import celery_app
 from utils.aws.export_context_manager import ExportContextManager
-from video.constants import TERMS_FILTER
+from utils.es_components_api_utils import BrandSafetyParamAdapter
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import ExportDataGenerator
+from utils.es_components_exporter import ESDataS3Exporter
+from video.api.serializers.video_export import VideoListExportSerializer
+from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
-from video.constants import EXISTS_FILTER
+from video.constants import TERMS_FILTER
 from video.constants import VIDEO_CSV_HEADERS
-from video.api.serializers.video_export import VideoListExportSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +56,12 @@ def export_videos_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    bcc = []
 
     try:
         send_mail(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
+    # pylint: disable=broad-except
     except Exception as e:
-        logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
+        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
+    # pylint: enable=broad-except
     else:
-        logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")
+        logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

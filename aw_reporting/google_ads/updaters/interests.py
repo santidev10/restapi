@@ -4,11 +4,11 @@ from datetime import timedelta
 from django.db.models import Max
 
 from aw_reporting.adwords_reports import audience_performance_report
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import RemarkStatistic
-from aw_reporting.models import RemarkList
-from aw_reporting.models import Audience
 from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import RemarkList
+from aw_reporting.models import RemarkStatistic
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
 from aw_reporting.update.adwords_utils import format_click_types_report

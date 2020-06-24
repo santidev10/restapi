@@ -1,7 +1,7 @@
 import csv
 
 from django.core.management import BaseCommand
-from django.contrib.auth import get_user_model
+
 from audit_tool.models import AuditExporter
 
 
@@ -24,13 +24,12 @@ def migrate(file_path):
 
         for row in csv.reader(csv_file):
             for index, value in enumerate(row):
-                if value in ('\\n', '\\N'):
+                if value in ("\\n", "\\N"):
                     row[index] = None
 
-            id, created, clean, completed, file_name, final, audit_id, owner_id = row
+            item_id, created, clean, completed, file_name, final, audit_id, owner_id = row
 
             AuditExporter.objects.create(
-                id=id, created=created, clean=clean, completed=completed, file_name=file_name, final=final,
+                id=item_id, created=created, clean=clean, completed=completed, file_name=file_name, final=final,
                 audit_id=audit_id, owner_id=owner_id
             )
-

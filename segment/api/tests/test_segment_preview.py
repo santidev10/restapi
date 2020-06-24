@@ -1,21 +1,21 @@
+import uuid
 from time import sleep
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
-import uuid
 
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreviewApiViewTestCase
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
-from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreviewApiViewTestCase
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):

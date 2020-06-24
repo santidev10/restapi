@@ -1,13 +1,14 @@
+from django.utils import timezone
 from rest_framework.generics import UpdateAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
 from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.reports.pacing_report import PacingReport
-from django.utils import timezone
 
 
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
@@ -41,13 +42,13 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         campaign_ids = report.get_campaigns(flight, status="serving").values_list("id", flat=True)
         expected_keys = set(campaign_ids)
         try:
-            flight_updated_budget = request.data.pop('flight_budget')
+            flight_updated_budget = request.data.pop("flight_budget")
         except KeyError:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data='You must provide a flight budget as "flight_budget"'
+                data="You must provide a flight budget as \"flight_budget\""
             )
-        if set([int(key) for key in request.data.keys()]) != expected_keys:
+        if {int(key) for key in request.data.keys()} != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)

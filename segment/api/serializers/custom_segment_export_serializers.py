@@ -1,21 +1,20 @@
+"""
+CustomSegment export serializers
+
+Each columns tuple for all serializers are used as headers for export files
+"""
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+
 from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
 from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
-"""
-CustomSegment export serializers
 
-Each columns tuple for all serializers are used as headers for export files
-"""
-class CustomSegmentChannelExportSerializer(
-    SegmentChannelExportSerializerMixin,
-    Serializer
-):
+class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
@@ -37,10 +36,14 @@ class CustomSegmentChannelExportSerializer(
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
-class CustomSegmentChannelWithMonetizationExportSerializer(
-    CustomSegmentChannelExportSerializer
-):
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
@@ -52,11 +55,14 @@ class CustomSegmentChannelWithMonetizationExportSerializer(
     def __init__(self, instance, *args, **kwargs):
         super().__init__(instance, *args, **kwargs)
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
-class CustomSegmentVideoExportSerializer(
-    SegmentVideoExportSerializerMixin,
-    Serializer
-):
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
@@ -76,3 +82,9 @@ class CustomSegmentVideoExportSerializer(
     Content_Type = SerializerMethodField("get_content_type")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError

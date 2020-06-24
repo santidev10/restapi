@@ -3,16 +3,16 @@ Audit individual Channel and Video items separate from audits and segments
 """
 
 from django.http.response import Http404
-from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 from utils.views import validate_fields
 
 
@@ -62,4 +62,3 @@ class AuditItemRetrieveUpdateAPIView(APIView):
             es_manager = ChannelManager(sections=sections)
             serializer = AuditChannelVetSerializer
         return es_manager, serializer
-

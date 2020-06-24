@@ -11,18 +11,18 @@ from aw_reporting.adwords_reports import keywords_performance_report
 from aw_reporting.adwords_reports import parent_performance_report
 from aw_reporting.adwords_reports import placement_performance_report
 from aw_reporting.adwords_reports import topics_performance_report
+from aw_reporting.google_ads.updaters.interests import AudienceAWType
+from aw_reporting.google_ads.utils import get_criteria_exists_key
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import AgeRanges
+from aw_reporting.models import CriteriaTypeEnum
 from aw_reporting.models import Genders
 from aw_reporting.models import ParentStatuses
-from aw_reporting.models import Topic
-from aw_reporting.models import CriteriaTypeEnum
 from aw_reporting.models import TargetingStatusEnum
-from aw_reporting.google_ads.updaters.interests import AudienceAWType
-from aw_reporting.google_ads.utils import get_criteria_exists_key
-from utils.utils import chunks_generator
+from aw_reporting.models import Topic
 from utils.db.functions import safe_bulk_create
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,11 @@ class AdGroupCriteriaUpdater(object):
         self.ad_group_ids = set(AdGroup.objects.filter(campaign__account=self.account).values_list("id", flat=True))
         self.REPORTS = [
             (audience_performance_report, CriteriaTypeEnum.USER_LIST, self.REPORT_FIELDS,
-                self._get_audience_predicate(as_user_list=True)),
+             self._get_audience_predicate(as_user_list=True)),
             (audience_performance_report, CriteriaTypeEnum.USER_INTEREST, self.REPORT_FIELDS,
-                self._get_audience_predicate(as_user_list=False)),
+             self._get_audience_predicate(as_user_list=False)),
             (placement_performance_report, CriteriaTypeEnum.PLACEMENT, self.WITH_NEGATIVE,
-                self._get_placement_predicate()),
+             self._get_placement_predicate()),
             # Not all reports to gather criteria require specific predicates
             (keywords_performance_report, CriteriaTypeEnum.KEYWORD, self.WITH_NEGATIVE, None),
             (age_range_performance_report, CriteriaTypeEnum.AGE_RANGE, self.WITH_NEGATIVE, None),
@@ -71,7 +71,8 @@ class AdGroupCriteriaUpdater(object):
                     if ad_group_id not in self.ad_group_ids:
                         continue
                     statistic_criteria = self._get_statistic_criteria(row_obj, criteria_type_name)
-                    criteria_exists_key = get_criteria_exists_key(ad_group_id, criteria_type_enum.value, statistic_criteria)
+                    criteria_exists_key = get_criteria_exists_key(ad_group_id, criteria_type_enum.value,
+                                                                  statistic_criteria)
                     # statistic_criteria are values aw_reporting.google_ads.updaters use to store statistic criteria
                     # and is used to match aggregated statistics with targeting
                     targeting_item = AdGroupTargeting(

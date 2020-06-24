@@ -1,8 +1,9 @@
 from itertools import groupby
-from aw_reporting.models import Campaign
-from aw_reporting.api.views.trends.constants import INDICATORS
+
 from aw_reporting.api.views.trends.constants import BREAKDOWNS
 from aw_reporting.api.views.trends.constants import DIMENSIONS
+from aw_reporting.api.views.trends.constants import INDICATORS
+from aw_reporting.models import Campaign
 
 
 class BaseTrackFiltersList:
@@ -28,7 +29,7 @@ class BaseTrackFiltersList:
         return static_filters
 
     def _get_accounts(self, user):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_filters(self, user, accounts=None):
         if accounts is None:

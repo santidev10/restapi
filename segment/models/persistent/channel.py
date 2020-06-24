@@ -1,22 +1,22 @@
 """
 PersistentSegmentChannel models module
 """
-from django.db.models import ForeignKey
 from django.db.models import CASCADE
+from django.db.models import ForeignKey
 
 from aw_reporting.models import YTChannelStatistic
-from .base import BasePersistentSegment
-from .base import BasePersistentSegmentRelated
-from .base import PersistentSegmentManager
-from .constants import PersistentSegmentType
-from .constants import PersistentSegmentExportColumn
-from es_components.managers import ChannelManager
+from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import SortDirections
-from es_components.constants import SUBSCRIBERS_FIELD
+from es_components.managers import ChannelManager
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
+from .base import BasePersistentSegment
+from .base import BasePersistentSegmentRelated
+from .base import PersistentSegmentManager
+from .constants import PersistentSegmentExportColumn
+from .constants import PersistentSegmentType
 
 
 class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
@@ -31,6 +31,9 @@ class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+
+    def get_es_manager(self):
+        raise NotImplementedError
 
     def get_export_columns(self):
         if self.category == "whitelist":
@@ -67,5 +70,3 @@ class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
         return row
-
-

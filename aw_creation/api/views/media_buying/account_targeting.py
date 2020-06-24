@@ -1,26 +1,25 @@
-from collections import namedtuple
 import hashlib
 import json
+from collections import namedtuple
 
 from django.core.paginator import EmptyPage
 from django.core.paginator import InvalidPage
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
 from ads_analyzer.reports.account_targeting_report.export_report import account_targeting_export
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
+from aw_reporting.google_ads.utils import get_criteria_exists_key
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import TargetingStatusEnum
-from aw_reporting.google_ads.utils import get_criteria_exists_key
-from utils.views import validate_date
 from utils.permissions import MediaBuyingAddOnPermission
-
+from utils.views import validate_date
 
 ScalarFilter = namedtuple("ScalarFilter", "name type")
 
@@ -198,7 +197,7 @@ class AccountTargetingAPIView(APIView):
         :return:
         """
         statistic_criteria = [item["criteria"] for item in targeting_items]
-        existing_targeting = AdGroupTargeting.objects\
+        existing_targeting = AdGroupTargeting.objects \
             .filter(ad_group__campaign__account=account, statistic_criteria__in=statistic_criteria)
         exists_mapping = {
             get_criteria_exists_key(
@@ -208,7 +207,8 @@ class AccountTargetingAPIView(APIView):
         }
         for res_item in targeting_items:
             try:
-                criteria_key = get_criteria_exists_key(res_item["ad_group_id"], res_item["type"], str(res_item["criteria"]))
+                criteria_key = get_criteria_exists_key(res_item["ad_group_id"], res_item["type"],
+                                                       str(res_item["criteria"]))
                 targeting_obj = exists_mapping[criteria_key]
                 if targeting_obj.status == TargetingStatusEnum.ENABLED.value and targeting_obj.is_negative is True:
                     status = TargetingStatusEnum.EXCLUDED.name

@@ -3,9 +3,9 @@ from brand_safety.tasks.constants import Schedulers
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
+from saas import celery_app
 from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
-from saas import celery_app
 from utils.celery.tasks import celery_lock
 
 

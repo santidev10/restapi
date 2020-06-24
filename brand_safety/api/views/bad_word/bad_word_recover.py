@@ -13,14 +13,14 @@ class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
     queryset = BadWord.objects.all()
 
     def get(self, request, *args, **kwargs):
-        pk = kwargs.get('pk')
+        pk = kwargs.get("pk")
         try:
             instance = BadWord.all_objects.get(id=pk)
         except BadWord.DoesNotExist:
             raise ValidationError("BadWord object with id: '{}' does not exist.".format(pk))
         if instance.deleted_at:
             instance.deleted_at = None
-            instance.save(update_fields=['deleted_at'])
+            instance.save(update_fields=["deleted_at"])
         data = {
             "name": instance.name,
             "category": instance.category.id,
@@ -28,4 +28,3 @@ class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
             "language": instance.language.language
         }
         return Response(data)
-

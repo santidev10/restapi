@@ -19,7 +19,7 @@ class TopicTargetingListTestCase(ExtendedAPITestCase):
             id="1", name="", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
-            account_creation=account, name="", 
+            account_creation=account, name="",
         )
         ad_group_creation = AdGroupCreation.objects.create(
             id="1", name="", max_rate=0.01,
@@ -47,7 +47,7 @@ class TopicTargetingListTestCase(ExtendedAPITestCase):
         )
         url = "{}?{}".format(
             str(url),
-            urlencode({'auth_token': self.user.tokens.first().key}),
+            urlencode({"auth_token": self.user.tokens.first().key}),
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

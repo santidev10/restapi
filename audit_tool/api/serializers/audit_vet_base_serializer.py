@@ -26,7 +26,8 @@ class AuditVetBaseSerializer(Serializer):
     general_data_language_field = None
     general_data_lang_code_field = None
 
-    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
+    SECTIONS = (
+    Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
@@ -44,7 +45,7 @@ class AuditVetBaseSerializer(Serializer):
     suitable = BooleanField(required=False)
     processed = DateTimeField(required=False)
     processed_by_user_id = IntegerField(required=False)
-    language_code = CharField(required=False) # Field for saving vetting item
+    language_code = CharField(required=False)  # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
         self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
@@ -219,7 +220,8 @@ class AuditVetBaseSerializer(Serializer):
                 "blacklist_category": new_blacklist_scores,
             })
         # Trigger celery brand safety update task if any blacklist categories created or changed
-        if (created is True and new_blacklist_scores) or (created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
+        if (created is True and new_blacklist_scores) or (
+            created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
             blacklist_item.blacklist_category = new_blacklist_scores
             blacklist_item.save()
             self.update_brand_safety(item_id)
@@ -231,6 +233,7 @@ class AuditVetBaseSerializer(Serializer):
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
         :param blacklist_categories: list -> [int, ...]
+        :param es_manager: BaseManager
         :return: None
         """
         task_us_data = {
@@ -238,7 +241,8 @@ class AuditVetBaseSerializer(Serializer):
             **self.validated_data["task_us_data"],
         }
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
-        reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
+            [int(category) for category in blacklist_categories])
         brand_safety_category_overall_scores = {
             str(category_id): {
                 "category_score": 100 if category_id in reset_brand_safety else 0

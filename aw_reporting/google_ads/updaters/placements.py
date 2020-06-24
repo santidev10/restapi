@@ -1,15 +1,15 @@
 from datetime import datetime
 from datetime import timedelta
 
-from django.db.models import Max
 import pytz
+from django.db.models import Max
 
+from aw_reporting.adwords_reports import placement_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.adwords_reports import placement_performance_report
-from aw_reporting.update.adwords_utils import get_base_stats
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
+from aw_reporting.update.adwords_utils import get_base_stats
 
 
 class PlacementUpdater(UpdateMixin):

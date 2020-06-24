@@ -1,6 +1,6 @@
+from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
-from rest_framework.serializers import CharField
 
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordHistory

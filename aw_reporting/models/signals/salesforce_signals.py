@@ -25,7 +25,9 @@ def flight_ordered_units_changed(old_flight: Flight, new_flight: Flight):
     opportunity = placement.opportunity
     ad_ops = opportunity.ad_ops_manager
 
+    # pylint: disable=import-outside-toplevel
     from email_reports.reports.flight_ordered_units_changed import FlightOrderedUnitsChangedEmail
+    # pylint: enable=import-outside-toplevel
     email = FlightOrderedUnitsChangedEmail(
         opportunity_name=opportunity.name,
         placement_name=placement.name,
@@ -45,7 +47,9 @@ def flight_total_cost_changed(old_flight: Flight, new_flight: Flight):
     placement = new_flight.placement
     opportunity = placement.opportunity
     ad_ops = opportunity.ad_ops_manager
+    # pylint: disable=import-outside-toplevel
     from email_reports.reports.flight_total_cost_changed import FlightTotalCostChangedEmail
+    # pylint: enable=import-outside-toplevel
     email = FlightTotalCostChangedEmail(
         opportunity_name=opportunity.name,
         placement_name=placement.name,

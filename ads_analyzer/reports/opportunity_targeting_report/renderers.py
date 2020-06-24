@@ -26,6 +26,7 @@ class Cursor:
 
 class SheetTableRenderer(CSVRenderer):
     sheet_name = None
+    header = CSVRenderer.header
     style_cls: Type[Styles] = None
 
     def __init__(self, workbook, sheet_headers=None, *args, **kwargs):
@@ -33,7 +34,9 @@ class SheetTableRenderer(CSVRenderer):
         self.workbook = workbook
         self.sheet_headers = sheet_headers or []
         self.cursor = Cursor()
+        # pylint: disable=not-callable
         self.styles = self.style_cls(workbook)
+        # pylint: enable=not-callable
 
     def render(self, data):
         sheet = self.workbook.add_worksheet(self.sheet_name)
@@ -47,7 +50,7 @@ class SheetTableRenderer(CSVRenderer):
             sheet.write(cursor.row, cursor.column, row)
             cursor.next_row()
 
-    def _render_empty_line(self, sheet):
+    def _render_empty_line(self, *_, **__):
         self.cursor.next_row()
 
     def _render_table(self, sheet, data):
@@ -56,7 +59,9 @@ class SheetTableRenderer(CSVRenderer):
         is_header = True
         for row in table:
             for value in row:
+                # pylint: disable=unsubscriptable-object
                 style = self.styles.get_style(cursor, value, is_header, self.header[cursor.column])
+                # pylint: enable=unsubscriptable-object
                 sheet.write(cursor.row, cursor.column, value, style)
                 cursor.next_column()
             cursor.next_row()

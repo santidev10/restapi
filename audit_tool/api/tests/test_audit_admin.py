@@ -1,12 +1,11 @@
 import json
+from uuid import uuid4
 
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
-
-from uuid import uuid4
 
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditChannel
@@ -18,7 +17,6 @@ from saas.urls.namespaces import Namespace
 from segment.models import CustomSegmentVettedFileUpload
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-
 
 CHANNEL_PREFIX = "https://www.youtube.com/channel/"
 VIDEO_PREFIX = "https://www.youtube.com/watch?v="
@@ -66,7 +64,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         test_video_audits = [AuditVideo(video_id=f"{idx}test_video_id"[:11]) for idx in range(10)]
         AuditVideo.objects.bulk_create(test_video_audits)
-        test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in test_video_audits]
+        test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in
+                           test_video_audits]
         AuditVideoVet.objects.bulk_create(test_video_vets)
         data = {
             "audit_id": audit.id,
@@ -97,7 +96,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         test_channel_audits = [AuditChannel(channel_id=f"{idx}test_youtube_channel_id"[:24]) for idx in range(10)]
         AuditChannel.objects.bulk_create(test_channel_audits)
-        test_channel_vets = [AuditChannelVet(audit=audit, channel=c_audit, processed=now, clean=True) for c_audit in test_channel_audits]
+        test_channel_vets = [AuditChannelVet(audit=audit, channel=c_audit, processed=now, clean=True) for c_audit in
+                             test_channel_audits]
         AuditChannelVet.objects.bulk_create(test_channel_vets)
         data = {
             "audit_id": audit.id,
@@ -148,7 +148,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         test_video_audits = [AuditVideo(video_id=f"{idx}wrong"[:11]) for idx in range(10)]
         AuditVideo.objects.bulk_create(test_video_audits)
-        test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in test_video_audits]
+        test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in
+                           test_video_audits]
         AuditVideoVet.objects.bulk_create(test_video_vets)
         data = {
             "audit_id": audit.id,
@@ -173,7 +174,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             segment_params=dict(segment_type=1)
         )
         audit.refresh_from_db()
-        test_channel_audits = [AuditChannel(channel_id=f"test_youtube_channel_id_wrong_length{idx}") for idx in range(10)]
+        test_channel_audits = [AuditChannel(channel_id=f"test_youtube_channel_id_wrong_length{idx}") for idx in
+                               range(10)]
         AuditChannel.objects.bulk_create(test_channel_audits)
         test_channel_vets = [AuditChannelVet(audit=audit, channel=c_audit, processed=now, clean=True) for c_audit in
                              test_channel_audits]
@@ -244,7 +246,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
     def test_audit_not_found(self):
         """ Test handling audit not found """
         user = self.create_admin_user()
-        audit, segment = self._create_segment_audit(
+        self._create_segment_audit(
             user,
             audit_params=dict(audit_type=2),
             segment_params=dict(segment_type=1)

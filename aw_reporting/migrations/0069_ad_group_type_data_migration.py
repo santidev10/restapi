@@ -17,9 +17,8 @@ def change_ad_group_type(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0068_auto_20200110_1755'),
+        ("aw_reporting", "0068_auto_20200110_1755"),
     ]
 
     operations = [

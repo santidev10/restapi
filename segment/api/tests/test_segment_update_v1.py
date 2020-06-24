@@ -4,7 +4,6 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -25,10 +24,10 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
     def _create_custom_segment(self, owner):
         uuid_id = uuid.uuid4()
         return CustomSegment.objects.create(**{
-            'uuid': uuid_id,
-            'title': f"testing custom segment update api view v1: {uuid_id}",
-            'owner': owner,
-            'segment_type': 0,
+            "uuid": uuid_id,
+            "title": f"testing custom segment update api view v1: {uuid_id}",
+            "owner": owner,
+            "segment_type": 0,
         })
 
     def test_partial_admin_update(self):
@@ -56,12 +55,12 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         segment = self._create_custom_segment(owner=user)
         small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
+            b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04"
+            b"\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02"
+            b"\x02\x4c\x01\x00\x3b"
         )
         image = SimpleUploadedFile("small_gif.gif", small_gif, content_type="image/gif")
-        payload = {CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
+        payload = {CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image, }
         response = self.client.patch(self._get_url(reverse_args=[segment.id]), payload)
         segment.refresh_from_db()
         res_featured_image_url = response.data[CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME]
@@ -85,8 +84,8 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_non_admin_non_owner_update(self):
-        owner = get_user_model().objects.create(email='owner@xyz.com')
-        user = self.create_test_user()
+        owner = get_user_model().objects.create(email="owner@xyz.com")
+        self.create_test_user()
         segment = self._create_custom_segment(owner=owner)
         payload = {
             "title": "new title",

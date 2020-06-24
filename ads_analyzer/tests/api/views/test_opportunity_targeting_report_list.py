@@ -1,13 +1,12 @@
 from datetime import date
-from unittest.mock import patch
 from unittest.mock import ANY
+from unittest.mock import patch
 
-from django.db.models.signals import post_save
 from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.unittests.s3_mock import mock_s3
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
@@ -19,11 +18,13 @@ from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
-    def _request(self, **query_params):
+    def _request(self, **kwargs):
+        query_params = kwargs
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER],
                       query_params=query_params)
         return self.client.get(url)
@@ -126,7 +127,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         self.assertEqual(
-            OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key).split("?X-Amz-Algorithm")[0],
+            OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key).split("?X-Amz-Algorithm")[
+                0],
             response_json_item.get("download_link").split("?X-Amz-Algorithm")[0]
         )
 

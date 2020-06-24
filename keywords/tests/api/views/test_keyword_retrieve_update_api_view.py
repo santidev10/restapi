@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import AdGroup
@@ -9,6 +8,7 @@ from aw_reporting.models import KeywordStatistic
 from es_components.constants import Sections
 from es_components.managers import KeywordManager
 from es_components.models.keyword import Keyword
+from es_components.tests.utils import ESTestCase
 from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator

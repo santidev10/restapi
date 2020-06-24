@@ -13,12 +13,11 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import Ad
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 
 
-class AccountAPITestCase(AwReportingAPITestCase):
+class AdCreationDuplicateAPITestCase(AwReportingAPITestCase):
     def _get_url(self, ad_id):
         return reverse(Name.CreationSetup.AD_DUPLICATE, [Namespace.AW_CREATION], args=(ad_id,))
 

@@ -1,11 +1,13 @@
 from datetime import timedelta
 
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
@@ -74,9 +76,9 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data[0].keys()),
             {
-                'id', 'name', 'targeting', 'updated_at',
-                'age_ranges', 'genders', 'parents',
-                'ad_creations', 'max_rate', 'video_ad_format',
+                "id", "name", "targeting", "updated_at",
+                "age_ranges", "genders", "parents",
+                "ad_creations", "max_rate", "video_ad_format",
             }
         )
 
@@ -120,7 +122,3 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.perform_get_format_check([response.data])
-
-
-
-

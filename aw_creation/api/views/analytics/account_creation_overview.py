@@ -179,11 +179,11 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
             ),
         )
         fields = tuple(annotate.keys())
-        top_bottom_stats = AdGroupStatistic.objects.filter(**filters).values(
-            "date").order_by("date").annotate(
-            *[Sum(s) for s in BASE_STATS]
-        ).annotate(**annotate).aggregate(
-            **{"{}_{}".format(s, n): a(s)
-               for s in fields
-               for n, a in (("top", Max), ("bottom", Min))})
+        top_bottom_stats = AdGroupStatistic.objects \
+            .filter(**filters) \
+            .values("date") \
+            .order_by("date") \
+            .annotate(*[Sum(s) for s in BASE_STATS]) \
+            .annotate(**annotate) \
+            .aggregate(**{"{}_{}".format(s, n): a(s) for s in fields for n, a in (("top", Max), ("bottom", Min))})
         data.update(top_bottom_stats)

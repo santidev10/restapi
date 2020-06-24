@@ -2,8 +2,8 @@ from datetime import datetime
 
 from rest_framework.views import APIView
 
-from aw_reporting.models import DATE_FORMAT
 from aw_reporting.api.views.trends.constants import INDICATORS
+from aw_reporting.models import DATE_FORMAT
 
 
 class TrackApiBase(APIView):
@@ -17,7 +17,8 @@ class TrackApiBase(APIView):
         apex_deal = data.get("apex_deal")
         account_id_str = data.get("account")
         filters = dict(
-            account=int(account_id_str) if isinstance(account_id_str, str) and account_id_str.isnumeric() else account_id_str,
+            account=int(account_id_str) if isinstance(account_id_str,
+                                                      str) and account_id_str.isnumeric() else account_id_str,
             accounts=accounts,
             campaign=data.get("campaign"),
             indicator=data.get("indicator", INDICATORS[0][0]),

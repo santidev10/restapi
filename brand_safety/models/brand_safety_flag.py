@@ -56,4 +56,3 @@ class BrandSafetyFlag(Model):
 
 class BrandSafetyFlagQueueEmptyException(Exception):
     pass
-

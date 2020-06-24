@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0046_auditcategory_category_display_iab'),
     ]

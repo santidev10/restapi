@@ -3,7 +3,12 @@ from datetime import date
 from django.urls import reverse
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Account, AdGroup, Campaign, Opportunity, OpPlacement, AdGroupStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey

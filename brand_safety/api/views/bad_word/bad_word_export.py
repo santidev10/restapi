@@ -1,7 +1,6 @@
 from rest_framework.permissions import IsAdminUser
-from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.serializers import ValidationError
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
@@ -43,7 +42,8 @@ class BadWordExportApiView(FileListApiView):
                 category_id = int(category)
                 filters["category_id"] = category_id
             except ValueError:
-                raise ValidationError("Category filter param must be Category ID value. Received: {}.".format(category))
+                raise ValidationError(
+                    "Category filter param must be Category ID value. Received: {}.".format(category))
 
         language = self.request.query_params.get("language")
 
@@ -52,7 +52,7 @@ class BadWordExportApiView(FileListApiView):
 
         negative_scores = self.request.query_params.get("negative_score")
         if negative_scores:
-            negative_scores = negative_scores.split(',')
+            negative_scores = negative_scores.split(",")
             filters["negative_score__in"] = negative_scores
 
         queryset = queryset.filter(**filters)

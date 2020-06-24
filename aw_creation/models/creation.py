@@ -4,6 +4,7 @@ import logging
 from decimal import Decimal
 
 from PIL import Image
+from django.conf import settings
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.core.validators import RegexValidator
@@ -14,6 +15,7 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from aw_creation.constants import TargetingType
 from aw_reporting.models import Account
 from aw_reporting.models import BudgetType
 from utils.datetime import now_in_default_tz
@@ -25,7 +27,7 @@ VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
 WEEKDAYS = list(calendar.day_name)
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)" \
                  r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
-VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
+VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, "Wrong video url")
 TrackingTemplateValidator = RegexValidator(
     r"(https?://\S+)|(\{lpurl\}\S*)",
     "Tracking url template must ba a valid URL or start with {lpurl} tag",
@@ -71,25 +73,25 @@ class UniqueCreationItem(models.Model):
 class AccountCreationManager(models.Manager.from_queryset(CreationItemQueryset)):
     def user_related(self, user):
         related_accounts = Account.user_objects(user)
+        query = Q(is_deleted=False) \
+                & (Q(owner=user)
+                   | Q(account__in=related_accounts))
         return self.get_queryset() \
-            .filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+            .filter(query)
 
 
 class AccountCreation(UniqueCreationItem):
     objects = AccountCreationManager()
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    owner = models.ForeignKey('userprofile.userprofile',
+    owner = models.ForeignKey("userprofile.userprofile",
                               related_name="aw_account_creations",
                               on_delete=CASCADE,
                               null=True)
 
-    account = models.OneToOneField(Account, related_name='account_creation',
-        null=True, blank=True, on_delete=models.CASCADE,
-    )
+    account = models.OneToOneField(Account, related_name="account_creation",
+                                   null=True, blank=True, on_delete=models.CASCADE,
+                                   )
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
@@ -99,9 +101,7 @@ class AccountCreation(UniqueCreationItem):
     def timezone(self):
         if self.account and self.account.timezone:
             return self.account.timezone
-        else:
-            from django.conf import settings
-            return settings.DEFAULT_TIMEZONE
+        return settings.DEFAULT_TIMEZONE
 
     def get_today_date(self):
         return now_in_default_tz(tz_str=self.timezone).date()
@@ -115,6 +115,7 @@ class AccountCreation(UniqueCreationItem):
                 "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
             )
             return "\n".join(lines)
+        return None
 
     STATUS_ENDED = "Ended"
     STATUS_PAUSED = "Paused"
@@ -188,7 +189,7 @@ class CampaignCreation(UniqueCreationItem):
         AccountCreation, related_name="campaign_creations", on_delete=models.CASCADE,
     )
     campaign = models.ForeignKey(
-        "aw_reporting.Campaign", related_name='campaign_creation',
+        "aw_reporting.Campaign", related_name="campaign_creation",
         null=True, blank=True, on_delete=models.CASCADE,
     )
 
@@ -208,10 +209,10 @@ class CampaignCreation(UniqueCreationItem):
     )
 
     languages = models.ManyToManyField(
-        'Language', related_name='campaigns', default=default_languages)
+        "Language", related_name="campaigns", default=default_languages)
 
-    VIDEO_TYPE = 'VIDEO'
-    DISPLAY_TYPE = 'DISPLAY'
+    VIDEO_TYPE = "VIDEO"
+    DISPLAY_TYPE = "DISPLAY"
     CAMPAIGN_TYPES = ((VIDEO_TYPE, "Video"),
                       (DISPLAY_TYPE, "Display"))
     type = models.CharField(
@@ -233,8 +234,8 @@ class CampaignCreation(UniqueCreationItem):
         default=GOAL_VIDEO_VIEWS,
     )
 
-    STANDARD_DELIVERY = 'STANDARD'
-    ACCELERATED_DELIVERY = 'ACCELERATED'
+    STANDARD_DELIVERY = "STANDARD"
+    ACCELERATED_DELIVERY = "ACCELERATED"
     DELIVERY_METHODS = (
         (STANDARD_DELIVERY, "Standard"),
         (ACCELERATED_DELIVERY, "Accelerated"),
@@ -245,16 +246,16 @@ class CampaignCreation(UniqueCreationItem):
         default=STANDARD_DELIVERY,
     )
 
-    MAX_CPV_STRATEGY = 'MAX_CPV'
-    MAX_CPM_STRATEGY = 'MAX_CPM'
-    TARGET_CPM_STRATEGY = 'TARGET_CPM'
-    TARGET_CPA_STRATEGY = 'TARGET_CPA'
+    MAX_CPV_STRATEGY = "MAX_CPV"
+    MAX_CPM_STRATEGY = "MAX_CPM"
+    TARGET_CPM_STRATEGY = "TARGET_CPM"
+    TARGET_CPA_STRATEGY = "TARGET_CPA"
 
     BID_STRATEGY_TYPES = (
-        (MAX_CPV_STRATEGY, 'Maximum CPV'),
-        (MAX_CPM_STRATEGY, 'Maximum CPM'),
-        (TARGET_CPM_STRATEGY, 'Target CPM'),
-        (TARGET_CPA_STRATEGY, 'Target CPA'),
+        (MAX_CPV_STRATEGY, "Maximum CPV"),
+        (MAX_CPM_STRATEGY, "Maximum CPM"),
+        (TARGET_CPM_STRATEGY, "Target CPM"),
+        (TARGET_CPA_STRATEGY, "Target CPA"),
     )
 
     bid_strategy_type = models.CharField(
@@ -265,7 +266,7 @@ class CampaignCreation(UniqueCreationItem):
 
     target_cpa = models.IntegerField(null=True, blank=True, default=None)
 
-    MANUAL_CPV_BIDDING = 'MANUAL_CPV'
+    MANUAL_CPV_BIDDING = "MANUAL_CPV"
     BIDDING_TYPES = (
         (MANUAL_CPV_BIDDING, "Manual CPV"),
     )
@@ -275,9 +276,9 @@ class CampaignCreation(UniqueCreationItem):
         default=MANUAL_CPV_BIDDING,
     )
 
-    YOUTUBE_SEARCH = 'YOUTUBE_SEARCH'
-    YOUTUBE_VIDEO = 'YOUTUBE_VIDEO'
-    VIDEO_PARTNER_DISPLAY_NETWORK = 'VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK'
+    YOUTUBE_SEARCH = "YOUTUBE_SEARCH"
+    YOUTUBE_VIDEO = "YOUTUBE_VIDEO"
+    VIDEO_PARTNER_DISPLAY_NETWORK = "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"
     VIDEO_NETWORKS = (
         (YOUTUBE_SEARCH, "Youtube search"),
         (YOUTUBE_VIDEO, "Youtube video"),
@@ -305,9 +306,9 @@ class CampaignCreation(UniqueCreationItem):
 
     video_networks = property(get_video_networks, set_video_networks)
 
-    DESKTOP_DEVICE = 'DESKTOP_DEVICE'
-    MOBILE_DEVICE = 'MOBILE_DEVICE'
-    TABLET_DEVICE = 'TABLET_DEVICE'
+    DESKTOP_DEVICE = "DESKTOP_DEVICE"
+    MOBILE_DEVICE = "MOBILE_DEVICE"
+    TABLET_DEVICE = "TABLET_DEVICE"
     DEVICES = (
         (DESKTOP_DEVICE, "Desktop"),
         (MOBILE_DEVICE, "Mobile"),
@@ -374,7 +375,7 @@ class CampaignCreation(UniqueCreationItem):
     content_exclusions = property(get_content_exclusions, set_content_exclusions)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ["-id"]
 
     @property
     def campaign_is_paused(self):
@@ -441,13 +442,13 @@ class CampaignCreation(UniqueCreationItem):
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
                     video_networks=self.video_networks,
-                    lang_ids=list(self.languages.values_list('id', flat=True)),
+                    lang_ids=list(self.languages.values_list("id", flat=True)),
                     devices=self.devices,
                     schedules=self.get_aw_schedulers(),
                     freq_caps={
                         f["event_type"]: f
                         for f in self.frequency_capping.all(
-                    ).values("event_type", "level", "time_unit", "limit")
+                        ).values("event_type", "level", "time_unit", "limit")
                     },
                     locations=list(
                         self.location_rules.filter(
@@ -456,8 +457,8 @@ class CampaignCreation(UniqueCreationItem):
                     ),
                     proximities=[
                         " ".join(
-                            ("{}".format(l.latitude).rstrip('0'),
-                             "{}".format(l.longitude).rstrip('0'),
+                            ("{}".format(l.latitude).rstrip("0"),
+                             "{}".format(l.longitude).rstrip("0"),
                              str(l.radius), l.radius_units)
                         ) for l in self.location_rules.filter(radius__gte=0,
                                                               latitude__isnull=False,
@@ -497,14 +498,14 @@ class AdGroupCreation(UniqueCreationItem):
         CampaignCreation, related_name="ad_group_creations", on_delete=models.CASCADE,
     )
     ad_group = models.ForeignKey(
-        "aw_reporting.AdGroup", related_name='ad_group_creation',
+        "aw_reporting.AdGroup", related_name="ad_group_creation",
         null=True, blank=True, on_delete=models.CASCADE,
     )
 
-    IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
-    DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
-    BUMPER_AD = 'BUMPER'
-    DISPLAY_AD = 'DISPLAY'
+    IN_STREAM_TYPE = "TRUE_VIEW_IN_STREAM"
+    DISCOVERY_TYPE = "TRUE_VIEW_IN_DISPLAY"
+    BUMPER_AD = "BUMPER"
+    DISPLAY_AD = "DISPLAY"
 
     VIDEO_AD_FORMATS = (
         (IN_STREAM_TYPE, "In-stream"),
@@ -523,9 +524,8 @@ class AdGroupCreation(UniqueCreationItem):
         if self.sync_at is not None or self.ad_creations.filter(is_deleted=False).count() > 1:
             types = [self.video_ad_format]
 
-        elif self.campaign_creation.sync_at is not None or \
-                AdCreation.objects.filter(
-                    ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+        elif self.campaign_creation.sync_at is not None \
+            or AdCreation.objects.filter(ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.MAX_CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
@@ -612,7 +612,7 @@ class AdGroupCreation(UniqueCreationItem):
     PAUSED = 0
     ENABLED = 1
     STATUS_CHOICES = (
-        (PAUSED,  "paused"),
+        (PAUSED, "paused"),
         (ENABLED, "enabled"),
     )
     status = models.IntegerField(null=True, default=None, db_index=True, choices=STATUS_CHOICES)
@@ -626,23 +626,22 @@ class AdGroupCreation(UniqueCreationItem):
     age_ranges = property(get_age_ranges, set_age_ranges)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ["-id"]
 
     def get_aws_code(self, request):
         """
         "campaign" variable have to be defined above
         :return:
         """
-        from .targeting import TargetingItem
         targeting = self.targeting_items.all()
-        channels = targeting.filter(type=TargetingItem.CHANNEL_TYPE)
-        videos = targeting.filter(type=TargetingItem.VIDEO_TYPE)
-        topics = targeting.filter(type=TargetingItem.TOPIC_TYPE)
-        interests = targeting.filter(type=TargetingItem.INTEREST_TYPE)
-        keywords = targeting.filter(type=TargetingItem.KEYWORD_TYPE)
+        channels = targeting.filter(type=TargetingType.CHANNEL.value)
+        videos = targeting.filter(type=TargetingType.VIDEO.value)
+        topics = targeting.filter(type=TargetingType.TOPIC.value)
+        interests = targeting.filter(type=TargetingType.INTEREST.value)
+        keywords = targeting.filter(type=TargetingType.KEYWORD.value)
 
         def qs_to_list(qs, to_int=False):
-            values = qs.values_list('criteria', flat=True)
+            values = qs.values_list("criteria", flat=True)
             if to_int:
                 values = [int(i) for i in values]
             return list(values)
@@ -707,14 +706,15 @@ class AdCreation(UniqueCreationItem):
         AdGroupCreation, related_name="ad_creations", on_delete=models.CASCADE,
     )
     ad = models.ForeignKey(
-        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True, on_delete=models.CASCADE,
+        "aw_reporting.Ad", related_name="ad_creation", null=True, blank=True, on_delete=models.CASCADE,
     )
     video_url = models.URLField(validators=[VideoUrlValidator], default="")
-    companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
+    companion_banner = models.ImageField(upload_to="img/custom_video_thumbs", blank=True, null=True)
     display_url = models.CharField(max_length=200, default="")
     final_url = models.URLField(default="")
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
-    business_name = models.CharField(max_length=250, null=True, default="") #allowing null to be true ONLY because previously it was, so may be some null entries in DB
+    # allowing null to be true ONLY because previously it was, so may be some null entries in DB
+    business_name = models.CharField(max_length=250, null=True, default="")
     short_headline = models.CharField(max_length=25, null=True, default="")
     long_headline = models.CharField(max_length=250, null=True, default="")
 
@@ -810,7 +810,7 @@ class AdCreation(UniqueCreationItem):
     custom_params = property(get_custom_params, set_custom_params)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ["-id"]
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         super(AdCreation, self).save(force_insert, force_update, using, update_fields)
@@ -832,7 +832,7 @@ class AdCreation(UniqueCreationItem):
 
     def get_aws_code(self, request):
         campaign = self.ad_group_creation.campaign_creation
-        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
+        ad_type = "display" if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else "video"
         code = "createOrUpdateVideoAd(ad_group, {});".format(
             json.dumps(
                 dict(
@@ -846,7 +846,7 @@ class AdCreation(UniqueCreationItem):
                     display_url=self.display_url,
                     final_url=self.final_url,
                     tracking_template=self.tracking_template,
-                    custom_params={p['name']: p['value'] for p in self.custom_params},
+                    custom_params={p["name"]: p["value"] for p in self.custom_params},
                     headline=self.headline,
                     description_1=self.description_1,
                     description_2=self.description_2,
@@ -873,7 +873,7 @@ class LocationRule(models.Model):
         related_name="location_rules",
         on_delete=models.CASCADE,
     )
-    geo_target = models.ForeignKey('aw_reporting.GeoTarget', null=True, on_delete=models.CASCADE)
+    geo_target = models.ForeignKey("aw_reporting.GeoTarget", null=True, on_delete=models.CASCADE)
     latitude = models.DecimalField(max_digits=11, decimal_places=8,
                                    null=True, blank=True)
     longitude = models.DecimalField(max_digits=11, decimal_places=8,

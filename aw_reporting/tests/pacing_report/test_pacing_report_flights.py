@@ -16,8 +16,8 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.patch_now import patch_now
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -40,7 +40,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 1)
 
         data = flights[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.02)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.02)
 
     def test_get_flights_budget_over_50000(self):
         today = timezone.now()
@@ -60,7 +60,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 1)
 
         data = flights[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.01)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.01)
 
     def test_cost_hard_cost_outgoing_fee_completed(self):
         today = timezone.now()
@@ -82,7 +82,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 1)
 
         first_data = flights[0]
-        self.assertEqual(first_data['cost'], flight.cost)
+        self.assertEqual(first_data["cost"], flight.cost)
 
     def test_cost_hard_cost_outgoing_fee_running(self):
         tz_str = settings.DEFAULT_TIMEZONE
@@ -118,7 +118,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         flight_run_minutes = (now - start_time).total_seconds() // 60
 
         expected_cost = flight.cost * flight_run_minutes / flight_total_minutes
-        self.assertEqual(first_data['cost'], expected_cost)
+        self.assertEqual(first_data["cost"], expected_cost)
 
     def test_cost_hard_cost_outgoing_fee_upcoming(self):
         today = now_in_default_tz().date()
@@ -142,7 +142,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         first_data = flights[0]
 
-        self.assertEqual(first_data['cost'], 0)
+        self.assertEqual(first_data["cost"], 0)
 
     def test_cpv_flight_ended_pacing_chart(self):
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 8).date()

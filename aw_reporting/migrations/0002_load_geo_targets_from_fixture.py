@@ -8,8 +8,8 @@ from django.db import migrations
 
 
 def load_geo_tagets(apps, schema_editor):
-    lang_model = apps.get_model('aw_reporting.GeoTarget')
-    with open('aw_reporting/fixtures/geo_locations.csv') as f:
+    lang_model = apps.get_model("aw_reporting.GeoTarget")
+    with open("aw_reporting/fixtures/geo_locations.csv") as f:
         reader = csv.reader(f)
         next(reader, None)  # title
         bulk = []
@@ -23,9 +23,8 @@ def load_geo_tagets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0028_auto_20180503_0950'),
+        ("aw_reporting", "0028_auto_20180503_0950"),
     ]
 
     operations = [

@@ -1,8 +1,8 @@
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
-from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
+from es_components.managers.channel import ChannelManager
 
 
 class ChannelGroupParamAdapter:
@@ -33,7 +33,7 @@ class VettedParamsAdapter:
                 mapped_values = [str(self.mappings[param][value]) for value in values]
                 query_params[param] = mapped_values
         return query_params
-    
+
 
 class IsTrackedParamsAdapter:
     parameter_name = "custom_properties.is_tracked"
@@ -59,5 +59,5 @@ def track_channels(channel_ids):
             channel.populate_custom_properties(is_tracked=True)
         manager.upsert(channels)
         offset += max_upsert_channels
-        channels_to_update = channel_ids[offset:offset+max_upsert_channels]
+        channels_to_update = channel_ids[offset:offset + max_upsert_channels]
     return new_channels_counter

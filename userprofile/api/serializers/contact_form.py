@@ -7,6 +7,7 @@ class ContactFormSerializer(Serializer):
     """
     Serializer for contact form fields
     """
+
     first_name = CharField(required=True, max_length=255)
     last_name = CharField(required=True, max_length=255)
     email = EmailField(required=True, max_length=255)
@@ -18,3 +19,9 @@ class ContactFormSerializer(Serializer):
         default="",
         allow_blank=True
     )
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError

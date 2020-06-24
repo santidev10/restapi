@@ -2,19 +2,19 @@ from django.conf import settings
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.views import APIView
 
-from userprofile.models import WhiteLabel
 from userprofile.api.serializers.white_label import WhiteLabelSerializer
 from userprofile.api.views.user_avatar import ImageUploadParser
+from userprofile.models import WhiteLabel
 from utils.file_storage.s3_connector import upload_file
-from utils.views import validate_fields
-from utils.views import get_object
-from utils.views import CustomAPIException
 from utils.permissions import ReadOnly
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from utils.views import CustomAPIException
+from utils.views import get_object
+from utils.views import validate_fields
 
 
 class WhiteLabelApiView(APIView):
@@ -24,7 +24,7 @@ class WhiteLabelApiView(APIView):
     )
     parser_classes = (JSONParser, ImageUploadParser)
     IMAGE_FIELDS = ("favicon", "logo")
-    ALLOWED_CONFIG_FIELDS = IMAGE_FIELDS + ("domain", "disable",  "name")
+    ALLOWED_CONFIG_FIELDS = IMAGE_FIELDS + ("domain", "disable", "name")
 
     def get(self, request):
         all_domains = request.query_params.get("all")
@@ -46,7 +46,8 @@ class WhiteLabelApiView(APIView):
         config = data.get("config", {})
         white_label = get_object(WhiteLabel, id=pk)
         validate_fields(config.keys(), self.ALLOWED_CONFIG_FIELDS, should_raise=True)
-        validate_fields(config.get("disable", []), settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True, message="Invalid permissions")
+        validate_fields(config.get("disable", []), settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True,
+                        message="Invalid permissions")
         # serializer will update existing config with request config
         serializer = WhiteLabelSerializer(white_label, data=data)
         serializer.is_valid(raise_exception=True)
@@ -66,7 +67,8 @@ class WhiteLabelApiView(APIView):
         data = request.data
         config = data.get("config", {})
         if config.get("disable") is not None:
-            validate_fields(config["disable"], settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True, message="Invalid permissions")
+            validate_fields(config["disable"], settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True,
+                            message="Invalid permissions")
         else:
             config["disable"] = settings.DOMAIN_MANAGEMENT_PERMISSIONS
         data["config"] = config

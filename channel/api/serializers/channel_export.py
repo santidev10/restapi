@@ -37,6 +37,12 @@ class ChannelListExportSerializer(Serializer):
     average_cpv = FloatField(source="ads_stats.average_cpv")
     brand_safety_score = SerializerMethodField()
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)
         return score

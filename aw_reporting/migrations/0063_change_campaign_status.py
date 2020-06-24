@@ -13,9 +13,8 @@ def reverse_code(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0062_add_device_tv_screens'),
+        ("aw_reporting", "0062_add_device_tv_screens"),
     ]
 
     operations = [

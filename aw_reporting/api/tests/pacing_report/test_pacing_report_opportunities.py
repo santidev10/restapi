@@ -1,8 +1,10 @@
+# pylint: disable=too-many-lines
 import logging
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from itertools import product
 from urllib.parse import urlencode
 
 import pytz
@@ -11,7 +13,6 @@ from django.db.models import Sum
 from django.http import QueryDict
 from django.urls import reverse
 from django.utils import timezone
-from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
@@ -73,8 +74,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             probability=100,
         )
         pl_1 = OpPlacement.objects.create(id="1", name="", opportunity=current_op,
-                                   goal_type_id=SalesForceGoalType.CPM)
-        pl_2 = OpPlacement.objects.create(id="2", name="", opportunity=current_op,
+                                          goal_type_id=SalesForceGoalType.CPM)
+        OpPlacement.objects.create(id="2", name="", opportunity=current_op,
                                    goal_type_id=SalesForceGoalType.CPV)
         Campaign.objects.create(name="c", salesforce_placement=pl_1)
         Opportunity.objects.create(id="2", name="2", start=month_ago,
@@ -139,18 +140,18 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             }
         )
         self.assertEqual(item["id"], current_op.id)
-        self.assertEqual(item['status'], "active")
-        self.assertEqual(item['thumbnail'], ad_ops_user.profile_image_url)
-        self.assertEqual(item['notes'], notes)
-        self.assertEqual(item['category']['id'], category.id)
-        self.assertEqual(item['category']['name'], category.name)
-        self.assertEqual(item['region']['id'], territory)
-        self.assertEqual(item['region']['name'], territory)
+        self.assertEqual(item["status"], "active")
+        self.assertEqual(item["thumbnail"], ad_ops_user.profile_image_url)
+        self.assertEqual(item["notes"], notes)
+        self.assertEqual(item["category"]["id"], category.id)
+        self.assertEqual(item["category"]["name"], category.name)
+        self.assertEqual(item["region"]["id"], territory)
+        self.assertEqual(item["region"]["name"], territory)
 
     def test_get_opportunities_buffers_default(self):
         today = timezone.now()
         first_day = today.replace(day=1)
-        month_ago, month_after = first_day - timedelta(
+        month_ago, _ = first_day - timedelta(
             days=1), first_day + timedelta(days=32)
 
         Opportunity.objects.create(id="1", name="1", start=today, end=today,
@@ -167,9 +168,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             days=1), first_day + timedelta(days=32)
 
         opp_1 = Opportunity.objects.create(id="1", name="1", start=today, end=today,
-                                   probability=100)
+                                           probability=100)
         opp_2 = Opportunity.objects.create(id="2", name="2", start=month_ago,
-                                   end=month_ago, probability=100)
+                                           end=month_ago, probability=100)
         op_expected = Opportunity.objects.create(id="3", name="3",
                                                  start=month_after,
                                                  end=month_after,
@@ -186,7 +187,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_ad_ops(self):
         user1 = User.objects.create(id="1", name="1")
@@ -205,14 +206,14 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_am(self):
         user1 = User.objects.create(id="1", name="1")
         user2 = User.objects.create(id="2", name="2")
         today = timezone.now()
         opp_1 = Opportunity.objects.create(id=next(int_iterator), name="1", start=today, end=today,
-                                   account_manager=user1, probability=100)
+                                           account_manager=user1, probability=100)
         op_expected = Opportunity.objects.create(id=next(int_iterator), name="2",
                                                  start=today, end=today,
                                                  account_manager=user2,
@@ -226,7 +227,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], str(op_expected.id))
+        self.assertEqual(data[0]["id"], str(op_expected.id))
 
     def test_get_opportunities_filter_sales(self):
         user1 = User.objects.create(id="1", name="1")
@@ -245,7 +246,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_category(self):
         category1 = Category.objects.create(id="Naive folks")
@@ -264,7 +265,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_goal(self):
         today = timezone.now()
@@ -283,7 +284,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_region(self):
         today = timezone.now()
@@ -304,18 +305,18 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_region_multiple(self):
         today = timezone.now()
         territory_1 = "Territory 1"
         territory_2 = "Territory 2"
         opp_1 = Opportunity.objects.create(id="1", name="1",
-                                   start=today, end=today,
-                                   territory=territory_1, probability=100)
+                                           start=today, end=today,
+                                           territory=territory_1, probability=100)
         opp_2 = Opportunity.objects.create(id="2", name="2",
-                                   start=today, end=today,
-                                   territory=territory_2, probability=100)
+                                           start=today, end=today,
+                                           territory=territory_2, probability=100)
         pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
         pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=opp_2)
@@ -333,7 +334,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     def test_get_opportunities_filter_name(self):
         today = timezone.now()
         opp_1 = Opportunity.objects.create(id="1", name="Peter Griffin", start=today,
-                                   end=today, probability=100)
+                                           end=today, probability=100)
         op_expected = Opportunity.objects.create(id="2", name="Homer Simpson",
                                                  start=today, end=today,
                                                  probability=100)
@@ -347,7 +348,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]["id"], op_expected.id)
 
     def test_get_opportunities_filter_status(self):
         today = timezone.now().date()
@@ -383,21 +384,21 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         ))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(response.data["items"][0]['id'], active.id)
+        self.assertEqual(response.data["items"][0]["id"], active.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
                            urlencode(dict(status="upcoming", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(response.data["items"][0]['id'], upcoming.id)
+        self.assertEqual(response.data["items"][0]["id"], upcoming.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
                            urlencode(dict(status="completed", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(response.data["items"][0]['id'], completed.id)
+        self.assertEqual(response.data["items"][0]["id"], completed.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
@@ -421,13 +422,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items"][0]['id'], first.id)
+        self.assertEqual(response.data["items"][0]["id"], first.id)
 
         response = self.client.get("{}?sort_by=-account".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
-        self.assertEqual(response.data["items"][0]['id'], second.id)
-        self.assertEqual(response.data["items"][1]['id'], first.id)
+        self.assertEqual(response.data["items"][0]["id"], second.id)
+        self.assertEqual(response.data["items"][1]["id"], first.id)
 
     def test_get_opportunities_dynamic_placement_rate_tech_fee_margin(self):
         today = timezone.now()
@@ -454,13 +455,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         expected_margin = tech_fee / (cpv + tech_fee) * 100
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertAlmostEqual(response.data["items"][0]['margin'],
+        self.assertAlmostEqual(response.data["items"][0]["margin"],
                                expected_margin)
 
     def test_video_view_rate_shows_percents(self):
         """
         Bug: https://channelfactory.atlassian.net/browse/IQD-2701
-        Summary: Pacing report > View rate parameter isn't multiplied on 100%
+        Summary: Pacing report > View rate parameter isn"t multiplied on 100%
         """
 
         today = timezone.now()
@@ -519,7 +520,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             goal_type_id=SalesForceGoalType.CPM,
             opportunity=opportunity, total_cost=0)
-        flight = Flight.objects.create(placement=placement, start=today, end=today)
+        Flight.objects.create(placement=placement, start=today, end=today)
 
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
@@ -749,8 +750,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                            end=today,
                                            category=category2, probability=100)
         opp_3 = Opportunity.objects.create(id="3", name="3", start=today,
-                                   end=today, category=category3,
-                                   probability=100)
+                                           end=today, category=category3,
+                                           probability=100)
 
         pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
@@ -776,11 +777,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         search_date = date(2018, 5, 22)
         opp_1 = Opportunity.objects.create(id=1, probability=100)
         opp_2 = Opportunity.objects.create(id=2, probability=100,
-                                   start=search_date - timedelta(days=1),
-                                   end=search_date - timedelta(days=1))
+                                           start=search_date - timedelta(days=1),
+                                           end=search_date - timedelta(days=1))
         opp_3 = Opportunity.objects.create(id=3, probability=100,
-                                   start=search_date + timedelta(days=1),
-                                   end=search_date + timedelta(days=1))
+                                           start=search_date + timedelta(days=1),
+                                           end=search_date + timedelta(days=1))
         opp_4 = Opportunity.objects.create(
             id=4, probability=100,
             start=search_date - timedelta(days=1),
@@ -1256,12 +1257,15 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         any_date = date(2019, 1, 1)
         account = Account.objects.create(id=next(int_iterator))
         opp_1 = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1,
+                                          goal_type_id=SalesForceGoalType.CPM)
         Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
-        Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=pl_1, start_date=any_date, end_date=any_date)
+        Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=pl_1, start_date=any_date,
+                                end_date=any_date)
 
-        opp_2 = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        Opportunity.objects.create(id=next(int_iterator), probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1,
+                                          goal_type_id=SalesForceGoalType.CPM)
         Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
 
         response = self.client.get(self.url)

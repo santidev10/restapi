@@ -15,7 +15,6 @@ def add_brand_safety_categories(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('brand_safety', '0005_auto_20190401_1817'),
     ]
