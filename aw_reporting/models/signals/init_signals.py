@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 from django.db.models.signals import pre_save
 
 
