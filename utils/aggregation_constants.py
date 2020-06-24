@@ -5,7 +5,6 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "ads_stats.ctr_v:min",
     "ads_stats.video_view_rate:max",
     "ads_stats.video_view_rate:min",
-    "ads_stats:exists",
     "analytics.age13_17:max",
     "analytics.age13_17:min",
     "analytics.age18_24:max",

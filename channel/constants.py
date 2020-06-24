@@ -12,8 +12,7 @@ RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment",
                 "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
                 "general_data.youtube_published_at")
 
-EXISTS_FILTER = ("ads_stats", "monetization.is_monetizable", "task_us_data",
-                 "custom_properties.is_tracked")
+EXISTS_FILTER = ("monetization.is_monetizable", "task_us_data", "custom_properties.is_tracked")
 
 CHANNEL_CSV_HEADERS = [
     "title",
