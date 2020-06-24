@@ -1,10 +1,10 @@
 from django.utils import timezone
-from es_components.tests.utils import ESTestCase
 from rest_framework.test import APITestCase
 
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
+from es_components.tests.utils import ESTestCase
 
 
 class AnalyticsAccountCreationListAPITestCase(APITestCase, ESTestCase):
@@ -13,7 +13,7 @@ class AnalyticsAccountCreationListAPITestCase(APITestCase, ESTestCase):
         account_creation = account.account_creation
         Campaign.objects.create(account=account, status="ended")
         self.assertEqual(AccountCreation.STATUS_ENDED, account_creation.status)
-    
+
     def test_account_creation_status_paused(self):
         account = Account.objects.create()
         account_creation = account.account_creation

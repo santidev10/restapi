@@ -65,7 +65,7 @@ class Command(BaseCommand):
             default=None,
         )
 
-    def load_arguments(self, *args, **options) -> None:
+    def load_arguments(self, *_, **options) -> None:
         yesterday = now_in_default_tz() - timedelta(days=1)
         yesterday = yesterday.date()
 
@@ -103,7 +103,7 @@ class Command(BaseCommand):
             # get data from Data API
             youtube = Youtube()
             youtube.download(video_ids)
-            videos = [i for i in youtube.get_all_items()]
+            videos = list(youtube.get_all_items())
 
             # parse by keywords
             self.parse_videos_by_keywords(videos)
@@ -136,9 +136,9 @@ class Command(BaseCommand):
         # load names and managers
         names = {}
         managers = {}
-        queryset = Account.objects.filter(can_manage_clients=False)\
-                                  .values("id", "name", "managers")\
-                                  .order_by("id")
+        queryset = Account.objects.filter(can_manage_clients=False) \
+            .values("id", "name", "managers") \
+            .order_by("id")
 
         if self.account_ids is not None:
             queryset = queryset.filter(id__in=self.account_ids)
@@ -173,7 +173,7 @@ class Command(BaseCommand):
                     refresh_tokens=tokens,
                 )
             )
-        logger.info("Loaded {} account(s)".format(len(accounts)))
+        logger.info("Loaded %s account(s)", len(accounts))
         return accounts
 
     @staticmethod
@@ -184,14 +184,14 @@ class Command(BaseCommand):
         items = manager.search(
             filters=QueryBuilder().build().must().term().field("custom_properties.preferred").value(True).get()
         ).execute().hits
-        preferred_channels = set([item.main.id for item in items])
+        preferred_channels = {item.main.id for item in items}
         count = len(preferred_channels)
-        logger.info("Loaded {} preferred channel(s)".format(count))
+        logger.info("Loaded %s preferred channel(s)", count)
         return preferred_channels
 
     @staticmethod
     def parse_videos_by_keywords(videos: List[VideoDMO]) -> None:
-        logger.info("Parsing {} video(s)".format(len(videos)))
+        logger.info("Parsing %s video(s)", len(videos))
         keywords = Keywords()
         keywords.load_from_db()
         keywords.compile_regexp()
@@ -199,12 +199,13 @@ class Command(BaseCommand):
         found = keywords.parse_all(texts)
         for idx, video in enumerate(videos):
             video.found = found[idx]
-        logger.info("Parsed {} video(s)".format(len(videos)))
+        logger.info("Parsed %s video(s)", len(videos))
 
+    # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def save_and_send(self, date: str,
-                            videos: List[VideoDMO],
-                            reports: Dict[str, list],
-                            preferred_channels: Set[str]) -> None:
+                      videos: List[VideoDMO],
+                      reports: Dict[str, list],
+                      preferred_channels: Set[str]) -> None:
 
         logger.info("Storing XLSX")
 
@@ -261,22 +262,22 @@ class Command(BaseCommand):
             data = reports[item.id]
             impressions = sum([int(r.get("Impressions")) for r in data])
             words = ",".join(item.found)
-            worksheet.write(y+1, 0, item.title)
-            worksheet.write(y+1, 1, "'" + item.url)
-            worksheet.write(y+1, 2, item.channel_title)
-            worksheet.write(y+1, 3, "'" + item.channel_url)
+            worksheet.write(y + 1, 0, item.title)
+            worksheet.write(y + 1, 1, "'" + item.url)
+            worksheet.write(y + 1, 2, item.channel_title)
+            worksheet.write(y + 1, 3, "'" + item.channel_url)
             if item.channel_id in preferred_channels:
-                worksheet.write(y+1, 4, "YES")
-            worksheet.write(y+1, 5, impressions, numberic_format)
-            worksheet.write(y+1, 6, item.sentiment, percentage_format)
-            worksheet.write(y+1, 7, hits, numberic_format)
-            worksheet.write(y+1, 8, words)
+                worksheet.write(y + 1, 4, "YES")
+            worksheet.write(y + 1, 5, impressions, numberic_format)
+            worksheet.write(y + 1, 6, item.sentiment, percentage_format)
+            worksheet.write(y + 1, 7, hits, numberic_format)
+            worksheet.write(y + 1, 8, words)
 
             account_info = self._get_account_info(data)
             text_account_info = "\n".join(account_info)
-            worksheet.write(y+1, 9, text_account_info, text_format)
+            worksheet.write(y + 1, 9, text_account_info, text_format)
             if len(account_info) > 1:
-                worksheet.set_row(y+1, 15*len(account_info))
+                worksheet.set_row(y + 1, 15 * len(account_info))
             video_audit = VideoAudit(
                 date=audit_date,
                 video_id=item.id,
@@ -316,22 +317,22 @@ class Command(BaseCommand):
             data = reports[item.id]
             impressions = sum([int(r.get("Impressions")) for r in data])
             words = ",".join(item.found)
-            worksheet.write(y+1, 0, item.title)
-            worksheet.write(y+1, 1, "'" + item.url)
-            worksheet.write(y+1, 2, item.channel_title)
-            worksheet.write(y+1, 3, "'" + item.channel_url)
+            worksheet.write(y + 1, 0, item.title)
+            worksheet.write(y + 1, 1, "'" + item.url)
+            worksheet.write(y + 1, 2, item.channel_title)
+            worksheet.write(y + 1, 3, "'" + item.channel_url)
             if item.channel_id in preferred_channels:
-                worksheet.write(y+1, 4, "YES")
-            worksheet.write(y+1, 5, impressions, numberic_format)
-            worksheet.write(y+1, 6, item.sentiment, percentage_format)
-            worksheet.write(y+1, 7, hits, numberic_format)
-            worksheet.write(y+1, 8, words)
+                worksheet.write(y + 1, 4, "YES")
+            worksheet.write(y + 1, 5, impressions, numberic_format)
+            worksheet.write(y + 1, 6, item.sentiment, percentage_format)
+            worksheet.write(y + 1, 7, hits, numberic_format)
+            worksheet.write(y + 1, 8, words)
 
             account_info = self._get_account_info(data)
             text_account_info = "\n".join(account_info)
-            worksheet.write(y+1, 9, text_account_info, text_format)
+            worksheet.write(y + 1, 9, text_account_info, text_format)
             if len(account_info) > 1:
-                worksheet.set_row(y+1, 15*len(account_info))
+                worksheet.set_row(y + 1, 15 * len(account_info))
             y += 1
 
         # add sheet: Keywords
@@ -363,9 +364,9 @@ class Command(BaseCommand):
         result = sorted(result, key=lambda _: -_[1])
         for y, _ in enumerate(result):
             keyword, videos_count, impressions = _
-            worksheet.write(y+1, 0, keyword)
-            worksheet.write(y+1, 1, videos_count, numberic_format)
-            worksheet.write(y+1, 2, impressions, numberic_format)
+            worksheet.write(y + 1, 0, keyword)
+            worksheet.write(y + 1, 1, videos_count, numberic_format)
+            worksheet.write(y + 1, 2, impressions, numberic_format)
             keyword_audit = KeywordAudit(
                 date=audit_date,
                 keyword=keyword,
@@ -403,24 +404,24 @@ class Command(BaseCommand):
             data = reports[item.id]
             impressions = sum([int(r.get("Impressions")) for r in data])
             words = ",".join(item.found)
-            worksheet.write(y+1, 0, item.title)
-            worksheet.write(y+1, 1, "'" + item.url)
-            worksheet.write(y+1, 2, item.channel_title)
-            worksheet.write(y+1, 3, "'" + item.channel_url)
-            worksheet.write(y+1, 4, "YES")
-            worksheet.write(y+1, 5, impressions, numberic_format)
-            worksheet.write(y+1, 6, item.sentiment, percentage_format)
-            worksheet.write(y+1, 7, hits, numberic_format)
-            worksheet.write(y+1, 8, words)
+            worksheet.write(y + 1, 0, item.title)
+            worksheet.write(y + 1, 1, "'" + item.url)
+            worksheet.write(y + 1, 2, item.channel_title)
+            worksheet.write(y + 1, 3, "'" + item.channel_url)
+            worksheet.write(y + 1, 4, "YES")
+            worksheet.write(y + 1, 5, impressions, numberic_format)
+            worksheet.write(y + 1, 6, item.sentiment, percentage_format)
+            worksheet.write(y + 1, 7, hits, numberic_format)
+            worksheet.write(y + 1, 8, words)
 
             account_info = self._get_account_info(data)
             text_account_info = "\n".join(account_info)
-            worksheet.write(y+1, 9, text_account_info, text_format)
+            worksheet.write(y + 1, 9, text_account_info, text_format)
             if len(account_info) > 1:
-                worksheet.set_row(y+1, 15*len(account_info))
+                worksheet.set_row(y + 1, 15 * len(account_info))
 
         # close workbook
-        workbook.worksheets_objs[0], workbook.worksheets_objs[1] =\
+        workbook.worksheets_objs[0], workbook.worksheets_objs[1] = \
             workbook.worksheets_objs[1], workbook.worksheets_objs[0]
         workbook.worksheets_objs[1].hide()
         workbook.close()
@@ -467,6 +468,7 @@ class Command(BaseCommand):
         )
         email.attach(filename, xlsx_data, content_type)
         email.send(fail_silently=False)
+    # pylint: enable=too-many-locals,too-many-branches,too-many-statements
 
     def _get_account_info(self, data):
         info = {}
@@ -486,12 +488,12 @@ class Command(BaseCommand):
         lines = []
         for account_id, campaign_info in info.items():
             for campaign_name, impressions in campaign_info.items():
-                    line = "{}: {} ---> {}".format(
-                        impressions,
-                        self.accounts_dict[account_id],
-                        campaign_name,
-                    )
-                    lines.append(line)
+                line = "{}: {} ---> {}".format(
+                    impressions,
+                    self.accounts_dict[account_id],
+                    campaign_name,
+                )
+                lines.append(line)
         return lines
 
     def save_s3(self, filename, data, content_type):

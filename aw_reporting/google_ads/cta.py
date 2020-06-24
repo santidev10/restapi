@@ -28,7 +28,8 @@ def get_clicks_report(client, ga_service, account, min_date, max_date, resource_
         **constants.CLICKS_PERFORMANCE_FIELDS,
     }
     clicks_query_fields = format_query(query_fields)
-    clicks_query = f"SELECT {clicks_query_fields} FROM {resource_name} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+    clicks_query = f"SELECT {clicks_query_fields} FROM {resource_name} WHERE segments.date BETWEEN '{min_date}' AND " \
+                   f"'{max_date}'"
     clicks_performance = ga_service.search(account.id, query=clicks_query)
     click_type_data = format_click_types_report(clicks_performance, click_type_enum, resource_name)
     return click_type_data
@@ -58,7 +59,8 @@ def format_click_types_report(report, click_type_enum, resource_name):
     return result
 
 
-def get_stats_with_click_type_data(stats: dict, click_type_data: dict, row_obj, resource_name="campaign", ignore_a_few_records=False):
+def get_stats_with_click_type_data(stats: dict, click_type_data: dict, row_obj, resource_name="campaign",
+                                   ignore_a_few_records=False):
     """
     Merges resource statistics data with click report data
     :param stats: Row statistics dictionary derived from Google Ads API search result

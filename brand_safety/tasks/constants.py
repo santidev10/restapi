@@ -1,10 +1,9 @@
 from datetime import timedelta
 
-
 CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
                   "brand_safety.updated_at")
 VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
-                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
+                "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
 
 class BaseScheduler:

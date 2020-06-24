@@ -2,13 +2,12 @@ from datetime import date
 from datetime import timedelta
 from unittest import skip
 
-from aw_reporting.models import age_range_str
-from aw_reporting.models import gender_str
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import GenderStatistic
+from aw_reporting.models import age_range_str
+from aw_reporting.models import gender_str
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.unittests.patch_now import patch_now
-
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
 
@@ -113,7 +112,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
     def test_general_stats(self):
         any_date = date(2019, 1, 1)
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              impressions=1000, video_views=200, cost=1.02, clicks=30)
+                                                 impressions=1000, video_views=200, cost=1.02, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -197,8 +196,10 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         any_date = date(2019, 1, 1)
         costs = (20, 80)
 
-        stats_1 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date, cost=costs[0])
-        stats_2 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=2, date=any_date, cost=costs[1])
+        stats_1 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
+                                                   cost=costs[0])
+        stats_2 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=2, date=any_date,
+                                                   cost=costs[1])
 
         age_range_1 = age_range_str(stats_1.age_range_id)
         age_range_2 = age_range_str(stats_2.age_range_id)
@@ -228,9 +229,9 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.save()
         impressions = (20, 80)
         stats_1 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                                impressions=impressions[0])
+                                                   impressions=impressions[0])
         stats_2 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=2, date=any_date,
-                                                impressions=impressions[1])
+                                                   impressions=impressions[1])
 
         age_range_1 = age_range_str(stats_1.age_range_id)
         age_range_2 = age_range_str(stats_2.age_range_id)
@@ -260,9 +261,9 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
 
         views = (20, 80)
         stats_1 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                                video_views=views[0])
+                                                   video_views=views[0])
         stats_2 = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=2, date=any_date,
-                                                video_views=views[1])
+                                                   video_views=views[1])
 
         age_range_1 = age_range_str(stats_1.age_range_id)
         age_range_2 = age_range_str(stats_2.age_range_id)
@@ -291,7 +292,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              video_views=34)
+                                                 video_views=34)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -308,7 +309,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              impressions=3400)
+                                                 impressions=3400)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -325,7 +326,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              video_views=34, impressions=450, cost=13)
+                                                 video_views=34, impressions=450, cost=13)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -344,7 +345,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              video_views=34, impressions=450, cost=13)
+                                                 video_views=34, impressions=450, cost=13)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -364,7 +365,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              video_views_100_quartile=34.2, impressions=450)
+                                                 video_views_100_quartile=34.2, impressions=450)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -382,7 +383,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              impressions=200, video_views=30)
+                                                 impressions=200, video_views=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -396,7 +397,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
         AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                      impressions=200, clicks=30)
+                                         impressions=200, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -408,7 +409,7 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
     def test_ctr(self):
         any_date = date(2019, 1, 1)
         stats = AgeRangeStatistic.objects.create(ad_group=self.ad_group, age_range_id=1, date=any_date,
-                                              impressions=200, clicks=30)
+                                                 impressions=200, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)

@@ -1,14 +1,14 @@
 from contextlib import contextmanager
 from functools import partial
+from unittest.mock import patch
 
 import requests
 from django.test import TestCase
 from rest_framework.status import HTTP_200_OK
-from unittest.mock import patch
 
-from aw_reporting.models import Audience
-from aw_reporting.google_ads.updaters.audiences import update_audiences
 from aw_reporting.google_ads.updaters.audiences import AudienceAWLink
+from aw_reporting.google_ads.updaters.audiences import update_audiences
+from aw_reporting.models import Audience
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 
@@ -91,7 +91,7 @@ def test_response(test_data, url, *args, **kwargs):
     return MockResponse(text=test_csv)
 
 
-class MockResponse(object):
+class MockResponse:
     def __init__(self, status_code=HTTP_200_OK, text=None, **kwargs):
         self.status_code = status_code
         self.text = text

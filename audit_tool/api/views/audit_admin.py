@@ -1,7 +1,7 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK
+from rest_framework.views import APIView
 
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegment
@@ -15,7 +15,7 @@ class AuditAdminAPIView(APIView):
         user_has_permission("userprofile.vet_audit_admin"),
     )
 
-    def patch(self, request, *args, **kwargs):
+    def patch(self, request, *_, **__):
         """
         Update vetting items that should be re-vetted
         """

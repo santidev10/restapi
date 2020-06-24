@@ -18,4 +18,4 @@ class Command(BaseCommand):
             if PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY not in user.get_user_groups():
                 count += 1
                 user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY)
-        logger.info("DONE grant_access_to_media_planning_brand_safety. {} users processed.".format(count))
+        logger.info("DONE grant_access_to_media_planning_brand_safety. %s users processed.", count)

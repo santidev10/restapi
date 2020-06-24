@@ -4,12 +4,12 @@ Administration api serializers module
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import PermissionsMixin
-from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import URLField
-from rest_framework.serializers import CharField
-from rest_framework.serializers import SerializerMethodField
-from rest_framework.serializers import ListField
 from rest_framework.serializers import BooleanField
+from rest_framework.serializers import CharField
+from rest_framework.serializers import ListField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import URLField
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.validators import ValidationError
 
@@ -18,6 +18,7 @@ from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
 from userprofile.models import get_default_accesses
 from userprofile.permissions import PermissionGroupNames
+
 
 class UserActionCreateSerializer(ModelSerializer):
     """
@@ -67,6 +68,7 @@ class UserActionRetrieveSerializer(ModelSerializer):
         """
         if obj.user is not None:
             return obj.user.email
+        return None
 
     def get_first_name(self, obj):
         """
@@ -74,6 +76,7 @@ class UserActionRetrieveSerializer(ModelSerializer):
         """
         if obj.user is not None:
             return obj.user.first_name
+        return None
 
     def get_last_name(self, obj):
         """
@@ -81,6 +84,7 @@ class UserActionRetrieveSerializer(ModelSerializer):
         """
         if obj.user is not None:
             return obj.user.last_name
+        return None
 
 
 class UserSerializer(ModelSerializer):
@@ -125,12 +129,13 @@ class UserUpdateSerializer(ModelSerializer):
     access = ListField(required=False)
     admin = BooleanField(required=False)
 
-    def validate(self, data):
+    def validate(self, attrs):
         """
         Check if user is superuser before allowing to change admin status
         :param data: request data
         :return: data
         """
+        data = attrs
         user = self.context["request"].user
         target = self.instance
         access = data.pop("access", [])
@@ -147,8 +152,7 @@ class UserUpdateSerializer(ModelSerializer):
                 exception = ValidationError("You do not have permission to perform this action.")
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
-            else:
-                data["admin"] = admin_access["value"]
+            data["admin"] = admin_access["value"]
         except (KeyError, IndexError):
             pass
         return data
@@ -161,6 +165,7 @@ class UserUpdateSerializer(ModelSerializer):
 
     def save(self, **kwargs):
         old_status = self.instance.status
+        print(kwargs)
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
         status = request.data.get("status", None)
@@ -168,11 +173,11 @@ class UserUpdateSerializer(ModelSerializer):
 
         admin = self.validated_data.get("admin", None)
         # If setting admin status, give all access
-        if admin == True and admin != user.is_staff:
+        if admin and admin != user.is_staff:
             user.groups.set(Group.objects.exclude(name=PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS))
             user.is_staff = True
         # If revoking admin status, set default access
-        elif admin == False and admin != user.is_staff:
+        elif not admin and admin != user.is_staff:
             default_access = get_default_accesses()
             user.groups.clear()
             user.groups.set(Group.objects.filter(name__in=default_access))

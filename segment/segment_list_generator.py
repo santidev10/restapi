@@ -1,12 +1,11 @@
-from datetime import timedelta
 import logging
 import uuid
+from datetime import timedelta
 
 from django.utils import timezone
 
-from audit_tool.models import AuditCategory
-from brand_safety.auditors.utils import AuditUtils
 import brand_safety.constants as constants
+from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent import PersistentSegmentChannel
@@ -19,7 +18,6 @@ from segment.tasks.generate_segment import generate_segment
 
 logger = logging.getLogger(__name__)
 
-
 """ SegmentListGenerator - Used to generate brand suitable target lists for all AuditCategory values
 
 Procedure:
@@ -31,7 +29,7 @@ Procedure:
 """
 
 
-class SegmentListGenerator(object):
+class SegmentListGenerator:
     MAX_API_CALL_RETRY = 15
     RETRY_SLEEP_COEFFICIENT = 2
     RETRY_ON_CONFLICT = 10000
@@ -51,11 +49,11 @@ class SegmentListGenerator(object):
     VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
-    def __init__(self, type):
+    def __init__(self, generation_type):
         """
-        :param type: int -> Set configuration type (See run method)
+        :param generation_type: int -> Set configuration type (See run method)
         """
-        self.type = type
+        self.type = generation_type
         self.processed_categories = set()
 
     def run(self):
@@ -97,17 +95,19 @@ class SegmentListGenerator(object):
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
             try:
-                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories").value(
-                    category_name).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                    self.MINIMUM_SUBSCRIBERS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories") \
+                            .value(category_name).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers") \
+                            .gte(self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .gte(self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
+            # pylint: disable=broad-except
             except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_channel_whitelist")
                 new_category_segment.delete()
 
@@ -127,18 +127,21 @@ class SegmentListGenerator(object):
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
             try:
-                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories").value(
-                    category_name).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-                    self.SENTIMENT_THRESHOLD).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories") \
+                            .value(category_name).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views") \
+                            .gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment") \
+                            .gte(self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .gte(self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
+            # pylint: disable=broad-except
             except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_video_whitelist")
                 new_category_segment.delete()
 
@@ -157,17 +160,20 @@ class SegmentListGenerator(object):
                 audit_category_id=None
             )
             try:
-                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-                    self.SENTIMENT_THRESHOLD).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views") \
+                            .gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment") \
+                            .gte(self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .gte(self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_video_whitelist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
+            # pylint: disable=broad-except
             except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_video_whitelist")
                 new_master_video_whitelist.delete()
 
@@ -186,17 +192,20 @@ class SegmentListGenerator(object):
                 audit_category_id=None
             )
             try:
-                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
-                    self.SENTIMENT_THRESHOLD).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
-                    self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views") \
+                            .gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment") \
+                            .lt(self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .lte(self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
                 results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_video_blacklist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
+            # pylint: disable=broad-except
             except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_video_blacklist")
                 new_master_video_blacklist.delete()
 
@@ -215,16 +224,18 @@ class SegmentListGenerator(object):
                 audit_category_id=None
             )
             try:
-                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                    self.MINIMUM_SUBSCRIBERS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers") \
+                            .gte(self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .gte(self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_channel_whitelist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_channel_whitelist")
                 new_master_channel_whitelist.delete()
 
@@ -243,16 +254,18 @@ class SegmentListGenerator(object):
                 audit_category_id=None
             )
             try:
-                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                    self.MINIMUM_SUBSCRIBERS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
-                    self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers") \
+                            .gte(self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score") \
+                            .lte(self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
                 results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_channel_blacklist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
+            # pylint: disable=broad-except
             except Exception:
+                # pylint: enable=broad-except
                 logger.exception("Error in _generate_master_channel_blacklist")
                 new_master_channel_blacklist.delete()
 
@@ -296,13 +309,15 @@ class SegmentListGenerator(object):
         """
         segment.details = details["statistics"]
         segment.save()
-        PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=details["s3_key"], created_at=timezone.now())
-        logger.debug(
-            f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
+        PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=details["s3_key"],
+                                                   created_at=timezone.now())
+        logger.debug("Successfully generated export for brand suitable list: id: %s, title: %s",
+                     segment.id, segment.title)
 
     def check_should_update(self, segment_model, is_master, category_id, segment_type):
         date_threshold = timezone.now() - timedelta(days=self.UPDATE_THRESHOLD)
-        existing_items = segment_model.objects.filter(is_master=is_master, audit_category_id=category_id, category=segment_type).order_by("-created_at")
+        existing_items = segment_model.objects.filter(is_master=is_master, audit_category_id=category_id,
+                                                      category=segment_type).order_by("-created_at")
         if not existing_items.exists() or existing_items.first().created_at <= date_threshold:
             return True
         return False

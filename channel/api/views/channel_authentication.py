@@ -18,11 +18,11 @@ from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
+from userprofile.api.views.user_auth import UserAuthApiView
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
-from userprofile.api.views.user_auth import UserAuthApiView
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.es_components_cache import flush_cache
@@ -41,7 +41,9 @@ class ChannelAuthenticationApiView(APIView):
 
         try:
             credentials = self.get_credentials(code)
+        # pylint: disable=broad-except
         except Exception:
+            # pylint: enable=broad-except
             return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "Invalid code"})
 
         youtube = YoutubeAPIConnector(access_token=credentials.access_token)
@@ -51,14 +53,15 @@ class ChannelAuthenticationApiView(APIView):
 
         if not items:
             return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "This account doesn't include any channels. "
-                                                                         "Please try to authorize another YouTube account with channels."})
+                                                                         "Please try to authorize another YouTube "
+                                                                         "account with channels."})
 
         channel_id = items[0].get("id")
         try:
             auth_channel = AuthChannel.objects.get(channel_id=channel_id)
             if auth_channel.token_revocation is not None:
-                AuthChannel.objects\
-                    .filter(channel_id=channel_id)\
+                AuthChannel.objects \
+                    .filter(channel_id=channel_id) \
                     .update(channel_id=channel_id,
                             refresh_token=credentials.refresh_token,
                             access_token=credentials.access_token,
@@ -151,7 +154,9 @@ class ChannelAuthenticationApiView(APIView):
         token_info_url = GOOGLE_API_TOKENINFO_URL_TEMPLATE.format(access_token)
         try:
             response = requests.get(token_info_url)
+        # pylint: disable=broad-except
         except Exception:
+            # pylint: enable=broad-except
             return None
         if response.status_code != 200:
             return None
@@ -202,7 +207,9 @@ class ChannelAuthenticationApiView(APIView):
         }
         try:
             response_data = self.call_people_google_api(user_id, token, ["photos", "names"])
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             return user_data
         photos = response_data.get("photos", [])
         user_profile_image_url = self.obtain_user_avatar_from_response(photos)
@@ -222,7 +229,9 @@ class ChannelAuthenticationApiView(APIView):
         # --> obtain token info
         try:
             response = requests.get(token_info_url)
+        # pylint: disable=broad-except
         except Exception:
+            # pylint: enable=broad-except
             return
         if response.status_code != 200:
             return
@@ -232,7 +241,9 @@ class ChannelAuthenticationApiView(APIView):
         user_google_id = response.get("sub")
         try:
             response_data = self.call_people_google_api(user_google_id, access_token, ["photos"])
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             return
         # <-- obtain user from people google
         # --> set user avatar
@@ -260,3 +271,4 @@ class ChannelAuthenticationApiView(APIView):
             if metadata.get("primary", False) and metadata.get("source", {}).get("type") == "PROFILE":
                 profile_image_url = photo.get("url", "").replace("s100", "s250")  # change avatar size
                 return profile_image_url
+        return None

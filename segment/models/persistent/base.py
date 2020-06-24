@@ -8,21 +8,21 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BooleanField
 from django.db.models import CharField
-from django.db.models import Manager
-from django.db.models import TextField
 from django.db.models import DateTimeField
-from django.db.models import Model
 from django.db.models import IntegerField
+from django.db.models import Manager
+from django.db.models import Model
+from django.db.models import TextField
 from django.db.models import UUIDField
 from django.utils import timezone
 
-from .constants import PersistentSegmentCategory
-from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
-from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from audit_tool.models import AuditCategory
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.models import Timestampable
+from .constants import PersistentSegmentCategory
+from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
+from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ class BasePersistentSegment(Timestampable):
 
     related = None  # abstract property
     segment_type = None  # abstract property
-    files = None # abstract property
-    related_aw_statistics_model = None # abstract property
+    files = None  # abstract property
+    related_aw_statistics_model = None  # abstract property
 
     export_content_type = "application/CSV"
     export_last_modified = None
@@ -65,6 +65,7 @@ class BasePersistentSegment(Timestampable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_BUCKET_NAME)
+        self.s3_filename = None
 
     def export_file(self, queryset=None, filename=None):
         now = timezone.now()
@@ -79,6 +80,7 @@ class BasePersistentSegment(Timestampable):
     def audit_category(self):
         if self.audit_category_id:
             return AuditCategory.objects.get(id=self.audit_category_id)
+        return None
 
     @audit_category.setter
     def audit_category(self, audit_category):
@@ -92,22 +94,26 @@ class BasePersistentSegment(Timestampable):
     def get_es_manager(self):
         raise NotImplementedError
 
+    # pylint: disable=signature-differs
     def delete(self, *args, **kwargs):
         # Delete segment references from Elasticsearch
         # Method provided by segment_mixin
         self.remove_all_from_segment()
         super().delete(*args, **kwargs)
         return self
+    # pylint: enable=signature-differs
 
     def get_s3_key(self, from_db=False, datetime=None):
         try:
             # Get latest filename from db to retrieve from s3
             if from_db is True:
-                latest_filename = PersistentSegmentFileUpload.objects.filter(segment_uuid=self.uuid).order_by("-created_at")[0].filename
+                latest_filename = \
+                PersistentSegmentFileUpload.objects.filter(segment_uuid=self.uuid).order_by("-created_at")[0].filename
                 return latest_filename
-            else:
-                # Get new filename to upload using date string
-                key = S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime or timezone.now())
+            # Get new filename to upload using date string
+            key = S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type,
+                                                                    segment_title=self.title,
+                                                                    datetime=datetime or timezone.now())
         except IndexError:
             key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
@@ -140,7 +146,9 @@ class BasePersistentSegment(Timestampable):
         try:
             key = self.get_s3_key(from_db=True)
             s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             raise e
         export_content = s3_object.iter_chunks()
         return export_content

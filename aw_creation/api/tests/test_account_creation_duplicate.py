@@ -65,112 +65,112 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'account', 'updated_at',
-                'is_paused', 'is_ended', 'is_approved', 'updated_at',
-                'campaign_creations',
+                "id", "name", "account", "updated_at",
+                "is_paused", "is_ended", "is_approved", "updated_at",
+                "campaign_creations",
             }
         )
 
-        campaign_data = data['campaign_creations'][0]
+        campaign_data = data["campaign_creations"][0]
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name', 'updated_at',
-                'start', 'end',
-                'budget', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules', 'ad_group_creations',
+                "id", "name", "updated_at",
+                "start", "end",
+                "budget", "languages",
+                "devices", "frequency_capping", "ad_schedule_rules",
+                "location_rules", "ad_group_creations",
                 "type", "delivery_method", "video_networks",
-                'content_exclusions',
+                "content_exclusions",
             }
         )
         self.assertEqual(
-            campaign_data['type'],
+            campaign_data["type"],
             dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
                  name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
-            campaign_data['delivery_method'],
+            campaign_data["delivery_method"],
             dict(id=CampaignCreation.STANDARD_DELIVERY,
                  name=CampaignCreation.DELIVERY_METHODS[0][1]),
         )
         self.assertEqual(
-            campaign_data['video_networks'],
+            campaign_data["video_networks"],
             [dict(id=uid, name=n)
              for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
-        self.assertEqual(len(campaign_data['languages']), 1)
+        self.assertEqual(len(campaign_data["languages"]), 1)
         self.assertEqual(
-            campaign_data['languages'][0],
+            campaign_data["languages"][0],
             dict(id=1000, name="English"),
         )
-        self.assertEqual(len(campaign_data['location_rules']), 1)
+        self.assertEqual(len(campaign_data["location_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['location_rules'][0].keys()),
+            set(campaign_data["location_rules"][0].keys()),
             {
-                'longitude',
-                'radius',
-                'latitude',
-                'bid_modifier',
-                'radius_units',
-                'geo_target',
+                "longitude",
+                "radius",
+                "latitude",
+                "bid_modifier",
+                "radius_units",
+                "geo_target",
             }
         )
-        self.assertEqual(len(campaign_data['devices']), 3)
+        self.assertEqual(len(campaign_data["devices"]), 3)
         self.assertEqual(
-            set(campaign_data['devices'][0].keys()),
-            {'id', 'name'},
+            set(campaign_data["devices"][0].keys()),
+            {"id", "name"},
         )
         self.assertEqual(
-            set(campaign_data['location_rules'][0]['radius_units']),
-            {'id', 'name'}
+            set(campaign_data["location_rules"][0]["radius_units"]),
+            {"id", "name"}
         )
-        self.assertEqual(len(campaign_data['frequency_capping']), 1)
+        self.assertEqual(len(campaign_data["frequency_capping"]), 1)
         self.assertEqual(
-            set(campaign_data['frequency_capping'][0].keys()),
+            set(campaign_data["frequency_capping"][0].keys()),
             {
-                'event_type',
-                'limit',
-                'level',
-                'time_unit',
+                "event_type",
+                "limit",
+                "level",
+                "time_unit",
             }
         )
-        for f in ('event_type', 'level', 'time_unit'):
+        for f in ("event_type", "level", "time_unit"):
             self.assertEqual(
-                set(campaign_data['frequency_capping'][0][f].keys()),
-                {'id', 'name'}
+                set(campaign_data["frequency_capping"][0][f].keys()),
+                {"id", "name"}
             )
 
-        self.assertGreaterEqual(len(campaign_data['ad_schedule_rules']), 1)
+        self.assertGreaterEqual(len(campaign_data["ad_schedule_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['ad_schedule_rules'][0].keys()),
+            set(campaign_data["ad_schedule_rules"][0].keys()),
             {
-                'from_hour',
-                'from_minute',
-                'campaign_creation',
-                'to_minute',
-                'to_hour',
-                'day',
+                "from_hour",
+                "from_minute",
+                "campaign_creation",
+                "to_minute",
+                "to_hour",
+                "day",
             }
         )
-        ad_group_data = campaign_data['ad_group_creations'][0]
+        ad_group_data = campaign_data["ad_group_creations"][0]
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'updated_at', 'name', 'ad_creations',
-                'genders', 'parents', 'age_ranges', 'max_rate',
-            'video_ad_format',
+                "id", "updated_at", "name", "ad_creations",
+                "genders", "parents", "age_ranges", "max_rate",
+                "video_ad_format",
                 # targeting
-                'targeting',
+                "targeting",
             }
         )
         self.assertEqual(
-            set(ad_group_data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(ad_group_data["targeting"]),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
         self.assertEqual(
-            set(ad_group_data['targeting']['keyword']["negative"][0]),
-            {'criteria', 'is_negative', 'type', 'name'}
+            set(ad_group_data["targeting"]["keyword"]["negative"][0]),
+            {"criteria", "is_negative", "type", "name"}
         )
 
-        self.assertEqual(len(ad_group_data['ad_creations']), 1)
+        self.assertEqual(len(ad_group_data["ad_creations"]), 1)

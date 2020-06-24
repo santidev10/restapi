@@ -2,8 +2,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit_tool.utils.audit_utils import AuditUtils
-from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class AuditVettingOptionsAPIView(APIView):

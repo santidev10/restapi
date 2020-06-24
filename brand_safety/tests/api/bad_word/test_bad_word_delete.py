@@ -1,7 +1,7 @@
 from rest_framework.status import HTTP_204_NO_CONTENT
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
@@ -93,7 +93,7 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         soft_delete_word = self.words[0]
         BadWord.objects.bulk_create([BadWord(**opts) for opts in self.words])
-        response = self._request(soft_delete_word["id"])
+        self._request(soft_delete_word["id"])
         # self.bad_word created during setup + self.words created
         self.assertEqual(len(self.words) + 1, BadWord.all_objects.all().count())
         self.assertTrue(BadWord.all_objects.filter(pk=soft_delete_word["id"]).exists())

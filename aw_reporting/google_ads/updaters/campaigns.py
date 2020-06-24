@@ -1,18 +1,18 @@
+import logging
 from datetime import datetime
 from datetime import timedelta
 
-from django.db.models import Max
-from django.db import transaction
-from django.utils import timezone
-import logging
 import pytz
+from django.db import transaction
+from django.db.models import Max
+from django.utils import timezone
 
-from aw_reporting.adwords_reports import campaign_performance_report
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS
+from aw_reporting.adwords_reports import campaign_performance_report
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.models import Account
 from aw_reporting.models import ACTION_STATUSES
+from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
@@ -24,9 +24,7 @@ from aw_reporting.update.adwords_utils import get_base_stats
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
-
 logger = logging.getLogger(__name__)
-
 
 TRACKING_CLICK_TYPES = (
     ("Website", "clicks_website"),
@@ -129,7 +127,8 @@ class CampaignUpdater(UpdateMixin):
             try:
                 campaign = Campaign.objects.get(pk=campaign_id)
 
-                # Continue if the campaign's sync time is less than its update time, as it is pending to be synced with viewiq
+                # Continue if the campaign's sync time is less than its update time, as it is pending to be synced
+                # with viewiq
                 if campaign.sync_time and campaign.sync_time < campaign.update_time:
                     continue
 

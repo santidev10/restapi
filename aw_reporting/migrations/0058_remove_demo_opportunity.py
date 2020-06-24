@@ -6,13 +6,13 @@ from django.db import migrations
 
 
 def remove_old_demo_opportunity(apps, schema_editor):
-    opportunity_model = apps.get_model('aw_reporting.Opportunity')
+    opportunity_model = apps.get_model("aw_reporting.Opportunity")
     opportunity_model.objects.filter(id="").delete()
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('aw_reporting', '0057_account_denorm_stats'),
+        ("aw_reporting", "0057_account_denorm_stats"),
     ]
 
     operations = [

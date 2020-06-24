@@ -3,12 +3,12 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields.jsonb
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0021_auto_20190425_2304'),
     ]
@@ -21,9 +21,13 @@ class Migration(migrations.Migration):
                 ('processed', models.DateTimeField(db_index=True, default=None, null=True)),
                 ('clean', models.BooleanField(db_index=True, default=True)),
                 ('word_hits', django.contrib.postgres.fields.jsonb.JSONField(default={}, null=True)),
-                ('audit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditProcessor')),
-                ('channel', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='avp_channel', to='audit_tool.AuditChannel')),
-                ('channel_source', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='avp_channel_source', to='audit_tool.AuditChannel')),
+                ('audit',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='audit_tool.AuditProcessor')),
+                ('channel', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='avp_channel',
+                                              to='audit_tool.AuditChannel')),
+                ('channel_source',
+                 models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                   related_name='avp_channel_source', to='audit_tool.AuditChannel')),
             ],
         ),
         migrations.AlterUniqueTogether(

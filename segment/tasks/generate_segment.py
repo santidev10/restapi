@@ -1,14 +1,14 @@
-from collections import defaultdict
 import logging
 import os
 import tempfile
+from collections import defaultdict
 
 from django.conf import settings
 
 from es_components.constants import Sections
-from segment.utils.bulk_search import bulk_search
-from segment.models.constants import SourceListType
 from segment.models import CustomSegmentSourceFileUpload
+from segment.models.constants import SourceListType
+from segment.utils.bulk_search import bulk_search
 from segment.utils.generate_segment_utils import GenerateSegmentUtils
 
 BATCH_SIZE = 5000
@@ -18,6 +18,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-nested-blocks,too-many-statements
 def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
     """
     Helper method to create segments
@@ -36,14 +37,15 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     context = generate_utils.get_default_serialization_context()
     source_list = None
     source_type = None
+    # pylint: disable=broad-except
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
     except CustomSegmentSourceFileUpload.DoesNotExist:
         pass
     except Exception:
-        logger.exception(f"Error trying to retrieve source list for "
-                         f"segment: {segment.title}, segment_type: {segment.segment_type}")
+        logger.exception("Error trying to retrieve source list for "
+                         "segment: %s, segment_type: %s", segment.title, segment.segment_type)
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0
@@ -56,7 +58,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             options = default_search_config["options"]
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
-                                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
+                                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS,
+                                     include_cursor_exclusions=True):
                 if source_list:
                     if source_type == SourceListType.INCLUSION.value:
                         batch = [item for item in batch if item.main.id in source_list]
@@ -92,12 +95,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         }
         return results
 
-    except Exception:
-        raise
-
     finally:
         os.remove(filename)
-
+# pylint: enable=too-many-nested-blocks,too-many-statements
 
 class MaxItemsException(Exception):
     pass

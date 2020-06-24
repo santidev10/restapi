@@ -1,3 +1,4 @@
+import urllib
 from unittest.mock import PropertyMock
 from unittest.mock import patch
 
@@ -15,8 +16,6 @@ from utils.unittests.reverse import reverse
 from utils.unittests.segment_functionality_mixin import SegmentFunctionalityMixin
 from utils.unittests.test_case import ExtendedAPITestCase
 from video.api.urls.names import Name
-
-import urllib
 
 
 class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCase):
@@ -75,8 +74,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         """
         self.create_admin_user()
         video_ids = [str(next(int_iterator)) for i in range(2)]
-        most_relevant_video_title = \
-            "Herp derpsum herp derp sherper herp derp derpus herpus derpus"
+        most_relevant_video_title = "Herp derpsum herp derp sherper herp derp derpus herpus derpus"
         most_relevant_video = Video(**{
             "meta": {
                 "id": video_ids[0],
@@ -107,9 +105,9 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "sort": "_score:desc",
         })
         desc_response = self.client.get(desc_url)
-        desc_items = desc_response.data['items']
+        desc_items = desc_response.data["items"]
         self.assertEqual(
-            desc_items[0]['general_data']['title'],
+            desc_items[0]["general_data"]["title"],
             most_relevant_video_title
         )
 
@@ -119,8 +117,8 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "sort": "_score:asc",
         })
         asc_response = self.client.get(asc_url)
-        asc_items = asc_response.data['items']
+        asc_items = asc_response.data["items"]
         self.assertEqual(
-            asc_items[-1]['general_data']['title'],
+            asc_items[-1]["general_data"]["title"],
             most_relevant_video_title
         )

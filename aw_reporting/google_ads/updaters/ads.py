@@ -1,8 +1,8 @@
 from datetime import datetime
 from datetime import timedelta
 
-from django.db.models import Max
 import pytz
+from django.db.models import Max
 
 from aw_reporting.adwords_reports import ad_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin

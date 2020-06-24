@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.dashboard_charts import DeliveryChart, Indicator
+from aw_reporting.charts.dashboard_charts import DeliveryChart
+from aw_reporting.charts.dashboard_charts import Indicator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
@@ -55,7 +56,7 @@ class DashboardPerformanceChartApiView(APIView):
             account_ids.append(item.account.id)
 
         show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-        chart = DeliveryChart(account_ids, segmented_by="campaigns",
+        chart = DeliveryChart(accounts=account_ids, segmented_by="campaigns",
                               show_aw_costs=show_aw_costs, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
@@ -63,7 +64,7 @@ class DashboardPerformanceChartApiView(APIView):
     def filter_hidden_sections(self):
         user = self.request.user
         if not user.get_aw_settings() \
-                .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             hidden_indicators = Indicator.CPV, Indicator.CPM
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404

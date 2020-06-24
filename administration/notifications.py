@@ -6,20 +6,20 @@ import os
 import re
 from logging import Filter
 from logging import Handler
+from re import Pattern
 
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import get_template
-from utils.es_components_exporter import ESDataS3ExportApiView
 
+from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.lang import get_request_prefix
 
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
 }
-EMAIL_IMAGES_DIR = os.path.join(settings.STATIC_ROOT,
-                                'img/notifications')
+EMAIL_IMAGES_DIR = os.path.join(settings.STATIC_ROOT, "img/notifications")
 
 
 def send_new_registration_email(email_data):
@@ -40,7 +40,6 @@ def send_new_registration_email(email_data):
            "User type: {user_type} \n\n" \
            "Please accept the user: {user_list_link} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
-    return
 
 
 def send_new_channel_authentication_email(user, channel_id, request):
@@ -61,13 +60,13 @@ def send_new_channel_authentication_email(user, channel_id, request):
            "Link to channel: {link} \n\n" \
            "Please accept the user: {user_list_link} \n\n" \
         .format(
-        host=request.get_host(),
-        email=user.email,
-        first_name=user.first_name, last_name=user.last_name,
-        channel_id=channel_id,
-        link="{}{}/research/channels/{}".format(prefix, host, channel_id),
-        user_list_link="{}{}/admin/users".format(prefix, host),
-    )
+            host=request.get_host(),
+            email=user.email,
+            first_name=user.first_name, last_name=user.last_name,
+            channel_id=channel_id,
+            link="{}{}/research/channels/{}".format(prefix, host, channel_id),
+            user_list_link="{}{}/admin/users".format(prefix, host),
+        )
     send_mail(subject, text, sender, to, fail_silently=True)
 
 
@@ -90,7 +89,7 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
     html_email = generate_html_email(text_header, text_content, host)
     send_email(
         subject=subject,
-        recipient_list=[to] if type(to) is str else to,
+        recipient_list=[to] if isinstance(to, str) else to,
         html_message=html_email,
         from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
         fail_silently=fail_silently
@@ -209,7 +208,7 @@ class Levels:
 
 
 class NotFoundWarningLoggingFilter(Filter):
-    pattern = None
+    pattern: Pattern = None
 
     def filter(self, record):
         assert self.pattern is not None, \
@@ -218,12 +217,12 @@ class NotFoundWarningLoggingFilter(Filter):
 
 
 class AudienceNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
-    pattern = "Audience \d+ not found"
+    pattern = r"Audience \d+ not found"
 
 
 class TopicNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
-    pattern = "topic not found: \D+"
+    pattern = r"topic not found: \D+"
 
 
 class UndefinedCriteriaWarningLoggingFilter(NotFoundWarningLoggingFilter):
-    pattern = "Undefined criteria = \D+\d+"
+    pattern = r"Undefined criteria = \D+\d+"

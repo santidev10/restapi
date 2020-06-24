@@ -6,52 +6,52 @@ from django.db.models import BigIntegerField
 from django.db.models.functions import Cast
 
 MODEL_NAMES = [
-    'Account',
-    'Ad',
-    'AdGroup',
-    'Campaign',
-    'RemarkList',
+    "Account",
+    "Ad",
+    "AdGroup",
+    "Campaign",
+    "RemarkList",
 ]
 
 FOREIGN_KEYS = [
-    # ('account_managers', 'from_account'),
-    # ('account_managers', 'to_account'),
-    ('awaccountpermission', 'account', 'Account', 'mcc_permissions'),
-    ('campaign', 'account', 'Account', 'campaigns'),
-    ('adstatistic', 'ad', 'Ad', 'statistics'),
-    ('ad', 'ad_group', 'AdGroup', 'ads'),
-    ('adgroupstatistic', 'ad_group', 'AdGroup', 'statistics'),
-    ('agerangestatistic', 'ad_group', 'AdGroup', 'age_statistics'),
-    ('audiencestatistic', 'ad_group', 'AdGroup', 'audiences'),
-    ('citystatistic', 'ad_group', 'AdGroup', 'cities_stats'),
-    ('genderstatistic', 'ad_group', 'AdGroup', 'gender_statistics'),
-    ('keywordstatistic', 'ad_group', 'AdGroup', 'keywords'),
-    ('parentstatistic', 'ad_group', 'AdGroup', 'parent_statistics'),
-    ('remarkstatistic', 'ad_group', 'AdGroup', 'remark_statistic'),
-    ('topicstatistic', 'ad_group', 'AdGroup', 'topics'),
-    ('videocreativestatistic', 'ad_group', 'AdGroup', 'videos_stats'),
-    ('ytchannelstatistic', 'ad_group', 'AdGroup', 'channel_statistics'),
-    ('ytvideostatistic', 'ad_group', 'AdGroup', 'managed_video_statistics'),
-    ('campaigngendertargeting', 'campaign', 'Campaign', 'gender_targeting'),
-    ('campaignlocationtargeting', 'campaign', 'Campaign', 'location_targeting'),
-    ('adgroup', 'campaign', 'Campaign', 'ad_groups'),
-    ('campaignstatistic', 'campaign', 'Campaign', 'statistics'),
-    ('geotargeting', 'campaign', 'Campaign', 'geo_performance'),
-    ('campaignhourlystatistic', 'campaign', 'Campaign', 'hourly_statistics'),
-    ('campaignagerangetargeting', 'campaign', 'Campaign', 'age_range_targeting'),
-    ('remarkstatistic', 'remark', 'RemarkList', None),
+    # ("account_managers", "from_account"),
+    # ("account_managers", "to_account"),
+    ("awaccountpermission", "account", "Account", "mcc_permissions"),
+    ("campaign", "account", "Account", "campaigns"),
+    ("adstatistic", "ad", "Ad", "statistics"),
+    ("ad", "ad_group", "AdGroup", "ads"),
+    ("adgroupstatistic", "ad_group", "AdGroup", "statistics"),
+    ("agerangestatistic", "ad_group", "AdGroup", "age_statistics"),
+    ("audiencestatistic", "ad_group", "AdGroup", "audiences"),
+    ("citystatistic", "ad_group", "AdGroup", "cities_stats"),
+    ("genderstatistic", "ad_group", "AdGroup", "gender_statistics"),
+    ("keywordstatistic", "ad_group", "AdGroup", "keywords"),
+    ("parentstatistic", "ad_group", "AdGroup", "parent_statistics"),
+    ("remarkstatistic", "ad_group", "AdGroup", "remark_statistic"),
+    ("topicstatistic", "ad_group", "AdGroup", "topics"),
+    ("videocreativestatistic", "ad_group", "AdGroup", "videos_stats"),
+    ("ytchannelstatistic", "ad_group", "AdGroup", "channel_statistics"),
+    ("ytvideostatistic", "ad_group", "AdGroup", "managed_video_statistics"),
+    ("campaigngendertargeting", "campaign", "Campaign", "gender_targeting"),
+    ("campaignlocationtargeting", "campaign", "Campaign", "location_targeting"),
+    ("adgroup", "campaign", "Campaign", "ad_groups"),
+    ("campaignstatistic", "campaign", "Campaign", "statistics"),
+    ("geotargeting", "campaign", "Campaign", "geo_performance"),
+    ("campaignhourlystatistic", "campaign", "Campaign", "hourly_statistics"),
+    ("campaignagerangetargeting", "campaign", "Campaign", "age_range_targeting"),
+    ("remarkstatistic", "remark", "RemarkList", None),
 ]
 
 
 def copy_pk(apps, schema_editor):
     for model_name in MODEL_NAMES:
-        model = apps.get_model(f'aw_reporting.{model_name}')
-        model.objects.update(new_id=Cast('id', output_field=BigIntegerField()))
+        model = apps.get_model(f"aw_reporting.{model_name}")
+        model.objects.update(new_id=Cast("id", output_field=BigIntegerField()))
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('aw_reporting', '0082_temporary_remove_demo'),
+        ("aw_reporting", "0082_temporary_remove_demo"),
     ]
 
     operations = [
@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
         *[
             migrations.AddField(
                 model_name=model_name.lower(),
-                name='new_id',
+                name="new_id",
                 field=models.BigIntegerField(null=True),
             ) for model_name in MODEL_NAMES
         ],
@@ -80,7 +80,7 @@ class Migration(migrations.Migration):
         *[
             migrations.RemoveField(
                 model_name=model_name.lower(),
-                name='id',
+                name="id",
             ) for model_name in MODEL_NAMES
         ],
 
@@ -88,7 +88,7 @@ class Migration(migrations.Migration):
         *[
             migrations.AlterField(
                 model_name=model_name.lower(),
-                name='new_id',
+                name="new_id",
                 field=models.BigAutoField(primary_key=True, serialize=False),
             ) for model_name in MODEL_NAMES
         ],
@@ -99,7 +99,7 @@ class Migration(migrations.Migration):
                 model_name=table,
                 name=column,
                 field=models.ForeignKey(on_delete=models.deletion.CASCADE,
-                                        to=f'aw_reporting.{model_name}',
+                                        to=f"aw_reporting.{model_name}",
                                         **(dict(related_name=related_name) if related_name is not None else dict()),
                                         )
             ) for table, column, model_name, related_name in FOREIGN_KEYS
@@ -109,8 +109,8 @@ class Migration(migrations.Migration):
         *[
             migrations.RenameField(
                 model_name=model_name.lower(),
-                old_name='new_id',
-                new_name='id',
+                old_name="new_id",
+                new_name="id",
             ) for model_name in MODEL_NAMES
         ],
 

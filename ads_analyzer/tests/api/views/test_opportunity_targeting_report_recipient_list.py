@@ -6,7 +6,6 @@ from django.db.models.signals import post_save
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.unittests.s3_mock import mock_s3
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
@@ -17,6 +16,7 @@ from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -80,7 +80,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRec
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
-        test_user = get_user_model().objects.create(email="test@email.com", first_name="TestUser", last_name="TestUser")
+        test_user = get_user_model().objects.create(email="test@email.com", first_name="TestUser",
+                                                    last_name="TestUser")
         with patch.object(post_save, "send"):
             report = OpportunityTargetingReport.objects.create(
                 opportunity=opportunity,

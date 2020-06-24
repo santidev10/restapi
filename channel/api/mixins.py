@@ -4,17 +4,19 @@ Channel api mixins module
 import re
 
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_503_SERVICE_UNAVAILABLE
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from utils.youtube_api import YoutubeAPIConnector, YoutubeAPIConnectorException
 from utils.utils import convert_subscriber_count
+from utils.youtube_api import YoutubeAPIConnector
+from utils.youtube_api import YoutubeAPIConnectorException
 
 
-class ChannelYoutubeSearchMixin(object):
+class ChannelYoutubeSearchMixin:
     """
     Mixin class for searching channels on youtube
     """
+
     def __initialize_youtube_connector(self):
         """
         Set up youtube_connector
@@ -32,7 +34,7 @@ class ChannelYoutubeSearchMixin(object):
             channels_ids = self.youtube_connector.obtain_user_channels(
                 user_id).get("items", [])
             if not channels_ids:
-                return
+                return None
             return channels_ids[0].get("id")
         try:
             channel_id = re.findall(
@@ -48,7 +50,7 @@ class ChannelYoutubeSearchMixin(object):
         except TypeError:
             video_id = None
         if not video_id:
-            return
+            return None
         return self.__get_video_youtube_channel_id(video_id[0])
 
     def __get_video_youtube_channel_id(self, video_id):
@@ -94,8 +96,7 @@ class ChannelYoutubeSearchMixin(object):
                 channels_info = channels_info + channels_data
         return channels_info
 
-    def __get_response_data(
-            self, next_page_token=None, channels=None, channels_ids=None):
+    def __get_response_data(self, next_page_token=None, channels=None, channels_ids=None):
         """
         Prepare response json
         """
@@ -179,10 +180,11 @@ class ChannelYoutubeSearchMixin(object):
         )
 
 
-class ChannelYoutubeStatisticsMixin(object):
+class ChannelYoutubeStatisticsMixin:
     """
     Obtain channel stats from youtube
     """
+
     def parse_videos_info(self, videos_details):
         """
         Get parsed videos details
@@ -249,9 +251,9 @@ class ChannelYoutubeStatisticsMixin(object):
         channel_id = self.kwargs.get("pk")
         if not channel_id:
             return Response(
-                    status=HTTP_400_BAD_REQUEST,
-                    data={"error": "no channel id were submitted"}
-                )
+                status=HTTP_400_BAD_REQUEST,
+                data={"error": "no channel id were submitted"}
+            )
         return self.__get_statistics()
 
     def __initialize_youtube_connector(self):
@@ -353,4 +355,4 @@ def chunks(l, n):
     Yield successive n-sized chunks from l
     """
     for i in range(0, len(l), n):
-        yield l[i:i+n]
+        yield l[i:i + n]

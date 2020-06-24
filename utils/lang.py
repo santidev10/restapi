@@ -121,7 +121,9 @@ def fasttext_lang(string):
             return langid.classify(string)[0].lower()
         return fast_text_result[0][0].split("__")[-1].lower()
     # pylint: disable=broad-except
+    # pylint: disable=broad-except
     except Exception:
+    # pylint: enable=broad-except
         return ""
     # pylint: enable=broad-except
 

@@ -1,9 +1,8 @@
-from datetime import datetime
 import time
+from datetime import datetime
 
-from segment.models.persistent.base import BasePersistentSegment
 import brand_safety.constants as constants
-from distutils.util import strtobool
+from segment.models.persistent.base import BasePersistentSegment
 
 
 class ModelDoesNotExist(Exception):
@@ -17,7 +16,7 @@ def SEGMENT_TYPES():
 
 @property
 def PERSISTENT_SEGMENT_MODELS():
-    return [m for m in BasePersistentSegment.__subclasses__()]
+    return list(BasePersistentSegment.__subclasses__())
 
 
 @property
@@ -37,22 +36,21 @@ def retry_on_conflict(method, *args, retry_amount=5, sleep_coeff=2, **kwargs):
     Retry on Document Conflicts
     """
     tries_count = 0
-    try:
-        while tries_count <= retry_amount:
-            try:
-                result = method(*args, **kwargs)
-            except Exception as err:
-                if "ConflictError(409" in str(err):
-                    tries_count += 1
-                    if tries_count <= retry_amount:
-                        sleep_seconds_count = tries_count ** sleep_coeff
-                        time.sleep(sleep_seconds_count)
-                else:
-                    raise err
+    while tries_count <= retry_amount:
+        try:
+            result = method(*args, **kwargs)
+        # pylint: disable=broad-except
+        except Exception as err:
+            # pylint: enable=broad-except
+            if "ConflictError(409" in str(err):
+                tries_count += 1
+                if tries_count <= retry_amount:
+                    sleep_seconds_count = tries_count ** sleep_coeff
+                    time.sleep(sleep_seconds_count)
             else:
-                return result
-    except Exception:
-        raise
+                raise err
+        else:
+            return result
 
 
 def generate_search_with_params(manager, query, sort=None):
@@ -63,7 +61,9 @@ def generate_search_with_params(manager, query, sort=None):
     :param sort:
     :return:
     """
+    # pylint: disable=protected-access
     search = manager._search()
+    # pylint: enable=protected-access
     search = search.query(query)
     if sort:
         search = search.sort(sort)
@@ -94,6 +94,7 @@ def validate_numeric(value):
     except ValueError:
         raise ValueError(f"The value: '{value}' is not a valid number.")
     return to_num
+
 
 def validate_boolean(value):
     if isinstance(value, bool) or (isinstance(value, int) and value in [0, 1]):

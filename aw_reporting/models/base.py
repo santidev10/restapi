@@ -1,6 +1,8 @@
 import logging
 
-from django.db import models, IntegrityError, transaction
+from django.db import IntegrityError
+from django.db import models
+from django.db import transaction
 
 from utils.utils import chunks_generator
 

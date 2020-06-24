@@ -34,7 +34,7 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         mock_get_items.return_value = []
-        user = self.create_test_user(True)
+        user = self.create_test_user(auth=True)
 
         self.fill_all_groups(user)
         video_id = "video_id"
@@ -50,7 +50,7 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
     @patch("brand_safety.auditors.utils.AuditUtils.get_items", return_value=[])
     def test_user_should_see_chart_data(self, mock_get_items):
         mock_get_items.return_value = []
-        user = self.create_test_user(True)
+        user = self.create_test_user(auth=True)
 
         self.fill_all_groups(user)
         video_id = "video_id"

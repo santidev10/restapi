@@ -71,7 +71,7 @@ class Keywords:
         self._keywords = keywords
 
     def load_from_file(self, filename):
-        with open(filename, 'r') as file:
+        with open(filename, "r") as file:
             self._keywords = [l.strip() for l in file.readlines()]
 
     def find_original(self, tag):

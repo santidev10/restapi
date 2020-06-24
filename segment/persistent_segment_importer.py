@@ -1,23 +1,23 @@
 import csv
 import logging
 import time
-
-from django.db import IntegrityError
 import uuid
 
-from audit_tool.models import AuditCategory
+from django.db import IntegrityError
+
 import brand_safety.constants as constants
-from es_components.managers import ChannelManager
+from audit_tool.models import AuditCategory
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from segment.utils.utils import get_persistent_segment_model_by_type
 from segment.segment_list_generator import SegmentListGenerator
+from segment.utils.utils import get_persistent_segment_model_by_type
 
 logger = logging.getLogger(__name__)
 
 
-class PersistentSegmentImporter(object):
+class PersistentSegmentImporter:
     ALLOWED_DATA_TYPES = (constants.CHANNEL, constants.VIDEO)
     ALLOWED_SEGMENT_CATEGORIES = ("whitelist", "blacklist", "apex")
     EXPORT_ATTEMPT_LIMIT = 15
@@ -89,7 +89,7 @@ class PersistentSegmentImporter(object):
         # Wait until all items have been added to segment
         attempts = 1
         while attempts <= self.EXPORT_ATTEMPT_LIMIT:
-            logger.info(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
+            logger.info("On export attempt %s of %s", attempts, self.EXPORT_ATTEMPT_SLEEP)
             query = self.segment.get_segment_items_query()
             es_manager = self.segment.es_manager
             segment_items_count = es_manager.search(query, limit=0).execute().hits.total.value
@@ -100,14 +100,13 @@ class PersistentSegmentImporter(object):
                 self.segment.export_file()
                 exported = True
                 break
-            else:
-                time.sleep(attempts ** self.EXPORT_ATTEMPT_SLEEP)
-                attempts += 1
+            time.sleep(attempts ** self.EXPORT_ATTEMPT_SLEEP)
+            attempts += 1
 
         # If all items are not added to segment after retries, manually verify if segment is ready for export
         if not exported:
             raise Exception(f"Unable to add all items to segment with uuid: {self.segment.uuid}. Export failed.")
-        logger.info(f"Finished segment import with uuid: {self.segment.uuid}")
+        logger.info("Finished segment import with uuid: %s", self.segment.uuid)
 
     def _read_csv(self, path: str) -> list:
         """

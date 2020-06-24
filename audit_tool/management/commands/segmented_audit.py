@@ -1,10 +1,10 @@
 import logging
+
 from django.core.management import BaseCommand
-from audit_tool.segmented_audit import SegmentedAudit
-
-from pid.decorator import pidfile
 from pid import PidFileAlreadyLockedError
+from pid.decorator import pidfile
 
+from audit_tool.segmented_audit import SegmentedAudit
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
 
     def add_arguments(self, parser):
-        parser.add_argument('--infinitely',
-                            action='store_true',
+        parser.add_argument("--infinitely",
+                            action="store_true",
                             default=False,
                             help="Run in a infinitely cycle")
 
@@ -24,12 +24,12 @@ class Command(BaseCommand):
             pass
 
     @pidfile(piddir=".", pidname="segmented_audit.pid")
-    def run(self, *args, **options):
+    def run(self, *_, **options):
         while True:
             audit = SegmentedAudit()
             logger.info("Started segmented audit for the next batch of channels")
             channels_count, videos_count = audit.run()
-            logger.info("Done (channels_count={}, videos_count={})".format(channels_count, videos_count))
+            logger.info("Done (channels_count=%s, videos_count=%s)", channels_count, videos_count)
 
             if not options.get("infinitely", False):
                 break

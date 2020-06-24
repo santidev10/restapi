@@ -1,16 +1,17 @@
+import heapq
+import logging
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
-import heapq
-import logging
 
 from django.db.models import Max
 
-from aw_reporting.adwords_reports import geo_performance_report
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS
+from aw_reporting.adwords_reports import geo_performance_report
 from aw_reporting.google_ads.constants import GET_DF
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.models import CityStatistic, GeoTarget
+from aw_reporting.models import CityStatistic
+from aw_reporting.models import GeoTarget
 from aw_reporting.update.adwords_utils import get_base_stats
 from utils.datetime import now_in_default_tz
 
@@ -91,7 +92,7 @@ class CityUpdater(UpdateMixin):
 
     def _generate_stat_instances(self, model, top_cities, report, latest_dates):
         for row_obj in filter(
-                lambda i: i.CityCriteriaId.isnumeric() and int(i.CityCriteriaId) in top_cities, report):
+            lambda i: i.CityCriteriaId.isnumeric() and int(i.CityCriteriaId) in top_cities, report):
             city_id = int(row_obj.CityCriteriaId)
             date = latest_dates.get((city_id, int(row_obj.CampaignId)))
             row_date = datetime.strptime(row_obj.Date, GET_DF).date()

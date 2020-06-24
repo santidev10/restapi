@@ -78,14 +78,14 @@ class DashboardAccountCreationOverviewAPIView(APIView):
     def _get_overview_data(self, account_creation, current_user):
         filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
-        if filters['campaigns']:
-            fs["ad_group__campaign__id__in"] = filters['campaigns']
-        if filters['ad_groups']:
-            fs["ad_group__id__in"] = filters['ad_groups']
-        if filters['start_date']:
-            fs["date__gte"] = filters['start_date']
-        if filters['end_date']:
-            fs["date__lte"] = filters['end_date']
+        if filters["campaigns"]:
+            fs["ad_group__campaign__id__in"] = filters["campaigns"]
+        if filters["ad_groups"]:
+            fs["ad_group__id__in"] = filters["ad_groups"]
+        if filters["start_date"]:
+            fs["date__gte"] = filters["start_date"]
+        if filters["end_date"]:
+            fs["date__lte"] = filters["end_date"]
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
@@ -96,24 +96,24 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
-        del data['video_impressions']
-        # 'age', 'gender', 'device', 'location'
-        annotate = dict(v=Sum('cost'))
+        del data["video_impressions"]
+        # "age", "gender", "device", "location"
+        annotate = dict(v=Sum("cost"))
         gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+            "gender_id").order_by("gender_id").annotate(**annotate)
+        gender = [dict(name=Genders[i["gender_id"]], value=i["v"]) for i in
                   gender]
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+        age = [dict(name=AgeRanges[i["age_range_id"]], value=i["v"]) for i in
                age]
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
+        device = [dict(name=device_str(i["device_id"]), value=i["v"]) for i in
                   device]
         location = CityStatistic.objects.filter(**fs).values(
-            "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
-        location = [dict(name=i['city__name'], value=i['v']) for i in location]
+            "city_id", "city__name").annotate(**annotate).order_by("v")[:6]
+        location = [dict(name=i["city__name"], value=i["v"]) for i in location]
         data.update(gender=gender, age=age, device=device, location=location)
         self._add_chf_performance_data(data, account_creation)
         show_client_cost = not current_user.get_aw_settings() \
@@ -169,9 +169,10 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             ad_group_statistic_filters["date__gte"] = start_date
         if end_date is not None:
             ad_group_statistic_filters["date__lte"] = end_date
-        placements_queryset = OpPlacement.objects.filter(
-            adwords_campaigns__id__in=account_campaigns_ids).filter(
-            **placements_filters).distinct()
+        placements_queryset = OpPlacement.objects \
+            .filter(adwords_campaigns__id__in=account_campaigns_ids) \
+            .filter(**placements_filters) \
+            .distinct()
         ad_group_statistic_queryset = AdGroupStatistic.objects.filter(**ad_group_statistic_filters)
         data.update(self._get_delivered_stats(ad_group_statistic_queryset))
         plan_cost = 0
@@ -191,25 +192,21 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             })
 
     def _get_delivered_stats(self, queryset):
-        cpm_impressions_annotation = Case(When(
-            ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
-            then="impressions"
-        ),
+        cpm_impressions_annotation = Case(
+            When(ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                 then="impressions"),
             output_field=IntegerField(),
             default=Value(0)
         )
-        cpv_views_annotation = Case(When(
-            ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
-            then="video_views"
-        ),
+        cpv_views_annotation = Case(
+            When(ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                 then="video_views"),
             output_field=IntegerField(),
             default=Value(0)
         )
-        return queryset.annotate(
-            cpm_impressions=cpm_impressions_annotation,
-            cpv_video_views=cpv_views_annotation
-        ).aggregate(
-            delivered_cost=Sum("cost"),
-            delivered_impressions=Sum("cpm_impressions"),
-            delivered_video_views=Sum("cpv_video_views"),
-        )
+        return queryset \
+            .annotate(cpm_impressions=cpm_impressions_annotation,
+                      cpv_video_views=cpv_views_annotation) \
+            .aggregate(delivered_cost=Sum("cost"),
+                       delivered_impressions=Sum("cpm_impressions"),
+                       delivered_video_views=Sum("cpv_video_views"),)

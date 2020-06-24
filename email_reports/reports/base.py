@@ -2,7 +2,6 @@ from django.conf import settings
 
 
 class BaseEmailReport:
-
     DEBUG_PREFIX = "DEBUG_"
 
     def __init__(self, host, debug, **kwargs):
@@ -25,8 +24,7 @@ class BaseEmailReport:
                 elif isinstance(e, tuple):
                     new_emails.append((e[0], self.DEBUG_PREFIX + e[1]))
             return new_emails
-        else:
-            return emails
+        return emails
 
     def get_bcc(self):
         bcc = []

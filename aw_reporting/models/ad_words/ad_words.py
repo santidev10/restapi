@@ -37,7 +37,7 @@ class VideoCreative(BaseStatisticModel):
 class GeoTarget(models.Model):
     name = models.CharField(max_length=100)
     canonical_name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
+    parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
     country_code = models.CharField(max_length=2, db_index=True)
     target_type = models.CharField(max_length=50)
     status = models.CharField(max_length=20, db_index=True)
@@ -47,7 +47,7 @@ class GeoTarget(models.Model):
 
 
 class Topic(models.Model):
-    parent = models.ForeignKey('self', null=True, related_name='children', on_delete=models.CASCADE)
+    parent = models.ForeignKey("self", null=True, related_name="children", on_delete=models.CASCADE)
     name = models.CharField(max_length=150, db_index=True)
 
     def __str__(self):
@@ -55,7 +55,7 @@ class Topic(models.Model):
 
 
 class Audience(BaseModel):
-    parent = models.ForeignKey('self', null=True, related_name='children', on_delete=models.CASCADE)
+    parent = models.ForeignKey("self", null=True, related_name="children", on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
     type = models.CharField(max_length=25, db_index=True)
 

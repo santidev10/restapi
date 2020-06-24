@@ -1,12 +1,13 @@
 from distutils.util import strtobool
+
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from segment.api.mixins import DynamicPersistentModelViewMixin
-from utils.permissions import user_has_permission
 from segment.models import CustomSegment
+from utils.permissions import user_has_permission
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):

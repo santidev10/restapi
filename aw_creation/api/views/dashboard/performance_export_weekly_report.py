@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -23,8 +22,8 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
     def get_filters(self):
         data = self.request.data
         filters = dict(
-            campaigns=data.get('campaigns'),
-            ad_groups=data.get('ad_groups'),
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
         )
         return filters
 

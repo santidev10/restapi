@@ -49,8 +49,8 @@ def calculate_statistics(segment, items=None, es_query=None):
         all_ids.append(doc.main.id)
         # Check if we data to display for each item in top three
         if len(top_three_items) < 3 \
-                and getattr(doc.general_data, "title", None) \
-                and getattr(doc.general_data, "thumbnail_image_url", None):
+            and getattr(doc.general_data, "title", None) \
+            and getattr(doc.general_data, "thumbnail_image_url", None):
             top_three_items.append({
                 "id": doc.main.id,
                 "title": doc.general_data.title,

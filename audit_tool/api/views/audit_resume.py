@@ -1,9 +1,11 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
 from utils.permissions import user_has_permission
+
 
 class AuditResumeApiView(APIView):
     permission_classes = (
@@ -29,7 +31,7 @@ class AuditResumeApiView(APIView):
                 if not params['name'].startswith('Resumed: '):
                     params['name'] = 'Resumed: {}'.format(params['name'])
                 new_audit = AuditProcessor.objects.create(
-                    audit_type = 0,
+                    audit_type=0,
                     params=params,
                     max_recommended=max_recommended,
                     name=params['name'].lower(),
@@ -39,12 +41,17 @@ class AuditResumeApiView(APIView):
                 for v in videos[:1000]:
                     try:
                         AuditVideoProcessor.objects.create(
-                            audit = new_audit,
-                            video = v.video,
+                            audit=new_audit,
+                            video=v.video,
                         )
-                    except Exception as e:
+                    # pylint: disable=broad-except
+                    except Exception:
+                    # pylint: enable=broad-except
                         pass
-            except Exception as e:
-                raise ValidationError("invalid audit_id: please verify you are resuming a completed 'recommendation' audit.")
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                raise ValidationError(
+                    "invalid audit_id: please verify you are resuming a completed 'recommendation' audit.")
 
             return Response(new_audit.to_dict())

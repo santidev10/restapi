@@ -1,6 +1,5 @@
 from datetime import date
 from datetime import timedelta
-from unittest import skip
 
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
@@ -194,10 +193,6 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         columns = self.columns
         self.assertEqual(audience_name, item[columns.target])
         self.assertEqual("Interests - Custom Intent", item[columns.type])
-
-    @skip("Not implemented")
-    def test_interests_detailed_demographic_general_data(self):
-        raise NotImplemented
 
     def test_general_stats(self):
         any_date = date(2019, 1, 1)

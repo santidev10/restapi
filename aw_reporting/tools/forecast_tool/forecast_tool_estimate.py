@@ -1,10 +1,17 @@
 from collections import defaultdict
 from operator import itemgetter
 
+from django.db.models import Case
 from django.db.models import FloatField
-from django.db.models import Q, When, Case, Sum
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models import When
 
-from aw_reporting.models import Campaign, CampaignStatistic, AdGroupStatistic, get_average_cpv, get_average_cpm
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import get_average_cpm
+from aw_reporting.models import get_average_cpv
 
 AD_GROUP_COSTS_ANNOTATE = (
     ("sum_cost", Sum("cost")),
@@ -60,7 +67,7 @@ class ForecastToolEstimate:
         queryset = self._get_ad_group_statistic_queryset()
         queryset = queryset.filter(cost__gt=0)
 
-        data = queryset.values('date').order_by('date').annotate(
+        data = queryset.values("date").order_by("date").annotate(
             **dict(AD_GROUP_COSTS_ANNOTATE))
         cpv_lines = defaultdict(list)
         cpm_lines = defaultdict(list)
@@ -68,7 +75,7 @@ class ForecastToolEstimate:
         for point in data:
             average_cpv = get_average_cpv(cost=point["views_cost"], **point)
             average_cpm = get_average_cpm(cost=point["sum_cost"], **point)
-            date = point['date']
+            date = point["date"]
 
             if average_cpv:
                 if compare_yoy:

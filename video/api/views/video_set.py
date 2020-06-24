@@ -4,8 +4,9 @@ Video api views module
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
 from utils.celery.dmp_celery import send_task_delete_videos
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoSetApiView(APIView, PermissionRequiredMixin):

@@ -11,7 +11,6 @@ from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import Ad
 
 
 class AdCreationSetupAPITestCase(AwReportingAPITestCase):
@@ -69,7 +68,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
             reverse("aw_creation_urls:ad_creation_setup",
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -108,7 +107,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
             reverse("aw_creation_urls:ad_creation_setup",
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.IN_STREAM_TYPE)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -137,7 +136,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
             reverse("aw_creation_urls:ad_creation_setup",
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -168,7 +167,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
             reverse("aw_creation_urls:ad_creation_setup",
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -201,7 +200,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
             reverse("aw_creation_urls:ad_creation_setup",
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -225,7 +224,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD,
                             video_duration=7)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -234,6 +233,6 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
                     args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD,
                             video_duration=6)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)

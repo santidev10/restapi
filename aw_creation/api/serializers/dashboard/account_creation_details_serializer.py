@@ -19,26 +19,24 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
 
     class Meta:
         model = AccountCreation
-        fields = (
-            "clicks_website",
-            "clicks_call_to_action_overlay",
-            "clicks_app_store",
-            "clicks_cards",
-            "clicks_end_cap",
-        ) + DashboardAccountCreationListSerializer.Meta.fields
+        fields = ("clicks_website",
+                  "clicks_call_to_action_overlay",
+                  "clicks_app_store",
+                  "clicks_cards",
+                  "clicks_end_cap",
+                  ) + DashboardAccountCreationListSerializer.Meta.fields
 
     def _get_stats(self, account_creation_ids):
         stats = super(DashboardAccountCreationDetailsSerializer, self)._get_stats(account_creation_ids)
-        for account_creation_id in stats.keys():
-            stats_value = stats[account_creation_id]
-            clicks_data = AdGroup.objects.filter(
-                campaign__account__account_creation__id=account_creation_id).aggregate(
-                clicks_website=Sum("clicks_website"),
-                clicks_call_to_action_overlay=Sum("clicks_call_to_action_overlay"),
-                clicks_app_store=Sum("clicks_app_store"),
-                clicks_cards=Sum("clicks_cards"),
-                clicks_end_cap=Sum("clicks_end_cap")
-            )
+        for account_creation_id, stats_value in stats.items():
+            clicks_data = AdGroup.objects \
+                .filter(campaign__account__account_creation__id=account_creation_id) \
+                .aggregate(clicks_website=Sum("clicks_website"),
+                           clicks_call_to_action_overlay=Sum("clicks_call_to_action_overlay"),
+                           clicks_app_store=Sum("clicks_app_store"),
+                           clicks_cards=Sum("clicks_cards"),
+                           clicks_end_cap=Sum("clicks_end_cap")
+                           )
             for key, value in clicks_data.items():
                 if value is None:
                     clicks_data[key] = 0

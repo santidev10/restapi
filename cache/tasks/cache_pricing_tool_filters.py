@@ -2,11 +2,11 @@ import logging
 
 from django.contrib.auth import get_user_model
 
-from aw_reporting.tools.pricing_tool import PricingTool
 from aw_reporting.models import Opportunity
-from saas import celery_app
-from cache.models import CacheItem
+from aw_reporting.tools.pricing_tool import PricingTool
 from cache.constants import PRICING_TOOL_FILTERS_KEY
+from cache.models import CacheItem
+from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 

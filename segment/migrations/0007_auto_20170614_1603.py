@@ -5,11 +5,11 @@ from __future__ import unicode_literals
 import django.contrib.postgres.fields.jsonb
 import django.db.models.deletion
 from django.conf import settings
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -27,8 +27,11 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(blank=True, max_length=255, null=True)),
                 ('statistics', django.contrib.postgres.fields.jsonb.JSONField(default={})),
                 ('mini_dash_data', django.contrib.postgres.fields.jsonb.JSONField(default={})),
-                ('category', models.CharField(choices=[('private', 'private'), ('youtube', 'youtube'), ('iab', 'iab'), ('cas', 'cas'), ('blacklist', 'blacklist')], max_length=255)),
-                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('category', models.CharField(
+                    choices=[('private', 'private'), ('youtube', 'youtube'), ('iab', 'iab'), ('cas', 'cas'),
+                             ('blacklist', 'blacklist')], max_length=255)),
+                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                            to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -43,8 +46,11 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(blank=True, max_length=255, null=True)),
                 ('statistics', django.contrib.postgres.fields.jsonb.JSONField(default={})),
                 ('mini_dash_data', django.contrib.postgres.fields.jsonb.JSONField(default={})),
-                ('category', models.CharField(choices=[('channel_factory', 'channel_factory'), ('blacklist', 'blacklist'), ('private', 'private')], max_length=255)),
-                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('category', models.CharField(
+                    choices=[('channel_factory', 'channel_factory'), ('blacklist', 'blacklist'),
+                             ('private', 'private')], max_length=255)),
+                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                            to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -55,7 +61,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('related_id', models.CharField(max_length=30)),
-                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related', to='segment.SegmentChannel')),
+                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related',
+                                              to='segment.SegmentChannel')),
             ],
             options={
                 'abstract': False,
@@ -66,7 +73,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('related_id', models.CharField(max_length=30)),
-                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related', to='segment.SegmentKeyword')),
+                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related',
+                                              to='segment.SegmentKeyword')),
             ],
             options={
                 'abstract': False,
@@ -91,8 +99,11 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(blank=True, max_length=255, null=True)),
                 ('statistics', django.contrib.postgres.fields.jsonb.JSONField(default={})),
                 ('mini_dash_data', django.contrib.postgres.fields.jsonb.JSONField(default={})),
-                ('category', models.CharField(choices=[('youtube', 'youtube'), ('blacklist', 'blacklist'), ('private', 'private'), ('iab', 'iab')], max_length=255)),
-                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('category', models.CharField(
+                    choices=[('youtube', 'youtube'), ('blacklist', 'blacklist'), ('private', 'private'),
+                             ('iab', 'iab')], max_length=255)),
+                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                            to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -101,7 +112,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='segmentrelatedvideo',
             name='segment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related', to='segment.SegmentVideo'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related',
+                                    to='segment.SegmentVideo'),
         ),
         migrations.AlterUniqueTogether(
             name='segmentrelatedvideo',
