@@ -138,5 +138,5 @@ class GenerateSegmentUtils:
 
     def get_source_list(self, segment):
         """ Create set of source list urls """
-        source_ids = set(segment.get_extract_export_ids(segment.source.key))
+        source_ids = set(segment.get_extract_export_ids(segment.source.filename))
         return source_ids

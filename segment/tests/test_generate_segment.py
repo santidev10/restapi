@@ -126,7 +126,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment_type=0, uuid=uuid4(), list_type=0
         )
         CustomSegmentSourceFileUpload.objects.create(
-            segment=segment, source_type=SourceListType.INCLUSION.value, key=source_key,
+            segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
         generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
@@ -170,7 +170,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment_type=1, uuid=uuid4(), list_type=0
         )
         CustomSegmentSourceFileUpload.objects.create(
-            segment=segment, source_type=SourceListType.INCLUSION.value, key=source_key,
+            segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
         generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
