@@ -50,7 +50,7 @@ def cache_research_channels_defaults():
                           'stats.last_video_published_at', 'stats.engage_rate', 'stats.sentiment',
                           'stats.last_30day_subscribers', 'stats.views', 'stats.last_*_views', 'stats.views_per_video',
                           'stats.channel_group', 'stats.subscribers_history', 'stats.views_history', 'stats.historydate',
-                          'brand_safety', 'stats.channel_group']
+                          'brand_safety']
 
         sort = [
             {'stats.subscribers': {'order': 'desc'}},
@@ -103,8 +103,7 @@ def cache_research_channels_defaults():
                                 'general_data.iab_categories', 'stats.subscribers', 'stats.last_video_published_at',
                                 'stats.engage_rate', 'stats.sentiment', 'stats.last_30day_subscribers', 'stats.views',
                                 'stats.last_*_views', 'stats.views_per_video', 'stats.channel_group', 'stats.subscribers_history',
-                                'stats.views_history', 'stats.historydate', 'brand_safety', 'stats.channel_group',
-                                'monetization.is_monetizable']
+                                'stats.views_history', 'stats.historydate', 'brand_safety', 'monetization.is_monetizable']
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter
         obj.sort = sort
