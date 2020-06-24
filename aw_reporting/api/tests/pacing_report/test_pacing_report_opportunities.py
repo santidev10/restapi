@@ -134,6 +134,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "start",
                 "status",
                 "thumbnail",
+                "timezone",
                 "video_view_rate",
                 "video_view_rate_quality",
                 "video_views",

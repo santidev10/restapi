@@ -392,7 +392,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
     def test_pacing_report_flight_historical_goal_charts(self):
         today = now_in_default_tz().date()
-        start = today - timedelta(days=3)
+        start = today - timedelta(days=4)
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=today,
         )
@@ -400,8 +400,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
         )
         flight = Flight.objects.create(
-            id="1", name="", placement=placement, ordered_units=40, cost=80,
-            total_cost=80, start=start, end=today,
+            id="1", name="", placement=placement, ordered_units=50, cost=50,
+            total_cost=50, start=start, end=today, delivered=0,
         )
         account = Account.objects.create(id="1", name="Visible Account")
         campaign = Campaign.objects.create(
@@ -428,4 +428,4 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(set(actual_units), set(stat.impressions for stat in stats))
         self.assertEqual(set(actual_spend), set(stat.cost for stat in stats))
         self.assertEqual(set(goal_units), {10})
-        self.assertEqual(set(goal_spend), {20})
+        self.assertEqual(set(goal_spend), {10})

@@ -191,12 +191,12 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                                      content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_test_success(self):
+    def test_success(self):
         self.create_admin_user()
         today = timezone.now()
-        flight_start = today - timedelta(days=3)
-        border = today
-        flight_end = today + timedelta(days=2)
+        flight_start = today + timedelta(days=3)
+        border = flight_start
+        flight_end = border + timedelta(days=2)
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today - timedelta(days=3),
             end=today + timedelta(days=3),
@@ -215,14 +215,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             dict(
                 start=str(flight.start.date()),
                 end=str(border.date()),
-                allocation=100
+                allocation=80
             ),
             dict(
                 start=str((border + timedelta(days=1)).date()),
                 end=str(flight_end.date()),
-                allocation=99
+                allocation=20
             )
         ]
         response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
-        print(response.data)
         self.assertEqual(response.status_code, HTTP_200_OK)

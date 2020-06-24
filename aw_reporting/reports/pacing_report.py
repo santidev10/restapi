@@ -833,10 +833,12 @@ class PacingReport:
 
             flight['budget'] = f['budget']
             try:
+                delivery_key = f["_delivery_field_name"]
+                total_delivered = sum(item[delivery_key] for item in f["daily_delivery"])
                 if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
-                    f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], f["delivery"])
+                    f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], total_delivered)
                 else:
-                    f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], f["delivery"])
+                    f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], total_delivered)
             except TypeError:
                 f["projected_budget"] = 0
 
@@ -1475,8 +1477,8 @@ def get_flight_historical_pacing_chart(flight_data):
         goal_obj = goal_mapping[date]
         # Get the count of allocation amounts to divide total plan units by
         allocation_date_range_count = allocation_count[goal_obj.allocation]
-        goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count)
-        goal_spend = round(projected_budget * goal_obj.allocation / allocation_date_range_count)
+        goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count / 100)
+        goal_spend = round(projected_budget * goal_obj.allocation / allocation_date_range_count / 100)
         units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
         try:
             actual_units = delivery_mapping[date][units_key]
@@ -1582,5 +1584,5 @@ def get_flight_daily_budget(flight):
     else:
         flight_projected_budget = flight.ordered_units * get_average_cpv(flight.cost, flight.delivered_units)
 
-    flight_daily_budget = flight_projected_budget * today_allocation.allocation / days_count
+    flight_daily_budget = flight_projected_budget * today_allocation.allocation / 100 / days_count
     return flight_daily_budget

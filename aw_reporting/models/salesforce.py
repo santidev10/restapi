@@ -597,7 +597,7 @@ class Activity(BaseModel):
 class FlightPacingAllocation(models.Model):
     flight = models.ForeignKey(Flight, related_name="allocations", on_delete=models.CASCADE)
     date = models.DateField(db_index=True)
-    allocation = models.FloatField(default=0)
+    allocation = models.FloatField()
 
     class Meta:
         constraints = [
@@ -616,12 +616,9 @@ class FlightPacingAllocation(models.Model):
         goal_mapping = {
             plan.date: plan for plan in FlightPacingAllocation.objects.filter(flight_id=flight_id)
         }
-        # If flight does not have any pacing allocations, evenly distribute 100 allocation for all dates
+        # If flight does not have any pacing allocations, each date should use 100% of target
         if not goal_mapping:
-            try:
-                default_allocation = round(100 / ((flight.end - flight.start).days + 1), 4)
-            except TypeError:
-                default_allocation = 0
+            default_allocation = 100
         else:
             # Flight dates were modified, set any new allocations to 0
             default_allocation = 0
