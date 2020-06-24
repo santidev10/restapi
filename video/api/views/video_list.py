@@ -83,6 +83,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
+        "ads_stats.average_cpm:percentiles",
         "ads_stats.ctr_v:percentiles",
         "ads_stats.video_view_rate:percentiles",
         "stats.channel_subscribers:percentiles",
