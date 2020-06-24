@@ -91,6 +91,8 @@ class Command(BaseCommand):
 
     def calc_video_languages(self, channel):
         videos = AuditVideoMeta.objects.filter(video__channel=channel.channel)
+        if videos.count() == 0:
+            return
         languages = {}
         for v in videos:
             if v.language:
