@@ -1,6 +1,8 @@
 ALLOWED_CHANNEL_AGGREGATIONS = (
     "ads_stats.average_cpv:max",
     "ads_stats.average_cpv:min",
+    "ads_stats.average_cpm:max",
+    "ads_stats.average_cpm:min",
     "ads_stats.ctr_v:max",
     "ads_stats.ctr_v:min",
     "ads_stats.video_view_rate:max",
@@ -52,6 +54,8 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
 ALLOWED_VIDEO_AGGREGATIONS = (
     "ads_stats.average_cpv:max",
     "ads_stats.average_cpv:min",
+    "ads_stats.average_cpm:max",
+    "ads_stats.average_cpm:min",
     "ads_stats.ctr_v:max",
     "ads_stats.ctr_v:min",
     "ads_stats.video_view_rate:max",

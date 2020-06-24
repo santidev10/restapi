@@ -6,8 +6,8 @@ TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_da
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
 RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
-                "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
-                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
+                "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm",
+                "ads_stats.ctr_v", "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
                 "general_data.youtube_published_at")
