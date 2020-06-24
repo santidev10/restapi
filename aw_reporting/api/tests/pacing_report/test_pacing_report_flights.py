@@ -124,6 +124,12 @@ class PacingReportFlightsTestCase(APITestCase):
                 "yesterday_delivered",
                 "yesterday_delivered_impressions",
                 "yesterday_delivered_views",
+                "historical_spend_chart",
+                "historical_units_chart",
+                "pacing_allocations",
+                "projected_budget",
+                "today_goal_spend",
+                "today_goal_units",
             }
         )
         flight.refresh_from_db()

@@ -16,6 +16,9 @@ Range = namedtuple("Range", ["start", "end"])
 
 
 class PacingReportFlightAllocationAPIView(APIView):
+    MIN_ALLOCATION_SUM = 99
+    MAX_ALLOCATION_SUM = 101
+
     def patch(self, request, *args, **kwargs):
         pk = kwargs["pk"]
         flight = get_object(Flight, id=pk)
@@ -26,16 +29,11 @@ class PacingReportFlightAllocationAPIView(APIView):
 
     def _validate(self, flight, data):
         today = timezone.now().date()
-        allocations = FlightPacingAllocation.get_flight_pacing_goals(flight.id)
-        total_allocation = sum(int(item["allocation"]) for item in data)
+        allocations = FlightPacingAllocation.get_allocations(flight.id)
+        total_allocation = sum(float(item["allocation"]) for item in data)
         if total_allocation != 100:
-            raise ValidationError("Allocations must have a sum of 100.")
-
-        # check first and last dates
-        first = self._parse_date(data[0]["start"])
-        last = self._parse_date(data[-1]["end"])
-        if flight.start != first or flight.end != last:
-            raise ValidationError("Date ranges must start on flight start and end on flight end dates.")
+            raise ValidationError(
+                f"Total allocations must be between: {self.MIN_ALLOCATION_SUM} - {self.MAX_ALLOCATION_SUM}.")
 
         with transaction.atomic():
             for i, updated_allocation_range in enumerate(data):
@@ -47,7 +45,10 @@ class PacingReportFlightAllocationAPIView(APIView):
                     raise ValidationError(f"Start date must be less than end date: {start_date} - {end_date}")
 
                 for date in get_dates_range(start_date, end_date):
-                    allocation_obj = allocations[date]
+                    try:
+                        allocation_obj = allocations[date]
+                    except KeyError:
+                        raise ValidationError(f"Date not in flight duration: {self._format_date(date)}")
                     updated_allocation_range_value = float(updated_allocation_range["allocation"])
                     # Reject modifying past allocations
                     if date < today and updated_allocation_range_value != allocation_obj.allocation:
@@ -69,6 +70,13 @@ class PacingReportFlightAllocationAPIView(APIView):
                     # On last date range
                     pass
                 FlightPacingAllocation.objects.bulk_update(to_update, fields=["allocation"])
+
+            # check first and last dates
+            first = self._parse_date(data[0]["start"])
+            last = self._parse_date(data[-1]["end"])
+            if flight.start != first or flight.end != last:
+                raise ValidationError(
+                    "First date must start on flight start and last date must end on flight end date.")
 
     def _get_overlap(self, s1, e1, s2, e2):
         """

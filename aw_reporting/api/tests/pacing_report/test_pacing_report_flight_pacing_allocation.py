@@ -139,7 +139,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_allocations(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),
@@ -174,7 +174,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_allocations(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),
@@ -210,12 +210,12 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_allocations(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),
                 end=str(border.date()),
-                allocation=1
+                allocation=100
             ),
             dict(
                 start=str((border + timedelta(days=1)).date()),
@@ -224,4 +224,5 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             )
         ]
         response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        print(response.data)
         self.assertEqual(response.status_code, HTTP_200_OK)

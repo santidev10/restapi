@@ -18,6 +18,7 @@ from math import ceil
 
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
+from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -456,7 +457,7 @@ class PacingReport:
         # get raw opportunity data
         opportunities = queryset.values(
             "id", "name", "start", "end", "cannot_roll_over",
-            "category", "notes",
+            "category", "notes", "aw_cid",
 
             "ad_ops_manager__id", "ad_ops_manager__name",
             "ad_ops_manager__email",
@@ -566,6 +567,11 @@ class PacingReport:
             else:
                 o["cpm_buffer"] = (self.goal_factor - 1) * 100 if o["cpm_buffer"] is None else o["cpm_buffer"]
                 o["cpv_buffer"] = (self.goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
+
+            try:
+                o["timezone"] = Account.objects.filter(id__in=o["aw_cid"].split(",")).first().managers.first().timezone
+            except AttributeError:
+                o["timezone"] = None
         return opportunities
 
     def get_opportunities_queryset(self, get, user, aw_cid):
@@ -826,6 +832,13 @@ class PacingReport:
             self.add_calculated_fields(flight)
 
             flight['budget'] = f['budget']
+            try:
+                if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
+                    f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], f["delivery"])
+                else:
+                    f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], f["delivery"])
+            except TypeError:
+                f["projected_budget"] = 0
 
             pacing_goal_charts = get_flight_historical_pacing_chart(f)
             flight.update(pacing_goal_charts)
@@ -1419,6 +1432,22 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
 
 
 def get_flight_historical_pacing_chart(flight_data):
+    """
+    Calculate historical unit and spend actual / goal charts
+    To calculate historical recommendations, first get how much was actually delivered for each day, the pacing
+    allocations for each date, and how many days are in an allocation range
+    Then for each date, get the allocation amount by multiplying today's allocation by the total amount and divide by
+    how many days are in the allocation range
+
+    For example for a flight of 1000 units from 01-01-2000 to 01-10-2000, 01-01-2000 - 01-03-2000 may have an allocation
+    of 30% and 01-04-2000 - 01-10-2000 may have an allocation of 70%.
+    The allocation range 01-01-2000 - 01-03-2000 consists of 3 days with 30% allocated to it (300 units). The goal for
+    each day within this range would be 300 units / 3 days, so a daily goal of 100 units
+    01-04-2000 - 01-10-2000 consists of 7 days with 70% allocated to this range (700 units), so the daily goal for this
+    range would bee 700 units / 7 days = 100 units / day
+    :param flight_data:
+    :return:
+    """
     today = timezone.now().date()
     historical_units_chart = dict(
         id="historical_units",
@@ -1434,27 +1463,29 @@ def get_flight_historical_pacing_chart(flight_data):
     today_goal_spend = None
     goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
     allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
+    # Get mapping of how much was actually delivered for each date to match with recommendation
     delivery_mapping = {
         delivery["date"]: delivery for delivery in flight_data["daily_delivery"]
     }
     end = min(flight_data["end"], today)
     plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
-    cost = flight_data["cost"] if flight_data["cost"] else 0
+    projected_budget = flight_data["projected_budget"]
     for date in get_dates_range(flight_data["start"], end):
         goal_obj = goal_mapping[date]
         # Get the count of allocation amounts to divide total plan units by
         allocation_date_range_count = allocation_count[goal_obj.allocation]
         goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count)
-        goal_spend = round(cost * goal_obj.allocation / allocation_date_range_count)
+        goal_spend = round(projected_budget * goal_obj.allocation / allocation_date_range_count)
         units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
         except KeyError:
-            # If KeyError, Flight did not delivery for the current date
+            # If KeyError, Flight did not delivery for the current date being processed
             actual_units = 0
             actual_spend = 0
         if date == today:
+            # Do not add today's recommendations to chart, provide separate keys for today's values
             today_goal_units = goal_units
             today_goal_spend = goal_spend
             break
