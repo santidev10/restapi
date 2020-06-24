@@ -394,7 +394,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = now_in_default_tz().date()
         start = today - timedelta(days=4)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,

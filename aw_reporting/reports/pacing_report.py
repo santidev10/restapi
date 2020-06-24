@@ -770,7 +770,6 @@ class PacingReport:
             if goal_type_id == SalesForceGoalType.HARD_COST:
                 self._set_none_hard_cost_properties(p)
             p.update(goal_type=goal_type_str(goal_type_id))
-
         return placements
 
     # ## PLACEMENTS ## #
@@ -831,7 +830,7 @@ class PacingReport:
 
             self.add_calculated_fields(flight)
 
-            flight['budget'] = f['budget']
+            flight["budget"] = f["budget"]
             try:
                 if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
                     total_delivered = sum(item["impressions"] for item in f["daily_delivery"])
@@ -880,7 +879,7 @@ class PacingReport:
                         f["id"] == flight.id]
         populate_daily_delivery_data(flights_data)
 
-        campaigns = set_campaign_allocations(flight, queryset)
+        campaigns = set_campaign_allocations(queryset)
         try:
             flight_daily_budget = get_flight_daily_budget(flight)
         except (KeyError, TypeError):
@@ -1492,17 +1491,16 @@ def get_flight_historical_pacing_chart(flight_data):
             today_goal_units = goal_units
             today_goal_spend = goal_spend
             break
-        else:
-            historical_units_chart["data"].append(dict(
-                label=date,
-                goal=goal_units,
-                actual=actual_units,
-            ))
-            historical_spend_chart["data"].append(dict(
-                label=date,
-                goal=goal_spend,
-                actual=actual_spend,
-            ))
+        historical_units_chart["data"].append(dict(
+            label=date,
+            goal=goal_units,
+            actual=actual_units,
+        ))
+        historical_spend_chart["data"].append(dict(
+            label=date,
+            goal=goal_spend,
+            actual=actual_spend,
+        ))
     data = dict(
         historical_units_chart=historical_units_chart,
         historical_spend_chart=historical_spend_chart,
@@ -1512,10 +1510,10 @@ def get_flight_historical_pacing_chart(flight_data):
     return data
 
 
-def set_campaign_allocations(flight, campaign_queryset):
+def set_campaign_allocations(campaign_queryset):
     campaigns = campaign_queryset.values(
         "id", "name", "goal_allocation",
-    ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
+    ).order_by("name").annotate(start=F("start_date"), end=F("end_date"))
 
     total_allocation = sum(campaign["goal_allocation"] for campaign in campaigns)
     # Distribute remaining goal_allocations to campaigns with 0 goal allocation

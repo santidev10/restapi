@@ -49,7 +49,8 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                 allocation=50
             )
         ]
-        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_invalid_end_date(self):
@@ -83,7 +84,8 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                 allocation=50
             )
         ]
-        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_total_allocation_must_equal_100(self):
@@ -117,7 +119,8 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                 allocation=20
             )
         ]
-        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_cannot_modify_past_allocation(self):
@@ -152,7 +155,8 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                 allocation=20
             )
         ]
-        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_invalid_overlapping_dates(self):
@@ -223,5 +227,6 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
                 allocation=20
             )
         ]
-        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)

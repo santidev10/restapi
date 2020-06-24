@@ -10,6 +10,5 @@ from .pacing_report_opportunity_buffer_update import PacingReportOpportunityBuff
 from .pacing_report_opportunity_update import \
     PacingReportOpportunityUpdateApiView
 from .pacing_report_placements import PacingReportPlacementsApiView
-from .pacing_report_flights_campaign_allocations_changed import PacingReportFlightsCampaignAllocationsChangedView
 from .pacing_report_flight_pacing_allocation import PacingReportFlightAllocationAPIView
 from .pacing_report_status import PacingReportStatusApiView
