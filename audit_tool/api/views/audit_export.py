@@ -632,7 +632,9 @@ class AuditExportApiView(APIView):
                 error_str = ""
             try:
                 primary_video_language = v.misc['video_lang'][0][0]
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 primary_video_language = ""
             data = [
                 v.name,
