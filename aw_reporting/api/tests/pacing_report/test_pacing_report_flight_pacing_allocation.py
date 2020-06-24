@@ -11,7 +11,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import FlightPacingGoal
+from aw_reporting.models import FlightPacingAllocation
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -139,7 +139,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingGoal.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),
@@ -174,7 +174,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingGoal.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),
@@ -210,7 +210,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
             id="3", placement=placement, total_cost=200,
             start=flight_start, end=flight_end, ordered_units=10,
         )
-        FlightPacingGoal.get_flight_pacing_goals(flight.id)
+        FlightPacingAllocation.get_flight_pacing_goals(flight.id)
         payload = [
             dict(
                 start=str(flight.start.date()),

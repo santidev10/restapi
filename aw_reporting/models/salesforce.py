@@ -587,10 +587,10 @@ class Activity(BaseModel):
         return res
 
 
-class FlightPacingGoal(models.Model):
+class FlightPacingAllocation(models.Model):
     flight = models.ForeignKey(Flight, related_name="goals", on_delete=models.CASCADE)
     date = models.DateField()
-    allocation = models.FloatField(default=1)
+    allocation = models.FloatField(default=100)
 
     class Meta:
         constraints = [
@@ -598,25 +598,25 @@ class FlightPacingGoal(models.Model):
         ]
 
     @staticmethod
-    def get_flight_pacing_goals(flight_id):
+    def get_allocations(flight_id):
         """
-        Retrieve all related FlightPacingGoals for flight
+        Retrieve all related FlightPacingAllocations for flight
         Dynamically will create any missing dates as Flight duration may change erratically from Salesforce updates
         :param flight_id:
         :return:
         """
         flight = Flight.objects.get(id=flight_id)
         goal_mapping = {
-            plan.date: plan for plan in FlightPacingGoal.objects.filter(flight_id=flight_id)
+            plan.date: plan for plan in FlightPacingAllocation.objects.filter(flight_id=flight_id)
         }
         to_create = {}
         for date in get_dates_range(flight.start, flight.end):
             try:
                 goal_mapping[date]
             except KeyError:
-                to_create[date] = FlightPacingGoal(flight_id=flight_id, date=date)
+                to_create[date] = FlightPacingAllocation(flight_id=flight_id, date=date)
 
-        FlightPacingGoal.objects.bulk_create(to_create.values())
+        FlightPacingAllocation.objects.bulk_create(to_create.values())
         goal_mapping.update(to_create)
         return goal_mapping
 
