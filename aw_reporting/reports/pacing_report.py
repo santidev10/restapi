@@ -831,13 +831,16 @@ class PacingReport:
             flight.update(pacing_goal_charts)
             flights.append(flight)
 
-            # Get flight projected budget
-            if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
-                flight["projected_budget"] = flight["goal"] / 1000 * flight["cpm"]
-            else:
-                flight["projected_budget"] = flight["goal"] * flight["cpv"]
-
-            flight["pacing_allocations"] = get_flight_pacing_allocation_ranges(flight["id"])[1]
+            try:
+                # Get flight projected budget
+                if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
+                    flight["projected_budget"] = flight["goal"] / 1000 * flight["cpm"]
+                else:
+                    flight["projected_budget"] = flight["goal"] * flight["cpv"]
+                flight["pacing_allocations"] = get_flight_pacing_allocation_ranges(flight["id"])[1]
+            except TypeError:
+                flight["projected_budget"] = 0
+                flight["pacing_allocations"] = []
         return flights
 
     # ## FLIGHTS ## #
@@ -865,7 +868,7 @@ class PacingReport:
         campaigns = set_campaign_allocations(flight, queryset)
         try:
             flight_daily_budget = get_flight_daily_budget(flight)
-        except KeyError:
+        except (KeyError, TypeError):
             flight_daily_budget = 0
 
         for c in campaigns:
