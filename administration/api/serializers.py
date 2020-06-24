@@ -165,7 +165,6 @@ class UserUpdateSerializer(ModelSerializer):
 
     def save(self, **kwargs):
         old_status = self.instance.status
-        print(kwargs)
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
         status = request.data.get("status", None)
