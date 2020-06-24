@@ -26,9 +26,6 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "analytics.gender_male:min",
     "analytics.gender_other:max",
     "analytics.gender_other:min",
-
-    "general_data.emails:exists",
-    "general_data.emails:missing",
     "custom_properties.preferred",
     "general_data.country",
     "general_data.country_code",
