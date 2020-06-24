@@ -101,8 +101,8 @@ class Command(BaseCommand):
         if not channel.misc:
             channel.misc = {}
         if languages and languages != {}:
-            channel.misc['video_lang'] = sorted(languages.items(), key=lambda x: x[1], reverse=True)
-            channel.save(update_fields=['misc'])
+            channel.misc["video_lang"] = sorted(languages.items(), key=lambda x: x[1], reverse=True)
+            channel.save(update_fields=["misc"])
 
     def calc_language(self, channel):
         str_long = channel.name
