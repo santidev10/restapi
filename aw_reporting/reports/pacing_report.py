@@ -833,11 +833,11 @@ class PacingReport:
 
             flight['budget'] = f['budget']
             try:
-                delivery_key = f["_delivery_field_name"]
-                total_delivered = sum(item[delivery_key] for item in f["daily_delivery"])
                 if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
+                    total_delivered = sum(item["impressions"] for item in f["daily_delivery"])
                     f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], total_delivered)
                 else:
+                    total_delivered = sum(item["video_views"] for item in f["daily_delivery"])
                     f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], total_delivered)
             except TypeError:
                 f["projected_budget"] = 0
