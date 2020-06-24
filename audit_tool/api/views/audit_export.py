@@ -454,6 +454,7 @@ class AuditExportApiView(APIView):
             "Num Videos Total",
             "Country",
             "Language",
+            "Primary Video Language",
             "Last Video Upload",
             "Last Video Views",
             "Last Video Category",
@@ -563,6 +564,10 @@ class AuditExportApiView(APIView):
                     error_str = ""
             except Exception as e:
                 error_str = ""
+            try:
+                primary_video_language = v.misc['video_lang'][0][0]
+            except Exception as e:
+                primary_video_language = ""
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + channel.channel_id,
@@ -573,6 +578,7 @@ class AuditExportApiView(APIView):
                 v.video_count if v.video_count is not None else "",
                 country,
                 language,
+                primary_video_language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,

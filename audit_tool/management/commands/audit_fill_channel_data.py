@@ -78,6 +78,21 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
 
+    def calc_video_languages(self, channel):
+        videos = AuditVideoMeta.objects.filter(video__channel=channel.channel)
+        languages = {}
+        for v in videos:
+            if v.language:
+                language = v.language.language
+                if language not in languages:
+                    languages[language] = 0
+                languages[language] += 1
+        if not channel.misc:
+            channel.misc = {}
+        if languages and languages != {}:
+            channel.misc['video_lang'] = sorted(languages.items(), key=lambda x: x[1], reverse=True)
+            channel.save(update_fields=['misc'])
+
     def calc_language(self, channel):
         str_long = channel.name
         if channel.keywords:
@@ -156,7 +171,7 @@ class Command(BaseCommand):
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
                 try:
                     db_channel_meta.save()
-                    self.calc_language((db_channel_meta))
+                    self.calc_language(db_channel_meta)
                 except Exception as e:
                     logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
