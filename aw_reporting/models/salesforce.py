@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 import logging
 
 from django.contrib.auth import get_user_model
@@ -13,6 +14,8 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
+from aw_reporting.models.signals.init_signals import init_signals
+from aw_reporting.utils import get_dates_range
 from userprofile.managers import UserRelatedManagerMixin
 from utils.db.models.persistent_entities import DemoEntityModelMixin
 
@@ -590,3 +593,46 @@ class Activity(BaseModel):
             account_id=data[Fields.ACCOUNT_ID],
         )
         return res
+
+
+class FlightPacingAllocation(models.Model):
+    flight = models.ForeignKey(Flight, related_name="allocations", on_delete=models.CASCADE)
+    date = models.DateField(db_index=True)
+    allocation = models.FloatField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["flight", "date"], name="unique_goal")
+        ]
+
+    @staticmethod
+    def get_allocations(flight_id):
+        """
+        Retrieve all related FlightPacingAllocations for flight
+        Dynamically will create any missing dates as Flight duration may change erratically from Salesforce updates
+        :param flight_id:
+        :return:
+        """
+        flight = Flight.objects.get(id=flight_id)
+        goal_mapping = {
+            plan.date: plan for plan in FlightPacingAllocation.objects.filter(flight_id=flight_id)
+        }
+        # If flight does not have any pacing allocations, each date should use 100% of target
+        if not goal_mapping:
+            default_allocation = 100
+        else:
+            # Flight dates were modified, set any new allocations to 0
+            default_allocation = 0
+        to_create = {}
+        for date in get_dates_range(flight.start, flight.end):
+            try:
+                goal_mapping[date]
+            except KeyError:
+                to_create[date] = FlightPacingAllocation(flight_id=flight_id, date=date, allocation=default_allocation)
+
+        FlightPacingAllocation.objects.bulk_create(to_create.values())
+        goal_mapping.update(to_create)
+        return goal_mapping
+
+
+init_signals()

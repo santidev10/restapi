@@ -1,6 +1,8 @@
 # pylint: disable=too-many-lines
+from collections import Counter
 from collections import defaultdict
 from datetime import timedelta
+from itertools import groupby
 from math import ceil
 
 from django.contrib.auth import get_user_model
@@ -13,9 +15,11 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
+from django.utils import timezone
 
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
+from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -27,6 +31,7 @@ from aw_reporting.models import get_average_cpv
 from aw_reporting.models import get_ctr
 from aw_reporting.models import get_ctr_v
 from aw_reporting.models import get_video_view_rate
+from aw_reporting.models import FlightPacingAllocation
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
@@ -453,7 +458,7 @@ class PacingReport:
         # get raw opportunity data
         opportunities = queryset.values(
             "id", "name", "start", "end", "cannot_roll_over",
-            "category", "notes",
+            "category", "notes", "aw_cid",
 
             "ad_ops_manager__id", "ad_ops_manager__name",
             "ad_ops_manager__email",
@@ -563,6 +568,11 @@ class PacingReport:
             else:
                 o["cpm_buffer"] = (self.goal_factor - 1) * 100 if o["cpm_buffer"] is None else o["cpm_buffer"]
                 o["cpv_buffer"] = (self.goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
+
+            try:
+                o["timezone"] = Account.objects.filter(id__in=o["aw_cid"].split(",")).first().managers.first().timezone
+            except AttributeError:
+                o["timezone"] = None
         return opportunities
 
     # pylint: enable=too-many-statements
@@ -760,7 +770,6 @@ class PacingReport:
             if goal_type_id == SalesForceGoalType.HARD_COST:
                 self._set_none_hard_cost_properties(p)
             p.update(goal_type=goal_type_str(goal_type_id))
-
         return placements
 
     # ## PLACEMENTS ## #
@@ -822,8 +831,30 @@ class PacingReport:
             self.add_calculated_fields(flight)
 
             flight["budget"] = f["budget"]
+            try:
+                if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
+                    total_delivered = sum(item["impressions"] for item in f["daily_delivery"])
+                    f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], total_delivered)
+                else:
+                    total_delivered = sum(item["video_views"] for item in f["daily_delivery"])
+                    f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], total_delivered)
+            except TypeError:
+                f["projected_budget"] = 0
+
+            pacing_goal_charts = get_flight_historical_pacing_chart(f)
+            flight.update(pacing_goal_charts)
             flights.append(flight)
 
+            try:
+                # Get flight projected budget
+                if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
+                    flight["projected_budget"] = flight["goal"] / 1000 * flight["cpm"]
+                else:
+                    flight["projected_budget"] = flight["goal"] * flight["cpv"]
+                flight["pacing_allocations"] = get_flight_pacing_allocation_ranges(flight["id"])[1]
+            except TypeError:
+                flight["projected_budget"] = 0
+                flight["pacing_allocations"] = []
         return flights
 
     # ## FLIGHTS ## #
@@ -840,28 +871,6 @@ class PacingReport:
             else:
                 queryset = queryset.filter(status__in=status)
 
-        campaigns = queryset.values(
-            "id", "name", "goal_allocation",
-        ).order_by("name").annotate(start=F("start_date"), end=F("end_date"))
-
-        total_allocation = sum(campaign["goal_allocation"] for campaign in campaigns)
-        # Distribute remaining goal_allocations to campaigns with 0 goal allocation
-        if campaigns and total_allocation < 100:
-            goal_allocation_remaining = 100
-            campaigns_without_allocation = []
-            for campaign in campaigns:
-                if campaign["goal_allocation"] == 0:
-                    campaigns_without_allocation.append(campaign)
-                else:
-                    goal_allocation_remaining -= campaign["goal_allocation"]
-            # Do not allocate if there are no campaigns without allocations
-            try:
-                split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
-                for campaign in campaigns_without_allocation:
-                    campaign["goal_allocation"] = split_allocation
-            except ZeroDivisionError:
-                pass
-
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated
         all_placement_flights = self.get_flights_data(
@@ -869,6 +878,13 @@ class PacingReport:
         flights_data = [f for f in all_placement_flights if
                         f["id"] == flight.id]
         populate_daily_delivery_data(flights_data)
+
+        campaigns = set_campaign_allocations(queryset)
+        try:
+            flight_daily_budget = get_flight_daily_budget(flight)
+        except (KeyError, TypeError):
+            flight_daily_budget = 0
+
         for c in campaigns:
             allocation_ko = c["goal_allocation"] / 100
             kwargs = dict(allocation_ko=allocation_ko, campaign_id=c["id"])
@@ -900,7 +916,7 @@ class PacingReport:
             self.add_calculated_fields(c)
 
             c["flight_budget"] = flight.budget
-
+            c["flight_daily_budget"] = flight_daily_budget
         return campaigns
     # ## CAMPAIGNS ## #
 
@@ -1040,7 +1056,6 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     else:
         charts = get_flight_charts(flights, today, allocation_ko,
                                    campaign_id=campaign_id)
-
     data = dict(
         today_goal=sum_today_units,
         today_goal_views=today_goal_views,
@@ -1416,3 +1431,156 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     can_consume = sum(f["plan_units"] for f in not_started_flights)
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
+
+
+def get_flight_historical_pacing_chart(flight_data):
+    """
+    Calculate historical unit and spend actual / goal charts
+    To calculate historical recommendations, first get how much was actually delivered for each day, the pacing
+    allocations for each date, and how many days are in an allocation range
+    Then for each date, get the allocation amount by multiplying today's allocation by the total amount and divide by
+    how many days are in the allocation range
+
+    For example for a flight of 1000 units from 01-01-2000 to 01-10-2000, 01-01-2000 - 01-03-2000 may have an allocation
+    of 30% and 01-04-2000 - 01-10-2000 may have an allocation of 70%.
+    The allocation range 01-01-2000 - 01-03-2000 consists of 3 days with 30% allocated to it (300 units). The goal for
+    each day within this range would be 300 units / 3 days, so a daily goal of 100 units
+    01-04-2000 - 01-10-2000 consists of 7 days with 70% allocated to this range (700 units), so the daily goal for this
+    range would bee 700 units / 7 days = 100 units / day
+    :param flight_data:
+    :return:
+    """
+    today = timezone.now().date()
+    historical_units_chart = dict(
+        id="historical_units",
+        title="Historical Units",
+        data=[],
+    )
+    historical_spend_chart = dict(
+        id="historical_spend",
+        title="Historical Spend",
+        data=[],
+    )
+    today_goal_units = None
+    today_goal_spend = None
+    goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
+    allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
+    # Get mapping of how much was actually delivered for each date to match with recommendation
+    delivery_mapping = {
+        delivery["date"]: delivery for delivery in flight_data["daily_delivery"]
+    }
+    end = min(flight_data["end"], today)
+    plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
+    projected_budget = flight_data["projected_budget"]
+    for date in get_dates_range(flight_data["start"], end):
+        goal_obj = goal_mapping[date]
+        # Get the count of allocation amounts to divide total plan units by
+        allocation_date_range_count = allocation_count[goal_obj.allocation]
+        goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count / 100)
+        goal_spend = round(projected_budget * goal_obj.allocation / allocation_date_range_count / 100)
+        units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
+        try:
+            actual_units = delivery_mapping[date][units_key]
+            actual_spend = delivery_mapping[date]["cost"]
+        except KeyError:
+            # If KeyError, Flight did not delivery for the current date being processed
+            actual_units = 0
+            actual_spend = 0
+        if date == today:
+            # Do not add today's recommendations to chart, provide separate keys for today's values
+            today_goal_units = goal_units
+            today_goal_spend = goal_spend
+            break
+        historical_units_chart["data"].append(dict(
+            label=date,
+            goal=goal_units,
+            actual=actual_units,
+        ))
+        historical_spend_chart["data"].append(dict(
+            label=date,
+            goal=goal_spend,
+            actual=actual_spend,
+        ))
+    data = dict(
+        historical_units_chart=historical_units_chart,
+        historical_spend_chart=historical_spend_chart,
+        today_goal_units=today_goal_units,
+        today_goal_spend=today_goal_spend,
+    )
+    return data
+
+
+def set_campaign_allocations(campaign_queryset):
+    campaigns = campaign_queryset.values(
+        "id", "name", "goal_allocation",
+    ).order_by("name").annotate(start=F("start_date"), end=F("end_date"))
+
+    total_allocation = sum(campaign["goal_allocation"] for campaign in campaigns)
+    # Distribute remaining goal_allocations to campaigns with 0 goal allocation
+    if campaigns and total_allocation < 100:
+        goal_allocation_remaining = 100
+        campaigns_without_allocation = []
+        for campaign in campaigns:
+            if campaign["goal_allocation"] == 0:
+                campaigns_without_allocation.append(campaign)
+            else:
+                goal_allocation_remaining -= campaign["goal_allocation"]
+        # Do not allocate if there are no campaigns without allocations
+        try:
+            split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
+            for campaign in campaigns_without_allocation:
+                campaign["goal_allocation"] = split_allocation
+        except ZeroDivisionError:
+            pass
+    return campaigns
+
+
+def get_flight_pacing_allocation_ranges(flight_id):
+    """
+    Formats individual flight pacing allocation dates into a list of date ranges group by allocation values
+    :param flight_id:
+    :return:
+    """
+    pacing_allocation_mapping = FlightPacingAllocation.get_allocations(flight_id)
+    pacing_allocations = list(pacing_allocation_mapping.values())
+    pacing_allocations.sort(key=lambda x: x.date)
+
+    # Get start and end date ranges grouped by allocation value
+    pacing_allocation_ranges = []
+    for allocation, group in groupby(pacing_allocations, key=lambda x: x.allocation):
+        sorted_dates = sorted(group, key=lambda x: x.date)
+        start = sorted_dates[0].date
+        end = sorted_dates[-1].date
+        pacing_allocation_ranges.append(dict(
+            start=start,
+            end=end,
+            allocation=allocation
+        ))
+    return pacing_allocation_mapping, pacing_allocation_ranges
+
+
+def get_flight_daily_budget(flight):
+    """
+    Calculates the daily Flight budget to reach overall goal
+    In order to calculate projected daily budget, we need the today's FlightPacingAllocation allocation percentage,
+    the number of days that are the same allocation, and the flight's projected budget.
+    Once the flight projected budget is calculated, multiply it by today's allocation to determine the percentage
+    of the flight budget that should be used to the date range and divide it by how many days are in the current
+    date range.
+    :param flight:
+    :return:
+    """
+    pacing_allocations, allocation_ranges = get_flight_pacing_allocation_ranges(flight.id)
+    today_allocation = pacing_allocations[timezone.now().date()]
+    allocation_range_mapping = {
+        item["allocation"]: (item["end"] - item["start"]).days for item in allocation_ranges
+    }
+    days_count = allocation_range_mapping[today_allocation.allocation]
+
+    if flight.placement.goal_type_id is SalesForceGoalType.CPM:
+        flight_projected_budget = flight.ordered_units / 1000 * get_average_cpm(flight.cost, flight.delivered_units)
+    else:
+        flight_projected_budget = flight.ordered_units * get_average_cpv(flight.cost, flight.delivered_units)
+
+    flight_daily_budget = flight_projected_budget * today_allocation.allocation / 100 / days_count
+    return flight_daily_budget

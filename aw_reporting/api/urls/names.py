@@ -18,6 +18,7 @@ class Name:
         OPPORTUNITIES = "pacing_report_opportunities"
         PLACEMENTS = "pacing_report_placements"
         FLIGHTS = "pacing_report_flights"
+        FLIGHT_PACING_ALLOCATIONS = "pacing_report_flight_pacing_allocations"
         COLLECT = "pacing_report_collect"
         EXPORT = "pacing_report_export"
         PACING_REPORT_STATUS = "pacing_report_status"
