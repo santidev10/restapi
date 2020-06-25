@@ -791,9 +791,12 @@ class PacingReport:
             sf_alerts = {
                 alert.code: alert.message for alert in Alert.objects.filter(record_id=p["id"])
             }
-            if p["end"] >= today and PlacementAlert.ORDERED_UNITS_CHANGED.value in sf_alerts:
-                alerts.append(f"{p['name']} - Ordered units were changed from changed "
-                              f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}")
+            try:
+                if p["end"] >= today and PlacementAlert.ORDERED_UNITS_CHANGED.value in sf_alerts:
+                    alerts.append(f"{p['name']} - Ordered units were changed from changed "
+                                  f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}")
+            except TypeError:
+                pass
             p["alerts"] = alerts
 
         return placements
@@ -942,9 +945,6 @@ class PacingReport:
         except (KeyError, TypeError):
             flight_daily_budget = 0
 
-        c["flight_budget"] = flight.budget
-        c["flight_daily_budget"] = flight_daily_budget
-
         for c in campaigns:
             allocation_ko = c["goal_allocation"] / 100
             kwargs = dict(allocation_ko=allocation_ko, campaign_id=c["id"])
@@ -972,6 +972,8 @@ class PacingReport:
             )
 
             c.update(chart_data)
+            c["flight_budget"] = flight.budget
+            c["flight_daily_budget"] = flight_daily_budget
 
             self.add_calculated_fields(c)
         return campaigns

@@ -405,9 +405,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         flight = Flight.objects.create(
             id="1", name="", placement=placement, ordered_units=50, cost=50,
-            total_cost=50, start=start, end=today, delivered=0,
+            total_cost=50, start=start, end=today, delivered=50
         )
-        FlightStatistic.objects.create(flight=flight, delivery=flight.ordered_units)
+        FlightStatistic.objects.create(flight=flight, delivery=flight.ordered_units,  impressions=50, sum_cost=50)
         account = Account.objects.create(id="1", name="Visible Account")
         campaign = Campaign.objects.create(
             id="1", name="", salesforce_placement=placement, account=account,
