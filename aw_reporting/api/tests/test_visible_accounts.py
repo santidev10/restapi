@@ -62,6 +62,6 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
         with override_settings(MCC_ACCOUNT_IDS=[chf_manager.id]):
             response = self.client.get(url)
 
-        visible_by_id = {acc['id']: acc['visible'] for acc in response.data}
+        visible_by_id = {acc["id"]: acc["visible"] for acc in response.data}
         self.assertTrue(visible_by_id[account_1.id])
         self.assertFalse(visible_by_id[account_2.id])

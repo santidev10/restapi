@@ -30,7 +30,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         accounts = self._get_account_queryset(options)
-        logger.info("Cleaning statistics for {} accounts".format(accounts.count()))
+        logger.info("Cleaning statistics for %s accounts", accounts.count())
         self._reset_statistic(accounts)
         logger.info("Invoking pull_aw_data")
         call_command("pull_aw_data", **options)

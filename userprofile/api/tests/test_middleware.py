@@ -65,7 +65,7 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
     @override_settings(APEX_HOST="http://apex:8000")
     def test_error_apex_user_with_http_origin(self):
         """ Test error check for APEX client with invalid HTTP_ORIGIN """
-        with mock.patch('userprofile.api.views.user_profile.UserProfileApiView.get') \
+        with mock.patch("userprofile.api.views.user_profile.UserProfileApiView.get") \
                 as user_profile_view:
 
             test_email = "test.apex_user@testuser.com"
@@ -82,7 +82,7 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
     @override_settings(APEX_HOST="http://apex:8000")
     def test_error_apex_user_with_http_referer(self):
         """ Test error check for APEX client with invalid HTTP_REFERER """
-        with mock.patch('userprofile.api.views.user_profile.UserProfileApiView.get') \
+        with mock.patch("userprofile.api.views.user_profile.UserProfileApiView.get") \
                 as user_profile_view:
             test_email = "test.apex_user@testuser.com"
             self.create_test_user(email=test_email)

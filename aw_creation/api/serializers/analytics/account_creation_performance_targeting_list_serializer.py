@@ -9,6 +9,9 @@ class AccountStatisticField(ParentDictValueField):
     def __init__(self):
         super(AccountStatisticField, self).__init__("account_statistic")
 
+    def to_internal_value(self, data):
+        raise NotImplementedError
+
 
 class AccountCreationPerformanceTargetingListSerializer(BaseAccountCreationSerializer):
     ad_count = AccountStatisticField()

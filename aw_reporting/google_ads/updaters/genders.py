@@ -1,17 +1,17 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from django.db.models import Max
 
 from aw_reporting.adwords_reports import gender_performance_report
+from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
-from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
+from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
-from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
-from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)

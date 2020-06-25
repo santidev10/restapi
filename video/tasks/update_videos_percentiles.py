@@ -1,5 +1,5 @@
-from saas import celery_app
 from es_components.managers import VideoManager
+from saas import celery_app
 from utils.percentiles import update_percentiles
 
 

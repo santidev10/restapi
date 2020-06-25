@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0006_accountcreation_is_deleted'),
         ('aw_creation', '0005_auto_20170602_0651'),

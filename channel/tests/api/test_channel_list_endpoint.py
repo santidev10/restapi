@@ -1,3 +1,4 @@
+import urllib
 from time import sleep
 from unittest.mock import patch
 
@@ -15,8 +16,6 @@ from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-
-import urllib
 
 
 class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
@@ -154,7 +153,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         response = self.client.get(self.url + "?similar_to=test_channel")
 
-        self.assertEqual(len(response.data.get('items')), len(default_similar_channels))
+        self.assertEqual(len(response.data.get("items")), len(default_similar_channels))
 
     def test_ignore_monetization_filter_no_permission(self):
         user = self.create_test_user()
@@ -162,7 +161,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         channels[0].populate_monetization(is_monetizable=True)
 
-        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
 
         response = self.client.get(self.url)
         self.assertEqual(len(response.data["items"]), len(channels))
@@ -173,7 +172,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         channels[0].populate_monetization(is_monetizable=True)
 
-        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
 
         response = self.client.get(self.url + "?monetization.is_monetizable=true")
         data = response.data["items"]
@@ -199,7 +198,8 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             },
             "general_data": {
                 "title": most_relevant_channel_title,
-                "description": "the quick brown fox jumps over the lazy dog the quick brown fox jumps over the lazy dog"
+                "description": "the quick brown fox jumps over the lazy dog the quick brown fox jumps over the lazy "
+                               "dog"
             }
         })
         least_relevant_channel = Channel(**{
@@ -222,8 +222,8 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             "sort": "_score:desc",
         })
         desc_response = self.client.get(desc_url)
-        desc_items = desc_response.data['items']
-        self.assertEqual(desc_items[0]['general_data']['title'], most_relevant_channel_title)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(desc_items[0]["general_data"]["title"], most_relevant_channel_title)
 
         # test sort _score:asc
         asc_url = self.url + "?" + urllib.parse.urlencode({
@@ -232,5 +232,5 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             "sort": "_score:asc",
         })
         asc_response = self.client.get(asc_url)
-        asc_items = asc_response.data['items']
-        self.assertEqual(asc_items[-1]['general_data']['title'], most_relevant_channel_title)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(asc_items[-1]["general_data"]["title"], most_relevant_channel_title)

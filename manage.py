@@ -23,7 +23,9 @@ if __name__ == "__main__":
         raise
     try:
         execute_from_command_line(sys.argv)
+    # pylint: disable=broad-except
     except Exception as ex:
+    # pylint: enable=broad-except
         import logging
 
         logging.getLogger(__name__).exception(ex)

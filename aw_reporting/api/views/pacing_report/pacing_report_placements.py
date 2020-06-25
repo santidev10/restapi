@@ -19,4 +19,3 @@ class PacingReportPlacementsApiView(ListAPIView, PacingReportHelper):
         self.multiply_percents(placements)
 
         return Response(placements)
-

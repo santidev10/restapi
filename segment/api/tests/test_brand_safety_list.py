@@ -1,4 +1,7 @@
+import uuid
+
 from django.urls import reverse
+
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
@@ -9,11 +12,10 @@ from segment.models.persistent.constants import PersistentSegmentCategory
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.unittests.test_case import ExtendedAPITestCase
-import uuid
-
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
-STATISTICS_FIELDS_CHANNEL = ("subscribers", "likes", "dislikes", "views", "audited_videos", "items_count", "monthly_views", "monthly_subscribers", "average_brand_safety_score")
+STATISTICS_FIELDS_CHANNEL = ("subscribers", "likes", "dislikes", "views", "audited_videos", "items_count",
+                             "monthly_views", "monthly_subscribers", "average_brand_safety_score")
 STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly_views", "average_brand_safety_score")
 
 
@@ -116,7 +118,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
             uuid=uuid.uuid4(),
             title="test custom segment download url permission",
             is_featured=True,
-            statistics={"items_count": self.THRESHOLD,}
+            statistics={"items_count": self.THRESHOLD, }
         )
         CustomSegmentFileUpload.objects.create(
             segment=segment,
@@ -125,6 +127,6 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         )
 
         response = self.client.get(self._get_url("channel"))
-        self.assertIn('items', response.data)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertNotIn('download_url', response.data["items"][0])
+        self.assertIn("items", response.data)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertNotIn("download_url", response.data["items"][0])

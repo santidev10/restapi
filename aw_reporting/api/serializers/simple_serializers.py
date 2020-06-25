@@ -1,6 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.models import AdGroup, Account
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
 from aw_reporting.models.salesforce import Category
 
 

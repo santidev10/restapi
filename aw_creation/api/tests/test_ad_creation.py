@@ -44,7 +44,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
         ad_creation = AdCreation.objects.create(
             name="Test Ad", ad_group_creation=ad_group_creation,
-            custom_params_raw='[{"name": "test", "value": "ad"}]',
+            custom_params_raw="""[{"name": "test", "value": "ad"}]""",
             beacon_view_1=beacon_view_1,
         )
         return ad_creation
@@ -139,7 +139,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         if len(data["custom_params"]) > 0:
             self.assertEqual(
                 set(data["custom_params"][0].keys()),
-                {'value', 'name'}
+                {"value", "name"}
             )
 
     def test_success_get_demo(self):
@@ -167,7 +167,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.patch(
-                url, json.dumps({}), content_type='application/json',
+                url, json.dumps({}), content_type="application/json",
             )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -187,7 +187,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))
-        with open('aw_creation/fixtures/tests/video_thumbnail.png', 'rb') as fp:
+        with open("aw_creation/fixtures/tests/video_thumbnail.png", "rb") as fp:
             data = dict(
                 name="Ad Group 1",
                 final_url="https://wtf.com",
@@ -199,24 +199,24 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
                 video_ad_format=AdGroupCreation.BUMPER_AD,
                 beacon_first_quartile_3="http://tracking.com.kz?let_me_go=1",
                 beacon_view_1="",
-                beacon_view_2="",  # This field is sent but hasn't been changed
+                beacon_view_2="",  # This field is sent but hasn"t been changed
             )
-            response = self.client.patch(url, data, format='multipart')
+            response = self.client.patch(url, data, format="multipart")
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_deleted, False)
 
         ad.refresh_from_db()
-        self.assertEqual(ad.name, data['name'])
-        self.assertEqual(ad.final_url, data['final_url'])
-        self.assertEqual(ad.tracking_template, data['tracking_template'])
+        self.assertEqual(ad.name, data["name"])
+        self.assertEqual(ad.final_url, data["final_url"])
+        self.assertEqual(ad.tracking_template, data["tracking_template"])
         self.assertEqual(ad.beacon_first_quartile_3,
-                         data['beacon_first_quartile_3'])
+                         data["beacon_first_quartile_3"])
         self.assertIs(ad.beacon_first_quartile_3_changed, True)
-        self.assertEqual(ad.beacon_view_1, data['beacon_view_1'])
+        self.assertEqual(ad.beacon_view_1, data["beacon_view_1"])
         self.assertIs(ad.beacon_view_1_changed, True)
-        self.assertEqual(ad.beacon_view_2, data['beacon_view_2'])
+        self.assertEqual(ad.beacon_view_2, data["beacon_view_2"])
         self.assertIs(ad.beacon_view_2_changed, False)
         self.assertEqual(ad.custom_params,
                          [{"name": "name1", "value": "value2"},
@@ -250,7 +250,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
                            {"name": "name2", "value": "value2"}],
         )
         response = self.client.patch(url, json.dumps(data),
-                                     content_type='application/json')
+                                     content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         ad.refresh_from_db()
@@ -307,7 +307,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
                            {"name": "name2", "value": "value2"}],
         )
         response = self.client.patch(url, json.dumps(data),
-                                     content_type='application/json')
+                                     content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         ad.refresh_from_db()

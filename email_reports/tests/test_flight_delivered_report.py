@@ -48,7 +48,7 @@ class FlightDeliveredEmailsTestCase(APITestCase):
                                        end=today + timedelta(days=days_left - 1),
                                        ordered_units=ordered_views)
 
-        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1 + test_views_2)
 
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
@@ -102,7 +102,7 @@ class FlightDeliveredEmailsTestCase(APITestCase):
                                        end=today + timedelta(days=days_left - 1),
                                        ordered_units=ordered_views)
 
-        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1 + test_views_2)
 
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
@@ -160,7 +160,7 @@ class FlightDeliveredEmailsTestCase(APITestCase):
                                        end=today + timedelta(days=days_left - 1),
                                        ordered_units=ordered_views)
 
-        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1 + test_views_2)
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
                                            status=CampaignStatus.SERVING.value)
@@ -211,7 +211,7 @@ class FlightDeliveredEmailsTestCase(APITestCase):
                                        end=today - timedelta(days=1),
                                        ordered_units=ordered_views)
 
-        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1 + test_views_2)
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
                                            status=CampaignStatus.ENDED.value)

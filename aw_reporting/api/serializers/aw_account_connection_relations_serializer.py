@@ -4,7 +4,8 @@ from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.api.serializers.simple_serializers import \
     MCCAccountSerializer
-from aw_reporting.models import Account, AWConnectionToUserRelation
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
 from aw_reporting.utils import safe_max
 
 

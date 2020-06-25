@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0035_add_bid_strategy_type_choice'),
         ('aw_creation', '0035_remove_name_validation'),

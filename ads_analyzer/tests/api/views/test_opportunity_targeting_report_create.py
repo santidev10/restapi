@@ -42,6 +42,7 @@ class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
 
 
 class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIViewTestCase):
+    # pylint: disable=signature-differs
     def _request(self, *args, **kwargs):
         data = dict(
             opportunity=Opportunity.objects.create(id=next(int_iterator)).id,
@@ -49,6 +50,7 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
             date_to="2019-01-01",
         )
         return super()._request(data)
+    # pylint: enable=signature-differs
 
     def test_unauthorized(self):
         response = self._request()
@@ -88,7 +90,6 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
-
     maxDiff = None
 
     def setUp(self) -> None:

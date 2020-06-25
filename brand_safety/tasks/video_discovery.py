@@ -2,10 +2,10 @@ from celery import group
 
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from brand_safety.tasks.constants import Schedulers
-from es_components.query_builder import QueryBuilder
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
@@ -44,4 +44,3 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     # Remove brand safety section for channels to rescore. Will be rescored by discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.remove_sections(query, (Sections.BRAND_SAFETY,), proceed_conflict=True)
-

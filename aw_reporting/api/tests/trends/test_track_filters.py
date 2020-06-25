@@ -25,33 +25,33 @@ class TrackFiltersAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'accounts',
-                'dimension',
-                'indicator',
-                'breakdown',
+                "accounts",
+                "dimension",
+                "indicator",
+                "breakdown",
             }
         )
-        self.assertEqual(len(response.data['accounts']), 1)
-        account_data = response.data['accounts'][0]
+        self.assertEqual(len(response.data["accounts"]), 1)
+        account_data = response.data["accounts"][0]
         self.assertEqual(
             set(account_data.keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
-                'campaigns',
+                "id",
+                "name",
+                "start_date",
+                "end_date",
+                "campaigns",
             }
         )
-        self.assertEqual(account_data['id'], account.id)
-        self.assertEqual(len(account_data['campaigns']), 2)
+        self.assertEqual(account_data["id"], account.id)
+        self.assertEqual(len(account_data["campaigns"]), 2)
         self.assertEqual(
-            set(account_data['campaigns'][0].keys()),
+            set(account_data["campaigns"][0].keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
+                "id",
+                "name",
+                "start_date",
+                "end_date",
             }
         )
 
@@ -61,6 +61,6 @@ class TrackFiltersAPITestCase(AwReportingAPITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        self.assertEqual(len(response.data['accounts']), 1)
-        account_data = response.data['accounts'][0]
+        self.assertEqual(len(response.data["accounts"]), 1)
+        account_data = response.data["accounts"][0]
         self.assertEqual(account_data["id"], DEMO_ACCOUNT_ID)

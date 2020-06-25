@@ -6,14 +6,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0012_auto_20170703_0835'),
+        ("aw_reporting", "0012_auto_20170703_0835"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='awconnectiontouserrelation',
-            unique_together=set([('user', 'connection')]),
+            name="awconnectiontouserrelation",
+            unique_together=set([("user", "connection")]),
         ),
     ]

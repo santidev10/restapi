@@ -1,15 +1,16 @@
 from time import sleep
-from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
-from es_components.tests.utils import ESTestCase
+from django.urls import reverse
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
+
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from es_components.managers import KeywordManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
-from es_components.models import Keyword
 from es_components.models import Video
+from es_components.tests.utils import ESTestCase
+from keyword_tool.models import KeyWord
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -52,7 +53,6 @@ class TargetingItemsSearchAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(set(response.data[0].keys()), {"id", "name", "thumbnail", "criteria"})
 
     def test_success_keyword(self):
-        from keyword_tool.models import KeyWord
         for text in ("spam", "ham", "test", "batman"):
             KeyWord.objects.create(text=text)
 

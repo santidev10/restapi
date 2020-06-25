@@ -1,10 +1,10 @@
 from collections import defaultdict
 
-from django.utils import timezone
 from django.db.models import F
 from django.db.models import Q
-from rest_framework.views import APIView
+from django.utils import timezone
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -29,11 +29,10 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             .values_list("id", flat=True)
         now = timezone.now()
         running_campaigns = Campaign.objects \
-            .filter(
-                Q(sync_time__lte=F("update_time")) | Q(sync_time=None),
-                salesforce_placement__start__lte=now,
-                salesforce_placement__end__gte=now,
-            )
+            .filter(Q(sync_time__lte=F("update_time")) | Q(sync_time=None),
+                    salesforce_placement__start__lte=now,
+                    salesforce_placement__end__gte=now,
+                    )
 
         all_updated_campaign_budgets = defaultdict(dict)
         for campaign in running_campaigns:

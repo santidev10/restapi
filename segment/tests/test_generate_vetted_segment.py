@@ -8,9 +8,9 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
-from segment.models import CustomSegment
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
+from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -25,7 +25,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     def test_generate_channel_vetted_headers(self):
         user = self.create_admin_user()
-        conn = boto3.resource('s3', region_name='us-east-1')
+        conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         audit = AuditProcessor.objects.create(source=1)
         segment = CustomSegment.objects.create(
@@ -40,14 +40,14 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_manager.upsert([self.channel_manager.model(_id) for _id in ids])
         generate_vetted_segment(segment.id)
         export_key = segment.get_vetted_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()['Body']
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         header = [row.decode("utf-8") for row in body][0]
         self.assertTrue(set(header), CustomSegmentChannelVettedExportSerializer.columns)
 
     @mock_s3
     def test_generate_video_vetted_headers(self):
         user = self.create_admin_user()
-        conn = boto3.resource('s3', region_name='us-east-1')
+        conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         audit = AuditProcessor.objects.create(source=1)
         segment = CustomSegment.objects.create(
@@ -62,6 +62,6 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.video_manager.upsert([self.video_manager.model(_id) for _id in ids])
         generate_vetted_segment(segment.id)
         export_key = segment.get_vetted_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()['Body']
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         header = [row.decode("utf-8") for row in body][0]
         self.assertTrue(set(header), CustomSegmentVideoVettedExportSerializer.columns)

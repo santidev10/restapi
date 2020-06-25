@@ -1,15 +1,14 @@
 from datetime import timedelta
 from unittest.mock import patch
-
 from uuid import uuid4
+
+from django.test import TransactionTestCase
 from django.utils import timezone
 
 import brand_safety.constants as constants
 from segment.models import PersistentSegmentChannel
 from segment.models import PersistentSegmentVideo
 from segment.segment_list_generator import SegmentListGenerator
-
-from django.test import TransactionTestCase
 
 
 class PersistentSegmentCreationTestCase(TransactionTestCase):
@@ -137,7 +136,8 @@ class PersistentSegmentCreationTestCase(TransactionTestCase):
             category=constants.WHITELIST
         )
         PersistentSegmentChannel.objects.filter(id=segment.id).update(created_at=created_date)
-        should_update = list_generator.check_should_update(PersistentSegmentChannel, False, segment.audit_category_id, constants.WHITELIST)
+        should_update = list_generator.check_should_update(PersistentSegmentChannel, False, segment.audit_category_id,
+                                                           constants.WHITELIST)
         self.assertEqual(should_update, True)
 
     def test_should_not_update_channel_whitelist(self):
@@ -151,7 +151,8 @@ class PersistentSegmentCreationTestCase(TransactionTestCase):
             category=constants.WHITELIST
         )
         PersistentSegmentChannel.objects.filter(id=segment.id).update(created_at=created_date)
-        should_update = list_generator.check_should_update(PersistentSegmentChannel, False, segment.audit_category_id, constants.WHITELIST)
+        should_update = list_generator.check_should_update(PersistentSegmentChannel, False, segment.audit_category_id,
+                                                           constants.WHITELIST)
         self.assertEqual(should_update, False)
 
     def test_should_update_video_whitelist(self):
@@ -165,7 +166,8 @@ class PersistentSegmentCreationTestCase(TransactionTestCase):
             category=constants.WHITELIST
         )
         PersistentSegmentVideo.objects.filter(id=segment.id).update(created_at=created_date)
-        should_update = list_generator.check_should_update(PersistentSegmentVideo, False, segment.audit_category_id, constants.WHITELIST)
+        should_update = list_generator.check_should_update(PersistentSegmentVideo, False, segment.audit_category_id,
+                                                           constants.WHITELIST)
         self.assertEqual(should_update, True)
 
     def test_should_not_update_video_whitelist(self):
@@ -179,7 +181,8 @@ class PersistentSegmentCreationTestCase(TransactionTestCase):
             category=constants.WHITELIST
         )
         PersistentSegmentVideo.objects.filter(id=segment.id).update(created_at=created_date)
-        should_update = list_generator.check_should_update(PersistentSegmentVideo, False, segment.audit_category_id, constants.WHITELIST)
+        should_update = list_generator.check_should_update(PersistentSegmentVideo, False, segment.audit_category_id,
+                                                           constants.WHITELIST)
         self.assertEqual(should_update, True)
 
     def test_should_delete_if_error(self):
@@ -197,5 +200,7 @@ class PersistentSegmentCreationTestCase(TransactionTestCase):
             mock_generate.side_effect = Exception
             list_generator = SegmentListGenerator(0)
             with self.assertRaises(Exception):
+                # pylint: disable=protected-access
                 list_generator._generate_master_video_whitelist()
+                # pylint: enable=protected-access
                 self.assertFalse(PersistentSegmentVideo.objects.filter(uuid=uuid).exists())

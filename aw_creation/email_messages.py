@@ -10,7 +10,7 @@ TRACKING_TAGS_SUBJECT = "ViewIQ Tags Needed for {account} by {first_name} {last_
 
 def tag_field_to_readable_name(field_name):
     parts = field_name.split("_")
-    if parts[1] in ('dcm', "vast"):
+    if parts[1] in ("dcm", "vast"):
         parts[1] = parts[1].upper()
     else:
         parts[1] = parts[1].capitalize()
@@ -18,7 +18,9 @@ def tag_field_to_readable_name(field_name):
 
 
 def send_tracking_tags_request(user, account_creation):
+    # pylint: disable=import-outside-toplevel
     from aw_creation.models import AdCreation
+    # pylint: enable=import-outside-toplevel
 
     tag_field_names = AdCreation.tag_field_names
     is_changed_fields = AdCreation.tag_changes_field_names

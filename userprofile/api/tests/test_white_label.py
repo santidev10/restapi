@@ -1,5 +1,5 @@
-from io import BytesIO
 import json
+from io import BytesIO
 from unittest.mock import patch
 
 from django.test import override_settings
@@ -45,7 +45,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
     def test_rc(self):
         """ GET Should return default for rc.viewiq """
         domain_name = "rc.viewiq.com"
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.get(self._url, SERVER_NAME=domain_name)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["domain"], DEFAULT_DOMAIN)
@@ -58,7 +58,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "email": "testsubdomain@email.com"
         }
         self._create_whitelabel(sub_domain, config)
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.get(self._url, SERVER_NAME=server_name)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(sub_domain, response.data["domain"])
@@ -72,7 +72,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "email": "multiple.subdomain.viewiq@email.com"
         }
         self._create_whitelabel(sub_domain, config)
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.get(self._url, SERVER_NAME=server_name)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(sub_domain, response.data["domain"])
@@ -81,21 +81,21 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
     def test_get_all_permissions_fail(self):
         """ Reject GET requests for all configs without valid permissions """
         self.create_test_user()
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.get(self._url + "?all=true")
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_post_permissions_fail(self):
         """ Reject POST requests without valid permissions """
         self.create_test_user()
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.post(self._url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_patch_permissions_fail(self):
         """ Reject PATCH requests without valid permissions """
         self.create_test_user()
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.patch(self._url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -111,7 +111,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "disable": ["google_oauth"],
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=["google_oauth"]):
+        with override_settings(ALLOWED_HOSTS=["*"], DOMAIN_MANAGEMENT_PERMISSIONS=["google_oauth"]):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label.refresh_from_db()
         config = payload["config"]
@@ -135,7 +135,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "logo": "test_url",
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -152,7 +152,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "invalid_field": "test_url",
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -164,7 +164,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "id": white_label_1.id,
             "domain": white_label_2.domain
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -179,7 +179,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "disable": [valid_permissions[0], "not a valid permission"]
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=valid_permissions):
+        with override_settings(ALLOWED_HOSTS=["*"], DOMAIN_MANAGEMENT_PERMISSIONS=valid_permissions):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -189,7 +189,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         payload = {
             "domain": white_label.domain
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -201,7 +201,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         payload = {
             "domain": domain
         }
-        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=permissions):
+        with override_settings(ALLOWED_HOSTS=["*"], DOMAIN_MANAGEMENT_PERMISSIONS=permissions):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label = WhiteLabel.objects.get(domain=domain)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -211,9 +211,9 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
         image_name = "test_logo_image.png"
         white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
-        with override_settings(ALLOWED_HOSTS=['*']), \
-                patch("userprofile.api.views.white_label.upload_file", return_value=image_name):
-            image = BytesIO(b'mybinarydata')
+        with override_settings(ALLOWED_HOSTS=["*"]), \
+             patch("userprofile.api.views.white_label.upload_file", return_value=image_name):
+            image = BytesIO(b"mybinarydata")
             url = self._url + f"?id={white_label.id}&image_type=logo"
             response = self.client.post(url, image, content_type="image/png")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -227,7 +227,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "logo": "test_logo_url",
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label = WhiteLabel.objects.get(domain=payload["domain"])
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -238,9 +238,9 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
         image_name = "test_logo_image.png"
         white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
-        with override_settings(ALLOWED_HOSTS=['*']), \
-                patch("userprofile.api.views.white_label.upload_file", return_value=image_name):
-            image = BytesIO(b'mybinarydata')
+        with override_settings(ALLOWED_HOSTS=["*"]), \
+             patch("userprofile.api.views.white_label.upload_file", return_value=image_name):
+            image = BytesIO(b"mybinarydata")
             url = self._url + f"?id={white_label.id}&image_type=invalid_image_field"
             response = self.client.post(url, image, content_type="image/png")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -250,13 +250,13 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         payload = {
             "domain": "",
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
         payload = {
             "domain": " ",
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=["*"]):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

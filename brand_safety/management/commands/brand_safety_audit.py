@@ -4,7 +4,6 @@ from django.core.management.base import BaseCommand
 
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -13,15 +12,15 @@ class Command(BaseCommand):
         parser.add_argument(
             "--ids",
             help="Manual brand safety scoring, should provide ids to update"
-        ),
+        )
         parser.add_argument(
             "--score-vetted-channels",
-            action='store_true',
+            action="store_true",
             default=False
-        ),
+        )
         parser.add_argument(
             "--score-vetted-videos",
-            action='store_true',
+            action="store_true",
             default=False
         )
 

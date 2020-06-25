@@ -24,7 +24,6 @@ OPPORTUNITY_VALUES_LIST = ("sf_cpv_cost", "sf_cpm_cost", "sf_cpv_units", "sf_cpm
 
 
 class ModelFiltersOptions:
-
     class Campaign:
         prefix = ""
         filtering_or = True

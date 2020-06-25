@@ -1,15 +1,23 @@
 import json
-from datetime import datetime, timedelta, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import Breakdown
+from aw_reporting.charts.base_chart import TrendId
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
@@ -51,7 +59,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
-        self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
+        self.assertEqual(set(i["value"] for i in trend[0]["trend"]),
                          {test_impressions})
 
     def test_success_get_view_rate_calculation(self):
@@ -81,7 +89,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 1)
-        self.assertEqual(set(i['value'] for i in trend),
+        self.assertEqual(set(i["value"] for i in trend),
                          {10})  # 10% video view rate
 
     def test_success_dimension_device(self):
@@ -112,16 +120,16 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 2)
         for line in trend:
-            if line['label'] == "Computers":
-                self.assertEqual(line['average'], test_impressions[0])
+            if line["label"] == "Computers":
+                self.assertEqual(line["average"], test_impressions[0])
             else:
-                self.assertEqual(line['average'], test_impressions[1])
+                self.assertEqual(line["average"], test_impressions[1])
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
         with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
-            channel_ids = [i['id'] for i in data['items']]
+            channel_ids = [i["id"] for i in data["items"]]
         test_days = 10
         test_impressions = 100
         for i in range(test_days):
@@ -152,7 +160,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         today = datetime.now().date()
         with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
-            ids = [i['id'] for i in data['items']]
+            ids = [i["id"] for i in data["items"]]
         test_days = 10
         test_impressions = 100
         for i in range(test_days):
@@ -206,8 +214,8 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(trend[0]["trend"]), 48, "24 hours x 2 days")
 
     @generic_test((
-            ("Show AW rates", (True,), {}),
-            ("Hide AW rates", (False,), {}),
+        ("Show AW rates", (True,), {}),
+        ("Hide AW rates", (False,), {}),
     ))
     def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
         """

@@ -3,11 +3,11 @@
 from __future__ import unicode_literals
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0002_load_languages_from_fixture'),
     ]
@@ -17,9 +17,15 @@ class Migration(migrations.Migration):
             name='AdGroupOptimizationTuning',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('kpi', models.CharField(choices=[('impressions', 'impressions'), ('video_views', 'video_views'), ('clicks', 'clicks'), ('cost', 'cost'), ('ctr', 'ctr'), ('average_cpv', 'average_cpv'), ('video_view_rate', 'video_view_rate'), ('conversions', 'conversions'), ('view_through', 'view_through')], max_length=20)),
+                ('kpi', models.CharField(
+                    choices=[('impressions', 'impressions'), ('video_views', 'video_views'), ('clicks', 'clicks'),
+                             ('cost', 'cost'), ('ctr', 'ctr'), ('average_cpv', 'average_cpv'),
+                             ('video_view_rate', 'video_view_rate'), ('conversions', 'conversions'),
+                             ('view_through', 'view_through')], max_length=20)),
                 ('value', models.DecimalField(blank=True, decimal_places=3, max_digits=13, null=True)),
-                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='optimization_tuning', to='aw_creation.AdGroupCreation')),
+                ('item',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='optimization_tuning',
+                                   to='aw_creation.AdGroupCreation')),
             ],
             options={
                 'abstract': False,
@@ -30,9 +36,15 @@ class Migration(migrations.Migration):
             name='CampaignOptimizationTuning',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('kpi', models.CharField(choices=[('impressions', 'impressions'), ('video_views', 'video_views'), ('clicks', 'clicks'), ('cost', 'cost'), ('ctr', 'ctr'), ('average_cpv', 'average_cpv'), ('video_view_rate', 'video_view_rate'), ('conversions', 'conversions'), ('view_through', 'view_through')], max_length=20)),
+                ('kpi', models.CharField(
+                    choices=[('impressions', 'impressions'), ('video_views', 'video_views'), ('clicks', 'clicks'),
+                             ('cost', 'cost'), ('ctr', 'ctr'), ('average_cpv', 'average_cpv'),
+                             ('video_view_rate', 'video_view_rate'), ('conversions', 'conversions'),
+                             ('view_through', 'view_through')], max_length=20)),
                 ('value', models.DecimalField(blank=True, decimal_places=3, max_digits=13, null=True)),
-                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='optimization_tuning', to='aw_creation.CampaignCreation')),
+                ('item',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='optimization_tuning',
+                                   to='aw_creation.CampaignCreation')),
             ],
             options={
                 'abstract': False,

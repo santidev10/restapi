@@ -4,12 +4,12 @@ import tempfile
 
 from django.conf import settings
 
-from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
-from .s3_exporter import AccountTargetingReportS3Exporter
-from aw_reporting.models import Account
-from ads_analyzer.reports.account_targeting_report.constants import EXPORT_FIELDS
-from saas import celery_app
 from administration.notifications import send_html_email
+from ads_analyzer.reports.account_targeting_report.constants import EXPORT_FIELDS
+from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
+from aw_reporting.models import Account
+from saas import celery_app
+from .s3_exporter import AccountTargetingReportS3Exporter
 
 EXPORT_FIELDS_SET = set(EXPORT_FIELDS)
 
@@ -36,7 +36,8 @@ def account_targeting_export(options):
         for item in targeting_data
     ]
     s3_exporter = AccountTargetingReportS3Exporter()
-    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8-sig", delete=False, suffix=".csv", dir=settings.TEMPDIR) as csv_file:
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8-sig", delete=False, suffix=".csv",
+                                     dir=settings.TEMPDIR) as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=EXPORT_FIELDS)
         csv_writer.writeheader()
         csv_writer.writerows(export_rows)
@@ -54,4 +55,3 @@ def account_targeting_export(options):
         text_content=text_content,
         from_email=settings.EXPORTS_EMAIL_ADDRESS
     )
-

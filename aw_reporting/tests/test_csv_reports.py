@@ -1,11 +1,10 @@
-import pytz
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
 
+import pytz
 from django.conf import settings
 from django.test import TestCase
-
 
 from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.models import Account
@@ -18,7 +17,6 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.aws.s3 import get_s3_client
 from utils.unittests.s3_mock import mock_s3
-
 
 S3_BUCKET = settings.AMAZON_S3_REPORTS_BUCKET_NAME
 
@@ -35,7 +33,7 @@ class PacingReportCSVExportTestCase(TestCase):
         end = today - timedelta(days=2)
 
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=end, probability=100
+            id="1", name="", start=start, end=end, probability=100
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,

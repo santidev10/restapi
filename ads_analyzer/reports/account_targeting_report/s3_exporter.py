@@ -2,7 +2,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from utils.aws.s3_exporter import S3Exporter
-from uuid import uuid4
 
 
 class AccountTargetingReportS3Exporter(S3Exporter):

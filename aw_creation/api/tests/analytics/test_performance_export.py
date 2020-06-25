@@ -12,7 +12,8 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.excel_reports.analytics_performance_report import AnalyticsPerformanceReportColumn, ALL_COLUMNS
+from aw_reporting.excel_reports.analytics_performance_report import ALL_COLUMNS
+from aw_reporting.excel_reports.analytics_performance_report import AnalyticsPerformanceReportColumn
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -71,8 +72,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
         campaign2 = Campaign.objects.create(id=2, name="#2", account=account)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
-        date = datetime.now().date() - timedelta(days=1)
-        base_stats = dict(date=date, impressions=100, video_views=10, cost=1)
+        action_date = datetime.now().date() - timedelta(days=1)
+        base_stats = dict(date=action_date, impressions=100, video_views=10, cost=1)
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
@@ -157,7 +158,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         try:
             get_sheet_from_response(response)
-        except:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             self.fail("Report is not an xls")
 
     def test_report_percent_formatted(self):

@@ -1,6 +1,7 @@
-from utils.models import Timestampable
-from django.db import models
 from django.contrib.postgres.fields import JSONField
+from django.db import models
+
+from utils.models import Timestampable
 
 
 class CacheItem(Timestampable):

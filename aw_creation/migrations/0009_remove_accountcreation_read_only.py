@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0008_accountcreation_read_only'),
     ]

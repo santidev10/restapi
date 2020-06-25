@@ -3,10 +3,18 @@ from collections import defaultdict
 from itertools import zip_longest
 
 from django.contrib.auth import get_user_model
-from django.db.models import Min, Max, Count, Case, When, F, Sum, CharField
+from django.db.models import Case
+from django.db.models import CharField
+from django.db.models import Count
+from django.db.models import F
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Sum
+from django.db.models import When
 
-from aw_reporting.models import Campaign, GeoTarget, \
-    VideoCreativeStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import VideoCreativeStatistic
 from utils.db.aggregators import ConcatAggregate
 
 AW_TARGETING_FIELDS = (
@@ -102,7 +110,7 @@ class HealthCheckTool(list):
                 Case(
                     When(
                         end_date__isnull=True,
-                        then=F('id'),
+                        then=F("id"),
                     ),
                     output_field=CharField()
                 ),
@@ -114,7 +122,7 @@ class HealthCheckTool(list):
             annotate[f] = Count(
                 Case(
                     When(
-                        then=F('id'),
+                        then=F("id"),
                         **{f: True}
                     ),
                     output_field=CharField()
@@ -212,6 +220,7 @@ class DemoSection(Section):
         goal = list(filter(None, goal))
         return goal
 
+    # pylint: disable=too-many-branches,too-many-statements
     def run_comparison(self, aw, sf):
         sf = [
             {"match_age": False,
@@ -234,7 +243,7 @@ class DemoSection(Section):
                         obj["match"] = True
                         break
             if self.aw_male in string_aw_names or \
-                    self.aw_female in string_aw_names:
+                self.aw_female in string_aw_names:
                 for obj in sf:
                     if obj["name"].startswith(self.sf_any_gender):
                         obj["match_gender"] = True
@@ -271,7 +280,7 @@ class DemoSection(Section):
                         obj["match"] = True
                         break
             if self.aw_undetermined_gender in string_aw_names or \
-                    self.aw_undetermined_age in string_aw_names:
+                self.aw_undetermined_age in string_aw_names:
                 for obj in sf:
                     if obj["name"] == self.sf_unknown:
                         obj["match"] = True
@@ -315,7 +324,7 @@ class DemoSection(Section):
         # No unknown Age or Gender from SF
         if self.sf_no_unknown_age_gender in string_sf_names:
             if self.aw_undetermined_age not in string_aw_names and \
-                    self.aw_undetermined_gender not in string_aw_names:
+                self.aw_undetermined_gender not in string_aw_names:
                 for obj in sf:
                     if obj["name"] == self.sf_no_unknown_age_gender:
                         obj["match"] = True
@@ -354,6 +363,8 @@ class DemoSection(Section):
             del obj["match_gender"]
         return aw, sf
 
+    # pylint: enable=too-many-branches,too-many-statements
+
     @staticmethod
     def make_pairs(sequence, size=2, fill_value=0):
         if not sequence:
@@ -380,9 +391,9 @@ class GeoSection(Section):
                 int(e) for e in setup_data[
                     "location_targeting"].split(self.coma_sep)]
             location_targeting = list(
-                GeoTarget.objects.filter(
-                    id__in=location_targeting).values_list(
-                    "canonical_name", flat=True))
+                GeoTarget.objects \
+                    .filter(id__in=location_targeting) \
+                    .values_list("canonical_name", flat=True))
             return location_targeting
         return []
 
@@ -435,8 +446,8 @@ class GeoSection(Section):
 class FlightSection(Section):
     def prepare_aw_field(self, setup_data):
         if setup_data:
-            min_start, max_end, end_null = setup_data["min_start"],\
-                                           setup_data["max_end"],\
+            min_start, max_end, end_null = setup_data["min_start"], \
+                                           setup_data["max_end"], \
                                            setup_data["end_null_count"]
             data = []
             if min_start:
@@ -471,6 +482,13 @@ class FlightSection(Section):
         return aw, sf
 
 
+_AW_FIELDS = (
+    "targeting_interests", "targeting_topics",
+    "targeting_keywords", "targeting_channels",
+    "targeting_videos", "targeting_remarketings",
+    "targeting_custom_affinity")
+
+
 class TargetingSection(Section):
     RE_MARKETING = "Remarketing"
     INTEREST = "Interest"
@@ -488,11 +506,7 @@ class TargetingSection(Section):
     def prepare_aw_field(self, setup_data):
         targeting_tactics = []
         if setup_data:
-            for f in (
-                    "targeting_interests", "targeting_topics",
-                    "targeting_keywords", "targeting_channels",
-                    "targeting_videos", "targeting_remarketings",
-                    "targeting_custom_affinity"):
+            for f in _AW_FIELDS:
                 if setup_data[f]:
                     parts = f.split("_")[1:]
                     value = " ".join([p.capitalize() for p in parts])
@@ -512,9 +526,9 @@ class TargetingSection(Section):
             if name in self.SF_TO_AW_MAP:
                 name = self.SF_TO_AW_MAP.get(name)
             for aw_item in aw:
-                if (aw_item.get("name") == name) or\
-                        (name == self.CUSTOM_AFFINITY and
-                         aw_item.get("name") == self.INTEREST):
+                if (aw_item.get("name") == name) or \
+                    (name == self.CUSTOM_AFFINITY and
+                     aw_item.get("name") == self.INTEREST):
                     self.set_positive_matching(aw_item)
                     self.set_positive_matching(sf_item)
                     continue
@@ -525,7 +539,7 @@ class TagsSection(Section):
 
     def run_comparison(self, aw, sf):
         if not (sf and aw):
-            return
+            return None
         sf_el_name, aw_el_name = sf[0].get("name"), aw[0].get("name")
         if sf_el_name == aw_el_name:
             self.set_positive_matching(sf[0])
@@ -536,9 +550,8 @@ class TagsSection(Section):
         if setup_data and setup_data["tracking_template_is_set"]:
             if setup_data["tracking_template_is_set"] == setup_data["count"]:
                 return ["Yes"]
-            else:
-                return ["{}/{}".format(setup_data["tracking_template_is_set"],
-                                       setup_data["count"])]
+            return ["{}/{}".format(setup_data["tracking_template_is_set"],
+                                   setup_data["count"])]
         return ["No"]
 
     def prepare_sf_field(self, obj):
@@ -555,7 +568,7 @@ class GDNSection(Section):
 
     def run_comparison(self, aw, sf):
         if not (sf and aw):
-            return
+            return None
         sf_el_name, aw_el_name = sf[0].get("name"), aw[0].get("name")
         if sf_el_name == aw_el_name:
             self.set_positive_matching(sf[0])

@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
-from cache.models import CacheItem
 from cache.constants import FORECAST_TOOL_FILTERS_KEY
+from cache.models import CacheItem
 
 
 class ForecastToolFiltersApiView(RetrieveAPIView):

@@ -1,24 +1,26 @@
 import logging
 
 from django.utils import timezone
-from audit_tool.models import get_hash_name
+
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditVideoMeta
+from audit_tool.models import get_hash_name
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.auditors.utils import AuditUtils as BrandSafetyUtils
 from segment.models import CustomSegment
+from utils.db.functions import safe_bulk_create
+from utils.db.get_exists import get_exists
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
-from utils.db.get_exists import get_exists
-from utils.db.functions import safe_bulk_create
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentAuditGenerator(object):
+# pylint: disable=too-many-instance-attributes
+class SegmentAuditGenerator:
     BATCH_SIZE = 1000
     CREATE_BATCH_SIZE = None
     segment = None
@@ -108,7 +110,8 @@ class SegmentAuditGenerator(object):
                 except YoutubeAPIConnectorException:
                     data = []
 
-                audit_model_to_create = [self.instantiate_audit_model(item, self.id_field, self.audit_model) for item in data]
+                audit_model_to_create = [self.instantiate_audit_model(item, self.id_field, self.audit_model) for item
+                                         in data]
                 safe_bulk_create(self.audit_model, audit_model_to_create, batch_size=self.CREATE_BATCH_SIZE)
 
                 # meta_data is tuple of created audit item
@@ -131,13 +134,15 @@ class SegmentAuditGenerator(object):
                 existing_vet_audit_ids = get_exists(all_audit_ids, select_fields=self.id_field,
                                                     where_id_field=f"({fields})", model_name=self.vetting_table_name,
                                                     parameters=parameters)
-                vetting_to_create_ids = set(all_audit_ids) - set([row[0] for row in existing_vet_audit_ids])
+                vetting_to_create_ids = set(all_audit_ids) - {row[0] for row in existing_vet_audit_ids}
                 audit_vetting_to_create = [
                     self.audit_vetting_model(**{"audit": audit_processor, self.id_field: _id})
                     for _id in vetting_to_create_ids
                 ]
                 safe_bulk_create(self.audit_vetting_model, audit_vetting_to_create, batch_size=self.CREATE_BATCH_SIZE)
+            # pylint: disable=broad-except
             except Exception:
+            # pylint: enable=broad-except
                 logger.exception("Error generating audit items")
 
     @staticmethod
@@ -230,7 +235,7 @@ class SegmentAuditGenerator(object):
             response = func(ids_term)["items"]
             data.extend(response)
         return data
-
+# pylint: enable=too-many-instance-attributes
 
 class QuotaExceededException(Exception):
     pass

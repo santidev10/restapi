@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSerializer
-from aw_reporting.models import Campaign, Account
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 
 
 class AnalyticsAccountCreationCampaignsListApiView(APIView):

@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 from datetime import date
 from datetime import datetime
@@ -20,9 +21,9 @@ from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.unittests.patch_now import patch_now
 from utils.unittests.recalculate_de_norm_fields import recalculate_de_norm_fields
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.patch_now import patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):
@@ -63,8 +64,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
-            {'average_cpm', 'charts', 'average_cpv', 'suggested_cpm', 'margin',
-             'suggested_cpv'}
+            {"average_cpm", "charts", "average_cpv", "suggested_cpm", "margin",
+             "suggested_cpv"}
         )
 
     def test_pricing_tool_estimate_empty(self):
@@ -156,7 +157,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         video_views=100, cost=25, **common)
         AdGroupStatistic.objects.create(date=end, video_views=100, cost=15,
                                         **common)
-        # these two below won't be included to the results
+        # these two below won"t be included to the results
         AdGroupStatistic.objects.create(date=end + timedelta(days=1),
                                         video_views=10, cost=150, **common)
         AdGroupStatistic.objects.create(date=start - timedelta(days=1),
@@ -221,7 +222,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         impressions=1000, cost=25, **common)
         AdGroupStatistic.objects.create(date=q3_end, impressions=1000, cost=25,
                                         **common)
-        # these two below won't be included to the results
+        # these two below won"t be included to the results
         AdGroupStatistic.objects.create(date=q1_end + timedelta(days=1),
                                         impressions=100, cost=150, **common)
         AdGroupStatistic.objects.create(date=q3_start - timedelta(days=1),
@@ -237,9 +238,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'average_cpv', 'average_cpm',
-                'suggested_cpm', 'suggested_cpv', 'margin',
-                'charts',
+                "average_cpv", "average_cpm",
+                "suggested_cpm", "suggested_cpv", "margin",
+                "charts",
             }
         )
         self.assertEqual(data["average_cpm"], 20)
@@ -251,9 +252,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(len(cpm_charts), 1)
         cpm_chart = cpm_charts[0]
         self.assertEqual(len(cpm_chart["trend"]), 4)
-        self.assertEqual(tuple(
-            i["value"] for i in cpm_chart["trend"]),
-            (15, 15, 25, 25))
+        self.assertEqual(
+            tuple(i["value"] for i in cpm_chart["trend"]),
+            (15, 15, 25, 25)
+        )
 
     def test_estimate_filter_ctr(self):
         opportunity_1 = Opportunity.objects.create(id="1")
@@ -292,7 +294,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1, cost=30,
             date=today + timedelta(days=3), **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, cost=10, date=today, **common)
         AdGroupStatistic.objects.create(
@@ -319,9 +321,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         cpm_chart = cpm_charts[0]
         self.assertEqual(len(cpm_chart["trend"]), 4)
         self.assertEqual(
-            tuple(
-                i["value"] for i in cpm_chart["trend"]),
-            (15, 20, 25, 30))
+            tuple(i["value"] for i in cpm_chart["trend"]),
+            (15, 20, 25, 30)
+        )
 
     def test_estimate_filter_ctr_v(self):
         today = now_in_default_tz().date()
@@ -361,7 +363,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1, cost=30,
             date=today + timedelta(days=3), **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, cost=10, date=today, **common)
         AdGroupStatistic.objects.create(
@@ -385,9 +387,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(len(cpv_charts), 1)
         cpv_chart = cpv_charts[0]
         self.assertEqual(len(cpv_chart["trend"]), 4)
-        self.assertEqual(tuple(
-            i["value"] for i in cpv_chart["trend"]),
-            (0.015, 0.02, 0.025, 0.03))
+        self.assertEqual(
+            tuple(i["value"] for i in cpv_chart["trend"]),
+            (0.015, 0.02, 0.025, 0.03)
+        )
 
     def test_estimate_filter_view_rate(self):
         opportunity_1 = Opportunity.objects.create(id="1")
@@ -428,7 +431,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group_1,
             date=today + timedelta(days=3), cost=400, **common)
-        # these tree below won't be included to the results
+        # these tree below won"t be included to the results
         AdGroupStatistic.objects.create(
             ad_group=ad_group_2, date=today, cost=500, **common)
         AdGroupStatistic.objects.create(
@@ -640,11 +643,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
 
-        campaign = Campaign.objects.create(id="2",
-                                           start_date=today, end_date=today,
+        campaign = Campaign.objects.create(start_date=today, end_date=today,
                                            video_views=2)
-        ad_group = AdGroup.objects.create(id="2",
-                                          campaign=campaign, video_views=2)
+        ad_group = AdGroup.objects.create(campaign=campaign, video_views=2)
         AdGroupStatistic.objects.create(ad_group=ad_group,
                                         date=today, cost=1,
                                         video_views=2,
@@ -802,7 +803,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         expected_planned_cpm = (
             client_cost_1 * 1000. / ordered_units_1,
             (client_cost_1 + client_cost_2) * 1000. / (
-                    ordered_units_1 + ordered_units_2),
+                ordered_units_1 + ordered_units_2),
         )
         placement_1 = OpPlacement.objects.create(
             id="1", opportunity=opportunity,
@@ -843,7 +844,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         expected_planned_cpv = (
             client_cost_1 / ordered_units_1,
             (client_cost_1 + client_cost_2) / (
-                    ordered_units_1 + ordered_units_2),
+                ordered_units_1 + ordered_units_2),
         )
         placement_1 = OpPlacement.objects.create(
             id="1", opportunity=opportunity,
@@ -974,7 +975,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_opportunities_applied_to_planned_chart(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1006,7 +1007,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_campaigns_applied_to_planned_chart(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1040,7 +1041,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_campaigns_applied_to_planned_chart_partially(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1054,16 +1055,16 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             **placement_data)
-        campaign_1 = Campaign.objects.create(id=1,
-                                             salesforce_placement=placement_1,
-                                             **campaign_data)
+        Campaign.objects.create(id=1,
+                                salesforce_placement=placement_1,
+                                **campaign_data)
         campaign_2 = Campaign.objects.create(id=2,
                                              salesforce_placement=placement_1,
                                              **campaign_data)
 
-        campaign_3 = Campaign.objects.create(id=3,
-                                             salesforce_placement=placement_2,
-                                             **campaign_data)
+        Campaign.objects.create(id=3,
+                                salesforce_placement=placement_2,
+                                **campaign_data)
         campaign_4 = Campaign.objects.create(id=4,
                                              salesforce_placement=placement_2,
                                              **campaign_data)
@@ -1081,7 +1082,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_exclude_opportunities_without_campaigns(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1107,7 +1108,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
     def test_success_on_empty_exclude_filters(self):
         today = date(2017, 1, 1)
-        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        start, _ = date(2017, 1, 1), date(2017, 3, 31)
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
@@ -1130,7 +1131,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                     exclude_opportunities=[],
                     exclude_campaigns=[]
                 )
+            # pylint: disable=broad-except
             except Exception as ex:
+            # pylint: enable=broad-except
                 self.fail("Server error due to {}".format(ex))
 
         self.assertEqual(response.status_code, HTTP_200_OK)

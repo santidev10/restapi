@@ -2,21 +2,21 @@
 BaseSegment models module
 """
 import logging
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
 from django.db.models import BooleanField
+from django.db.models import CASCADE
 from django.db.models import CharField
-from django.db.models import IntegerField
 from django.db.models import F
 from django.db.models import ForeignKey
+from django.db.models import IntegerField
 from django.db.models import Model
-from django.db.models import CASCADE
-from django.db.models import UUIDField
 from django.db.models import TextField
+from django.db.models import UUIDField
 from django.utils import timezone
-from uuid import uuid4
 
 from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
@@ -26,23 +26,24 @@ from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
 from es_components.constants import MAIN_ID_FIELD
-from es_components.constants import Sections
-from es_components.constants import VIEWS_FIELD
 from es_components.constants import SUBSCRIBERS_FIELD
+from es_components.constants import Sections
 from es_components.constants import SortDirections
+from es_components.constants import VIEWS_FIELD
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import \
+    CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
-from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
-from utils.models import Timestampable
-from segment.models.utils.segment_exporter import SegmentExporter
+from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
+from segment.models.utils.segment_exporter import SegmentExporter
+from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_vetting_complete = BooleanField(default=False, db_index=True)
     is_featured = BooleanField(default=False, db_index=True)
     is_regenerating = BooleanField(default=False, db_index=True)
-    featured_image_url = TextField(default='')
+    featured_image_url = TextField(default="")
 
     @property
     def data_type(self):
@@ -143,11 +144,13 @@ class CustomSegment(SegmentMixin, Timestampable):
         self.es_manager.sections = sections
         self.es_manager.upsert_sections = upsert_sections
 
+    # pylint: disable=signature-differs
     def delete(self, *args, **kwargs):
         # Delete segment references from Elasticsearch
         self.remove_all_from_segment()
         super().delete(*args, **kwargs)
         return self
+    # pylint: enable=signature-differs
 
     def export_file(self, s3_key=None, updating=False, queryset=None):
         now = timezone.now()
@@ -202,7 +205,9 @@ class CustomSegment(SegmentMixin, Timestampable):
         """
         if s3_key is None:
             s3_key = self.get_s3_key()
+        # pylint: disable=protected-access
         export_content = self.s3_exporter._get_s3_object(s3_key, get_key=False)
+        # pylint: enable=protected-access
         url_index = None
         for byte in export_content["Body"].iter_lines():
             row = (byte.decode("utf-8")).split(",")
@@ -233,9 +238,9 @@ class CustomSegment(SegmentMixin, Timestampable):
             "yt_id": F(f"{self.data_field}__{self.data_field}_id")
         }
         audit = AuditProcessor.objects.get(id=self.audit_id)
-        vetting_yt_ids = self.audit_utils.vetting_model.objects\
+        vetting_yt_ids = self.audit_utils.vetting_model.objects \
             .filter(audit=audit, processed__isnull=False) \
-            .annotate(**annotation)\
+            .annotate(**annotation) \
             .values_list("yt_id", flat=True)
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(list(vetting_yt_ids)).get()
         return query
@@ -246,4 +251,4 @@ class CustomSegmentRelated(Model):
     segment = ForeignKey(CustomSegment, related_name="related", on_delete=CASCADE)
 
     class Meta:
-        unique_together = (('segment', 'related_id'),)
+        unique_together = (("segment", "related_id"),)

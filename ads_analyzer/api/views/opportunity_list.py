@@ -15,5 +15,6 @@ class OpportunityListAPIView(ListAPIView):
             user_has_permission("userprofile.view_opportunity_list"),
         ),
     )
-    queryset = Opportunity.objects.filter(start__gte=timezone.now()-timedelta(days=365), start__lte=timezone.now()).values("id", "name", "start")
+    queryset = Opportunity.objects.filter(start__gte=timezone.now() - timedelta(days=365),
+                                          start__lte=timezone.now()).values("id", "name", "start")
     serializer_class = OpportunitySerializer

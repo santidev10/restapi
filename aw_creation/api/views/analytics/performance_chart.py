@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.analytics_charts import DeliveryChart
+from aw_reporting.charts.analytics_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
 
 
@@ -45,7 +45,7 @@ class AnalyticsPerformanceChartApiView(APIView):
         account_ids = []
         if item.account:
             account_ids.append(item.account.id)
-        chart = DeliveryChart(account_ids, segmented_by="campaigns",
+        chart = DeliveryChart(accounts=account_ids, segmented_by="campaigns",
                               show_aw_costs=True, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)

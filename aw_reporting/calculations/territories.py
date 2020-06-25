@@ -6,4 +6,4 @@ def get_salesforce_territories():
         .filter(territory__isnull=False) \
         .order_by("territory") \
         .distinct() \
-        .values_list('territory', flat=True)
+        .values_list("territory", flat=True)

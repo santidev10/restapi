@@ -5,14 +5,12 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+
 from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
 from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
-class PersistentSegmentVideoExportSerializer(
-    SegmentVideoExportSerializerMixin,
-    Serializer
-):
+class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
                "Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
                "Gender", "Content_Type")
@@ -34,11 +32,14 @@ class PersistentSegmentVideoExportSerializer(
     def get_url(self, obj):
         return f"https://www.youtube.com/video/{obj.main.id}"
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
-class PersistentSegmentChannelExportSerializer(
-    SegmentChannelExportSerializerMixin,
-    Serializer
-):
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",
                "Dislikes", "Views", "Audited_Videos", "Overall_Score", "Vetted",
                "Brand_Safety", "Age_Group", "Gender", "Content_Type")
@@ -54,8 +55,14 @@ class PersistentSegmentChannelExportSerializer(
     Views = IntegerField(source="stats.views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
-    Vetted = SerializerMethodField('get_vetted')
+    Vetted = SerializerMethodField("get_vetted")
     Brand_Safety = SerializerMethodField("get_brand_safety")
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError

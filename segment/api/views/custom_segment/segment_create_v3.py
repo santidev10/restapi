@@ -1,13 +1,13 @@
 import json
+from uuid import uuid4
 
-from django.db import transaction
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
+from django.db import transaction
 from rest_framework.generics import CreateAPIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
-from uuid import uuid4
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -68,7 +68,9 @@ class SegmentCreateApiViewV3(CreateAPIView):
                     if request.FILES:
                         self._create_source(segment, request)
                     created.append((validated_data, segment))
+        # pylint: disable=broad-except
         except Exception as error:
+            # pylint: enable=broad-except
             CustomSegment.objects.filter(id__in=[item[1].id for item in created]).delete()
             err = error
         if err:
@@ -131,7 +133,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
             if bad_content_categories:
                 comma_separated = ", ".join(str(item) for item in bad_content_categories)
-                raise(ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'"))
+                raise ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'")
         opts["languages"] = opts.get("languages", []) or []
         opts["countries"] = opts.get("countries", []) or []
         opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
@@ -186,7 +188,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         source = request.FILES["file"]
         key = f"{segment.title}_source_type_{source_type}_{uuid4()}.csv"
         segment.s3_exporter.export_object_to_s3(source, key)
-        source_upload = CustomSegmentSourceFileUpload.objects.create(segment=segment, source_type=source_type, key=key)
+        source_upload = CustomSegmentSourceFileUpload.objects.create(
+            segment=segment,
+            source_type=source_type,
+            filename=key
+        )
         return source_upload
 
 

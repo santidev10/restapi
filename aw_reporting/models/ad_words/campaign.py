@@ -17,7 +17,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
 
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250, db_index=True)
-    account = models.ForeignKey(Account, null=True, related_name='campaigns', on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, null=True, related_name="campaigns", on_delete=models.CASCADE)
     start_date = models.DateField(null=True, db_index=True)
     end_date = models.DateField(null=True, db_index=True)
     type = models.CharField(max_length=20, null=True, db_index=True)
@@ -28,7 +28,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     salesforce_placement = models.ForeignKey(
         OpPlacement,
         null=True,
-        related_name='adwords_campaigns',
+        related_name="adwords_campaigns",
         on_delete=models.SET_NULL,
         db_index=True,
     )
