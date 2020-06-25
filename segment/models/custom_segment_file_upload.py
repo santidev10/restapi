@@ -26,6 +26,7 @@ class CustomSegmentFileUpload(Model):
     segment = OneToOneField(CustomSegment, related_name="export", on_delete=CASCADE)
     query = JSONField()
     updated_at = DateTimeField(null=True, db_index=True)
+    filename = TextField(null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,6 +89,7 @@ class CustomSegmentVettedFileUpload(Model):
     created_at = DateTimeField(auto_now_add=True)
     download_url = TextField(null=True)
     segment = OneToOneField(CustomSegment, related_name="vetted_export", on_delete=CASCADE)
+    filename = TextField(null=True)
 
 
 class CustomSegmentSourceFileUpload(Model):
@@ -97,7 +99,7 @@ class CustomSegmentSourceFileUpload(Model):
     )
     source_type = IntegerField(choices=SOURCE_TYPE_CHOICES)
     segment = OneToOneField(CustomSegment, related_name="source", on_delete=CASCADE)
-    key = TextField()
+    filename = TextField(null=True)
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

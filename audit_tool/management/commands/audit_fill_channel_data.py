@@ -91,6 +91,8 @@ class Command(BaseCommand):
 
     def calc_video_languages(self, channel):
         videos = AuditVideoMeta.objects.filter(video__channel=channel.channel)
+        if videos.count() == 0:
+            return
         languages = {}
         for v in videos:
             if v.language:
@@ -98,11 +100,15 @@ class Command(BaseCommand):
                 if language not in languages:
                     languages[language] = 0
                 languages[language] += 1
-        if not channel.misc:
-            channel.misc = {}
         if languages and languages != {}:
-            channel.misc["video_lang"] = sorted(languages.items(), key=lambda x: x[1], reverse=True)
-            channel.save(update_fields=["misc"])
+            try:
+                l = sorted(languages.items(), key=lambda x: x[1], reverse=True)[0][0]
+                if l not in self.cache["languages"]:
+                    self.cache["languages"][l] = AuditLanguage.from_string(l)
+                channel.primary_video_language = self.cache["languages"][l]
+                channel.save(update_fields=["primary_video_language"])
+            except Exception:
+                pass
 
     def calc_language(self, channel):
         str_long = channel.name
