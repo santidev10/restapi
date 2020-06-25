@@ -186,7 +186,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             raise ValidationError(f"Invalid source_type. "
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
         source = request.FILES["file"]
-        key = f"{segment.title}_source_type_{source_type}_{uuid4()}.csv"
+        key = segment.get_source_s3_key(source_type)
         segment.s3_exporter.export_object_to_s3(source, key)
         source_upload = CustomSegmentSourceFileUpload.objects.create(
             segment=segment,

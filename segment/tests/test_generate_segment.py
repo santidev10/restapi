@@ -17,6 +17,7 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.models import CustomSegment
 from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
+from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_segment import generate_segment
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -181,3 +182,42 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         for excluded in exclusion:
             self.assertNotIn(excluded.main.id, rows)
         self.channel_manager.delete([doc.main.id for doc in docs])
+
+    def test_export_s3_key_retrieval(self):
+        """
+        test that segment.get_s3_key retrieves existing s3 key if available
+        """
+        user = self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        old_s3_key = segment.get_s3_key()
+        new_s3_key = 'new_s3_key.csv'
+        CustomSegmentFileUpload.objects.create(
+            segment=segment,
+            query={"params": {"some": "params"}},
+            download_url="some-download-url.com/asdf/asdf/asdf.csv",
+            filename=new_s3_key
+        )
+        self.assertEqual(new_s3_key, segment.get_s3_key())
+        self.assertNotEqual(new_s3_key, old_s3_key)
+
+    def test_source_s3_key_retrieval(self):
+        """
+        test that segment.get_source_s3_key retrieves existing s3 key if available
+        """
+        user = self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        old_s3_key = segment.get_source_s3_key()
+        new_s3_key = 'new_s3_key.csv'
+        CustomSegmentSourceFileUpload.objects.create(
+            segment=segment,
+            source_type=SourceListType.INCLUSION.value,
+            filename=new_s3_key
+        )
+        self.assertEqual(new_s3_key, segment.get_source_s3_key())
+        self.assertNotEqual(new_s3_key, old_s3_key)

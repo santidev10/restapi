@@ -11,6 +11,7 @@ from es_components.tests.utils import ESTestCase
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models import CustomSegment
+from segment.models import CustomSegmentVettedFileUpload
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -65,3 +66,23 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         header = [row.decode("utf-8") for row in body][0]
         self.assertTrue(set(header), CustomSegmentVideoVettedExportSerializer.columns)
+
+    def test_s3_key_retrieval(self):
+        """
+        test that segment.get_vetted_s3_key retrieves existing s3 key if available
+        """
+        user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(source=1)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user, audit_id=audit.id,
+        )
+        old_s3_key = segment.get_vetted_s3_key()
+        new_s3_key = "new_s3_key.csv"
+        CustomSegmentVettedFileUpload.objects.create(
+            segment=segment,
+            download_url='some-download-url.com/some/dir/file.csv',
+            filename=new_s3_key
+        )
+        self.assertEqual(new_s3_key, segment.get_vetted_s3_key())
+        self.assertNotEqual(old_s3_key, new_s3_key)
