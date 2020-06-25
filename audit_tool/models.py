@@ -473,6 +473,8 @@ class AuditChannelMeta(models.Model):
                                                on_delete=models.CASCADE)
     synced_with_viewiq = models.NullBooleanField(db_index=True)
     hidden_subscriber_count = models.BooleanField(default=False)
+    primary_video_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True,
+                                related_name="ac_video_language", on_delete=models.CASCADE)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
