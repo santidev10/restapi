@@ -112,8 +112,8 @@ class Command(BaseCommand):
 
     def calc_language(self, channel):
         str_long = channel.name
-        if channel.keywords:
-            str_long = "{} {}".format(str_long, channel.keywords)
+#        if channel.keywords:
+#            str_long = "{} {}".format(str_long, channel.keywords)
         if channel.description:
             str_long = "{} {}".format(str_long, channel.description)
         try:
