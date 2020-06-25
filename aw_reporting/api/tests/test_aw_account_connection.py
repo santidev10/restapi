@@ -1,5 +1,6 @@
 import json
 from unittest.mock import MagicMock
+from unittest.mock import PropertyMock
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -217,7 +218,8 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
             patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
             patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
-            patch("aw_reporting.adwords_api.adwords.AdWordsClient", return_value=aw_client_mock):
+            patch("aw_reporting.adwords_api.adwords.AdWordsClient", return_value=aw_client_mock), \
+            patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
 
