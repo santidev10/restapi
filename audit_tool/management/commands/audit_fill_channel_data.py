@@ -100,8 +100,6 @@ class Command(BaseCommand):
                 if language not in languages:
                     languages[language] = 0
                 languages[language] += 1
-        if not channel.misc:
-            channel.misc = {}
         if languages and languages != {}:
             try:
                 l = sorted(languages.items(), key=lambda x: x[1], reverse=True)[0][0]
