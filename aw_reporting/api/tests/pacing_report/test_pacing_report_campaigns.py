@@ -89,6 +89,7 @@ class PacingReportTestCase(APITestCase):
                 "impressions",
                 "is_completed",
                 "is_upcoming",
+                "flight_daily_budget",
                 "margin",
                 "margin_direction",
                 "margin_quality",

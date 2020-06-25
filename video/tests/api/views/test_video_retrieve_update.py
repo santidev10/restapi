@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK

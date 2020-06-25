@@ -58,6 +58,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     video_views = IntegerField()
     aw_update_time = DateTimeField()
     margin_cap_required = BooleanField()
+    timezone = CharField(max_length=50)
 
     def create(self, validated_data):
         raise NotImplementedError

@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 from aw_reporting.models.salesforce import Flight
 
 __all__ = [
