@@ -41,6 +41,7 @@ class Command(BaseCommand):
     exclusion_list = None
     max_pages = 200
     MAX_SOURCE_CHANNELS = 100000
+    MAX_SOURCE_CHANNELS_CAP = 300000
     audit = None
     num_clones = 0
     original_audit_name = None
@@ -115,7 +116,7 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=["started"])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get("done_source_list") and pending_channels.count() < self.MAX_SOURCE_CHANNELS:
+        if not self.audit.params.get("done_source_list") and pending_channels.count() < self.MAX_SOURCE_CHANNELS_CAP:
             if self.thread_id == 0:
                 self.process_seed_list()
                 if self.num_clones > 0:
@@ -193,22 +194,8 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
                 counter += 1
-            if v_id and not v_id in processed_ids:
-                processed_ids.append(v_id)
-                if len(vids) >= self.MAX_SOURCE_CHANNELS:
-                    self.clone_audit()
-                    vids = []
-                channel = AuditChannel.get_or_create(v_id)
-                if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
-                    channel.processed_time = None
-                    channel.save(update_fields=["processed_time"])
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    channel=channel,
-                )
-                vids.append(acp)
-                counter += 1
+                if counter >= self.MAX_SOURCE_CHANNELS:
+                    break
         if counter == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
