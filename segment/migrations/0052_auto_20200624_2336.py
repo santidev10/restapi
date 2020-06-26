@@ -19,7 +19,7 @@ def get_vetted_s3_key(segment, suffix=None):
     suffix was being generated randomly with a uuid
     """
     suffix = suffix if suffix is not None else ""
-    segment_type = segment.SEGMENT_TYPE_CHOICES[segment.segment_type][1]
+    segment_type = SEGMENT_TYPE_CHOICES[segment.segment_type][1]
     return f"custom_segments/{segment.owner_id}/{segment_type}/vetted/{segment.title}{suffix}.csv"
 
 def persist_existing_s3_keys(apps, schema_editor):
