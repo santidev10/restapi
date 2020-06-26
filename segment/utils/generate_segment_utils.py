@@ -1,23 +1,16 @@
-from enum import Enum
+import csv
 
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.models import BadWordCategory
-from collections import defaultdict
-from django.conf import settings
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
-from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
-import csv
-import logging
-import os
-import tempfile
 
 
 class GenerateSegmentUtils:
@@ -31,14 +24,16 @@ class GenerateSegmentUtils:
             vetting = AuditUtils.get_vetting_data(
                 segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
             )
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             vetting = {}
         return vetting
 
     def get_default_search_config(self, segment_type):
-        if segment_type == 0 or segment_type == "video":
+        if segment_type in (0, "video"):
             config = self._default_video_search_config
-        elif segment_type == 1 or segment_type == "channel":
+        elif segment_type in (1, "channel"):
             config = self._default_channel_search_config
         else:
             raise ValueError(f"Invalid segment_type: {segment_type}")
@@ -116,7 +111,7 @@ class GenerateSegmentUtils:
             aggregations["average_cpm"] += item.ads_stats.average_cpm or 0
             aggregations["average_cpv"] += item.ads_stats.average_cpv or 0
 
-            if segment_type == 0 or segment_type == "video":
+            if segment_type in (0, "video"):
                 aggregations["likes"] += item.stats.likes or 0
                 aggregations["dislikes"] += item.stats.dislikes or 0
             else:
@@ -143,8 +138,5 @@ class GenerateSegmentUtils:
 
     def get_source_list(self, segment):
         """ Create set of source list urls """
-        source_ids = {
-            row for row in segment.get_extract_export_ids(segment.source.key)
-
-        }
+        source_ids = set(segment.get_extract_export_ids(segment.source.filename))
         return source_ids

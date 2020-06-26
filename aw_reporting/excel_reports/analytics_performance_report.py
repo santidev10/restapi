@@ -92,7 +92,7 @@ class AnalyticsPerformanceReport:
     def generate(self, data_generator):
 
         output = BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
         worksheet = workbook.add_worksheet()
         for index, column in enumerate(self.columns):
             width = COLUMN_WIDTH.get(column, DEFAULT_WIDTH)

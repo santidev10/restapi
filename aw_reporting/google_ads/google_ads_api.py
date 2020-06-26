@@ -1,11 +1,8 @@
 import logging
 
 import yaml
-from googleads import adwords
 from google.ads.google_ads import oauth2
 from google.ads.google_ads.client import GoogleAdsClient
-from oauth2client.client import HttpAccessTokenRefreshError
-from suds import WebFault
 
 logger = logging.getLogger(__name__)
 

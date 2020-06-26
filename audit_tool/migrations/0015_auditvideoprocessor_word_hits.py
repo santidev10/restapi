@@ -7,7 +7,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0014_auto_20190415_2155'),
     ]

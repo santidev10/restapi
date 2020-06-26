@@ -1,3 +1,8 @@
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
+from rest_framework.views import APIView
+
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
 from audit_tool.utils.audit_utils import AuditUtils
@@ -8,10 +13,6 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
-from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
-from rest_framework.views import APIView
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 
@@ -21,7 +22,7 @@ class SegmentCreationOptionsApiView(APIView):
                        "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold",
                        "content_categories", "age_groups", "gender", "minimum_videos", "is_vetted",
                        "age_groups_include_na", "minimum_views_include_na", "minimum_subscribers_include_na",
-                       "minimum_videos_include_na", "vetted_after", "mismatched_language"]
+                       "minimum_videos_include_na", "vetted_after", "mismatched_language", "countries_include_na",]
 
     def post(self, request, *args, **kwargs):
         """
@@ -66,7 +67,7 @@ class SegmentCreationOptionsApiView(APIView):
                 }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value["general_data.top_lang_code"]["buckets"]]
 
             languages = []
             for code in lang_codes:
@@ -86,7 +87,8 @@ class SegmentCreationOptionsApiView(APIView):
             ]
         options = {
             "age_groups": [
-                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in AuditAgeGroup.ID_CHOICES
+                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
+                AuditAgeGroup.ID_CHOICES
             ],
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()

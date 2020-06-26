@@ -37,7 +37,6 @@ SUM_MARGIN = "sum_margin"
 AVERAGE_CTR_I = "average_ctr_i"
 AVERAGE_CTR_V = "average_ctr_v"
 
-
 BASE_SERIALIZER_FIELDS = (
     "name",
     "type",
@@ -70,8 +69,8 @@ KPI_FILTER_NAME_MAP = {
     MARGIN: "Margin (%)",
     COST_SHARE: "Cost Share (%)",
     COST: "Cost ($)",
-    VIDEO_VIEWS_SHARE: "Views SOV (%)", # Percentage of video_views of total
-    IMPRESSIONS_SHARE: "Impressions SOV (%)", # Percentage of impressions of total
+    VIDEO_VIEWS_SHARE: "Views SOV (%)",  # Percentage of video_views of total
+    IMPRESSIONS_SHARE: "Impressions SOV (%)",  # Percentage of impressions of total
     VIDEO_VIEW_RATE: "View Rate (%)",
     IMPRESSIONS: "Impressions",
     VIDEO_VIEWS: "Video Views",
@@ -89,7 +88,6 @@ KPI_FILTER_NAME_MAP = {
 
 STATISTICS_ANNOTATIONS = (CONTRACTED_RATE, SUM_IMPRESSIONS, SUM_VIDEO_VIEWS, SUM_CLICKS, SUM_COST,
                           SUM_VIDEO_VIEWS_100_QUARTILE, SUM_VIDEO_IMPRESSIONS, REVENUE)
-
 
 TOTAL_SUMMARY_COLUMN_AGG_MAPPING = {
     "impressions__sum": SUM_IMPRESSIONS,

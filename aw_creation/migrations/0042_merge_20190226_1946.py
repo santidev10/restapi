@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0041_auto_20190221_1907'),
         ('aw_creation', '0041_update_short_headline_limit'),

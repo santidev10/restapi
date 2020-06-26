@@ -1,25 +1,25 @@
 import logging
 
-from saas import celery_app
 from django.conf import settings
 from django.core.mail import send_mail
 
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
-from channel.constants import TERMS_FILTER
+from channel.api.serializers.channel_export import ChannelListExportSerializer
+from channel.constants import CHANNEL_CSV_HEADERS
+from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
-from channel.constants import EXISTS_FILTER
-from channel.constants import CHANNEL_CSV_HEADERS
-from channel.api.serializers.channel_export import ChannelListExportSerializer
+from channel.constants import TERMS_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
-from utils.es_components_api_utils import BrandSafetyParamAdapter
-from utils.es_components_api_utils import ExportDataGenerator
-from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.es_components_exporter import ESDataS3Exporter
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from saas import celery_app
 from utils.aws.export_context_manager import ExportContextManager
+from utils.es_components_api_utils import BrandSafetyParamAdapter
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import ExportDataGenerator
+from utils.es_components_exporter import ESDataS3Exporter
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +58,12 @@ def export_channels_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    bcc = []
 
     try:
         send_mail(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
+    # pylint: disable=broad-except
     except Exception as e:
-        logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
+        # pylint: enable=broad-except
+        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
     else:
-        logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")
+        logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

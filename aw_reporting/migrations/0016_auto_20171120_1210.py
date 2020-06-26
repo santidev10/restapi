@@ -3,19 +3,20 @@
 from __future__ import unicode_literals
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0015_adgroup_type'),
+        ("aw_reporting", "0015_adgroup_type"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='adgroup',
-            name='campaign',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ad_groups', to='aw_reporting.Campaign'),
+            model_name="adgroup",
+            name="campaign",
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="ad_groups",
+                                    to="aw_reporting.Campaign"),
         ),
     ]

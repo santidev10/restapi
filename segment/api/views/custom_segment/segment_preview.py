@@ -14,4 +14,3 @@ class SegmentPreviewAPIView(SegmentListAPIViewAdapter):
     @property
     def segment_model(self):
         return CustomSegment
-

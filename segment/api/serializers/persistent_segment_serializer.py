@@ -19,9 +19,9 @@ class PersistentSegmentSerializer(ModelSerializer):
         "ctr",
         "ctr_v",
         "video_view_rate",
-        'average_brand_safety_score',
-        'monthly_subscribers',
-        'monthly_views',
+        "average_brand_safety_score",
+        "monthly_subscribers",
+        "monthly_views",
     )
 
     class Meta:

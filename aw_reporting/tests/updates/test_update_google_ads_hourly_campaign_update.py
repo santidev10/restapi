@@ -14,8 +14,8 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import Device
-from aw_reporting.models import device_str
 from aw_reporting.models import Opportunity
+from aw_reporting.models import device_str
 from utils.unittests.csv import build_csv_byte_stream
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -126,11 +126,11 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
         accounts_created = set()
         accounts_seen = set()
         op_end = date.today() - timedelta(days=1)
-        for i in range(accounts_size):
+        for _ in range(accounts_size):
             cid = Account.objects.create(id=next(int_iterator), is_active=True, can_manage_clients=False)
             Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
             accounts_created.add(cid.id)
-        for i in range(len(accounts_created) // batch_size):
+        for _ in range(len(accounts_created) // batch_size):
             to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=batch_size, as_obj=True)
             for acc in to_update:
                 acc.hourly_updated_at = datetime.now()

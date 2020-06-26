@@ -21,7 +21,7 @@ class Command(BaseCommand):
         generation_type = kwargs["type"]
         pid_file = f"segment_list_generator_{generation_type}.pid"
         try:
-            with PidFile(pid_file, piddir=".") as pid:
+            with PidFile(pid_file, piddir="."):
                 list_generator = SegmentListGenerator(generation_type)
                 list_generator.run()
         except PidFileError:

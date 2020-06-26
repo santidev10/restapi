@@ -2,19 +2,20 @@ import logging
 import re
 from typing import Type
 
-from audit_tool.models import ChannelAuditIgnore, AuditIgnoreModel
+from audit_tool.models import AuditIgnoreModel
+from audit_tool.models import ChannelAuditIgnore
 from audit_tool.models import VideoAuditIgnore
 from brand_safety.models import BadWord
+from es_components.constants import SortDirections
+from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
+from es_components.query_builder import QueryBuilder
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
-from es_components.managers.channel import ChannelManager
-from es_components.managers.video import VideoManager
-from es_components.query_builder import QueryBuilder
-from es_components.constants import SortDirections
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class SegmentedAudit:
             filters=QueryBuilder().build().must().range().field("main.id").lt(last_id or ""),
             sort=[{"main.id": {"order": SortDirections.ASCENDING}}],
             limit=limit
-        ).\
+        ). \
             sources(includes=["main.id", "general_data.title", "general_data.description",
                               "general_data.thumbnail_image_url", "general_data.top_category",
                               "general_data.top_language", "stats.subscribers", "stats.likes", "stats.dislikes",
@@ -113,7 +114,7 @@ class SegmentedAudit:
         offset = 0
 
         while True:
-            videos = manager.search(filters=filters, sort=sort, limit=self.BATCH_SIZE, offset=offset)\
+            videos = manager.search(filters=filters, sort=sort, limit=self.BATCH_SIZE, offset=offset) \
                 .sources(includes=fields_to_load)
 
             if not videos:
@@ -207,8 +208,8 @@ class SegmentedAudit:
             .values_list("id", flat=True)
 
         # store to segments
-        for segment, items in grouped_by_segment.values():
-            all_ids = [item.get("main").get("id") for item in items]
+        for segment, segment_items in grouped_by_segment.values():
+            all_ids = [item.get("main").get("id") for item in segment_items]
             old_ids = items_manager.filter(segment=segment, related_id__in=all_ids) \
                 .values_list("related_id", flat=True)
             new_ids = set(all_ids) - set(old_ids)
@@ -222,7 +223,7 @@ class SegmentedAudit:
                     thumbnail_image_url=item.get("general_data").get("thumbnail_image_url"),
                     details=get_details(item),
                 )
-                for item in items if item.get("main").get("id") in new_ids
+                for item in segment_items if item.get("main").get("id") in new_ids
             ]
             items_manager.bulk_create(new_items)
 

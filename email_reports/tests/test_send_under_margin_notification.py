@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core import mail
-from django.utils import timezone
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -125,26 +124,26 @@ class SendDailyEmailsTestCase(APITestCase):
             ordered_rate=.05,
         )
         flight_2 = Flight.objects.create(id=2, name="",
-                                       placement=placement_2,
-                                       start=today_manila_timezone.replace(day=1),
-                                       end=today_manila_timezone.replace(day=28),
-                                       ordered_units=1000,
-                                       total_cost=100)
+                                         placement=placement_2,
+                                         start=today_manila_timezone.replace(day=1),
+                                         end=today_manila_timezone.replace(day=28),
+                                         ordered_units=1000,
+                                         total_cost=100)
         stats = dict(cost=.5, video_views=10)
         campaign_2 = Campaign.objects.create(pk=2, name="", account=account_2,
-                                           salesforce_placement=placement_2,
-                                           **stats)
+                                             salesforce_placement=placement_2,
+                                             **stats)
         CampaignStatistic.objects.create(campaign=campaign_2, date=flight_2.start,
                                          **stats)
 
         with patch_now(now_in_default_tz(tz_str="America/Vancouver")):
-
             # check if no mails will be sent for non existence timezone
             send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False, timezone_name="America/Vancouver")
         self.assertEqual(len(mail.outbox), 0)
 
         with patch_now(now):
-            send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+            send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False,
+                                     timezone_name=settings.DEFAULT_TIMEZONE)
         self.assertEqual(len(mail.outbox), 1)
 
     def test_receivers_no_sales(self):

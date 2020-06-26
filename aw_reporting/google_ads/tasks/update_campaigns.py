@@ -12,8 +12,8 @@ from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
-from utils.celery.tasks import group_chorded
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import group_chorded
 from utils.celery.tasks import unlock
 from utils.exception import retry
 
@@ -41,7 +41,8 @@ def setup_mcc_update_tasks():
     :param mcc_ids: list
     :return: list
     """
-    mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
+    mcc_ids = list(
+        Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     logger.debug("Starting Google Ads update for campaigns")
     if not settings.IS_TEST:
         CFAccountConnector().update()
@@ -80,18 +81,18 @@ def setup_cid_update_tasks():
 
 
 @celery_app.task
-@retry(count=10, delay=5, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error,))
 def mcc_account_update(mcc_id, index, total):
     """
     Update single MCC account
     """
     mcc_account = Account.objects.get(id=mcc_id)
     GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
-    logger.debug(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
+    logger.debug("ACCOUNTS UPDATE COMPLETE %s/%s FOR MCC: %s", index, total, mcc_id)
 
 
 @celery_app.task
-@retry(count=10, delay=5, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error,))
 def cid_campaign_update(cid_id):
     """
     Update single CID account
@@ -99,7 +100,7 @@ def cid_campaign_update(cid_id):
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
     GoogleAdsUpdater(cid_account).update_campaigns()
-    logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE FOR CID: {cid_id}. Took: {time.time() - start}")
+    logger.debug("CID CAMPAIGNS UPDATE COMPLETE FOR CID: %s. Took: %s", cid_id, time.time() - start)
 
 
 @celery_app.task

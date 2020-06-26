@@ -6,14 +6,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.api.urls.names import AuditPathName
+from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.constants import Sections
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
@@ -122,7 +122,8 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             is_monetizable=False,
             brand_safety=[],
         )
-        response = self.client.patch(self._get_url(channel.main.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(channel.main.id), data=json.dumps(payload),
+                                     content_type="application/json")
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"])
@@ -159,7 +160,8 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             is_monetizable=True,
             brand_safety=[],
         )
-        response = self.client.patch(self._get_url(video.main.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(video.main.id), data=json.dumps(payload),
+                                     content_type="application/json")
         updated = self.video_manager.get([video.main.id])[0]
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"])

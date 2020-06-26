@@ -10,7 +10,7 @@ def percentage(value, total=None):
 
     if total:
         try:
-            value = float(value)/float(total)
+            value = float(value) / float(total)
         except ZeroDivisionError:
             return None
 

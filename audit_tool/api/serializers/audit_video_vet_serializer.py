@@ -1,15 +1,15 @@
 from django.utils import timezone
 from rest_framework.serializers import SerializerMethodField
 
+from audit_tool.api.serializers.audit_vet_base_serializer import AuditVetBaseSerializer
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.video_discovery import video_update
-from es_components.models import Channel
-from es_components.models import Video
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from audit_tool.api.serializers.audit_vet_base_serializer import AuditVetBaseSerializer
+from es_components.models import Channel
+from es_components.models import Video
 
 
 class AuditVideoVetSerializer(AuditVetBaseSerializer):
@@ -40,8 +40,8 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
         history = None
         if hasattr(doc, "main"):
             video_id_hash = get_hash_name(doc.main.id)
-            vetting_items = AuditVideoVet.objects\
-                .select_related("video", "video__auditvideometa")\
+            vetting_items = AuditVideoVet.objects \
+                .select_related("video", "video__auditvideometa") \
                 .filter(video__video_id_hash=video_id_hash, processed__isnull=False)
             history = [{
                 "data": f"{item.video.auditvideometa.name} - {item.processed.strftime('%b %d %Y')}",

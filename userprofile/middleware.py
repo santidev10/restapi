@@ -16,20 +16,20 @@ class ApexUserCheck(MiddlewareMixin):
     def process_request(self, request):
         header_token = request.META.get("HTTP_AUTHORIZATION", None)
         if header_token is None:
-            return
+            return None
 
         try:
             token = sub("Token", "", request.META.get("HTTP_AUTHORIZATION", None))
             token_obj = UserDeviceToken.objects.get(key=token.strip())
             user = token_obj.user
         except UserDeviceToken.DoesNotExist:
-            return
+            return None
 
         user_email = user.email
         request_origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER")
 
         if not request_origin:
-            return
+            return None
 
         if is_apex_user(user_email) and not is_correct_apex_domain(request_origin):
 
@@ -48,3 +48,4 @@ class ApexUserCheck(MiddlewareMixin):
             response.render()
 
             return response
+        return None

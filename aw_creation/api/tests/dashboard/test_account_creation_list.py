@@ -35,8 +35,8 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.str_iterator import str_iterator
 
 
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -91,17 +91,17 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user.save()
 
     def test_success_get(self):
-        account = Account.objects.create(id=123, name="")
+        account = Account.objects.create(name="")
         account.managers.add(self.mcc_account)
-        campaign = Campaign.objects.create(id=1, name="", account=account)
-        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        campaign = Campaign.objects.create(name="", account=account)
+        ad_group = AdGroup.objects.create(name="", campaign=campaign)
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
-        date = datetime.now()
-        VideoCreativeStatistic.objects.create(creative=creative1, date=date,
+        action_date = datetime.now()
+        VideoCreativeStatistic.objects.create(creative=creative1, date=action_date,
                                               ad_group=ad_group,
                                               impressions=10)
-        VideoCreativeStatistic.objects.create(creative=creative2, date=date,
+        VideoCreativeStatistic.objects.create(creative=creative2, date=action_date,
                                               ad_group=ad_group,
                                               impressions=12)
 
@@ -167,9 +167,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         managed_account = Account.objects.create(
             id=expected_account_id, name="")
         managed_account.managers.add(chf_account)
-        Account.objects.create(id=3, name="")
-        Account.objects.create(id=4, name="")
-        Account.objects.create(id=5, name="")
+        Account.objects.create(name="")
+        Account.objects.create(name="")
+        Account.objects.create(name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -183,7 +183,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_brand(self):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id=next(int_iterator), name="")
+        managed_account = Account.objects.create(name="")
         managed_account.managers.add(chf_account)
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
@@ -199,10 +199,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_sf_account(self):
         sf_account = SFAccount.objects.create(name="test name")
         opportunity = Opportunity.objects.create(account=sf_account)
-        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        placement = OpPlacement.objects.create(id=next(str_iterator), opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id=next(int_iterator), name="")
+        managed_account = Account.objects.create(name="")
         Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
@@ -215,22 +215,19 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_cost_method(self):
         opportunity = Opportunity.objects.create()
         placement1 = OpPlacement.objects.create(
-            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
+            id=next(str_iterator), opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
         placement2 = OpPlacement.objects.create(
-            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+            id=next(str_iterator), opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
         placement3 = OpPlacement.objects.create(
-            id=3, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id=next(int_iterator), name="")
+        managed_account = Account.objects.create(name="")
         managed_account.managers.add(chf_account)
-        Campaign.objects.create(
-            id="1", salesforce_placement=placement1, account=managed_account)
-        Campaign.objects.create(
-            id="2", salesforce_placement=placement2, account=managed_account)
-        Campaign.objects.create(
-            id="3", salesforce_placement=placement3, account=managed_account)
+        Campaign.objects.create(salesforce_placement=placement1, account=managed_account)
+        Campaign.objects.create(salesforce_placement=placement2, account=managed_account)
+        Campaign.objects.create(salesforce_placement=placement3, account=managed_account)
         account_creation = managed_account.account_creation
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
@@ -248,78 +245,80 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_cost_client_cost_dashboard(self):
         manager = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create()
         account.managers.add(manager)
         account.save()
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
-            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            id=next(str_iterator), opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             ordered_rate=2.)
         placement_cpv = OpPlacement.objects.create(
-            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            id=next(str_iterator), opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             ordered_rate=2.)
         placement_outgoing_fee = OpPlacement.objects.create(
-            id=3, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             placement_type=OpPlacement.OUTGOING_FEE_TYPE)
         placement_hard_cost = OpPlacement.objects.create(
-            id=4, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
             total_cost=523)
         placement_dynamic_budget = OpPlacement.objects.create(
-            id=5, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             dynamic_placement=DynamicPlacementType.BUDGET)
         placement_cpv_rate_and_tech_fee = OpPlacement.objects.create(
-            id=6, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=.2)
         placement_cpm_rate_and_tech_fee = OpPlacement.objects.create(
-            id=7, opportunity=opportunity,
+            id=next(str_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=.3)
 
         campaigns = (
             Campaign.objects.create(
-                id=1, account=account,
+                account=account,
                 salesforce_placement=placement_cpm, impressions=2323),
             Campaign.objects.create(
-                id=2, account=account,
+                account=account,
                 salesforce_placement=placement_cpv, video_views=321),
             Campaign.objects.create(
-                id=3, account=account,
+                account=account,
                 salesforce_placement=placement_outgoing_fee),
             Campaign.objects.create(
-                id=4, account=account,
+                account=account,
                 salesforce_placement=placement_hard_cost),
             Campaign.objects.create(
-                id=5, account=account,
+                account=account,
                 salesforce_placement=placement_dynamic_budget, cost=412),
             Campaign.objects.create(
-                id=6, account=account,
+                account=account,
                 salesforce_placement=placement_cpv_rate_and_tech_fee,
                 video_views=245, cost=32),
             Campaign.objects.create(
-                id=7, account=account,
+                account=account,
                 salesforce_placement=placement_cpm_rate_and_tech_fee,
                 impressions=632, cost=241)
         )
 
         client_cost = sum(
-            [get_client_cost(
-                goal_type_id=c.salesforce_placement.goal_type_id,
-                dynamic_placement=c.salesforce_placement.dynamic_placement,
-                placement_type=c.salesforce_placement.placement_type,
-                ordered_rate=c.salesforce_placement.ordered_rate,
-                impressions=c.impressions,
-                video_views=c.video_views,
-                aw_cost=c.cost,
-                total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee,
-                start=c.start_date,
-                end=c.end_date
-            )
-                for c in campaigns]
+            [
+                get_client_cost(
+                    goal_type_id=c.salesforce_placement.goal_type_id,
+                    dynamic_placement=c.salesforce_placement.dynamic_placement,
+                    placement_type=c.salesforce_placement.placement_type,
+                    ordered_rate=c.salesforce_placement.ordered_rate,
+                    impressions=c.impressions,
+                    video_views=c.video_views,
+                    aw_cost=c.cost,
+                    total_cost=c.salesforce_placement.total_cost,
+                    tech_fee=c.salesforce_placement.tech_fee,
+                    start=c.start_date,
+                    end=c.end_date
+                )
+                for c in campaigns
+            ]
         )
         aw_cost = sum([c.cost for c in campaigns])
         self.assertNotEqual(client_cost, aw_cost)
@@ -380,10 +379,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_list_only_chf_accounts(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
-        another_mcc_account = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
-        visible_account = Account.objects.create(id=next(int_iterator))
+        another_mcc_account = Account.objects.create(can_manage_clients=True)
+        visible_account = Account.objects.create()
         visible_account.managers.add(chf_mcc_account)
-        hidden_account = Account.objects.create(id=next(int_iterator))
+        hidden_account = Account.objects.create()
         hidden_account.managers.add(another_mcc_account)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -397,10 +396,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_no_demo_data(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
-        Campaign.objects.create(id=next(int_iterator), account=account)
+        Campaign.objects.create(account=account)
 
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -434,12 +433,12 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_no_status_filters(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
         account.account_creation.is_paused = False
         account.account_creation.save()
-        Campaign.objects.create(id=next(int_iterator), account=account)
+        Campaign.objects.create(account=account)
 
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -458,11 +457,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_no_overcalculate_statistic(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
         campaign = Campaign.objects.create(
-            id=next(int_iterator),
             account=account,
             impressions=1,
         )
@@ -487,7 +485,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_is_first(self):
         recreate_demo_data()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
         user_settings = {

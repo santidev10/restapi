@@ -11,3 +11,9 @@ class KeywordListExportSerializer(Serializer):
     competition = FloatField(source="stats.competition")
     video_count = IntegerField(source="stats.video_count")
     views = IntegerField(source="stats.views")
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError

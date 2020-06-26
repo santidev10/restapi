@@ -35,3 +35,9 @@ class VideoListExportSerializer(Serializer):
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)
         return score
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError

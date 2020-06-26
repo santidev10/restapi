@@ -21,7 +21,7 @@ from userprofile.constants import UserSettingsKey
 from utils.unittests.reverse import reverse
 
 
-class AccountAPITestCase(AwReportingAPITestCase):
+class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
 
     def _get_url(self, campaign_id):
         return reverse(Name.CreationSetup.CAMPAIGN_DUPLICATE, [Namespace.AW_CREATION], args=(campaign_id,))
@@ -102,7 +102,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_data = response.data
-        self.assertNotEqual(campaign.id, campaign_data['id'])
+        self.assertNotEqual(campaign.id, campaign_data["id"])
 
         self.assertEqual(
             set(campaign_data.keys()),
@@ -129,78 +129,78 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "target_cpa"
             }
         )
-        self.assertEqual(campaign_data['name'], "{} (1)".format(campaign.name))
+        self.assertEqual(campaign_data["name"], "{} (1)".format(campaign.name))
         self.assertEqual(
-            campaign_data['type'],
+            campaign_data["type"],
             dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
                  name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
-            campaign_data['delivery_method'],
+            campaign_data["delivery_method"],
             dict(id=CampaignCreation.STANDARD_DELIVERY,
                  name=CampaignCreation.DELIVERY_METHODS[0][1]),
         )
         self.assertEqual(
-            campaign_data['video_networks'],
+            campaign_data["video_networks"],
             [dict(id=uid, name=n)
              for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
-        self.assertEqual(len(campaign_data['languages']), 1)
+        self.assertEqual(len(campaign_data["languages"]), 1)
         self.assertEqual(
-            campaign_data['languages'][0],
+            campaign_data["languages"][0],
             dict(id=1000, name="English"),
         )
-        self.assertEqual(len(campaign_data['location_rules']), 1)
+        self.assertEqual(len(campaign_data["location_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['location_rules'][0].keys()),
+            set(campaign_data["location_rules"][0].keys()),
             {
-                'longitude',
-                'radius',
-                'latitude',
-                'bid_modifier',
-                'radius_units',
-                'geo_target',
+                "longitude",
+                "radius",
+                "latitude",
+                "bid_modifier",
+                "radius_units",
+                "geo_target",
             }
         )
-        self.assertEqual(len(campaign_data['devices']), 3)
+        self.assertEqual(len(campaign_data["devices"]), 3)
         self.assertEqual(
-            set(campaign_data['devices'][0].keys()),
-            {'id', 'name'},
+            set(campaign_data["devices"][0].keys()),
+            {"id", "name"},
         )
         self.assertEqual(
-            set(campaign_data['location_rules'][0]['radius_units']),
-            {'id', 'name'}
+            set(campaign_data["location_rules"][0]["radius_units"]),
+            {"id", "name"}
         )
-        self.assertEqual(len(campaign_data['frequency_capping']), 1)
+        self.assertEqual(len(campaign_data["frequency_capping"]), 1)
         self.assertEqual(
-            set(campaign_data['frequency_capping'][0].keys()),
+            set(campaign_data["frequency_capping"][0].keys()),
             {
-                'event_type',
-                'limit',
-                'level',
-                'time_unit',
+                "event_type",
+                "limit",
+                "level",
+                "time_unit",
             }
         )
-        for f in ('event_type', 'level', 'time_unit'):
+        for f in ("event_type", "level", "time_unit"):
             self.assertEqual(
-                set(campaign_data['frequency_capping'][0][f].keys()),
-                {'id', 'name'}
+                set(campaign_data["frequency_capping"][0][f].keys()),
+                {"id", "name"}
             )
 
-        self.assertGreaterEqual(len(campaign_data['ad_schedule_rules']), 1)
+        self.assertGreaterEqual(len(campaign_data["ad_schedule_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['ad_schedule_rules'][0].keys()),
+            set(campaign_data["ad_schedule_rules"][0].keys()),
             {
-                'id',
-                'from_hour',
-                'from_minute',
-                'campaign_creation',
-                'to_minute',
-                'to_hour',
-                'day',
+                "id",
+                "from_hour",
+                "from_minute",
+                "campaign_creation",
+                "to_minute",
+                "to_hour",
+                "day",
             }
         )
-        self.assertEqual(len(campaign_data['ad_group_creations']), 1)
+        self.assertEqual(len(campaign_data["ad_group_creations"]), 1)
 
     def test_success_post_increment_name(self):
         account_creation = AccountCreation.objects.create(
@@ -213,7 +213,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(data['name'], "FF 1 (666)")
+        self.assertEqual(data["name"], "FF 1 (666)")
 
     def test_success_post_demo(self):
         recreate_demo_data()

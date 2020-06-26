@@ -1,5 +1,6 @@
 from utils.utils import unique_constant_tree
 
+
 @unique_constant_tree
 class AuditPathName:
     AUDIT_LIST = "audit_list"
@@ -13,4 +14,3 @@ class AuditPathName:
     AUDIT_VETTING_OPTIONS = "audit_vetting_options"
     AUDIT_ADMIN = "audit_admin"
     AUDIT_ITEM = "audit_item"
-

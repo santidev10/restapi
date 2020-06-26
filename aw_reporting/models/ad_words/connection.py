@@ -16,7 +16,8 @@ class AWConnection(models.Model):
 
 
 class AWConnectionToUserRelation(models.Model):
-    connection = models.ForeignKey(AWConnection, related_name="user_relations", on_delete=models.CASCADE, db_index=True)
+    connection = models.ForeignKey(AWConnection, related_name="user_relations", on_delete=models.CASCADE,
+                                   db_index=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              related_name="aw_connections",
                              on_delete=models.CASCADE, db_index=True)

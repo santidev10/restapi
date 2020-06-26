@@ -17,12 +17,12 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
         super(CampaignUnderMargin, self).__init__(*args, **kwargs)
 
         self.margin_bound = .1
-        if self.kwargs.get('margin_bound') is not None:
-            self.margin_bound = kwargs.get('margin_bound')
+        if self.kwargs.get("margin_bound") is not None:
+            self.margin_bound = kwargs.get("margin_bound")
 
         self.days_to_end = 7
-        if self.kwargs.get('days_to_end') is not None:
-            self.days_to_end = kwargs.get('days_to_end')
+        if self.kwargs.get("days_to_end") is not None:
+            self.days_to_end = kwargs.get("days_to_end")
 
     def send(self):
         opportunities = Opportunity.objects.filter(
@@ -45,7 +45,7 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
                 flights_data, plan_stats["cost"], plan_stats["plan_cost"])
 
             if margin is not None and margin < self.margin_bound:
-                ad_ops_manager = (opp['ad_ops_manager__name'], opp["ad_ops_manager__email"])
+                ad_ops_manager = (opp["ad_ops_manager__name"], opp["ad_ops_manager__email"])
 
                 messages[ad_ops_manager] = messages.get(ad_ops_manager, "") + \
                                            "{} is under margin at {:.2f}%.\n".format(opp["name"], margin * 100)
@@ -60,7 +60,7 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
                 to=self.get_to([to_email]),
                 cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                 bcc=self.get_bcc(),
-                headers={'X-Priority': 2},
+                headers={"X-Priority": 2},
                 reply_to="",
             )
 

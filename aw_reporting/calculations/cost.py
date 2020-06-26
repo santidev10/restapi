@@ -14,6 +14,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.datetime import now_in_default_tz
 
 
+# pylint: disable=too-many-arguments
 def get_client_cost(goal_type_id, dynamic_placement, placement_type,
                     ordered_rate, total_cost, tech_fee, start, end,
                     impressions, video_views, aw_cost):
@@ -46,7 +47,7 @@ def get_client_cost(goal_type_id, dynamic_placement, placement_type,
         if total_cost is not None \
         else client_cost
     return actualized_client_cost
-
+# pylint: enable=too-many-arguments
 
 def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
     today = now_in_default_tz().date()

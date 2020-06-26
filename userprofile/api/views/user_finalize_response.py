@@ -1,7 +1,8 @@
-class UserFinalizeResponse(object):
+class UserFinalizeResponse:
     """
     Attempts to add token to response from request data
     """
+
     def finalize_response(self, request, response, *args, **kwargs):
         try:
             response.data.update({

@@ -1,5 +1,4 @@
 from django.conf import settings
-
 from google.ads.google_ads.v2.services.enums import AdNetworkTypeEnum
 from google.ads.google_ads.v2.services.enums import AgeRangeTypeEnum
 from google.ads.google_ads.v2.services.enums import DeviceEnum
@@ -11,18 +10,20 @@ from aw_reporting.models.ad_words.constants import Device
 from aw_reporting.models.ad_words.constants import Gender
 from aw_reporting.models.ad_words.constants import Parent
 
-
 GET_DF = "%Y-%m-%d"
 MIN_FETCH_DATE = settings.MIN_AW_FETCH_DATE
-CLICKS_MODEL_UPDATE_FIELDS = ("clicks_website", "clicks_call_to_action_overlay", "clicks_app_store", "clicks_cards", "clicks_end_cap")
-BASE_STATISTIC_MODEL_UPDATE_FIELDS = ("impressions", "video_views", "clicks", "cost", "conversions", "all_conversions", "view_through", "video_views_25_quartile", "video_views_50_quartile", "video_views_75_quartile", "video_views_100_quartile")
+CLICKS_MODEL_UPDATE_FIELDS = (
+    "clicks_website", "clicks_call_to_action_overlay", "clicks_app_store", "clicks_cards", "clicks_end_cap")
+BASE_STATISTIC_MODEL_UPDATE_FIELDS = (
+    "impressions", "video_views", "clicks", "cost", "conversions", "all_conversions", "view_through",
+    "video_views_25_quartile", "video_views_50_quartile", "video_views_75_quartile", "video_views_100_quartile")
 STATS_MODELS_COMBINED_UPDATE_FIELDS = CLICKS_MODEL_UPDATE_FIELDS + BASE_STATISTIC_MODEL_UPDATE_FIELDS
 
 # Mapping of google ads api response objects to CHF models
 YOUTUBE_CHANNEL = "YOUTUBE_CHANNEL"
 YOUTUBE_VIDEO = "YOUTUBE_VIDEO"
 DATE_YMD = "%Y-%m-%d"
-PARENT_STATUSES = ('parent', 'not_a_parent', 'undetermined')
+PARENT_STATUSES = ("parent", "not_a_parent", "undetermined")
 
 MAIN_STATISTICS_FIELDS = (
     "video_views", "cost_micros", "clicks", "impressions", "conversions", "all_conversions", "view_through_conversions"
@@ -42,7 +43,8 @@ DAILY_STATISTIC_PERFORMANCE_FIELDS = {
 }
 
 CUSTOMER_CLIENT_ACCOUNT_FIELDS = {
-    "customer_client": ("client_customer", "currency_code", "descriptive_name", "id", "hidden", "manager", "test_account", "time_zone"),
+    "customer_client": (
+        "client_customer", "currency_code", "descriptive_name", "id", "hidden", "manager", "test_account", "time_zone"),
 }
 
 CUSTOMER_DETAILS_FIELDS = {
@@ -95,7 +97,8 @@ AUDIENCE_PERFORMANCE_FIELDS = {
     },
     "performance": {
         "ad_group": ("id",),
-        "ad_group_criterion": ("criterion_id", "user_list.user_list", "type", "user_interest.user_interest_category", "custom_affinity.custom_affinity", "custom_intent.custom_intent"),
+        "ad_group_criterion": ("criterion_id", "user_list.user_list", "type", "user_interest.user_interest_category",
+                               "custom_affinity.custom_affinity", "custom_intent.custom_intent"),
         "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
         "segments": ("date",),
     }
@@ -195,7 +198,9 @@ AGE_RANGE_ENUM_TO_ID = {
 }
 
 DEVICE_ENUM_TO_ID = {
+    # pylint: disable=protected-access
     DeviceEnum.Device.UNKNOWN: Device._UNDETERMINED,
+    # pylint: enable=protected-access
     DeviceEnum.Device.DESKTOP: Device.COMPUTER,
     DeviceEnum.Device.MOBILE: Device.MOBILE,
     DeviceEnum.Device.TABLET: Device.TABLET,
@@ -219,4 +224,3 @@ AD_NETWORK_ENUM_TO_STR = {
     AdNetworkTypeEnum.AdNetworkType.YOUTUBE_WATCH: "YouTube Videos",
     AdNetworkTypeEnum.AdNetworkType.MIXED: "Cross-network"
 }
-

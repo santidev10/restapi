@@ -16,14 +16,14 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
+from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
+from aw_reporting.models import AdGroupTargeting
+from aw_reporting.models import TargetingStatusEnum
 from .constants import COST_SHARE
 from .constants import IMPRESSIONS_SHARE
 from .constants import STATISTICS_ANNOTATIONS
 from .constants import VIDEO_VIEWS_SHARE
 from .constants import VIDEO_VIEW_RATE
-from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
-from aw_reporting.models import AdGroupTargeting
-from aw_reporting.models import TargetingStatusEnum
 
 
 class BaseSerializer(ModelSerializer):
@@ -151,12 +151,9 @@ class BaseSerializer(ModelSerializer):
         aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
-            .annotate(
-                **statistics_annotations,
-            ) \
-            .annotate(
-                **aggregate_annotations
-            ).order_by()
+            .annotate(**statistics_annotations) \
+            .annotate(**aggregate_annotations) \
+            .order_by()
         # Add targeting status if serializer has targeting
         if cls.criteria_field:
             targeting_subquery = AdGroupTargeting.objects.filter(
@@ -183,7 +180,7 @@ class BaseSerializer(ModelSerializer):
                 # When(impressions_share__gt=1.0, ...)
                 condition = {f"{annotation}__gt": 1.0}
                 clean_annotations[annotation] = Case(
-                    When(**condition, then=Value('1.0')),
+                    When(**condition, then=Value("1.0")),
                     default=F(annotation),
                     output_field=DBFloatField()
                 )
@@ -210,7 +207,7 @@ class BaseSerializer(ModelSerializer):
             status_value = None
         return status_value
 
-    @ classmethod
+    @classmethod
     def get_targeting_id(cls, obj):
         base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
         hash_str = hashlib.sha1(str.encode(base)).hexdigest()

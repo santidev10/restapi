@@ -89,6 +89,7 @@ class PacingReportTestCase(APITestCase):
                 "impressions",
                 "is_completed",
                 "is_upcoming",
+                "flight_daily_budget",
                 "margin",
                 "margin_direction",
                 "margin_quality",
@@ -295,6 +296,7 @@ class PacingReportTestCase(APITestCase):
             for chart in charts:
                 if chart["id"] == PacingReportChartId.PLANNED_DELIVERY:
                     return chart["data"][-1]["value"]
+            return None
 
         self.assertAlmostEqual(get_planned_delivery(campaign_1.id), expected_goal_1)
         self.assertAlmostEqual(get_planned_delivery(campaign_2.id), expected_goal_2)
@@ -351,8 +353,7 @@ class PacingReportTestCase(APITestCase):
             for chart in charts:
                 if chart["id"] == PacingReportChartId.HISTORICAL_GOAL:
                     return chart["data"][0]["value"]
+            return None
 
         self.assertAlmostEqual(get_planned_delivery(campaign_1.id), expected_goal_1)
         self.assertAlmostEqual(get_planned_delivery(campaign_2.id), expected_goal_2)
-
-

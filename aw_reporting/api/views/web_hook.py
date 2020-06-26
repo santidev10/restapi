@@ -28,9 +28,9 @@ class WebHookAWAccountsListApiView(APIView):
     @staticmethod
     def get(*_, pk, **k):
         # all customer accounts of that manager
-        account_ids = Account.objects.filter(managers__id=pk)\
-                                     .distinct("pk")\
-                                     .values_list("pk", flat=True)
+        account_ids = Account.objects.filter(managers__id=pk) \
+            .distinct("pk") \
+            .values_list("pk", flat=True)
         queryset = Account.objects.filter(id__in=account_ids)
         now = now_in_default_tz()
         today = now.date()

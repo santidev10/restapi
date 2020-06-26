@@ -1,12 +1,12 @@
 import time
 
+from es_components.constants import SEGMENTS_UUID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 
 
-class SegmentMixin(object):
+class SegmentMixin:
     """
     Mixin methods for segment models
     Expected attributes and methods on models used in mixin:
@@ -72,7 +72,9 @@ class SegmentMixin(object):
             manager.sections = sections
         if query is None:
             query = self.get_segment_items_query()
+        # pylint: disable=protected-access
         search = manager._search()
+        # pylint: enable=protected-access
         search = search.query(query)
         if sort:
             search = search.sort(sort)
@@ -84,19 +86,18 @@ class SegmentMixin(object):
         Retry on Document Conflicts
         """
         tries_count = 0
-        try:
-            while tries_count <= retry_amount:
-                try:
-                    result = method(*args, **kwargs)
-                except Exception as err:
-                    if "ConflictError(409" in str(err):
-                        tries_count += 1
-                        if tries_count <= retry_amount:
-                            sleep_seconds_count = tries_count ** sleep_coeff
-                            time.sleep(sleep_seconds_count)
-                    else:
-                        raise err
+        while tries_count <= retry_amount:
+            try:
+                result = method(*args, **kwargs)
+            # pylint: disable=broad-except
+            except Exception as err:
+                # pylint: enable=broad-except
+                if "ConflictError(409" in str(err):
+                    tries_count += 1
+                    if tries_count <= retry_amount:
+                        sleep_seconds_count = tries_count ** sleep_coeff
+                        time.sleep(sleep_seconds_count)
                 else:
-                    return result
-        except Exception:
-            raise
+                    raise err
+            else:
+                return result

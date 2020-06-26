@@ -5,6 +5,7 @@ class BrandSafetyVideoScore(object):
     """
     Class to encapsulate brand safety score state for Video brand safety audits
     """
+
     def __init__(self, video_id, default_category_scores):
         self.video_id = video_id
         self.overall_score = 100

@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.conf import settings
 from django.core import mail
 
@@ -12,6 +11,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from email_reports.tasks import send_daily_email_reports
 from utils.datetime import now_in_default_tz
 from utils.unittests.patch_now import patch_now
@@ -113,9 +113,6 @@ class SendDailyEmailsTestCase(APITestCase):
                                          **stats)
         recalculate_de_norm_fields_for_account(account.id)
 
-        now_manila_timezone = now_in_default_tz(tz_str="Asia/Manila")
-        today_manila_timezone = now_manila_timezone.date()
-
         account_2 = Account.objects.create(id=2, timezone="Asia/Manila")
         opportunity_2 = Opportunity.objects.create(
             id=2, name="Opportunity",
@@ -145,8 +142,8 @@ class SendDailyEmailsTestCase(APITestCase):
                                        total_cost=100)
         stats = dict(cost=130.5, video_views=1210)
         campaign_2 = Campaign.objects.create(pk=2, name="", account=account_2,
-                                           salesforce_placement=placement_2,
-                                           **stats)
+                                             salesforce_placement=placement_2,
+                                             **stats)
         CampaignStatistic.objects.create(campaign=campaign_2, date=flight.start,
                                          **stats)
         recalculate_de_norm_fields_for_account(account_2.id)
@@ -157,7 +154,8 @@ class SendDailyEmailsTestCase(APITestCase):
             self.assertEqual(len(mail.outbox), 0)
 
         with patch_now(now):
-            send_daily_email_reports(reports=["CampaignOverPacing"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+            send_daily_email_reports(reports=["CampaignOverPacing"], debug=False,
+                                     timezone_name=settings.DEFAULT_TIMEZONE)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject,

@@ -6,7 +6,6 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import AdGroup
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -28,11 +27,9 @@ class DemoTargetingListTestCase(ExtendedAPITestCase):
         )
         url = "{}?{}".format(
             str(url),
-            urlencode({'auth_token': self.user.tokens.first().key}),
+            urlencode({"auth_token": self.user.tokens.first().key}),
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
         self.assertEqual(len(lines), 5)
-
-

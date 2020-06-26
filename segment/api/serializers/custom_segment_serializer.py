@@ -1,20 +1,24 @@
+import uuid
+
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
+
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.models import UserProfile
-import uuid
+
 
 class FeaturedImageUrlMixin:
     """
     Returns a default image if not set
     """
+
     def get_featured_image_url(self, instance):
         return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
@@ -71,7 +75,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def validate_segment_type(self, segment_type):
         segment_type = int(segment_type)
-        if segment_type != 0 and segment_type != 1:
+        if segment_type not in (0, 1):
             raise ValueError("segment_type must be either 0 or 1.")
         return segment_type
 
@@ -88,14 +92,15 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
-            raise ValueError("A {} target list with the title: {} already exists.".format(self.map_to_str(segment_type, item_type="segment"), title))
+            raise ValueError("A {} target list with the title: {} already exists.".format(
+                self.map_to_str(segment_type, item_type="segment"), title))
         return title
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data.pop("title_hash", None)
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
-        data["pending"] = False if data["statistics"] else True
+        data["pending"] = not bool(data["statistics"])
         if not data["statistics"]:
             data["statistics"] = {
                 "top_three_items": [{
@@ -137,5 +142,5 @@ class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
         shouldn't be able to see download_url
         """
         data = super().to_representation(instance)
-        data.pop('download_url', None)
+        data.pop("download_url", None)
         return data

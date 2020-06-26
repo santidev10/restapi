@@ -25,13 +25,13 @@ class AdwordsReports(AdwordsBase):
 
     def __init__(self, *args, **kwargs):
         self.date = kwargs.pop("date")
-        assert type(self.date) is str
+        assert isinstance(self.date, str)
 
         download = kwargs.pop("download", False)
 
         super().__init__(*args, **kwargs)
 
-        logger.info("Date: {}".format(self.date))
+        logger.info("Date: %s", self.date)
 
         if download:
             self.download()
@@ -45,10 +45,10 @@ class AdwordsReports(AdwordsBase):
         @safe_exception(logger)
         def worker(dmo: AccountDMO) -> None:
             self._download_url_performance_report(dmo)
-            downloaded = len([1 for a in self.accounts\
+            downloaded = len([1 for a in self.accounts \
                               if a.url_performance_report is not None])
             if downloaded % 50 == 0:
-                logger.info("  {} / {}".format(downloaded, len(self.accounts)))
+                logger.info("  %s / %s", downloaded, len(self.accounts))
 
         with ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as executor:
             futures = []
@@ -58,7 +58,7 @@ class AdwordsReports(AdwordsBase):
         reports_count = len(
             [1 for _ in self.accounts if _.url_performance_report is not None]
         )
-        logger.info("Downloaded {} report(s)".format(reports_count))
+        logger.info("Downloaded %s report(s)", reports_count)
 
     def get_url_performance_reports(self) -> Iterator[list]:
         for account in self.accounts:

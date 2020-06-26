@@ -1,9 +1,8 @@
-import pytz
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
 
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
+import pytz
 from django.utils import timezone
 
 from aw_reporting.models import Account
@@ -14,6 +13,8 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
+from aw_reporting.utils import get_dates_range
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -72,7 +73,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         end = today - timedelta(days=2)
         self.create_test_user()
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=end, probability=100
+            id="1", name="", start=start, end=end, probability=100
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
@@ -92,12 +93,12 @@ class PacingReportTestCase(ExtendedAPITestCase):
         opportunities = report.get_opportunities(dict(period="custom", start=start, end=end))
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
-        self.assertEqual(opportunity_data['pacing'], 1)  # 100%
+        self.assertEqual(opportunity_data["pacing"], 1)  # 100%
 
         placements = report.get_placements(opportunity)
         self.assertEqual(len(placements), 1)
         placement_data = placements[0]
-        self.assertEqual(placement_data['pacing'], 1)
+        self.assertEqual(placement_data["pacing"], 1)
 
     def test_client_cost_and_over_delivered_opportunity(self):
         """
@@ -109,9 +110,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = datetime.now()
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=end, probability=100,
+            id="1", name="", start=start, end=end, probability=100,
             budget=10  # margin will be 33%
         )
 
@@ -139,13 +140,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(opportunities), 1)
 
         opportunity_data = opportunities[0]
-        self.assertAlmostEqual(opportunity_data['margin'], -0.02, 10)
+        self.assertAlmostEqual(opportunity_data["margin"], -0.02, 10)
 
         placements = report.get_placements(opportunity)
         self.assertEqual(len(placements), 1)
         placement_data = placements[0]
         self.assertAlmostEqual(
-            placement_data['margin'], -0.02, places=10,
+            placement_data["margin"], -0.02, places=10,
             msg="The margin is going to be -2%, because total_cost=10 "
                 "and actual cost=10.2 ",
         )
@@ -158,7 +159,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         """
         today = timezone.now()
         opportunity1 = Opportunity.objects.create(
-            id='1', name="", start=today, end=today, probability=100
+            id="1", name="", start=today, end=today, probability=100
         )
         placement1 = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity1,
@@ -168,7 +169,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
             id="1", name="", salesforce_placement=placement1, account=account1,
         )
         opportunity2 = Opportunity.objects.create(
-            id='2', name="", start=today, end=today, probability=100
+            id="2", name="", start=today, end=today, probability=100
         )
         placement2 = OpPlacement.objects.create(
             id="2", name="", opportunity=opportunity2,
@@ -188,13 +189,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         opportunities = report.get_opportunities(dict(), user=user)
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
-        self.assertEqual(opportunity_data['id'], opportunity1.id)
+        self.assertEqual(opportunity_data["id"], opportunity1.id)
 
     def test_flight_delivered_all(self):
         today = now_in_default_tz().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=start, end=today,
+            id="1", name="", start=start, end=today,
         )
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -215,11 +216,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flights = report.get_flights(placement)
         self.assertEqual(len(flights), 1)
-        self.assertEqual(flights[0]['today_budget'], 0)
+        self.assertEqual(flights[0]["today_budget"], 0)
 
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['today_budget'], 0)
+        self.assertEqual(campaigns[0]["today_budget"], 0)
 
     def test_view_rate_color_scale(self):
         """
@@ -228,7 +229,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         """
         today = timezone.now().date()
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
+            id="1", name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
         )
         placement = OpPlacement.objects.create(
             id="1",
@@ -250,24 +251,24 @@ class PacingReportTestCase(ExtendedAPITestCase):
         # low rate
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['video_view_rate'], 0.05)
-        self.assertEqual(campaigns[0]['video_view_rate_quality'], 0)
+        self.assertEqual(campaigns[0]["video_view_rate"], 0.05)
+        self.assertEqual(campaigns[0]["video_view_rate_quality"], 0)
 
         # normal rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=2, video_views=24, impressions=80)
         recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['video_view_rate'], 0.25)
-        self.assertEqual(campaigns[0]['video_view_rate_quality'], 1)
+        self.assertEqual(campaigns[0]["video_view_rate"], 0.25)
+        self.assertEqual(campaigns[0]["video_view_rate_quality"], 1)
 
         # high rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=3, video_views=5, impressions=0)
         recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['video_view_rate'], 0.30)
-        self.assertEqual(campaigns[0]['video_view_rate_quality'], 2)
+        self.assertEqual(campaigns[0]["video_view_rate"], 0.30)
+        self.assertEqual(campaigns[0]["video_view_rate_quality"], 2)
 
     def test_ctr_color_scale(self):
         """
@@ -276,7 +277,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         """
         today = timezone.now().date()
         opportunity = Opportunity.objects.create(
-            id='1', name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
+            id="1", name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
         )
         placement = OpPlacement.objects.create(
             id="1",
@@ -295,24 +296,24 @@ class PacingReportTestCase(ExtendedAPITestCase):
         # low rate
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['ctr'], 0.0025)
-        self.assertEqual(campaigns[0]['ctr_quality'], 0)
+        self.assertEqual(campaigns[0]["ctr"], 0.0025)
+        self.assertEqual(campaigns[0]["ctr_quality"], 0)
 
         # normal rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=2, clicks=1)
         recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['ctr'], 0.005)
-        self.assertEqual(campaigns[0]['ctr_quality'], 1)
+        self.assertEqual(campaigns[0]["ctr"], 0.005)
+        self.assertEqual(campaigns[0]["ctr_quality"], 1)
 
         # high rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=3, clicks=1)
         recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]['ctr'], 0.0075)
-        self.assertEqual(campaigns[0]['ctr_quality'], 2)
+        self.assertEqual(campaigns[0]["ctr"], 0.0075)
+        self.assertEqual(campaigns[0]["ctr_quality"], 2)
 
     def test_opportunity_pacing_calculation(self):
         """
@@ -324,7 +325,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         self.create_test_user()
-        opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
+        opportunity = Opportunity.objects.create(id="1", name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,  # CPV
@@ -361,7 +362,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         tz = "UTC"
         last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
-        opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
+        opportunity = Opportunity.objects.create(id="1", name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
@@ -388,3 +389,43 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # 700 + 2% ordered by yesterday and 700 delivered views = 100% - 2% = 98%
         self.assertAlmostEqual(placement["pacing"], .98, places=3)
+
+    def test_pacing_report_flight_historical_goal_charts(self):
+        today = now_in_default_tz().date()
+        start = today - timedelta(days=4)
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=today,
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+        )
+        flight = Flight.objects.create(
+            id="1", name="", placement=placement, ordered_units=50, cost=50,
+            total_cost=50, start=start, end=today, delivered=0,
+        )
+        account = Account.objects.create(id="1", name="Visible Account")
+        campaign = Campaign.objects.create(
+            id="1", name="", salesforce_placement=placement, account=account,
+        )
+        stats = []
+        for date in get_dates_range(flight.start, flight.end):
+            stats.append(CampaignStatistic(
+                campaign=campaign, date=date, impressions=10, cost=10,
+            ))
+        CampaignStatistic.objects.bulk_create(stats)
+        report = PacingReport()
+        flight = report.get_flights(placement)[0]
+        goal_units = []
+        actual_units = []
+        goal_spend = []
+        actual_spend = []
+        for item in flight["historical_units_chart"]["data"]:
+            goal_units.append(item["goal"])
+            actual_units.append(item["actual"])
+        for item in flight["historical_spend_chart"]["data"]:
+            goal_spend.append(item["goal"])
+            actual_spend.append(item["actual"])
+        self.assertEqual(set(actual_units), set(stat.impressions for stat in stats))
+        self.assertEqual(set(actual_spend), set(stat.cost for stat in stats))
+        self.assertEqual(set(goal_units), {10})
+        self.assertEqual(set(goal_spend), {10})

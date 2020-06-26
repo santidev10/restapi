@@ -1,5 +1,4 @@
 import logging
-
 from datetime import timedelta
 
 from django.conf import settings
@@ -23,6 +22,8 @@ class BaseCampaignEmailReport(BaseEmailReport):
         self.timezone_name = timezone_name
         self.__timezone_accounts = None
 
+    def send(self):
+        raise NotImplementedError
 
     def timezone_accounts(self):
         if self.__timezone_accounts is None and self.timezone_name is not None:
@@ -30,6 +31,7 @@ class BaseCampaignEmailReport(BaseEmailReport):
                 Account.objects.filter(timezone=self.timezone_name).values_list("id", flat=True).distinct()
             )
         return self.__timezone_accounts
+
 
 class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
     _problem_str = None
@@ -77,7 +79,7 @@ class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
             to=self.get_to([email]),
             cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
             bcc=self.get_bcc(),
-            headers={'X-Priority': 2},
+            headers={"X-Priority": 2},
             reply_to="",
         )
 
@@ -99,7 +101,7 @@ class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
             ) for flight in flights_data
         ]
         flights_with_pacing = [
-            r for r in flights_with_pacing if r.get('pacing')
+            r for r in flights_with_pacing if r.get("pacing")
         ]
         attention_flights = filter(
             lambda item: self._is_risky_pacing(item["pacing"]),

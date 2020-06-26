@@ -1,8 +1,8 @@
 from datetime import timedelta
-from mock import patch
-from mock import PropertyMock
 
 from django.utils import timezone
+from mock import PropertyMock
+from mock import patch
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.utils import AuditUtils
@@ -21,9 +21,11 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
-    vetted_channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
+    vetted_channel_manager = ChannelManager(
+        sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
     channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS))
-    vetted_video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
+    vetted_video_manager = VideoManager(
+        sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
     video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS))
 
     def setup_data(self):
@@ -104,15 +106,16 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_brand_safety(self):
         """ Test skip scoring vetted items """
-        vetted_channels, non_vetted_channels, vetted_videos, non_vetted_videos, bad_words, outdated_time = self.setup_data()
+        vetted_channels, non_vetted_channels, vetted_videos, non_vetted_videos, *_ = self.setup_data()
         vetted_channel_ids = [item.main.id for item in vetted_channels]
         non_vetted_channel_ids = [item.main.id for item in non_vetted_channels]
 
         vetted_video_ids = [item.main.id for item in vetted_videos]
         non_vetted_video_ids = [item.main.id for item in non_vetted_videos]
-        with patch.object(Schedulers.ChannelOutdated, "get_items_limit", return_value=10),\
-            patch.object(Schedulers.ChannelOutdated, "UPDATE_TIME_THRESHOLD", return_value="now", new_callable=PropertyMock), \
-            patch("brand_safety.tasks.channel_update_helper.get_queue_size", return_value=0): \
+        with patch.object(Schedulers.ChannelOutdated, "get_items_limit", return_value=10), \
+             patch.object(Schedulers.ChannelOutdated, "UPDATE_TIME_THRESHOLD", return_value="now",
+                          new_callable=PropertyMock), \
+             patch("brand_safety.tasks.channel_update_helper.get_queue_size", return_value=0): \
             channel_outdated_scheduler()
 
         vetted_channels_should_ignore = self.vetted_channel_manager.get(vetted_channel_ids)
@@ -147,7 +150,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             main=dict(id=f"channel_{next(int_iterator)}"),
             general_data=dict(description="tycker jagnär man börjar bestämma sig för att man vill anamma den hela"),
         ))
-        bad_words = BadWord.objects.bulk_create([
+        BadWord.objects.bulk_create([
             BadWord(name="mma", language=langs[0], category=bs_category),
             BadWord(name="mma", language=langs[1], category=bs_category),
         ])

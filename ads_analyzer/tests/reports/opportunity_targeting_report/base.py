@@ -88,3 +88,31 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
                                                     start=pl_start, end=pl_end)
         self.campaign = Campaign.objects.create(salesforce_placement=self.placement, name="Test Campaign")
         self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup", cpv_bid=20000)
+
+
+common_column_declaration = (
+    ("campaign_name", "Ads Campaign"),
+    ("ad_group_name", "Ads Ad group"),
+    ("placement_name", "Salesforce Placement"),
+    ("placement_start", "Placement Start Date"),
+    ("placement_end", "Placement End Date"),
+    ("days_remaining", "Days remaining"),
+    ("margin_cap", "Margin Cap"),
+    ("cannot_roll_over", "Cannot Roll over Delivery"),
+    ("goal_type", "Rate Type"),
+    ("contracted_rate", "Contracted Rate"),
+    ("max_bid", "Max bid"),
+    ("avg_rate", "Avg. Rate"),
+    ("cost", "Cost"),
+    ("cost_delivered_percentage", "Cost delivery percentage"),
+    ("impressions", "Impressions"),
+    ("views", "Views"),
+    ("delivery_percentage", "Delivery percentage"),
+    ("revenue", "Revenue"),
+    ("profit", "Profit"),
+    ("margin", "Margin"),
+    ("video_played_100", "Video played to 100%"),
+    ("view_rate", "View rate"),
+    ("clicks", "Clicks"),
+    ("ctr", "CTR"),
+)

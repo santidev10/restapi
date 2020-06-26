@@ -1,5 +1,5 @@
-from datetime import timedelta
 import json
+from datetime import timedelta
 
 from django.db.models import F
 from django.db.models import Q
@@ -8,13 +8,13 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace as RootNamespace
+from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.int_iterator import int_iterator
 
 
 class MediaBuyingAccountSyncTestCase(ExtendedAPITestCase):
@@ -39,7 +39,7 @@ class MediaBuyingAccountSyncTestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator), name="")
         start = timezone.now().date()
         end = start + timedelta(days=1)
-        campaign_breakout = CampaignCreation.objects\
+        campaign_breakout = CampaignCreation.objects \
             .create(account_creation=account.account_creation, budget=4, start=start, end=end, name="test campaign",
                     bid_strategy_type=CampaignCreation.MAX_CPV_STRATEGY, type=CampaignCreation.VIDEO_TYPE)
         ad_group_breakout = AdGroupCreation.objects.create(campaign_creation=campaign_breakout, max_rate=10,
@@ -74,7 +74,8 @@ class MediaBuyingAccountSyncTestCase(ExtendedAPITestCase):
             campaign_ids=[campaign_breakout.id],
             ad_group_ids=[ad_group_breakout.id],
         )
-        response = self.client.patch(self._get_url(account.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(account.id), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_breakout.refresh_from_db()
         ad_group_breakout.refresh_from_db()

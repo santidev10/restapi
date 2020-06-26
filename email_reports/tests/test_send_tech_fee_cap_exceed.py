@@ -12,8 +12,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from email_reports.tasks import send_daily_email_reports
-from utils.unittests.patch_now import patch_now
 from utils.datetime import now_in_default_tz
+from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -279,7 +279,8 @@ class SendDailyEmailsTestCase(APITestCase):
             self.assertEqual(len(mail.outbox), 0)
 
         with patch_now(now):
-            send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+            send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False,
+                                     timezone_name=settings.DEFAULT_TIMEZONE)
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]

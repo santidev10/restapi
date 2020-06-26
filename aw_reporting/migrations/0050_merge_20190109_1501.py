@@ -6,10 +6,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0049_merge_20190103_1316'),
-        ('aw_reporting', '0048_update_billing_servers'),
+        ("aw_reporting", "0049_merge_20190103_1316"),
+        ("aw_reporting", "0048_update_billing_servers"),
     ]
 
     operations = [

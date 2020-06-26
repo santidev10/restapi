@@ -3,13 +3,13 @@ from datetime import datetime
 from aw_reporting.models import Campaign
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from aw_reporting.tools.forecast_tool.forecast_tool_filtering import ForecastToolFiltering
-from utils.datetime import now_in_default_tz, build_periods
+from utils.datetime import build_periods
+from utils.datetime import now_in_default_tz
 
 DATE_FORMAT = "%Y-%m-%d"
 
 
 class ForecastTool:
-
     default_margin = 30
 
     def __init__(self, today=None, **kwargs):

@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
 from rest_framework.fields import ListField
@@ -34,12 +33,11 @@ class ReportDownloadLink(CharField):
 
 class RecipientsListField(ListField):
     def to_representation(self, recipients):
-        data = [str(recipient) for recipient in recipients.order_by('-id').all()]
+        data = [str(recipient) for recipient in recipients.order_by("-id").all()]
         return super(RecipientsListField, self).to_representation(data)
 
 
 class OpportunityTargetReportRecipientsSerializer(ModelSerializer):
-
     class Meta:
         model = get_user_model()
         fields = (

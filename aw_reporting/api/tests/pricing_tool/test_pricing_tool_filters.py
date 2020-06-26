@@ -4,8 +4,14 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
-    Campaign, Audience, AudienceStatistic, Category
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import Category
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.unittests.test_case import ExtendedAPITestCase

@@ -19,7 +19,6 @@ def load_languages(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0001_initial'),
     ]

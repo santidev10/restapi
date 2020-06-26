@@ -3,7 +3,8 @@ from django.conf.urls import url
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.api.views.opportunity_list import OpportunityListAPIView
 from ads_analyzer.api.views.opportunity_targeting_report import OpportunityTargetingReportAPIView
-from ads_analyzer.api.views.opportunity_targeting_report_recipient_list import OpportunityTargetingReportRecipientsAPIView
+from ads_analyzer.api.views.opportunity_targeting_report_recipient_list import \
+    OpportunityTargetingReportRecipientsAPIView
 
 urlpatterns = (
     url(

@@ -7,16 +7,16 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
-from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import Opportunity
-from aw_reporting.models import OpPlacement
-from aw_reporting.models import Flight
 from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportOpportunityBufferTestCase(APITestCase):
@@ -79,7 +79,6 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-
     def test_success_update(self):
         now = timezone.now()
         opportunity = Opportunity.objects.create(
@@ -90,7 +89,7 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             start=now - timedelta(days=1), end=now + timedelta(days=1),
         )
-        flight = Flight.objects.create(
+        Flight.objects.create(
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
@@ -122,7 +121,8 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         Campaign.objects.create(
             id="1", salesforce_placement=placement, name="C"
         )
-        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES),
+                                    opportunity.name)
         response = self.client.get(url)
         cpm_buffer = self.pacing_report.goal_factor
         expected_plan_impressions = flight.ordered_units * cpm_buffer
@@ -149,7 +149,8 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         Campaign.objects.create(
             id="1", salesforce_placement=placement, name="C"
         )
-        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES),
+                                    opportunity.name)
         response = self.client.get(url)
         cpm_buffer = self.pacing_report.big_goal_factor
         expected_plan_impressions = flight.ordered_units * cpm_buffer
@@ -176,7 +177,8 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         Campaign.objects.create(
             id="1", salesforce_placement=placement, name="C"
         )
-        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES),
+                                    opportunity.name)
         response = self.client.get(url)
         cpv_buffer = self.pacing_report.goal_factor
         expected_plan_views = flight.ordered_units * cpv_buffer
@@ -203,7 +205,8 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         Campaign.objects.create(
             id="1", salesforce_placement=placement, name="C"
         )
-        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES),
+                                    opportunity.name)
         response = self.client.get(url)
         cpm_buffer = self.pacing_report.big_goal_factor
         expected_plan_views = flight.ordered_units * cpm_buffer

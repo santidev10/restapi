@@ -269,19 +269,21 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
                 cost=campaign.cost, impressions=campaign.impressions,
                 video_views=campaign.video_views)
         expected_cost = sum(
-            [get_client_cost(
-                goal_type_id=c.salesforce_placement.goal_type_id,
-                dynamic_placement=c.salesforce_placement.dynamic_placement,
-                placement_type=c.salesforce_placement.placement_type,
-                ordered_rate=c.salesforce_placement.ordered_rate,
-                impressions=c.impressions,
-                video_views=c.video_views,
-                aw_cost=c.cost,
-                total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee,
-                start=c.start_date,
-                end=c.end_date)
-                for c in campaigns])
+            [
+                get_client_cost(
+                    goal_type_id=c.salesforce_placement.goal_type_id,
+                    dynamic_placement=c.salesforce_placement.dynamic_placement,
+                    placement_type=c.salesforce_placement.placement_type,
+                    ordered_rate=c.salesforce_placement.ordered_rate,
+                    impressions=c.impressions,
+                    video_views=c.video_views,
+                    aw_cost=c.cost,
+                    total_cost=c.salesforce_placement.total_cost,
+                    tech_fee=c.salesforce_placement.tech_fee,
+                    start=c.start_date,
+                    end=c.end_date)
+                for c in campaigns
+            ])
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -586,7 +588,8 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
     def test_rates_on_multiple_campaigns(self):
         """
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-278
-        Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement if several placements with the same type are present
+        Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement
+                 if several placements with the same type are present
         Root cause: stats aggregates multiple times on several Campaign-Placement relations
         """
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)

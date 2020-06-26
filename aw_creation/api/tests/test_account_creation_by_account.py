@@ -1,6 +1,7 @@
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, \
-    HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
@@ -80,7 +81,7 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
     def test_success_get(self):
         user = self.create_test_user()
         account = Account.objects.create(id=111,
-                                                 skip_creating_account_creation=True)
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id=333,
                                                           account=account,
                                                           owner=user)

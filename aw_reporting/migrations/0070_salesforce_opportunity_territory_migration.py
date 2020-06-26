@@ -9,9 +9,8 @@ def change_opportunity_territory(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0069_ad_group_type_data_migration'),
+        ("aw_reporting", "0069_ad_group_type_data_migration"),
     ]
 
     operations = [
