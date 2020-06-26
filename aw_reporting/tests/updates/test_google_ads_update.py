@@ -79,6 +79,7 @@ from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.redis_mock import MockRedis
+from utils.unittests.str_iterator import str_iterator
 
 
 class UpdateAwAccountsTestCase(TransactionTestCase):
@@ -1231,6 +1232,35 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertGreater(account.interest_count, 0)
         self.assertGreater(account.topic_count, 0)
         self.assertGreater(account.keyword_count, 0)
+
+    def test_update_campaign_flags(self):
+        any_date = date(2019, 1, 1)
+        account = self._create_account()
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        Ad.objects.create(id=next(int_iterator), ad_group=ad_group)
+        common = dict(ad_group=ad_group, date=any_date)
+        YTChannelStatistic.objects.create(yt_id=next(str_iterator), **common)
+        YTVideoStatistic.objects.create(yt_id=next(str_iterator), **common)
+        AudienceStatistic.objects.create(audience=Audience.objects.create(), **common)
+        TopicStatistic.objects.create(topic=Topic.objects.create(), **common)
+        KeywordStatistic.objects.create(keyword="keyword", **common)
+        RemarkStatistic.objects.create(remark=RemarkList.objects.create(), **common)
+
+        recalculate_de_norm_fields_for_account(account.id)
+        campaign.refresh_from_db()
+        with self.subTest("has_channels"):
+            self.assertTrue(campaign.has_channels)
+        with self.subTest("has_videos"):
+            self.assertTrue(campaign.has_videos)
+        with self.subTest("has_interests"):
+            self.assertTrue(campaign.has_interests)
+        with self.subTest("has_topics"):
+            self.assertTrue(campaign.has_topics)
+        with self.subTest("has_keywords"):
+            self.assertTrue(campaign.has_keywords)
+        with self.subTest("has_remarketing"):
+            self.assertTrue(campaign.has_remarketing)
 
     def test_get_accounts_to_update(self):
         now = datetime.now(utc)
