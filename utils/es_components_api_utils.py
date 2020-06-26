@@ -89,6 +89,7 @@ class QueryGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    combined_filter = ()
     params_adapters = ()
 
     def __init__(self, query_params):
@@ -172,9 +173,6 @@ class QueryGenerator:
             value = self.query_params.get(field, None)
 
             if value:
-                if field == "custom_properties.preferred":
-                    self.adapt_recommended_channels_filter(filters, value)
-                    continue
                 value = value.split(",") if isinstance(value, str) else value
                 filters.append(
                     QueryBuilder().build().must().terms().field(field).value(value).get()
@@ -255,6 +253,20 @@ class QueryGenerator:
 
         return filters
 
+    def __get_filters_combined(self):
+        filters = []
+        combined_filter_adapters = {
+            "custom_properties.preferred": self.adapt_recommended_channels_filter
+        }
+
+        for field in self.combined_filter:
+            value = self.query_params.get(field, None)
+
+            if value:
+                combined_filter_adapters[field](filters, value)
+
+        return filters
+
     def __get_filters_by_ids(self):
         """
         DEPRECATED
@@ -277,11 +289,12 @@ class QueryGenerator:
         filters_range = self.__get_filter_range()
         filters_match_phrase = self.__get_filters_match_phrase()
         filters_exists = self.__get_filters_exists()
+        filters_combined = self.__get_filters_combined()
         forced_filter = [self.es_manager.forced_filters(include_deleted=True)]
         ids_filter = self.__get_filters_by_ids()
 
         filters = filters_term + filters_range + filters_match_phrase + \
-                  filters_exists + forced_filter + ids_filter
+                  filters_exists + filters_combined + forced_filter + ids_filter
 
         return filters
 
@@ -440,6 +453,7 @@ class ESFilterBackend(BaseFilterBackend):
                 range_filter=view.range_filter,
                 match_phrase_filter=view.match_phrase_filter,
                 exists_filter=view.exists_filter,
+                combined_filter=view.combined_filter,
                 params_adapters=view.params_adapters,
             )
         )
@@ -517,6 +531,7 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    combined_filter = ()
     params_adapters = ()
 
 
@@ -545,6 +560,7 @@ class ExportDataGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    combined_filter = ()
     params_adapters = ()
     queryset = None
     export_limit = settings.RESEARCH_EXPORT_LIMIT
@@ -562,6 +578,7 @@ class ExportDataGenerator:
                 range_filter=self.range_filter,
                 match_phrase_filter=self.match_phrase_filter,
                 exists_filter=self.exists_filter,
+                combined_filter=self.combined_filter,
                 params_adapters=self.params_adapters,
             )
         )

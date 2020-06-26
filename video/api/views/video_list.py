@@ -76,6 +76,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
+    combined_filter = ()
     params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS

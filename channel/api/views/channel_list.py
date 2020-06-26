@@ -11,6 +11,7 @@ from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import TERMS_FILTER
+from channel.constants import COMBINED_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
@@ -113,6 +114,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
+    combined_filter = COMBINED_FILTER
     params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter, VettedParamsAdapter, IsTrackedParamsAdapter)
     allowed_aggregations = ALLOWED_CHANNEL_AGGREGATIONS
 
@@ -170,7 +172,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 except KeyError:
                     pass
 
-        result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
+        result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=None)
         return result
 
     @staticmethod
