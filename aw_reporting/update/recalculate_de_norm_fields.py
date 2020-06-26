@@ -105,29 +105,16 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             _item_filter = {"ad_group_id__in": ids}
             aggregated_data[key] = {}
 
-            aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["keyword_count"] = KeywordStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["channel_count"] = YTChannelStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["video_count"] = YTVideoStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["rem_count"] = RemarkStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["topic_count"] = TopicStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
+            aggregated_data[key]["has_interests"] = AudienceStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_keywords"] = KeywordStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_channels"] = YTChannelStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_videos"] = YTVideoStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_remarketing"] = RemarkStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_topics"] = TopicStatistic.objects.filter(**_item_filter).exists()
 
         update = {}
         for i in data:
             uid = i["id"]
-            sum_stats = sum_statistic_map.get(uid, {})
-            stats = stats_by_id[uid]
 
             update[uid] = dict(
                 de_norm_fields_are_recalculated=True,
@@ -135,15 +122,9 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
                 min_stat_date=i["min_date"],
                 max_stat_date=i["max_date"],
 
-                **sum_stats,
-                **stats,
-
-                has_interests=bool(aggregated_data.get(uid, {}).get("audience_count")),
-                has_keywords=bool(aggregated_data.get(uid, {}).get("keyword_count")),
-                has_channels=bool(aggregated_data.get(uid, {}).get("channel_count")),
-                has_videos=bool(aggregated_data.get(uid, {}).get("video_count")),
-                has_remarketing=bool(aggregated_data.get(uid, {}).get("rem_count")),
-                has_topics=bool(aggregated_data.get(uid, {}).get("topic_count")),
+                **sum_statistic_map.get(uid, {}),
+                **stats_by_id[uid],
+                **aggregated_data.get(uid, {}),
             )
 
         for uid, updates in update.items():
