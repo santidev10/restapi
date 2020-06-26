@@ -635,4 +635,15 @@ class FlightPacingAllocation(models.Model):
         return goal_mapping
 
 
+class Alert(models.Model):
+    record_id = models.CharField(max_length=20, db_index=True)
+    code = models.IntegerField(db_index=True)
+    message = models.TextField(null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["record_id", "code"], name="unique_alert")
+        ]
+
+
 init_signals()

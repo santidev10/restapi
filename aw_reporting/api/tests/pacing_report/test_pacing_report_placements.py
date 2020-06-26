@@ -75,6 +75,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "alerts",
                 "aw_update_time",
                 "charts",
                 "cost",

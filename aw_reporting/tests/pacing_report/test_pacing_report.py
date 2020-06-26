@@ -9,9 +9,13 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
+from aw_reporting.models import FlightStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Alert
+from aw_reporting.models.salesforce_constants import FlightAlert
+from aw_reporting.models.salesforce_constants import PlacementAlert
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.utils import get_dates_range
@@ -401,8 +405,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         flight = Flight.objects.create(
             id="1", name="", placement=placement, ordered_units=50, cost=50,
-            total_cost=50, start=start, end=today, delivered=0,
+            total_cost=50, start=start, end=today, delivered=50
         )
+        FlightStatistic.objects.create(flight=flight, delivery=flight.ordered_units,  impressions=50, sum_cost=50)
         account = Account.objects.create(id="1", name="Visible Account")
         campaign = Campaign.objects.create(
             id="1", name="", salesforce_placement=placement, account=account,
@@ -429,3 +434,166 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(set(actual_spend), set(stat.cost for stat in stats))
         self.assertEqual(set(goal_units), {10})
         self.assertEqual(set(goal_spend), {10})
+
+    def test_alert_signals(self):
+        today = now_in_default_tz().date()
+
+        start = today - timedelta(days=4)
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=today,
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_units=50
+        )
+        flight = Flight.objects.create(
+            id="1", name="", placement=placement, ordered_units=50, cost=50,
+            total_cost=50, start=start, end=today, delivered=0,
+        )
+        self.assertFalse(Alert.objects.all().exists())
+
+        placement.ordered_units *= 2
+        placement.save()
+        placement_ordered_units_changed = Alert.objects.filter(
+            record_id=placement.id, code=PlacementAlert.ORDERED_UNITS_CHANGED.value)
+        self.assertTrue(placement_ordered_units_changed.exists())
+
+        flight.end += timedelta(days=1)
+        flight.save()
+
+        flight_date_changed_alert = Alert.objects.filter(record_id=flight.id, code=FlightAlert.DATES_CHANGED.value)
+        self.assertTrue(flight_date_changed_alert.exists())
+
+    def test_alert_opportunity_under_margin(self):
+        today = datetime.now()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
+        start = today - timedelta(days=10)
+        end = today + timedelta(days=10)
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=1000, ordered_units=100,
+        )
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(
+            id="1", account=account, name="", salesforce_placement=placement, video_views=102,
+        )
+        CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=82)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        report = PacingReport()
+        opportunity = report.get_opportunities(dict())[0]
+        opportunity_alerts = " ".join(opportunity["alerts"])
+        self.assertTrue("is under margin", opportunity_alerts)
+
+    def test_alert_flight_80_delivery(self):
+        today = datetime.now()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
+        start = today - timedelta(days=10)
+        end = today - timedelta(days=2)
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
+        )
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(
+            id="1", account=account, name="", salesforce_placement=placement, video_views=102,
+        )
+        CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=82)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        report = PacingReport()
+
+        flight = report.get_flights(placement)[0]
+        flight_alerts = " ".join(flight["alerts"])
+        self.assertTrue("delivered 80%" in flight_alerts)
+
+    def test_alert_flight_100_delivery(self):
+        today = datetime.now()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
+        start = today - timedelta(days=3)
+        end = today - timedelta(days=2)
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
+        )
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(
+            id="1", account=account, name="", salesforce_placement=placement, video_views=102,
+        )
+        CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=102)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        report = PacingReport()
+        flight = report.get_flights(placement)[0]
+        flight_alerts = " ".join(flight["alerts"])
+        self.assertTrue("delivered 100%" in flight_alerts)
+
+    def test_alert_flight_dates_changed(self):
+        today = datetime.now()
+        start = today - timedelta(days=3)
+        end = today
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        flight = Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
+        )
+        flight.end += timedelta(days=1)
+        flight.save()
+
+        report = PacingReport()
+        flight = report.get_flights(placement)[0]
+        flight_alerts = " ".join(flight["alerts"])
+        self.assertTrue("dates have been changed", flight_alerts)
+
+    def test_alert_placement_ordered_units_changed(self):
+        today = datetime.now()
+        start = today - timedelta(days=3)
+        end = today
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, ordered_units=100,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
+        )
+        placement.ordered_units *= 2
+        placement.save()
+
+        report = PacingReport()
+        placement = report.get_placements(opportunity)[0]
+        placement_alerts = " ".join(placement["alerts"])
+        self.assertTrue("ordered units have been changed", placement_alerts)
