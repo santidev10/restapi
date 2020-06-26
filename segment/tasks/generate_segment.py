@@ -13,6 +13,7 @@ from segment.utils.generate_segment_utils import GenerateSegmentUtils
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
+SOURCE_SIZE_GET_LIMIT = 10000
 MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
@@ -59,9 +60,13 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         if options is None:
             options = default_search_config["options"]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
-                                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS,
-                                     include_cursor_exclusions=True):
+            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
+                es_generator = [segment.es_manager.get(source_list, skip_none=True)]
+            else:
+                es_generator = bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
+                                           options=options, batch_size=5000, source=segment.SOURCE_FIELDS,
+                                           include_cursor_exclusions=True)
+            for batch in es_generator:
                 if source_list:
                     if source_type == SourceListType.INCLUSION.value:
                         batch = [item for item in batch if item.main.id in source_list]
