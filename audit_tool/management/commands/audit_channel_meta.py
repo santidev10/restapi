@@ -194,7 +194,7 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
                 counter += 1
-                if counter >= self.MAX_SOURCE_CHANNELS:
+                if counter >= self.MAX_SOURCE_CHANNELS_CAP:
                     break
         if counter == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
