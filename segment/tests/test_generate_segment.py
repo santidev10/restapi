@@ -1,5 +1,6 @@
 import io
 from uuid import uuid4
+from mock import patch
 
 import boto3
 from django.conf import settings
@@ -17,6 +18,7 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.models import CustomSegment
 from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
+from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_segment import generate_segment
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -181,3 +183,90 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         for excluded in exclusion:
             self.assertNotIn(excluded.main.id, rows)
         self.channel_manager.delete([doc.main.id for doc in docs])
+
+    def test_export_s3_key_retrieval(self):
+        """
+        test that segment.get_s3_key retrieves existing s3 key if available
+        """
+        user = self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        old_s3_key = segment.get_s3_key()
+        new_s3_key = 'new_s3_key.csv'
+        CustomSegmentFileUpload.objects.create(
+            segment=segment,
+            query={"params": {"some": "params"}},
+            download_url="some-download-url.com/asdf/asdf/asdf.csv",
+            filename=new_s3_key
+        )
+        self.assertEqual(new_s3_key, segment.get_s3_key())
+        self.assertNotEqual(new_s3_key, old_s3_key)
+
+    def test_source_s3_key_retrieval(self):
+        """
+        test that segment.get_source_s3_key retrieves existing s3 key if available
+        """
+        user = self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        old_s3_key = segment.get_source_s3_key()
+        new_s3_key = 'new_s3_key.csv'
+        CustomSegmentSourceFileUpload.objects.create(
+            segment=segment,
+            source_type=SourceListType.INCLUSION.value,
+            filename=new_s3_key
+        )
+        self.assertEqual(new_s3_key, segment.get_source_s3_key())
+        self.assertNotEqual(new_s3_key, old_s3_key)
+
+    @mock_s3
+    def test_writes_header_once(self):
+        """ Test that header is only written once when batch is empty due to source urls not being in batch """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        # Prepare docs to build segment
+        docs = []
+        for i in range(5):
+            _id = next(int_iterator)
+            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc.populate_general_data(title=f"channel_title_{_id}")
+            if i % 2 == 0:
+                doc.populate_monetization(is_monetizable=True)
+            else:
+                doc.populate_monetization(is_monetizable=False)
+            docs.append(doc)
+        # Prepare inclusion source list of urls
+        source_file = io.BytesIO()
+        source_key = f"source_{next(int_iterator)}"
+        half = len(docs) // 2
+        inclusion = docs[:half]
+        exclusion = docs[half:]
+        inclusion_urls = [f"https://www.youtube.com/channel/{doc.main.id}".encode("utf-8") for doc in inclusion]
+        source_file.write(b"URL\n")
+        source_file.write(b"\n".join(inclusion_urls))
+        source_file.seek(0)
+        conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source_key).put(Body=source_file)
+        self.channel_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, uuid=uuid4(), list_type=0
+        )
+        CustomSegmentSourceFileUpload.objects.create(
+            segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
+        )
+        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
+            generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        columns = ",".join(segment.serializer.columns)
+        rows = ",".join([row.decode("utf-8") for row in body])
+        for included in inclusion:
+            self.assertIn(included.main.id, rows)
+        for excluded in exclusion:
+            self.assertNotIn(excluded.main.id, rows)
+        self.channel_manager.delete([doc.main.id for doc in docs])
+        self.assertEqual(rows.count(columns), 1)
