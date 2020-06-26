@@ -78,6 +78,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "alerts",
                 "aw_update_time",
                 "before_yesterday_budget",
                 "before_yesterday_delivered_impressions",
