@@ -52,8 +52,10 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-
         default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
+        # a batch may be empty since we check set membership for the current bulk_search batch in the source list
+        write_header = True
         if options is None:
             options = default_search_config["options"]
         try:
@@ -70,9 +72,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                 item_ids.extend(batch_item_ids)
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                generate_utils.write_to_file(batch, filename, segment, context, aggregations, write_header=seen == 0)
+                generate_utils.write_to_file(batch, filename, segment, context, aggregations,
+                                             write_header=write_header is True)
                 generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
                 seen += len(batch_item_ids)
+                write_header = False
                 if seen >= size:
                     raise MaxItemsException
         except MaxItemsException:
