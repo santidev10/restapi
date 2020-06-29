@@ -14,8 +14,6 @@ RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment",
 
 EXISTS_FILTER = ("monetization.is_monetizable", "task_us_data", "custom_properties.is_tracked")
 
-COMBINED_FILTER = ("custom_properties.preferred", )
-
 CHANNEL_CSV_HEADERS = [
     "title",
     "url",
