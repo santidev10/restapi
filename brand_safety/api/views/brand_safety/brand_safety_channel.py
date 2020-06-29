@@ -184,7 +184,10 @@ class BrandSafetyChannelAPIView(APIView):
         for category_id, keyword_data in categories.items():
             if category_id in BadWordCategory.EXCLUDED:
                 continue
-            keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
+            try:
+                keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
+            except KeyError:
+                pass
         return keywords
 
     def _extract_video_data(self, video):
