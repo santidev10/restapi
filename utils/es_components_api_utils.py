@@ -172,9 +172,6 @@ class QueryGenerator:
             value = self.query_params.get(field, None)
 
             if value:
-                if field == "custom_properties.preferred":
-                    self.adapt_recommended_channels_filter(filters, value)
-                    continue
                 value = value.split(",") if isinstance(value, str) else value
                 filters.append(
                     QueryBuilder().build().must().terms().field(field).value(value).get()
@@ -220,15 +217,6 @@ class QueryGenerator:
             filters.append(q2.must_not().exists().field("captions").get())
         else:
             return
-
-    def adapt_recommended_channels_filter(self, filters, value):
-        if strtobool(value):
-            q1 = QueryBuilder().build().must().term().field("custom_properties.preferred").value(True).get()
-            q2 = QueryBuilder().build().must().exists().field("analytics").get()
-            filters.append(q1 | q2)
-        else:
-            return
-
 
     def __get_filters_exists(self):
         filters = []
