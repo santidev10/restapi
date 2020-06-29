@@ -50,6 +50,29 @@ class BrandSafetyParamAdapter:
         return query_params
 
 
+class SentimentParamAdapter:
+    sentiment_ranges = {
+        constants.WELL_LIKED: "90,100",
+        constants.AVERAGE: "70,89",
+        constants.CONTROVERSIAL: "0,69"
+    }
+    parameter_name = "stats.sentiment"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter_name)
+        if parameter:
+            sentiment_query = []
+            labels = parameter.title().split(",")
+            for label in labels:
+                sentiment_range = self.sentiment_ranges.get(label.strip())
+                if sentiment_range:
+                    sentiment_query.append(sentiment_range)
+            if sentiment_query:
+                query_params[self.parameter_name] = sentiment_query
+        return query_params
+
+
+
 def get_limits(query_params, default_page_size=None, max_page_number=None):
     size = int(query_params.get("size", default_page_size or DEFAULT_PAGE_SIZE))
     page = int(query_params.get("page", 1))
@@ -134,7 +157,7 @@ class QueryGenerator:
     def __get_filter_range(self):
         filters = []
         for field in self.range_filter:
-            if field == "brand_safety.overall_score":
+            if field == "brand_safety.overall_score" or field == "stats.sentiment":
                 self.add_should_filters(self.query_params.get(field, None), filters, field)
             else:
                 query_range = self.query_params.get(field, None)
