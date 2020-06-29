@@ -87,11 +87,6 @@ LOW_RISK = "Medium Suitability"
 RISKY = "Low Suitability"
 HIGH_RISK = "Unsuitable"
 
-WELL_LIKED = "Well Liked"
-AVERAGE = "Average"
-CONTROVERSIAL = "Controversial"
-CUSTOM = "Custom"
-
 CHANNELS_INDEX = "channels"
 VIDEOS_INDEX = "videos"
 BLACKLIST_DATA = "blacklist_data"

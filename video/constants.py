@@ -37,3 +37,8 @@ VIDEO_CSV_HEADERS = [
     "ctr_v",
     "average_cpv",
 ]
+
+WELL_LIKED = "Well Liked"
+AVERAGE = "Average"
+CONTROVERSIAL = "Controversial"
+CUSTOM = "Custom"
