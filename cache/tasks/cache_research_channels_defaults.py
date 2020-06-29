@@ -44,15 +44,14 @@ def cache_research_channels_defaults():
                             Sections.TASK_US_DATA)
         admin_sections = default_sections + (Sections.MONETIZATION, Sections.ANALYTICS,)
 
-        fields_to_load = ["main", "social", "custom_properties", "ads_stats", "cms.cms_title", "general_data.title",
-                          "general_data.description", "general_data.thumbnail_image_url", "general_data.country",
-                          "general_data.youtube_published_at", "general_data.top_category",
-                          "general_data.top_language",
-                          "general_data.emails", "general_data.iab_categories", "stats.subscribers",
-                          "stats.last_video_published_at", "stats.engage_rate", "stats.sentiment",
-                          "stats.last_30day_subscribers", "stats.views", "stats.last_*_views", "stats.views_per_video",
-                          "stats.channel_group", "stats.subscribers_history", "stats.views_history",
-                          "stats.historydate", "brand_safety"]
+        fields_to_load = ['main', 'social', 'custom_properties', 'ads_stats', 'cms.cms_title', 'general_data.title',
+                          'general_data.description', 'general_data.thumbnail_image_url', 'general_data.country',
+                          'general_data.youtube_published_at', 'general_data.top_category', 'general_data.top_language',
+                          'general_data.emails', 'general_data.iab_categories', 'stats.subscribers',
+                          'stats.last_video_published_at', 'stats.engage_rate', 'stats.sentiment',
+                          'stats.last_30day_subscribers', 'stats.views', 'stats.last_*_views', 'stats.views_per_video',
+                          'stats.channel_group', 'stats.subscribers_history', 'stats.views_history', 'stats.historydate',
+                          'brand_safety']
 
         sort = [
             {"stats.subscribers": {"order": "desc"}},
@@ -100,19 +99,15 @@ def cache_research_channels_defaults():
         admin_queryset_adapter = queryset_adapter
         admin_queryset_adapter.manager = admin_manager
 
-        admin_fields_to_load = ["main", "social", "custom_properties", "ads_stats", "analytics.updated_at",
-                                "analytics.cms_title",
-                                "analytics.traffic_source", "analytics.age", "analytics.country", "analytics.gender",
-                                "analytics.audience", "cms.cms_title", "general_data.title",
-                                "general_data.description",
-                                "general_data.thumbnail_image_url", "general_data.country",
-                                "general_data.youtube_published_at",
-                                "general_data.top_category", "general_data.top_language", "general_data.emails",
-                                "general_data.iab_categories", "stats.subscribers", "stats.last_video_published_at",
-                                "stats.engage_rate", "stats.sentiment", "stats.last_30day_subscribers", "stats.views",
-                                "stats.last_*_views", "stats.views_per_video", "stats.channel_group",
-                                "stats.subscribers_history", "stats.views_history", "stats.historydate", "brand_safety",
-                                "monetization.is_monetizable"]
+        admin_fields_to_load = ['main', 'social', 'custom_properties', 'ads_stats', 'analytics.updated_at', 'analytics.cms_title',
+                                'analytics.traffic_source', 'analytics.age', 'analytics.country', 'analytics.gender',
+                                'analytics.audience', 'cms.cms_title', 'general_data.title', 'general_data.description',
+                                'general_data.thumbnail_image_url', 'general_data.country', 'general_data.youtube_published_at',
+                                'general_data.top_category', 'general_data.top_language', 'general_data.emails',
+                                'general_data.iab_categories', 'stats.subscribers', 'stats.last_video_published_at',
+                                'stats.engage_rate', 'stats.sentiment', 'stats.last_30day_subscribers', 'stats.views',
+                                'stats.last_*_views', 'stats.views_per_video', 'stats.channel_group', 'stats.subscribers_history',
+                                'stats.views_history', 'stats.historydate', 'brand_safety', 'monetization.is_monetizable']
 
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter
