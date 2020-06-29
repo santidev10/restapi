@@ -254,7 +254,10 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 v = None
             v_channel = vid.channel
-            acm = v_channel.auditchannelmeta if v_channel else None
+            try:
+                acm = v_channel.auditchannelmeta
+            except Exception:
+                acm = None
             if num_done > self.MAX_ROWS:
                 continue
             try:
