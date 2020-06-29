@@ -20,6 +20,7 @@ from django.utils import timezone
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
 from aw_reporting.models import Account
+from aw_reporting.models import Alert
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -38,6 +39,8 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import goal_type_str
+from aw_reporting.models.salesforce_constants import FlightAlert
+from aw_reporting.models.salesforce_constants import PlacementAlert
 from aw_reporting.update.recalculate_de_norm_fields import FLIGHTS_DELIVERY_ANNOTATE
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -76,6 +79,8 @@ FLIGHT_FIELDS = (
     "placement__tech_fee_type",
     "placement__total_cost",
     "placement_id",
+    "placement__name",
+    "placement__opportunity__name",
     "start",
     "timezone",
     "total_cost",
@@ -573,6 +578,15 @@ class PacingReport:
                 o["timezone"] = Account.objects.filter(id__in=o["aw_cid"].split(",")).first().managers.first().timezone
             except AttributeError:
                 o["timezone"] = None
+
+            alerts = []
+            margin = o["margin"]
+            try:
+                if margin and today <= o["end"] - timedelta(days=7) and margin < 0.9:
+                    alerts.append(f"{o['name']} if under margin at {margin}. Please adjust IMMEDIATELY.")
+                o["alerts"] = alerts
+            except TypeError:
+                pass
         return opportunities
 
     # pylint: enable=too-many-statements
@@ -719,6 +733,7 @@ class PacingReport:
             video_view_rate_quality=None, video_views=None)
 
     def get_placements(self, opportunity):
+        today = timezone.now().date()
         queryset = opportunity.placements.all().order_by("name", "start")
 
         # get raw  data
@@ -770,12 +785,27 @@ class PacingReport:
             if goal_type_id == SalesForceGoalType.HARD_COST:
                 self._set_none_hard_cost_properties(p)
             p.update(goal_type=goal_type_str(goal_type_id))
+
+            # placement ordered units changed
+            alerts = []
+            sf_alerts = {
+                alert.code: alert.message for alert in Alert.objects.filter(record_id=p["id"])
+            }
+            try:
+                if p["end"] >= today and PlacementAlert.ORDERED_UNITS_CHANGED.value in sf_alerts:
+                    alerts.append(f"{p['name']} - Ordered units were changed from changed "
+                                  f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}")
+            except TypeError:
+                pass
+            p["alerts"] = alerts
+
         return placements
 
     # ## PLACEMENTS ## #
 
     # ## FLIGHTS ## #
     def get_flights(self, placement):
+        today = timezone.now().date()
         flights_data = self.get_flights_data(placement=placement)
         populate_daily_delivery_data(flights_data)
 
@@ -830,21 +860,6 @@ class PacingReport:
 
             self.add_calculated_fields(flight)
 
-            flight["budget"] = f["budget"]
-            try:
-                if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
-                    total_delivered = sum(item["impressions"] for item in f["daily_delivery"])
-                    f["projected_budget"] = f["ordered_units"] / 1000 * get_average_cpm(f["cost"], total_delivered)
-                else:
-                    total_delivered = sum(item["video_views"] for item in f["daily_delivery"])
-                    f["projected_budget"] = f["ordered_units"] * get_average_cpv(f["cost"], total_delivered)
-            except TypeError:
-                f["projected_budget"] = 0
-
-            pacing_goal_charts = get_flight_historical_pacing_chart(f)
-            flight.update(pacing_goal_charts)
-            flights.append(flight)
-
             try:
                 # Get flight projected budget
                 if f["placement__goal_type_id"] is SalesForceGoalType.CPM:
@@ -855,6 +870,51 @@ class PacingReport:
             except TypeError:
                 flight["projected_budget"] = 0
                 flight["pacing_allocations"] = []
+
+            flight["budget"] = f["budget"]
+
+            f["projected_budget"] = flight["projected_budget"]
+            pacing_goal_charts = get_flight_historical_pacing_chart(f)
+            flight.update(pacing_goal_charts)
+
+            alerts = []
+            delivery_alert = None
+            try:
+                delivery_percentage = f["delivery"] / f["plan_units"]
+            except (TypeError, ZeroDivisionError):
+                delivery_percentage = None
+            if delivery_percentage is not None:
+                if delivery_percentage >= 1.0 and f["end"] <= today:
+                    delivery_alert = "100%"
+                elif delivery_percentage >= 0.8 and f["end"] <= today:
+                    delivery_alert = "80%"
+                if delivery_alert:
+                    alerts.append(f"{f['name']} in {f['placement__opportunity__name']} - {f['placement__name']} "
+                                  f"has delivered {delivery_alert} of its ordered units")
+
+            pacing_alert = None
+            flight_pacing = flight["pacing"]
+            if flight_pacing is not None:
+                if flight["pacing"] > 1.1:
+                    pacing_alert = "over pacing by 10%"
+                elif flight["pacing"] < 0.9:
+                    pacing_alert = "under pacing by 10%"
+                if pacing_alert:
+                    alerts.append(f"The flight {f['name']} is {pacing_alert} and "
+                                  f"ends on {f['end']}. Please check and adjust IMMEDIATELY")
+
+            sf_alerts = {
+                alert.code: alert.message for alert in Alert.objects.filter(record_id=flight["id"])
+            }
+            if flight["end"] and flight["end"] >= today and FlightAlert.DATES_CHANGED.value in sf_alerts:
+                    alerts.append(f"{f['placement__name']} - {f['name']} - Flight dates have been "
+                                  f"changed from {sf_alerts[FlightAlert.DATES_CHANGED.value]}")
+
+            # Add flight dates changed
+            flight["alerts"] = alerts
+
+            flights.append(flight)
+
         return flights
 
     # ## FLIGHTS ## #
@@ -912,11 +972,10 @@ class PacingReport:
             )
 
             c.update(chart_data)
-
-            self.add_calculated_fields(c)
-
             c["flight_budget"] = flight.budget
             c["flight_daily_budget"] = flight_daily_budget
+
+            self.add_calculated_fields(c)
         return campaigns
     # ## CAMPAIGNS ## #
 

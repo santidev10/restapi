@@ -150,3 +150,12 @@ class SalesforceFields:
         ITEM_ID = "WhatId"
         NAME = "Subject"
         OWNER_ID = "OwnerId"
+
+
+class PlacementAlert(Enum):
+    ORDERED_UNITS_CHANGED = 0
+
+
+class FlightAlert(Enum):
+    DATES_CHANGED = 0
+

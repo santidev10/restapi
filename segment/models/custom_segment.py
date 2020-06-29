@@ -172,10 +172,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
 
-    def get_s3_key(self, *args, **kwargs):
-        segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
-        return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
-
     @staticmethod
     def get_featured_image_s3_key(uuid, extension):
         return CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY.format(
@@ -183,10 +179,33 @@ class CustomSegment(SegmentMixin, Timestampable):
             extension=extension
         )
 
+    def get_s3_key(self, *args, **kwargs):
+        """
+        get existing s3_key from related CustomSegmentFileUpload's
+        filename field or make new key
+        """
+        if hasattr(self, 'export') and self.export.filename:
+            return self.export.filename
+        return f"{self.uuid}_export.csv"
+
     def get_vetted_s3_key(self, suffix=None):
-        suffix = suffix if suffix is not None else ""
-        segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
-        return f"custom_segments/{self.owner_id}/{segment_type}/vetted/{self.title}{suffix}.csv"
+        """
+        get existing s3_key from related CustomSegmentVettedFileUpload's
+        filename field or make new key
+        """
+        if hasattr(self, 'vetted_export') and self.vetted_export.filename and not suffix:
+            return self.vetted_export.filename
+        suffix = f"_{suffix}" if suffix is not None else ""
+        return f"{self.uuid}_vetted_export{suffix}.csv"
+
+    def get_source_s3_key(self):
+        """
+        get existing s3_key from related CustomSegmentSourceFileUpload's
+        filename field or make new key
+        """
+        if hasattr(self, 'source') and self.source.filename:
+            return self.source.filename
+        return f"{self.uuid}_export_source.csv"
 
     def delete_export(self, s3_key=None):
         """

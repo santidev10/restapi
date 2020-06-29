@@ -13,6 +13,7 @@ from segment.utils.generate_segment_utils import GenerateSegmentUtils
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
+SOURCE_SIZE_GET_LIMIT = 10000
 MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
@@ -52,27 +53,34 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-
         default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
+        # a batch may be empty since we check set membership for the current bulk_search batch in the source list
+        write_header = True
         if options is None:
             options = default_search_config["options"]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
-                                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS,
-                                     include_cursor_exclusions=True):
-                if source_list:
-                    if source_type == SourceListType.INCLUSION.value:
-                        batch = [item for item in batch if item.main.id in source_list]
-                    else:
-                        batch = [item for item in batch if item.main.id not in source_list]
+            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
+                es_generator = [segment.es_manager.get(source_list, skip_none=True)]
+            else:
+                bulk_search_kwargs = dict(
+                    options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True
+                )
+                es_generator = bulk_search_with_source_generator(
+                    source_list, source_type,
+                    segment.es_manager.model, query, sort, default_search_config["cursor_field"],
+                    **bulk_search_kwargs)
+            for batch in es_generator:
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                generate_utils.write_to_file(batch, filename, segment, context, aggregations, write_header=seen == 0)
+                generate_utils.write_to_file(batch, filename, segment, context, aggregations,
+                                             write_header=write_header is True)
                 generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
                 seen += len(batch_item_ids)
+                write_header = False
                 if seen >= size:
                     raise MaxItemsException
         except MaxItemsException:
@@ -98,6 +106,29 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     finally:
         os.remove(filename)
 # pylint: enable=too-many-nested-blocks,too-many-statements
+
+
+def bulk_search_with_source_generator(source_list, source_type, model, query, sort, cursor_field, **bulk_search_kwargs):
+    """
+    Wrapper to check source list for each batch in bulk search generator
+    :param source_list: iter: Source list upload
+    :param source_type: int
+    :param model: es_components.models.Model
+    :param query: ES Q object
+    :param sort: str
+    :param cursor_field: str
+    :param bulk_search_kwargs:
+    :return:
+    """
+    bulk_search_generator = bulk_search(model, query, sort, cursor_field, **bulk_search_kwargs)
+    for batch in bulk_search_generator:
+        if source_list:
+            if source_type == SourceListType.INCLUSION.value:
+                batch = [item for item in batch if item.main.id in source_list]
+            else:
+                batch = [item for item in batch if item.main.id not in source_list]
+        yield batch
+
 
 class MaxItemsException(Exception):
     pass
