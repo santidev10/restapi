@@ -65,7 +65,6 @@ class SentimentParamAdapter:
             label = parameter.title().strip()
             sentiment_range = self.sentiment_ranges.get(label)
             if sentiment_range:
-                sentiment_query = sentiment_range
                 query_params[self.parameter_name] = sentiment_range
         return query_params
 
