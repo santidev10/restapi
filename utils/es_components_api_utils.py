@@ -54,24 +54,21 @@ class BrandSafetyParamAdapter:
 class SentimentParamAdapter:
     sentiment_ranges = {
         video_constants.WELL_LIKED: "90,100",
-        video_constants.AVERAGE: "70,89",
-        video_constants.CONTROVERSIAL: "0,69"
+        video_constants.AVERAGE: "70,100",
+        video_constants.CONTROVERSIAL: "0,100"
     }
     parameter_name = "stats.sentiment"
 
     def adapt(self, query_params):
         parameter = query_params.get(self.parameter_name)
         if parameter:
-            sentiment_query = []
-            labels = parameter.title().split(",")
-            for label in labels:
-                sentiment_range = self.sentiment_ranges.get(label.strip())
-                if sentiment_range:
-                    sentiment_query.append(sentiment_range)
+            sentiment_query = ""
+            sentiment_range = self.sentiment_ranges.get(parameter.title().strip())
+            if sentiment_range:
+                sentiment_query = sentiment_range
             if sentiment_query:
                 query_params[self.parameter_name] = sentiment_query
         return query_params
-
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
