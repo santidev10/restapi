@@ -138,15 +138,15 @@ def perform_get(sc):
                     to_create.append(Category(**data))
             else:
                 to_update.append(model(**data))
+        if to_create:
+            model.objects.safe_bulk_create(to_create)
+            logger.debug("Created %s items for: %s", len(to_create), model)
         if to_update:
             # send pre_save signals for notifications
             for item in to_update:
                 pre_save.send(model, instance=item)
             model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
             logger.debug("Updated %s items for: %s", len(to_update), model)
-        if to_create:
-            model.objects.safe_bulk_create(to_create)
-            logger.debug("Created %s items for: %s", len(to_create), model)
 
         # save parent ids
         if method == "get_opportunities":
