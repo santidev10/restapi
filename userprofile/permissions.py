@@ -118,6 +118,7 @@ class PermissionGroupNames:
     CUSTOM_SEGMENTS = "custom_segments"
     DOMAIN_MANAGEMENT = "Domain Management"
     RESEARCH_EXPORTS = "Research Exports"
+    CUSTOM_TARGET_LIST_CREATION = "Custom Target List Creation"
 
 
 class Permissions:
