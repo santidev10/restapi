@@ -99,7 +99,7 @@ ALLOWED_VIDEO_AGGREGATIONS = (
     "transcripts:exists",
     "transcripts:missing",
     "flags",
-    "monetization.is_monetizable:exists",
+    "monetization.is_monetizable:exists"
 )
 
 ALLOWED_KEYWORD_AGGREGATIONS = (
