@@ -10,6 +10,8 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
 from segment.utils.bulk_search import bulk_search
 from segment.utils.generate_segment_utils import GenerateSegmentUtils
+from es_components.query_builder import QueryBuilder
+from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -61,7 +63,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             options = default_search_config["options"]
         try:
             if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
-                es_generator = [segment.es_manager.get(source_list, skip_none=True)]
+                ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
+                full_query = Q(query) + ids_query
+                es_generator = segment.es_manager.search(query=full_query.to_dict())
+                es_generator = [es_generator.execute().hits]
+                # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
             else:
                 bulk_search_kwargs = dict(
                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True
