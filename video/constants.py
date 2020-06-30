@@ -15,7 +15,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.last_day_views", "brand_safety.overall_score")
 
 EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data",
-                 "monetization.is_monetizable")
+                 "monetization.is_monetizable", "ads_stats")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)

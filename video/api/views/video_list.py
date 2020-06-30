@@ -145,4 +145,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
 
-        return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)
+        return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=None)
