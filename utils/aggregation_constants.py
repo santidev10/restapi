@@ -51,7 +51,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "task_us_data:exists",
     "task_us_data:missing",
     "brand_safety",
-    "monetization.is_monetizable",
+    "monetization.is_monetizable:exists",
     "custom_properties.is_tracked"
 )
 
