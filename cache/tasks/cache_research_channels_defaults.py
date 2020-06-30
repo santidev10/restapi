@@ -52,8 +52,7 @@ def cache_research_channels_defaults():
                           "stats.last_video_published_at", "stats.engage_rate", "stats.sentiment",
                           "stats.last_30day_subscribers", "stats.views", "stats.last_*_views", "stats.views_per_video",
                           "stats.channel_group", "stats.subscribers_history", "stats.views_history",
-                          "stats.historydate",
-                          "brand_safety", "stats.channel_group"]
+                          "stats.historydate", "brand_safety"]
 
         sort = [
             {"stats.subscribers": {"order": "desc"}},
@@ -100,6 +99,7 @@ def cache_research_channels_defaults():
         admin_manager = ChannelManager(admin_sections)
         admin_queryset_adapter = queryset_adapter
         admin_queryset_adapter.manager = admin_manager
+
         admin_fields_to_load = ["main", "social", "custom_properties", "ads_stats", "analytics.updated_at",
                                 "analytics.cms_title",
                                 "analytics.traffic_source", "analytics.age", "analytics.country", "analytics.gender",
@@ -111,9 +111,9 @@ def cache_research_channels_defaults():
                                 "general_data.iab_categories", "stats.subscribers", "stats.last_video_published_at",
                                 "stats.engage_rate", "stats.sentiment", "stats.last_30day_subscribers", "stats.views",
                                 "stats.last_*_views", "stats.views_per_video", "stats.channel_group",
-                                "stats.subscribers_history",
-                                "stats.views_history", "stats.historydate", "brand_safety", "stats.channel_group",
+                                "stats.subscribers_history", "stats.views_history", "stats.historydate", "brand_safety",
                                 "monetization.is_monetizable"]
+
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter
         obj.sort = sort
