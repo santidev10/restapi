@@ -193,7 +193,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.general_data.title,
             f"https://www.youtube.com/channel/{channel.main.id}",
             channel.general_data.country,
-            channel.general_data.iab_categories,
+            ",".join(channel.general_data.iab_categories),
             ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
