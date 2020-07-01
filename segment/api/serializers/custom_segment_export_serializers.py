@@ -18,7 +18,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Num_Videos", "Mismatched_Language", "Last_Vetted"
+        "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country",
     )
 
     URL = SerializerMethodField("get_url")
@@ -35,6 +35,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Num_Videos = IntegerField(source="stats.total_videos_count")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
+    Country = SerializerMethodField("get_country")
 
     def update(self, instance, validated_data):
         raise NotImplementedError
@@ -48,6 +49,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
         "Content_Type", "Num_Videos", "Mismatched_Language", "Last_Vetted",
+        "Country",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
@@ -66,7 +68,7 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Mismatched_Language", "Last_Vetted",
+        "Mismatched_Language", "Last_Vetted", "Country",
     )
 
     URL = SerializerMethodField("get_url")
@@ -82,6 +84,7 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     Content_Type = SerializerMethodField("get_content_type")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
+    Country = SerializerMethodField("get_country")
 
     def update(self, instance, validated_data):
         raise NotImplementedError
