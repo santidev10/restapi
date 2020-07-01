@@ -157,7 +157,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_general_data(
             title="Test channel title",
             country="Test country",
-            iab_categories="Top category",
+            iab_categories=["Top category",],
             emails=["example1@mail.com", "example2@email.com"],
         )
         channel.populate_stats(
