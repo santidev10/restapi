@@ -544,7 +544,8 @@ class AuditVideoMeta(models.Model):
     duration = models.CharField(max_length=30, default=None, null=True)
     age_restricted = models.NullBooleanField(default=None, db_index=True)
     made_for_kids = models.NullBooleanField(default=None, db_index=True)
-
+    aspect_ratio = models.FloatField(null=True, default=None)
+    live_broadcast = models.NullBooleanField(default=None)
 
 class AuditVideoProcessor(models.Model):
     id = models.BigAutoField(primary_key=True)
