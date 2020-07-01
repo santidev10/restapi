@@ -234,7 +234,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[2] = "[]"
+        expected_values[2] = ""
         self.assertEqual(
             expected_values,
             values
