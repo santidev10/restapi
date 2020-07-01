@@ -480,6 +480,13 @@ class Command(BaseCommand):
                     self.categories[category_id], _ = AuditCategory.objects.get_or_create(category=category_id)
             db_video_meta.category = self.categories[category_id]
             try:
+                if i["snippet"]["liveBroadcastContent"] in ["live", "upcoming"]:
+                    db_video_meta.live_broadcast = True
+                else:
+                    db_video_meta.live_broadcast = False
+            except Exception:
+                pass
+            try:
                 db_video_meta.views = int(i["statistics"]["viewCount"])
             # pylint: disable=broad-except
             except Exception:

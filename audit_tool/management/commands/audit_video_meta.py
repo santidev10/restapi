@@ -410,6 +410,13 @@ class Command(BaseCommand):
             db_video_meta.name = i["snippet"]["title"]
             db_video_meta.description = i["snippet"]["description"]
             try:
+                if i["snippet"]["liveBroadcastContent"] in ["live", "upcoming"]:
+                    db_video_meta.live_broadcast = True
+                else:
+                    db_video_meta.live_broadcast = False
+            except Exception:
+                pass
+            try:
                 db_video_meta.publish_date = parse(i["snippet"]["publishedAt"])
             # pylint: disable=broad-except
             except Exception:
