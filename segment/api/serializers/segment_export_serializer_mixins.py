@@ -81,6 +81,10 @@ class SegmentExportSerializerMixin:
             mismatched_language = None
         return mismatched_language
 
+    def get_country(self, obj):
+        """ actually returns a country code... """
+        return getattr(obj.general_data, "country_code", "")
+
 
 class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
 
