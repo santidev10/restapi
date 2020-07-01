@@ -480,7 +480,10 @@ class Command(BaseCommand):
                     self.categories[category_id], _ = AuditCategory.objects.get_or_create(category=category_id)
             db_video_meta.category = self.categories[category_id]
             try:
-                aspect_ratio = width / height * 1.0
+                html = i["player"]["embedHtml"]
+                width = int(html.split("width=\"")[1].split("\"")[0])
+                height = int(html.split("height=\"")[1].split("\"")[0])
+                aspect_ratio = round(width / height * 1.0, 2)
                 db_video_meta.aspect_ratio = aspect_ratio
             except Exception:
                 pass
