@@ -39,7 +39,7 @@ VIDEO_CSV_HEADERS = [
     "average_cpv",
 ]
 
-WELL_LIKED = "Well Liked"
-AVERAGE = "Average"
-CONTROVERSIAL = "Controversial"
+WELL_LIKED = "At least 90% liked"
+AVERAGE = "At least 79% liked"
+CONTROVERSIAL = "0% or above liked"
 CUSTOM = "Custom"

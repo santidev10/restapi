@@ -62,7 +62,7 @@ class SentimentParamAdapter:
     def adapt(self, query_params):
         parameter = query_params.get(self.parameter_name)
         if parameter:
-            label = parameter.title().strip()
+            label = parameter.strip()
             sentiment_range = self.sentiment_ranges.get(label)
             if sentiment_range:
                 query_params[self.parameter_name] = sentiment_range
