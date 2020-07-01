@@ -58,7 +58,7 @@ class Command(BaseCommand):
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
-                         "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
+                         "?key={key}&part=id,status,snippet,statistics,contentDetails,player&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                            "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -479,6 +479,14 @@ class Command(BaseCommand):
                 if not category_id in self.categories:
                     self.categories[category_id], _ = AuditCategory.objects.get_or_create(category=category_id)
             db_video_meta.category = self.categories[category_id]
+            try:
+                html = i["player"]["embedHtml"]
+                width = int(html.split("width=\"")[1].split("\"")[0])
+                height = int(html.split("height=\"")[1].split("\"")[0])
+                aspect_ratio = round(width / height * 1.0, 2)
+                db_video_meta.aspect_ratio = aspect_ratio
+            except Exception:
+                pass
             try:
                 if i["snippet"]["liveBroadcastContent"] in ["live", "upcoming"]:
                     db_video_meta.live_broadcast = True
