@@ -21,6 +21,7 @@ from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
+from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
@@ -34,7 +35,10 @@ class SegmentCreateApiViewV3(CreateAPIView):
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
-        user_has_permission("userprofile.vet_audit_admin"),
+        or_permission_classes(
+            user_has_permission("userprofile.vet_audit_admin"),
+            user_has_permission("userprofile.custom_target_list_creation")
+        )
     )
     parser_classes = [MultiPartParser]
 
