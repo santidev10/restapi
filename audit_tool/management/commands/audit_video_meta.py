@@ -52,7 +52,7 @@ class Command(BaseCommand):
     original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
-                         "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
+                         "?key={key}&part=id,status,snippet,statistics,contentDetails,player&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                            "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -409,6 +409,21 @@ class Command(BaseCommand):
                 return None
             db_video_meta.name = i["snippet"]["title"]
             db_video_meta.description = i["snippet"]["description"]
+            try:
+                if i["snippet"]["liveBroadcastContent"] in ["live", "upcoming"]:
+                    db_video_meta.live_broadcast = True
+                else:
+                    db_video_meta.live_broadcast = False
+            except Exception:
+                pass
+            try:
+                html = i["player"]["embedHtml"]
+                width = int(html.split("width=\"")[1].split("\"")[0])
+                height = int(html.split("height=\"")[1].split("\"")[0])
+                aspect_ratio = round(width / height * 1.0, 2)
+                db_video_meta.aspect_ratio = aspect_ratio
+            except Exception:
+                pass
             try:
                 db_video_meta.publish_date = parse(i["snippet"]["publishedAt"])
             # pylint: disable=broad-except

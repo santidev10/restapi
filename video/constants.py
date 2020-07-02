@@ -14,7 +14,8 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views", "brand_safety.overall_score")
 
-EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data")
+EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data",
+                 "monetization.is_monetizable")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
@@ -38,7 +39,7 @@ VIDEO_CSV_HEADERS = [
     "average_cpv",
 ]
 
-WELL_LIKED = "Well Liked"
-AVERAGE = "Average"
-CONTROVERSIAL = "Controversial"
+WELL_LIKED = "At least 90% liked"
+AVERAGE = "At least 79% liked"
+CONTROVERSIAL = "0% or above liked"
 CUSTOM = "Custom"

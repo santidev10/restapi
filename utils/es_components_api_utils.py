@@ -62,14 +62,10 @@ class SentimentParamAdapter:
     def adapt(self, query_params):
         parameter = query_params.get(self.parameter_name)
         if parameter:
-            sentiment_query = []
-            labels = parameter.title().split(",")
-            for label in labels:
-                sentiment_range = self.sentiment_ranges.get(label.strip())
-                if sentiment_range:
-                    sentiment_query.append(sentiment_range)
-            if sentiment_query:
-                query_params[self.parameter_name] = sentiment_query
+            label = parameter.strip()
+            sentiment_range = self.sentiment_ranges.get(label)
+            if sentiment_range:
+                query_params[self.parameter_name] = sentiment_range
         return query_params
 
 
@@ -158,7 +154,7 @@ class QueryGenerator:
     def __get_filter_range(self):
         filters = []
         for field in self.range_filter:
-            if field == "brand_safety.overall_score" or field == "stats.sentiment":
+            if field == "brand_safety.overall_score":
                 self.add_should_filters(self.query_params.get(field, None), filters, field)
             else:
                 query_range = self.query_params.get(field, None)
@@ -466,11 +462,8 @@ class ESFilterBackend(BaseFilterBackend):
             aggregations.append("stats.flags")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
-            aggregations.append("custom_captions.items:missing")
             aggregations.append("captions:exists")
-            aggregations.append("captions:missing")
             aggregations.append("transcripts:exists")
-            aggregations.append("transcripts:missing")
             aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg

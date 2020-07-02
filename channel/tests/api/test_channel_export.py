@@ -157,7 +157,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_general_data(
             title="Test channel title",
             country="Test country",
-            iab_categories="Top category",
+            iab_categories=["Top category",],
             emails=["example1@mail.com", "example2@email.com"],
         )
         channel.populate_stats(
@@ -193,7 +193,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.general_data.title,
             f"https://www.youtube.com/channel/{channel.main.id}",
             channel.general_data.country,
-            channel.general_data.iab_categories,
+            ",".join(channel.general_data.iab_categories),
             ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
@@ -234,7 +234,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[2] = "[]"
+        expected_values[2] = ""
         self.assertEqual(
             expected_values,
             values

@@ -17,7 +17,7 @@ class YTVideoLinkFromID(CharField):
 class VideoListExportSerializer(Serializer):
     title = CharField(source="general_data.title")
     url = YTVideoLinkFromID(source="main.id")
-    iab_categories = CharField(source="general_data.iab_categories")
+    iab_categories = SerializerMethodField()
     views = IntegerField(source="stats.views")
     monthly_views = IntegerField(source="stats.last_30day_views")
     weekly_views = IntegerField(source="stats.last_7day_views")
@@ -31,6 +31,10 @@ class VideoListExportSerializer(Serializer):
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
     brand_safety_score = SerializerMethodField()
+
+    def get_iab_categories(self, instance):
+        iab_categories = getattr(instance.general_data, "iab_categories", [])
+        return ", ".join(iab_categories)
 
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)
