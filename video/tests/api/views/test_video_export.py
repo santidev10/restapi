@@ -173,7 +173,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[1] = "[]"
+        expected_values[1] = ""
         self.assertEqual(
             expected_values,
             values
