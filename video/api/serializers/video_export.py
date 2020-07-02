@@ -44,7 +44,7 @@ class VideoListExportSerializer(Serializer):
 
     def get_language(self, instance):
         try:
-            lang_code = getattr(instance.general_data, "lang_code", [])
+            lang_code = getattr(instance.general_data, "lang_code", "")
             language = LANGUAGES.get(lang_code) or lang_code
             return language
         except Exception:
