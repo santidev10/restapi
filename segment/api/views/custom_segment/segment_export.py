@@ -3,14 +3,12 @@ from rest_framework.views import APIView
 
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
-from utils.permissions import user_has_permission
+from segment.utils.utils import CustomSegmentOwnerPermission
 from utils.views import get_object
 
 
 class SegmentExport(APIView):
-    permission_classes = (
-        user_has_permission("userprofile.vet_audit_admin"),
-    )
+    permission_classes = (CustomSegmentOwnerPermission,)
 
     def get(self, request, pk, *_):
         segment = get_object(CustomSegment, f"Custom segment with id: {pk} not found.", id=pk)
