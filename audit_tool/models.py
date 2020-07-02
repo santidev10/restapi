@@ -502,16 +502,11 @@ class AuditVideo(models.Model):
 class AuditVideoTranscript(models.Model):
     SOURCE_OPTIONS = {
         0: "Custom Transcripts",
-        1: "Watson"
     }
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
     language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
     source = models.IntegerField(default=0, db_index=True)
-    submitted = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
-    retrieved = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
-    job_id = models.CharField(max_length=255, blank=True, null=True, default=None, db_index=True)
-    job_id_hash = models.BigIntegerField(db_index=True, default=0)
 
     class Meta:
         unique_together = ("video", "language")
