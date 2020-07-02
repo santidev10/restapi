@@ -24,6 +24,7 @@ VIDEO_CSV_HEADERS = [
     "title",
     "url",
     "iab_categories",
+    "language",
     "views",
     "monthly_views",
     "weekly_views",
