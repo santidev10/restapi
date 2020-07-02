@@ -118,7 +118,7 @@ class PermissionGroupNames:
     CUSTOM_SEGMENTS = "custom_segments"
     DOMAIN_MANAGEMENT = "Domain Management"
     RESEARCH_EXPORTS = "Research Exports"
-    CUSTOM_TARGET_LIST_CREATION = "Custom Target List Creation"
+    CUSTOM_TARGET_LIST = "Custom Target List"
 
 
 class Permissions:
@@ -217,6 +217,9 @@ class Permissions:
         )),
         (PermissionGroupNames.RESEARCH_EXPORTS, (
             "research_exports",
+        )),
+        (PermissionGroupNames.CUSTOM_TARGET_LIST, (
+            "custom_target_list"
         ))
     )
 
@@ -265,6 +268,8 @@ class Permissions:
         "domain_management",
         # Exports
         "research_exports",
+        # Custom Target List
+        "custom_target_list"
     )
 
     @staticmethod
