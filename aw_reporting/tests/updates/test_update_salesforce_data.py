@@ -1111,6 +1111,8 @@ def flight_data(**kwargs):
         Flight_End_Date__c=None,
         Flight_Month__c=None,
         Total_Flight_Cost__c=0,
+        Our_Cost_currency_change__c=0,
+        Different_Spending_Currency__c=False,
         Flight_Value__c=0,
         Delivered_Ad_Ops__c=None,
         Ordered_Amount__c=0,
