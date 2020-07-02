@@ -482,6 +482,8 @@ class Flight(BaseModel, DemoEntityModelMixin):
     month = models.SmallIntegerField(null=True)
 
     cost = models.FloatField(null=True, db_index=True)
+    cost_currency = models.FloatField(null=True, db_index=True)
+    different_spending_currency = models.BooleanField(default=False)
     delivered = models.IntegerField(null=True, db_index=True)
 
     ordered_cost = models.FloatField(null=True, db_index=True)
@@ -541,6 +543,8 @@ class Flight(BaseModel, DemoEntityModelMixin):
             month=data[Fields.MONTH],
 
             cost=data[Fields.COST],
+            cost_currency=data[Fields.COST_CURRENCY],
+            different_spending_currency=data[Fields.DIFFERENT_SPENDING_CURRENCY],
             total_cost=data[Fields.TOTAL_COST],
             delivered=data[Fields.DELIVERED],
 
