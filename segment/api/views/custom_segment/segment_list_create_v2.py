@@ -93,7 +93,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
         # Filter queryset depending on permission level
         user = self.request.user
-        if user.is_staff:
+        if user.has_perm("userprofile.vet_audit_admin"):
             base_filters = {}
         elif user.has_perm("userprofile.vet_audit"):
             base_filters = {"audit_id__isnull": False}
