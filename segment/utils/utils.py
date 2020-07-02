@@ -107,5 +107,5 @@ def validate_boolean(value):
 
 class CustomSegmentOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        segment = CustomSegment.objects.get(id=self.kwargs["pk"])
+        segment = CustomSegment.objects.get(id=view.kwargs["pk"])
         return request.user.is_staff or segment.owner == request.user
