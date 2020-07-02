@@ -1,3 +1,4 @@
+from distutils.util import strtobool
 import hashlib
 import json
 import logging
@@ -9,7 +10,7 @@ from elasticsearch_dsl import Q
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
 
-import brand_safety.constants as constants
+import brand_safety.constants as brand_safety_constants
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
@@ -18,6 +19,7 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
 from utils.utils import slice_generator
+import video.constants as video_constants
 
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
@@ -27,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 class BrandSafetyParamAdapter:
     scores = {
-        constants.HIGH_RISK: "0,69",
-        constants.RISKY: "70,79",
-        constants.LOW_RISK: "80,89",
-        constants.SAFE: "90,100"
+        brand_safety_constants.HIGH_RISK: "0,69",
+        brand_safety_constants.RISKY: "70,79",
+        brand_safety_constants.LOW_RISK: "80,89",
+        brand_safety_constants.SAFE: "90,100"
 
     }
     parameter = "brand_safety"
@@ -47,6 +49,25 @@ class BrandSafetyParamAdapter:
                     brand_safety_overall_score.append(score)
             query_params[self.parameter_full_name] = brand_safety_overall_score
         return query_params
+
+
+class SentimentParamAdapter:
+    sentiment_ranges = {
+        video_constants.WELL_LIKED: "90,100",
+        video_constants.AVERAGE: "70,89",
+        video_constants.CONTROVERSIAL: "0,69"
+    }
+    parameter_name = "stats.sentiment"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter_name)
+        if parameter:
+            label = parameter.strip()
+            sentiment_range = self.sentiment_ranges.get(label)
+            if sentiment_range:
+                query_params[self.parameter_name] = sentiment_range
+        return query_params
+
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
@@ -169,6 +190,7 @@ class QueryGenerator:
         for field in self.terms_filter:
 
             value = self.query_params.get(field, None)
+
             if value:
                 value = value.split(",") if isinstance(value, str) else value
                 filters.append(
@@ -440,11 +462,8 @@ class ESFilterBackend(BaseFilterBackend):
             aggregations.append("stats.flags")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
-            aggregations.append("custom_captions.items:missing")
             aggregations.append("captions:exists")
-            aggregations.append("captions:missing")
             aggregations.append("transcripts:exists")
-            aggregations.append("transcripts:missing")
             aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg

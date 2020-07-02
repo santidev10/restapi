@@ -129,6 +129,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "title",
             "url",
             "country",
+            "language",
             "iab_categories",
             "emails",
             "subscribers",
@@ -157,7 +158,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_general_data(
             title="Test channel title",
             country="Test country",
-            iab_categories="Top category",
+            top_lang_code="ru",
+            iab_categories=["Top category",],
             emails=["example1@mail.com", "example2@email.com"],
         )
         channel.populate_stats(
@@ -193,7 +195,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.general_data.title,
             f"https://www.youtube.com/channel/{channel.main.id}",
             channel.general_data.country,
-            channel.general_data.iab_categories,
+            "Russian",
+            ",".join(channel.general_data.iab_categories),
             ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
@@ -234,7 +237,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[2] = "[]"
+        expected_values[2] = ""
         self.assertEqual(
             expected_values,
             values
@@ -355,28 +358,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
-    def test_filter_channel_group(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
-
-        channels = [Channel(next(int_iterator)) for _ in range(2)]
-        for channel in channels:
-            channel.populate_stats(total_videos_count=10)
-
-        channels[0].populate_stats(channel_group="brands")
-        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
-
-        self._request_collect_file(**{"stats.channel_group": "Brands"})
-        response = self._request()
-
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)[1:]
-
-        self.assertEqual(1, len(data))
-
-    @mock_s3
-    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
-                return_value=EXPORT_FILE_HASH)
     def test_brand_safety_score_mapped(self, *args):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
@@ -392,5 +373,5 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[15])
-        self.assertEqual(4, int(rows[0][15]))
-        self.assertEqual(6, int(rows[1][15]))
+        self.assertEqual(4, int(rows[0][16]))
+        self.assertEqual(6, int(rows[1][16]))

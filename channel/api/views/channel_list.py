@@ -118,11 +118,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
+        "ads_stats.average_cpm:percentiles",
         "ads_stats.video_view_rate:percentiles",
+        "ads_stats.ctr:percentiles",
         "ads_stats.ctr_v:percentiles",
-        "social.facebook_likes:percentiles",
-        "social.instagram_followers:percentiles",
-        "social.twitter_followers:percentiles",
+        "ads_stats.video_quartile_100_rate:percentiles",
         "stats.last_30day_subscribers:percentiles",
         "stats.last_30day_views:percentiles",
         "stats.subscribers:percentiles",

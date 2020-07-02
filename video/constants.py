@@ -8,13 +8,14 @@ TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_da
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
 RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
-                "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
-                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
-                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
+                "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm", "ads_stats.ctr_v",
+                "ads_stats.ctr", "ads_stats.video_view_rate", "ads_stats.video_quartile_100_rate", "analytics.age13_17",
+                "analytics.age18_24", "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views", "brand_safety.overall_score")
 
-EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data")
+EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data",
+                 "monetization.is_monetizable")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
@@ -23,6 +24,7 @@ VIDEO_CSV_HEADERS = [
     "title",
     "url",
     "iab_categories",
+    "language",
     "views",
     "monthly_views",
     "weekly_views",
@@ -37,3 +39,8 @@ VIDEO_CSV_HEADERS = [
     "ctr_v",
     "average_cpv",
 ]
+
+WELL_LIKED = "At least 90% liked"
+AVERAGE = "At least 79% liked"
+CONTROVERSIAL = "0% or above liked"
+CUSTOM = "Custom"

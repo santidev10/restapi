@@ -20,6 +20,7 @@ from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -76,14 +77,17 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter, SentimentParamAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
+        "ads_stats.average_cpm:percentiles",
+        "ads_stats.ctr:percentiles",
         "ads_stats.ctr_v:percentiles",
         "ads_stats.video_view_rate:percentiles",
+        "ads_stats.video_quartile_100_rate:percentiles",
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",

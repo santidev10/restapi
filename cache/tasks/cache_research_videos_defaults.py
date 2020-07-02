@@ -44,13 +44,8 @@ def cache_research_videos_defaults():
                             Sections.CUSTOM_CAPTIONS)
         admin_sections = default_sections + (Sections.ANALYTICS,)
 
-        fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "captions",
-                          "cms.cms_title", "stats.subscribers", "stats.last_video_published_at", "stats.engage_rate",
-                          "stats.sentiment", "stats.views", "stats.comments", "stats.likes", "stats.dislikes",
-                          "stats.last_*_views", "stats.last_*_likes", "stats.views_per_video", "general_data.country",
-                          "stats.last_*_comments", "stats.flags", "stats.views_history", "stats.likes_history",
-                          "stats.dislikes_history", "stats.comments_history", "stats.historydate", "brand_safety",
-                          "custom_captions", "general_data.iab_categories"]
+        fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "cms", "captions", "stats",
+                          "brand_safety", "custom_captions"]
 
         sort = [
             {"stats.views": {"order": "desc"}},
@@ -70,7 +65,7 @@ def cache_research_videos_defaults():
         queryset_adapter = ESQuerysetAdapter(manager, cached_aggregations=cached_aggregations)
         queryset_adapter.aggregations = []
         queryset_adapter.fields_to_load = fields_to_load
-        queryset_adapter.filter_query = [manager.forced_filters()]
+        queryset_adapter.filter_query = [manager.forced_filters(include_deleted=True)]
         queryset_adapter.percentiles = []
         queryset_adapter.sort = sort
         obj = queryset_adapter
@@ -97,17 +92,8 @@ def cache_research_videos_defaults():
         admin_manager = VideoManager(admin_sections)
         admin_queryset_adapter = queryset_adapter
         admin_queryset_adapter.manager = admin_manager
-        admin_fields_to_load = ["general_data", "main", "monetization", "channel", "analytics", "ads_stats",
-                                "captions",
-                                "cms.cms_title", "stats.subscribers", "stats.last_video_published_at",
-                                "stats.engage_rate",
-                                "stats.sentiment", "stats.views", "stats.comments", "stats.likes", "stats.dislikes",
-                                "stats.last_*_views", "stats.last_*_likes", "stats.views_per_video",
-                                "general_data.country",
-                                "stats.last_*_comments", "stats.flags", "stats.views_history", "stats.likes_history",
-                                "stats.dislikes_history", "stats.comments_history", "stats.historydate",
-                                "brand_safety",
-                                "custom_captions", "general_data.iab_categories"]
+        admin_fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "cms", "captions",
+                                "stats", "brand_safety", "custom_captions"]
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter
         obj.sort = sort
