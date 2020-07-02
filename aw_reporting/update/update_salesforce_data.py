@@ -251,8 +251,12 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             # 0 is not an acceptable value for this field
             units = units or None
             update["Delivered_Ad_Ops__c"] = units
-        if cost != flight.cost:
-            update["Total_Flight_Cost__c"] = cost
+        if flight.different_spending_currency:
+            if cost != flight.cost_currency:
+                update["Our_Cost_currency_change__c"] = cost
+        else:
+            if cost != flight.cost:
+                update["Total_Flight_Cost__c"] = cost
 
         if ((pacing is None) ^ (flight.pacing is None)) \
             or (pacing is not None and not almost_equal(pacing, flight.pacing)):
