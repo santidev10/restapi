@@ -1314,6 +1314,23 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertIn(acc_1.id, to_update)
         self.assertIn(acc_2.id, to_update)
 
+    def test_handle_dashes_in_cid(self):
+        now = datetime.now(utc)
+        today = now.date()
+        will_end = today + timedelta(days=31)
+        acc_id = 1234567890
+        account = Account.objects.create(id=acc_id, name="account", is_active=True)
+
+        aw_cid = "123-456-7890"
+        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=aw_cid, end=will_end)
+
+        pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_1, number="test_pl", end=today)
+        Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                account=account)
+
+        to_update = GoogleAdsUpdater.get_accounts_to_update()
+        self.assertIn(account.id, to_update)
+
 
 class FakeExceptionWithArgs:
     def __init__(self, search_string):
