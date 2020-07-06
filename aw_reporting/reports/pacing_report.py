@@ -1573,7 +1573,7 @@ def get_flight_historical_pacing_chart(flight_data):
         historical_units_chart=historical_units_chart,
         historical_spend_chart=historical_spend_chart,
         today_goal_units=today_goal_units,
-        today_goal_units_perecent=today_goal_units_percent,
+        today_goal_units_percent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
         today_goal_spend_percent=today_goal_spend_percent,
     )
