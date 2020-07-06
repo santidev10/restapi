@@ -54,6 +54,7 @@ class Command(BaseCommand):
                                "?key={key}&forUsername={username}&part=id"
     YOUTUBE_CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
     YOUTUBE_PLAYLISTITEMS_URL = 'https://www.googleapis.com/youtube/v3/playlistItems'
+    CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS = 500
 
     def __init__(self, stdout=None, stderr=None, no_color=False, force_color=False):
         super(Command, self).__init__(stdout=stdout, stderr=stderr, no_color=no_color, force_color=force_color)
@@ -369,9 +370,6 @@ class Command(BaseCommand):
             page_token = None
             page = 0
             count = 0
-            num_videos = self.num_videos
-            if not self.audit.params.get("do_videos"):
-                num_videos = 1
             per_page = num_videos
             if per_page > 50:
                 per_page = 50
@@ -404,24 +402,29 @@ class Command(BaseCommand):
                     update_or_create_video(item['id']['videoId'])
 
         # get_videos STARTS HERE
+        num_videos = self.num_videos
+        if not self.audit.params.get("do_videos"):
+            num_videos = 1
         db_channel = acp.channel
-        # get channels' data for video count and uploads playlist's id
-        channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
-            'key': self.DATA_API_KEY,
-            'id': db_channel.channel_id,
-            'part': ','.join(['contentDetails', 'statistics']),
-        })
-        channels_res = requests.get(channels_url).json()
-        channels_json = channels_res.json()
-        if channels_res.status_code != 200:
-            handle_bad_response_code(channels_res, channels_json)
-            return
-        channel_json = channels_json['items'][0]
-        video_count = int(channel_json['statistics']['videoCount'])
-        if video_count > 500:
-            get_using_use_uploads_playlist()
-        else:
-            get_using_channel_videos()
+        if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
+            # get channels' data for video count and uploads playlist's id
+            channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
+                'key': self.DATA_API_KEY,
+                'id': db_channel.channel_id,
+                'part': ','.join(['contentDetails', 'statistics']),
+            })
+            channels_res = requests.get(channels_url)
+            channels_json = channels_res.json()
+            if channels_res.status_code != 200:
+                handle_bad_response_code(channels_res, channels_json)
+                return
+            channel_json = channels_json['items'][0]
+            video_count = int(channel_json['statistics']['videoCount'])
+            if video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
+                get_using_use_uploads_playlist()
+                return
+
+        get_using_channel_videos()
 
     def load_inclusion_list(self):
         if self.inclusion_list:
