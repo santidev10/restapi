@@ -29,6 +29,7 @@ class PacingReportFlightAllocationAPIView(APIView):
 
     def _validate(self, flight, data):
         today = timezone.now().date()
+
         allocations = FlightPacingAllocation.get_allocations(flight.id)
         total_allocation = sum(float(item["allocation"]) for item in data)
         if total_allocation != 100:
@@ -44,15 +45,20 @@ class PacingReportFlightAllocationAPIView(APIView):
                 if start_date > end_date:
                     raise ValidationError(f"Start date must be less than end date: {start_date} - {end_date}")
 
+                # If modifying allocations for the first time, the first date range must include today's date
+                if all(item.allocation == 100 for item in allocations.values()) and i == 0 and end_date != today:
+                    raise ValidationError("You are trying to allocate pacing for the first time. "
+                                          "Your first date range must include today's date.")
+                # Validate if trying to change past allocation
+                if end_date < today:
+                    raise ValidationError("You can not modify an allocation in a past date range.")
+
                 for date in get_dates_range(start_date, end_date):
                     try:
                         allocation_obj = allocations[date]
                     except KeyError:
                         raise ValidationError(f"Date not in flight duration: {self._format_date(date)}")
                     updated_allocation_range_value = float(updated_allocation_range["allocation"])
-                    # Reject modifying past allocations
-                    if date < today and updated_allocation_range_value != allocation_obj.allocation:
-                        raise ValidationError("You can not modify a past allocation.")
                     allocation_obj.allocation = updated_allocation_range_value
                     to_update.append(allocation_obj)
                 try:
