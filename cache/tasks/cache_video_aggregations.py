@@ -35,7 +35,7 @@ def cache_video_aggregations():
 
         logger.info("Collecting video aggregations.")
         aggregations = manager.get_aggregation(
-            search=manager.search(filters=manager.forced_filters()),
+            search=manager.search(filters=manager.forced_filters(include_deleted=True)),
             properties=aggregation_params
         )
         logger.info("Saving video aggregations.")
