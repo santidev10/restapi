@@ -14,6 +14,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Alert
+from aw_reporting.models import FlightPacingAllocation
 from aw_reporting.models.salesforce_constants import FlightAlert
 from aw_reporting.models.salesforce_constants import PlacementAlert
 from aw_reporting.reports.pacing_report import PacingReport
@@ -597,3 +598,44 @@ class PacingReportTestCase(ExtendedAPITestCase):
         placement = report.get_placements(opportunity)[0]
         placement_alerts = " ".join(placement["alerts"])
         self.assertTrue("ordered units have been changed", placement_alerts)
+
+    def test_flight_pacing_allocation_serialization(self):
+        """ Test flight pacing allocation serialization formats into correct date ranges """
+        today = datetime.now()
+        start = today
+        end = today + timedelta(days=10)
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(
+            id="1", name="", start=start, end=end, probability=100
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, ordered_units=100,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        flight = Flight.objects.create(
+            id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
+        )
+        FlightStatistic.objects.create(flight=flight, delivery=100, video_views=100, sum_cost=10)
+        allocations = list(FlightPacingAllocation.get_allocations(flight.id).values())
+        border_1 = len(allocations) // 3
+        border_2 = border_1 * 2
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[:border_1]]).update(allocation=20)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_1:border_2]]).update(
+            allocation=30)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_2:]]).update(allocation=50)
+        report = PacingReport()
+        serialized = report.get_flights(placement)[0]["pacing_allocations"]
+        range_1 = serialized[0]
+        range_2 = serialized[1]
+        range_3 = serialized[2]
+        self.assertTrue(range_1["start"] == allocations[0].date)
+        self.assertTrue(range_1["end"] == allocations[border_1 - 1].date)
+        self.assertTrue(range_1["allocation"] == 20)
+
+        self.assertTrue(range_2["start"] == allocations[border_1].date)
+        self.assertTrue(range_2["end"] == allocations[border_2 - 1].date)
+        self.assertTrue(range_2["allocation"] == 30)
+
+        self.assertTrue(range_3["start"] == allocations[border_2].date)
+        self.assertTrue(range_3["end"] == allocations[-1].date)
+        self.assertTrue(range_3["allocation"] == 50)

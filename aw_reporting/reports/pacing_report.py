@@ -831,7 +831,8 @@ class PacingReport:
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],
                 plan_cost=f["total_cost"], margin=None, pacing=None,
                 dynamic_placement=dynamic_placement,
-                tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"]
+                tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"],
+                plan_units=f["plan_units"]
             )
             f_data = [f]
 
@@ -1560,11 +1561,21 @@ def get_flight_historical_pacing_chart(flight_data):
             goal=goal_spend,
             actual=actual_spend,
         ))
+    try:
+        today_goal_units_percent = plan_units / today_goal_units * 100
+    except (TypeError, ZeroDivisionError):
+        today_goal_units_percent = None
+    try:
+        today_goal_spend_percent = projected_budget / today_goal_spend * 100
+    except (TypeError, ZeroDivisionError):
+        today_goal_spend_percent = None
     data = dict(
         historical_units_chart=historical_units_chart,
         historical_spend_chart=historical_spend_chart,
         today_goal_units=today_goal_units,
+        today_goal_units_perecent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
+        today_goal_spend_percent=today_goal_spend_percent,
     )
     return data
 
