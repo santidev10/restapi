@@ -293,138 +293,140 @@ class Command(BaseCommand):
                 db_channel_meta.monetised = True
                 db_channel_meta.save(update_fields=["monetised"])
 
-    def get_videos(self, acp):
+    def handle_bad_response_code(self, response, response_json, acp):
+        """
+        handles a non-200 response code
+        """
+        quota_exceed = False
+        try:
+            if "quota" in response_json["error"]["message"].lower():
+                quota_exceed = True
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
+            pass
+        if quota_exceed:
+            logger.info("QUOTA EXCEEDED STOP ASAP!")
+            raise Exception("QUOTA EXCEEDED STOP ASAP!")
+        logger.info("problem with api call for video %s", acp.channel.channel_id)
+        acp.clean = False
+        acp.processed = timezone.now()
+        acp.word_hits["error"] = response.status_code
+        acp.save(update_fields=["clean", "processed", "word_hits"])
 
-        def handle_bad_response_code(response, response_json):
-            """
-            handles a non-200 response code
-            """
-            quota_exceed = False
-            try:
-                if "quota" in response_json["error"]["message"].lower():
-                    quota_exceed = True
-            # pylint: disable=broad-except
-            except Exception:
-                # pylint: enable=broad-except
-                pass
-            if quota_exceed:
-                logger.info("QUOTA EXCEEDED STOP ASAP!")
-                raise Exception("QUOTA EXCEEDED STOP ASAP!")
-            logger.info("problem with api call for video %s", db_channel.channel_id)
-            acp.clean = False
-            acp.processed = timezone.now()
-            acp.word_hits["error"] = response.status_code
-            acp.save(update_fields=["clean", "processed", "word_hits"])
+    def get_videos_using_uploads_playlist(self, channel_json, num_videos, acp):
+        """
+        page through channel's uploads playlist. This is used if a channel
+        has more than 500 uploads, since the videos endpoint only gets up
+        to 500 video records
+        """
+        uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
+        count = 0
+        next_page_token = None
+        while True:
+            playlist_url_params = {
+                'key': self.DATA_API_KEY,
+                'playlistId': uploads_playlist_id,
+                'part': 'snippet',
+                'maxResults': 50,
+            }
+            if next_page_token:
+                playlist_url_params['pageToken'] = next_page_token
+            playlist_url = self.YOUTUBE_PLAYLISTITEMS_URL + '?' + urlencode(playlist_url_params)
+            playlist_res = requests.get(playlist_url)
+            playlist_json = playlist_res.json()
+            if playlist_res.status_code != 200:
+                self.handle_bad_response_code(playlist_res, playlist_json, acp)
+                return
+            for item in playlist_json['items']:
+                self.update_or_create_video(item['snippet']['resourceId']['videoId'], acp)
+                count += 1
+            if count >= num_videos:
+                break
+            next_page_token = playlist_json.get('nextPageToken', None)
+            if next_page_token is None:
+                break
 
-        def update_or_create_video(video_id):
-            """
-            create or update AuditVideo and AuditVideoProcessor records,
-            given a video id
-            """
-            db_video = AuditVideo.get_or_create(video_id)
-            if not db_video.channel or db_video.channel != db_channel:
-                db_video.channel = db_channel
-                db_video.save(update_fields=["channel"])
-            AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=db_video
+    def get_videos_using_channel_videos(self, num_videos, acp):
+        """
+        get a channels' videos. Used if a channel has less than 500 video
+        uploads. This only allows paging through the first 500 results
+        """
+        has_more = True
+        page_token = None
+        page = 0
+        count = 0
+        per_page = num_videos
+        if per_page > 50:
+            per_page = 50
+        while has_more:
+            page = page + 1
+            if page_token:
+                pt = "&pageToken={}".format(page_token)
+            else:
+                pt = ""
+            url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
+                key=self.DATA_API_KEY,
+                id=acp.channel.channel_id,
+                page_token=pt,
+                num_videos=per_page,
             )
+            count += per_page
+            r = requests.get(url)
+            data = r.json()
+            if r.status_code != 200:
+                self.handle_bad_response_code(r, data, acp)
+                return
+            page_token = data.get("nextPageToken")
+            if not page_token \
+                    or page >= self.max_pages \
+                    or not self.audit.params.get("do_videos") \
+                    or per_page < 50 \
+                    or count >= num_videos:
+                has_more = False
+            for item in data["items"]:
+                self.update_or_create_video(item['id']['videoId'], acp)
 
-        def get_using_use_uploads_playlist():
-            """
-            page through channel's uploads playlist. This is used if a channel
-            has more than 500 uploads, since the videos endpoint only gets up
-            to 500 video records
-            """
-            uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
-            videos = []
-            next_page_token = None
-            while True:
-                playlist_url_params = {
-                    'key': self.DATA_API_KEY,
-                    'playlistId': uploads_playlist_id,
-                    'part': 'snippet',
-                    'maxResults': 50,
-                }
-                if next_page_token:
-                    playlist_url_params['pageToken'] = next_page_token
-                playlist_url = self.YOUTUBE_PLAYLISTITEMS_URL + '?' + urlencode(playlist_url_params)
-                playlist_res = requests.get(playlist_url)
-                playlist_json = playlist_res.json()
-                if playlist_res.status_code != 200:
-                    handle_bad_response_code(playlist_res, playlist_json)
-                    return
-                for item in playlist_json['items']:
-                    update_or_create_video(item['snippet']['resourceId']['videoId'])
-                videos.extend(playlist_json['items'])
-                next_page_token = playlist_json.get('nextPageToken', None)
-                if next_page_token is None:
-                    break
+    def update_or_create_video(self, video_id, acp):
+        """
+        create or update AuditVideo and AuditVideoProcessor records,
+        given a video id
+        """
+        db_video = AuditVideo.get_or_create(video_id)
+        if not db_video.channel or db_video.channel != acp.channel:
+            db_video.channel = acp.channel
+            db_video.save(update_fields=["channel"])
+        AuditVideoProcessor.objects.get_or_create(
+            audit=self.audit,
+            video=db_video
+        )
 
-        def get_using_channel_videos():
-            """
-            get a channels' videos. Used if a channel has less than 500 video
-            uploads. This only allows paging through the first 500 results
-            """
-            has_more = True
-            page_token = None
-            page = 0
-            count = 0
-            per_page = num_videos
-            if per_page > 50:
-                per_page = 50
-            while has_more:
-                page = page + 1
-                if page_token:
-                    pt = "&pageToken={}".format(page_token)
-                else:
-                    pt = ""
-                url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
-                    key=self.DATA_API_KEY,
-                    id=db_channel.channel_id,
-                    page_token=pt,
-                    num_videos=per_page,
-                )
-                count += per_page
-                r = requests.get(url)
-                data = r.json()
-                if r.status_code != 200:
-                    handle_bad_response_code(r, data)
-                    return
-                page_token = data.get("nextPageToken")
-                if not page_token \
-                        or page >= self.max_pages \
-                        or not self.audit.params.get("do_videos") \
-                        or per_page < 50 \
-                        or count >= num_videos:
-                    has_more = False
-                for item in data["items"]:
-                    update_or_create_video(item['id']['videoId'])
-
-        # get_videos STARTS HERE
+    def get_videos(self, acp):
+        """
+        Updates or Creates a given Audit Channel's videos up to self.num_videos.
+        """
         num_videos = self.num_videos
         if not self.audit.params.get("do_videos"):
             num_videos = 1
-        db_channel = acp.channel
         if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
-            # get channels' data for video count and uploads playlist's id
+            # we want video count and upload playlist id from this response
             channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
                 'key': self.DATA_API_KEY,
-                'id': db_channel.channel_id,
+                'id': acp.channel.channel_id,
                 'part': ','.join(['contentDetails', 'statistics']),
             })
             channels_res = requests.get(channels_url)
             channels_json = channels_res.json()
             if channels_res.status_code != 200:
-                handle_bad_response_code(channels_res, channels_json)
+                self.handle_bad_response_code(channels_res, channels_json, acp)
                 return
             channel_json = channels_json['items'][0]
             video_count = int(channel_json['statistics']['videoCount'])
             if video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
-                get_using_use_uploads_playlist()
+                self.get_videos_using_uploads_playlist(channel_json, num_videos, acp)
                 return
 
-        get_using_channel_videos()
+        self.get_videos_using_channel_videos(num_videos, acp)
 
     def load_inclusion_list(self):
         if self.inclusion_list:
