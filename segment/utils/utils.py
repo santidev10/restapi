@@ -1,7 +1,10 @@
 import time
 from datetime import datetime
 
+from rest_framework import permissions
+
 import brand_safety.constants as constants
+from segment.models import CustomSegment
 from segment.models.persistent.base import BasePersistentSegment
 
 
@@ -100,3 +103,9 @@ def validate_boolean(value):
     if isinstance(value, bool) or (isinstance(value, int) and value in [0, 1]):
         return bool(value)
     raise ValueError(f"The value: '{value}' is not a valid boolean.")
+
+
+class CustomSegmentOwnerPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        segment = CustomSegment.objects.get(id=view.kwargs["pk"])
+        return request.user.is_staff or segment.owner == request.user
