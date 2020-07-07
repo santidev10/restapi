@@ -48,6 +48,8 @@ class BrandSafetyQueryBuilder:
         self.is_vetted = data.get("is_vetted", None)
         self.vetted_after = data.get("vetted_after", None)
         self.mismatched_language = data.get("mismatched_language", None)
+        self.content_quality = data.get("content_quality", None)
+        self.content_type = data.get("content_type", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(

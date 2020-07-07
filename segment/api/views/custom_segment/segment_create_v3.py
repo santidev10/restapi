@@ -154,6 +154,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
+        opts["content_type"] = opts.get("content_type", None)
+        opts["content_quality"] = opts.get("content_quality", None)
         return opts
 
     def _create(self, data: dict):
