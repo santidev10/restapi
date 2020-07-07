@@ -18,6 +18,7 @@ CHANNEL_CSV_HEADERS = [
     "title",
     "url",
     "country",
+    "language",
     "iab_categories",
     "emails",
     "subscribers",

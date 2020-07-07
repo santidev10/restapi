@@ -73,14 +73,17 @@ def flight_total_cost_changed(old_flight: Flight, new_flight: Flight):
 def flight_dates_changed(old_flight: Flight, new_flight: Flight):
     dates_changed = old_flight.start != new_flight.start or old_flight.end != new_flight.end
     if dates_changed:
-        Alert.objects.update_or_create(
-            record_id=new_flight.id,
-            code=FlightAlert.DATES_CHANGED.value,
-            defaults=dict(
-                message=f"{old_flight.start.strftime('%Y-%m-%d')} - {old_flight.end.strftime('%Y-%m-%d')} "
-                        f"to {new_flight.start.strftime('%Y-%m-%d')} - {new_flight.end.strftime('%Y-%m-%d')}"
+        try:
+            Alert.objects.update_or_create(
+                record_id=new_flight.id,
+                code=FlightAlert.DATES_CHANGED.value,
+                defaults=dict(
+                    message=f"{old_flight.start.strftime('%Y-%m-%d')} - {old_flight.end.strftime('%Y-%m-%d')} "
+                            f"to {new_flight.start.strftime('%Y-%m-%d')} - {new_flight.end.strftime('%Y-%m-%d')}"
+                )
             )
-        )
+        except AttributeError:
+            pass
 
 
 def pre_save_placement_receiver(instance, **_):
