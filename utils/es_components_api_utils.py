@@ -55,7 +55,7 @@ class SentimentParamAdapter:
     sentiment_ranges = {
         video_constants.WELL_LIKED: "90,100",
         video_constants.AVERAGE: "70,100",
-        video_constants.CONTROVERSIAL: "0,100"
+        video_constants.ALL: "0,100"
     }
     parameter_name = "stats.sentiment"
 
