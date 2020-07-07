@@ -42,5 +42,5 @@ VIDEO_CSV_HEADERS = [
 
 WELL_LIKED = "At least 90% liked"
 AVERAGE = "At least 79% liked"
-CONTROVERSIAL = "0% or above liked"
+ALL = "All"
 CUSTOM = "Custom"
