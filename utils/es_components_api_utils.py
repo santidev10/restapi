@@ -54,8 +54,8 @@ class BrandSafetyParamAdapter:
 class SentimentParamAdapter:
     sentiment_ranges = {
         video_constants.WELL_LIKED: "90,100",
-        video_constants.AVERAGE: "70,89",
-        video_constants.CONTROVERSIAL: "0,69"
+        video_constants.AVERAGE: "70,100",
+        video_constants.CONTROVERSIAL: "0,100"
     }
     parameter_name = "stats.sentiment"
 
