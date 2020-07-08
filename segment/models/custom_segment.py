@@ -71,7 +71,6 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.audit_type = 1
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
-            self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         else:
@@ -79,7 +78,6 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.audit_type = 2
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
-            self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
@@ -131,7 +129,6 @@ class CustomSegment(SegmentMixin, Timestampable):
             self._serializer = CustomSegmentVideoExportSerializer
         elif self.owner and self.owner.has_perm("userprofile.monetization_filter"):
             self._serializer = CustomSegmentChannelWithMonetizationExportSerializer
-            self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
         else:
             self._serializer = CustomSegmentChannelExportSerializer
         return self._serializer
