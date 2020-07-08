@@ -421,10 +421,11 @@ class Command(BaseCommand):
         num_videos = self.num_videos
         if not self.audit.params.get("do_videos"):
             num_videos = 1
-        channel_video_count = acp.channel.auditchannelmeta.video_count
-        if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS \
-            and (channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS
-                 or channel_video_count is None):
+        try:
+            channel_video_count = acp.channel.auditchannelmeta.video_count
+        except AuditChannelMeta.DoesNotExist:
+            channel_video_count = None
+        if channel_video_count and channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS and num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
             self.get_videos_using_uploads_playlist(num_videos, acp)
             return
         self.get_videos_using_channel_videos(num_videos, acp)
