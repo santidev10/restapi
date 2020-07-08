@@ -1,4 +1,3 @@
-from distutils.util import strtobool
 import hashlib
 import json
 import logging
@@ -68,6 +67,18 @@ class SentimentParamAdapter:
                 query_params[self.parameter_name] = sentiment_range
         return query_params
 
+
+class FlagsParamAdapter:
+    parameter_name = "flags"
+    parameter_full_name = "stats.flags"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter_name)
+        if parameter:
+            flags = parameter.lower().replace(" ", "_")
+            query_params[self.parameter_full_name] = flags
+            query_params.pop(self.parameter_name)
+        return query_params
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
