@@ -18,8 +18,11 @@ from utils.celery.utils import get_queue_size
 def video_discovery_scheduler():
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
     query = video_manager.forced_filters() \
-            & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get() \
-            & QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
+            & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get()
+    query.should = [
+        QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get(),
+        QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
+    ]
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
     limit = Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size
 
@@ -27,7 +30,8 @@ def video_discovery_scheduler():
     for _ in range(limit):
         videos = video_manager.search(query, limit=Schedulers.VideoDiscovery.TASK_BATCH_SIZE).execute()
         ids = [item.main.id for item in videos]
-        task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+        task_signatures.append(
+            video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
         # Create brand_safety section so next discovery batch does not overlap
         video_manager.upsert(videos)
     group(task_signatures).apply_async()
@@ -41,6 +45,6 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
                                ignore_vetted_videos=ignore_vetted_videos)
     auditor.process_videos(video_ids)
     to_rescore = auditor.channels_to_rescore
-    # Remove brand safety section for channels to rescore. Will be rescored by discovery task
+    # Add rescore flag to be rescored by channel discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
-    auditor.channel_manager.remove_sections(query, (Sections.BRAND_SAFETY,), proceed_conflict=True)
+    auditor.channel_manager.update_rescore(query, rescore=True, proceed_conflict=True)
