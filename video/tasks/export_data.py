@@ -11,6 +11,7 @@ from utils.aws.export_context_manager import ExportContextManager
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import ExportDataGenerator
+from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_exporter import ESDataS3Exporter
 from video.api.serializers.video_export import VideoListExportSerializer
 from video.constants import EXISTS_FILTER
@@ -28,7 +29,7 @@ class VideoListDataGenerator(ExportDataGenerator):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter, FlagsParamAdapter)
     queryset = ESQuerysetAdapter(VideoManager((
         Sections.MAIN,
         Sections.GENERAL_DATA,
