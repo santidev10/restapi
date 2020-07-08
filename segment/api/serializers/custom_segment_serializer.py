@@ -14,6 +14,12 @@ from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_TH
 from userprofile.models import UserProfile
 
 
+__all__ = [
+    "CustomSegmentSerializer",
+    "CustomSegmentWithoutDownloadUrlSerializer",
+]
+
+
 class FeaturedImageUrlMixin:
     """
     Returns a default image if not set

@@ -10,6 +10,12 @@ from segment.api.serializers.segment_export_serializer_mixins import SegmentChan
 from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
+__all__ = [
+    "PersistentSegmentVideoExportSerializer",
+    "PersistentSegmentChannelExportSerializer",
+]
+
+
 class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
                "Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",

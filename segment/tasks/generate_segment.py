@@ -35,9 +35,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param s3_key: Optional s3 key for file upload
     :return:
     """
-    generate_utils = GenerateSegmentUtils()
+    generate_utils = GenerateSegmentUtils(segment)
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    context = generate_utils.get_default_serialization_context()
+    context = generate_utils.default_serialization_context()
     source_list = None
     source_type = None
     # pylint: disable=broad-except
@@ -55,7 +55,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-        default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        default_search_config = generate_utils.default_search_config
         # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
         # a batch may be empty since we check set membership for the current bulk_search batch in the source list
         write_header = True

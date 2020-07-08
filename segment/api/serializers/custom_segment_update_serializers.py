@@ -11,6 +11,12 @@ from utils.file_storage.s3_connector import delete_file
 from utils.file_storage.s3_connector import upload_file
 
 
+__all__ = [
+    "CustomSegmentUpdateSerializer",
+    "CustomSegmentAdminUpdateSerializer",
+]
+
+
 class CustomSegmentUpdateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
 

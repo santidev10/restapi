@@ -14,6 +14,13 @@ from segment.api.serializers.segment_export_serializer_mixins import SegmentChan
 from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
+__all__ = [
+    "CustomSegmentChannelExportSerializer",
+    "CustomSegmentVideoExportSerializer",
+    "CustomSegmentChannelWithMonetizationExportSerializer",
+]
+
+
 class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",

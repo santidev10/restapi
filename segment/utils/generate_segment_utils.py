@@ -9,17 +9,36 @@ from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
+from segment.api.serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers import CustomSegmentChannelWithMonetizationExportSerializer
+from segment.api.serializers import CustomSegmentVideoExportSerializer
+from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
+from segment.api.serializers import CustomSegmentChannelVettedExportSerializer
+from segment.api.serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import \
+    CustomSegmentChannelWithMonetizationExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 
 
 class GenerateSegmentUtils:
     _default_context = None
+    _vetting = False
+    segment = None
+
+    def __init__(self, segment):
+        self.segment_type = None
+        self.segment = segment
+
+    def set_vetting(self, vetting):
+        """ Set vetting flag """
+        self._vetting = vetting
 
     @staticmethod
     def get_vetting_data(segment, item_ids):
-        # Retrieve Postgres vetting data for vetting exports
-        # no longer need to check if vetted for this, as this data is being used on all exports
+        """ Retrieve Postgres vetting data for serialization """
         try:
             vetting = AuditUtils.get_vetting_data(
                 segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
@@ -30,16 +49,21 @@ class GenerateSegmentUtils:
             vetting = {}
         return vetting
 
-    def get_default_search_config(self, segment_type):
+    @property
+    def default_search_config(self):
+        segment_type = self.segment.segment_type
         if segment_type in (0, "video"):
-            config = self._default_video_search_config
-        elif segment_type in (1, "channel"):
-            config = self._default_channel_search_config
+            config = self._get_default_video_search_config
         else:
-            raise ValueError(f"Invalid segment_type: {segment_type}")
+            config = self._get_default_channel_search_config
         return config
 
-    def get_default_serialization_context(self):
+    @property
+    def default_serialization_context(self):
+        """
+        Get default serialization context for serializers
+        Retrieve mappings from Postgres before serialization for efficiency
+        """
         if self._default_context is not None:
             context = self._default_context
         else:
@@ -55,8 +79,8 @@ class GenerateSegmentUtils:
             }
         return context
 
-    @property
-    def _default_video_search_config(self):
+    def _get_default_video_search_config(self):
+        """ Get default video search config for bulk search function """
         config = dict(
             cursor_field=VIEWS_FIELD,
             # Exclude all age_restricted items
@@ -66,8 +90,8 @@ class GenerateSegmentUtils:
         )
         return config
 
-    @property
-    def _default_channel_search_config(self):
+    def _get_default_channel_search_config(self):
+        """ Get default channel search config for bulk search function """
         config = dict(
             cursor_field=SUBSCRIBERS_FIELD,
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
@@ -82,6 +106,7 @@ class GenerateSegmentUtils:
         return config
 
     def write_to_file(self, items, filename, segment, serializer_context, aggregations, write_header=False, mode="a"):
+        """ Write data to csv file """
         rows = []
         fieldnames = segment.serializer.columns
         for item in items:
@@ -99,6 +124,10 @@ class GenerateSegmentUtils:
 
     @staticmethod
     def add_aggregations(aggregations, items, segment_type):
+        """
+        Add values to aggregations
+        Aggregations are performed in Python as calculating in Elasticsearch appears to overload memory usage
+        """
         for item in items:
             # Calculating aggregations with each items already retrieved is much more efficient than
             # executing an additional aggregation query
@@ -123,7 +152,7 @@ class GenerateSegmentUtils:
 
     @staticmethod
     def finalize_aggregations(aggregations, count):
-        # Average fields
+        """ Finalize aggregations and calculate averages"""
         aggregations["average_brand_safety_score"] = map_brand_safety_score(
             aggregations["average_brand_safety_score"] // (count or 1))
         aggregations["ctr"] /= count or 1
@@ -134,9 +163,36 @@ class GenerateSegmentUtils:
         return aggregations
 
     def add_segment_uuid(self, segment, ids):
+        """ Add segment uuid to Elasticsearch """
         segment.es_manager.add_to_segment_by_ids(ids, segment.uuid)
 
     def get_source_list(self, segment):
-        """ Create set of source list urls """
+        """ Create set of source list urls from segment export file """
         source_ids = set(segment.get_extract_export_ids(segment.source.filename))
         return source_ids
+
+    @property
+    def serializer(self):
+        if self.segment.segment_type in (0, "video"):
+            serializer = self._get_video_serializer()
+        else:
+            serializer = self._get_channel_serializer()
+        return serializer
+
+    def _get_video_serializer(self):
+        if self._vetting is True:
+            serializer = CustomSegmentChannelVettedExportSerializer
+        else:
+            serializer = CustomSegmentVideoExportSerializer
+        return serializer
+
+    def _get_channel_serializer(self):
+        if self._vetting is True:
+            serializer = CustomSegmentChannelVettedExportSerializer
+        else:
+            owner = getattr(self.segment, "owner", None)
+            if owner and owner.has_perm("userprofile.monetization_filter"):
+                serializer = CustomSegmentChannelWithMonetizationExportSerializer
+            else:
+                serializer = CustomSegmentChannelExportSerializer
+        return serializer

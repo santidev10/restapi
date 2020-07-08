@@ -38,11 +38,10 @@ from segment.api.serializers.custom_segment_export_serializers import \
     CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
-from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
-from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
+from segment.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -117,8 +116,15 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     @property
     def data_type(self):
+        """ Maps segment integer type (0 = video, 1 = channel) to string"""
         data_type = self.segment_id_to_type[self.segment_type]
         return data_type
+
+    @property
+    def generate_utils(self):
+        if not getattr(self, "_generate_utils", None):
+            self._generate_utils = GenerateSegmentUtils(self)
+        return self._generate_utils
 
     @property
     def serializer(self):
