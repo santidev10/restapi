@@ -314,13 +314,26 @@ class Command(BaseCommand):
         acp.word_hits["error"] = response.status_code
         acp.save(update_fields=["clean", "processed", "word_hits"])
 
-    def get_videos_using_uploads_playlist(self, channel_json, num_videos, acp):
+    def get_videos_using_uploads_playlist(self, num_videos, acp):
         """
         page through channel's uploads playlist. This is used if a channel
         has more than 500 uploads, since the videos endpoint only gets up
         to 500 video records
         """
+        # we want upload playlist id from this response
+        channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
+            'key': self.DATA_API_KEY,
+            'id': acp.channel.channel_id,
+            'part': ','.join(['contentDetails',]),
+        })
+        channels_res = requests.get(channels_url)
+        channels_json = channels_res.json()
+        if channels_res.status_code != 200:
+            self.handle_bad_response_code(channels_res, channels_json, acp)
+            return
+        channel_json = channels_json['items'][0]
         uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
+        # page through uploads playlist and collect video ids
         count = 0
         next_page_token = None
         while True:
@@ -408,24 +421,12 @@ class Command(BaseCommand):
         num_videos = self.num_videos
         if not self.audit.params.get("do_videos"):
             num_videos = 1
-        if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
-            # we want video count and upload playlist id from this response
-            channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
-                'key': self.DATA_API_KEY,
-                'id': acp.channel.channel_id,
-                'part': ','.join(['contentDetails', 'statistics']),
-            })
-            channels_res = requests.get(channels_url)
-            channels_json = channels_res.json()
-            if channels_res.status_code != 200:
-                self.handle_bad_response_code(channels_res, channels_json, acp)
-                return
-            channel_json = channels_json['items'][0]
-            video_count = int(channel_json['statistics']['videoCount'])
-            if video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
-                self.get_videos_using_uploads_playlist(channel_json, num_videos, acp)
-                return
-
+        channel_video_count = acp.channel.auditchannelmeta.video_count
+        if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS \
+            and (channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS
+                 or channel_video_count is None):
+            self.get_videos_using_uploads_playlist(num_videos, acp)
+            return
         self.get_videos_using_channel_videos(num_videos, acp)
 
     def load_inclusion_list(self):
