@@ -8,7 +8,6 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import CAMPAIGN_STATS
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_AD_GROUPS
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -18,6 +17,7 @@ from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -133,7 +133,7 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
                              campaign_creation_id)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.get(url)
@@ -156,7 +156,7 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         SAAS-793
         :return:
         """
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user(connected=False)
 
         url = self._get_url(DEMO_ACCOUNT_ID)

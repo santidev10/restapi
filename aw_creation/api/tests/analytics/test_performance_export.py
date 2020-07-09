@@ -11,7 +11,6 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.analytics_performance_report import ALL_COLUMNS
 from aw_reporting.excel_reports.analytics_performance_report import AnalyticsPerformanceReportColumn
 from aw_reporting.models import AWAccountPermission
@@ -41,6 +40,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -128,7 +128,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(is_empty_report(sheet))
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -160,7 +160,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             get_sheet_from_response(response)
         # pylint: disable=broad-except
         except Exception:
-        # pylint: enable=broad-except
+            # pylint: enable=broad-except
             self.fail("Report is not an xls")
 
     def test_report_percent_formatted(self):

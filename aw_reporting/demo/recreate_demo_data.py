@@ -1,80 +1,38 @@
 import itertools
-import random
-from datetime import datetime
-from datetime import time
-from datetime import timedelta
-from functools import partial
-from itertools import product
 
 from django.db import transaction
 
-from aw_creation.models import AccountCreation
-from aw_creation.models import AdCreation
-from aw_creation.models import AdGroupCreation
 from aw_creation.models import AdScheduleRule
-from aw_creation.models import CampaignCreation
 from aw_creation.models import FrequencyCap
-from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
-from aw_reporting.models import ALL_AGE_RANGES
-from aw_reporting.models import ALL_DEVICES
-from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import Account
-from aw_reporting.models import Ad
-from aw_reporting.models import AdGroup
-from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import AdStatistic
-from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import Audience
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import Campaign
-from aw_reporting.models import CampaignHourlyStatistic
-from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import CampaignStatus
-from aw_reporting.models import CityStatistic
-from aw_reporting.models import Flight
-from aw_reporting.models import GenderStatistic
-from aw_reporting.models import GeoTarget
-from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
-from aw_reporting.models import SFAccount
-from aw_reporting.models import Topic
-from aw_reporting.models import TopicStatistic
-from aw_reporting.models import VideoCreative
-from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas import celery_app
-from utils.datetime import now_in_default_tz
-from utils.lang import flatten
-from .data import AUIDIENCES
-from .data import CAMPAIGN_STATS
-from .data import CHANNELS
-from .data import CITIES
-from .data import DAYS_LEFT
-from .data import DEFAULT_CTA_STATS
+from saas.settings import DEMO_SOURCE_ACCOUNT_ID
 from .data import DEMO_ACCOUNT_ID
-from .data import DEMO_AD_GROUPS
-from .data import DEMO_BRAND
-from .data import DEMO_DATA_HOURLY_LIMIT
-from .data import DEMO_DATA_PERIOD_DAYS
-from .data import DEMO_NAME
-from .data import DEMO_SF_ACCOUNT
-from .data import KEYWORDS
-from .data import QUARTILE_STATS
-from .data import Stats
-from .data import TARGETING
-from .data import TOPICS
-from .data import VIDEOS
-from .data import VIDEO_CREATIVES
 
 __all__ = ["recreate_demo_data"]
 
+from .data import DEMO_BRAND
+from .data import DEMO_SF_ACCOUNT
+from ..models import AdGroupStatistic
+from ..models import AdStatistic
+from ..models import AgeRangeStatistic
+from ..models import AudienceStatistic
+from ..models import CampaignHourlyStatistic
+from ..models import CampaignStatistic
+from ..models import CityStatistic
+from ..models import GenderStatistic
+from ..models import KeywordStatistic
+from ..models import SFAccount
+from ..models import TopicStatistic
+from ..models import VideoCreativeStatistic
+from ..models import YTChannelStatistic
+from ..models import YTVideoStatistic
+
 int_iterator = itertools.count(DEMO_ACCOUNT_ID, 1)
+str_iterator = (str(i) for i in int_iterator)
 
 
 @celery_app.task()
@@ -90,399 +48,119 @@ def remove_data():
 
 
 def create_data():
-    dates = generate_dates()
-    account = create_account()
-    opportunity = create_sf_opportunity()
-    campaigns = create_campaigns(account, opportunity, dates)
-    create_flights(campaigns, dates)
-    ad_groups = create_ad_groups(campaigns)
-    ads = create_ads(ad_groups)
-
-    create_statistic(accounts=[account], campaigns=campaigns, ad_groups=ad_groups, ads=ads, dates=dates)
-    create_creation_entities(accounts=[account], campaigns=campaigns, ad_groups=ad_groups, ads=ads)
+    clone_opportunity()
+    clone_account()
 
 
-def create_account():
-    account = Account(
-        id=DEMO_ACCOUNT_ID,
-        name=DEMO_NAME,
-        skip_creating_account_creation=True,
-        timezone="UTC",
-    )
-    account.save()
-    return account
-
-
-def create_sf_opportunity():
-    opportunity = Opportunity.objects.create(
-        id=DEMO_ACCOUNT_ID,
-        account=SFAccount.objects.get_or_create(name=DEMO_SF_ACCOUNT)[0],
-        brand=DEMO_BRAND,
-    )
+def clone_opportunity():
+    source_opportunity = Opportunity.objects \
+        .filter(placements__adwords_campaigns__account_id=DEMO_SOURCE_ACCOUNT_ID) \
+        .first()
+    opportunity = clone_model(source_opportunity,
+                              data=dict(id=DEMO_ACCOUNT_ID,
+                                        account=SFAccount.objects.get_or_create(name=DEMO_SF_ACCOUNT)[0],
+                                        brand=DEMO_BRAND))
     return opportunity
 
 
-def create_campaigns(account, opportunity, dates):
-    start, end = min(dates), max(dates)
-    campaigns = [
-        Campaign(
-            id=next(int_iterator),
-            name="Campaign #demo{}".format(i + 1),
-            account=account,
-            status=CampaignStatus.SERVING.value,
-            salesforce_placement=OpPlacement.objects.create(
-                id=next(int_iterator),
-                opportunity=opportunity,
-                start=start,
-                end=end,
-                **stats["salesforce"]
-            ),
-        )
-        for i, stats in enumerate(CAMPAIGN_STATS)
-    ]
-    Campaign.objects.bulk_create(campaigns)
-    return campaigns
+def clone_account():
+    source_account = Account.objects.get(pk=DEMO_SOURCE_ACCOUNT_ID)
+    account = clone_model(source_account, data=dict(id=DEMO_ACCOUNT_ID, name="Demo",
+                                                    skip_creating_account_creation=True))
+    clone_model(source_account.account_creation, data=dict(id=DEMO_ACCOUNT_ID, account_id=account.id))
+    for index, campaign in enumerate(source_account.campaigns.all()):
+        clone_campaign(campaign, account, index)
+    return account
 
 
-def create_flights(campaigns, dates):
-    start, end = min(dates), max(dates)
-    placements = [campaign.salesforce_placement for campaign in campaigns]
-    flights = [
-        Flight(
-            id="{}:{}".format(DEMO_ACCOUNT_ID, i),
-            placement=placement,
-            total_cost=placement.total_cost,
-            ordered_units=placement.ordered_units,
-            start=start,
-            end=end,
-        )
-        for i, placement in enumerate(placements)
-    ]
-    Flight.objects.bulk_create(flights)
+def clone_campaign(source_campaign, target_account, index):
+    op_placement = clone_salesforce_placement(source_campaign.salesforce_placement)
+    campaign = clone_model(source_campaign, data=dict(account_id=target_account.id, name=f"Campaign #demo{index + 1}",
+                                                      salesforce_placement_id=op_placement.id))
+    clone_campaign_creation(source_campaign.campaign_creation.first(), campaign, target_account.account_creation)
+    for ag_index, ad_group in enumerate(source_campaign.ad_groups.all()):
+        clone_ad_group(ad_group, campaign, f"{index + 1}:{ag_index + 1}")
+    clone_campaign_stats(source_campaign, campaign)
+    return campaign
 
 
-def create_ad_groups(campaigns):
-    ad_groups = flatten([
-        generate_ad_groups(campaign)
-        for campaign in campaigns
-    ])
-    AdGroup.objects.bulk_create(ad_groups)
-    return ad_groups
+def clone_salesforce_placement(source_placement):
+    op_placement = clone_model(source_placement, data=dict(id=f"demo_{next(str_iterator)}",
+                                                           opportunity_id=DEMO_ACCOUNT_ID))
+    for flight in source_placement.flights.all():
+        clone_model(flight, dict(id=f"demo_{next(str_iterator)}", placement_id=op_placement.id))
+    return op_placement
 
 
-def generate_ad_groups(campaign):
-    return [
-        AdGroup(
-            id=next(int_iterator),
-            name="{} #{}".format(name, campaign.id),
-            campaign=campaign,
-        )
-        for i, name in enumerate(DEMO_AD_GROUPS)
-    ]
-
-
-def create_ads(ad_groups):
-    ads = flatten([
-        generate_ads(ad_group)
-        for ad_group in ad_groups
-    ])
-    Ad.objects.bulk_create(ads)
-    return ads
-
-
-def generate_ads(ad_group):
-    return [
-        Ad(
-            id=next(int_iterator),
-            ad_group=ad_group,
-        )
-        for i in range(2)
-    ]
-
-
-def create_statistic(accounts, campaigns, ad_groups, ads, dates):
-    create_campaigns_statistic(campaigns, dates)
-    create_ad_groups_statistic(ad_groups, dates)
-    create_ad_statistic(ads, dates)
-
-    for account in accounts:
-        recalculate_de_norm_fields_for_account(account.id)
-
-
-def create_campaigns_statistic(campaigns, dates):
-    create_campaigns_daily_statistic(campaigns, dates)
-    create_campaigns_hourly_statistic(campaigns, dates)
-
-
-def create_campaigns_daily_statistic(campaigns, dates):
-    statistics = generate_campaign_statistic(campaigns=campaigns, dates=dates)
-    CampaignStatistic.objects.bulk_create(statistics)
-
-
-def create_campaigns_hourly_statistic(campaigns, dates):
-    statistics = generate_campaign_hourly_statistic(campaigns=campaigns, dates=dates)
-    CampaignHourlyStatistic.objects.bulk_create(statistics)
-
-
-def generate_campaign_statistic(campaigns, dates):
-    statistic_subjects = tuple(product(campaigns, dates))
-    stats = generate_stats(statistic_subjects, lambda i: i[0].salesforce_placement.goal_type_id)
-    return [
-        CampaignStatistic(
-            campaign=campaign,
-            date=dt,
-            impressions=impressions,
-            video_views=views,
-            clicks=clicks,
-            cost=cost,
-        )
-        for (campaign, dt), impressions, views, clicks, cost in stats
-    ]
-
-
-def generate_campaign_hourly_statistic(campaigns, dates):
-    today = now_in_default_tz().date()
-    datetimes = [
-        datetime.combine(dt, time(hour=hour))
-        for dt, hour in product(dates, range(24))
-        if dt != today or hour < DEMO_DATA_HOURLY_LIMIT
-    ]
-    statistic_subjects = tuple(product(campaigns, datetimes))
-    stats = generate_stats(statistic_subjects, lambda i: i[0].salesforce_placement.goal_type_id)
-    return [
-        CampaignHourlyStatistic(
-            campaign=campaign,
-            date=dt.date(),
-            hour=dt.hour,
-            impressions=impressions,
-            video_views=views,
-            clicks=clicks,
-            cost=cost,
-        )
-        for (campaign, dt), impressions, views, clicks, cost in stats
-    ]
-
-
-def create_ad_groups_statistic(ad_groups, dates):
-    stats = (
-        (AdGroupStatistic, "device_id", ALL_DEVICES, dict(average_position=1, **DEFAULT_CTA_STATS)),
-        (GenderStatistic, "gender_id", ALL_GENDERS, DEFAULT_CTA_STATS),
-        (AgeRangeStatistic, "age_range_id", ALL_AGE_RANGES, DEFAULT_CTA_STATS),
-        (TopicStatistic, "topic", get_topics(), DEFAULT_CTA_STATS),
-        (AudienceStatistic, "audience", get_audiences(), DEFAULT_CTA_STATS),
-        (VideoCreativeStatistic, "creative", get_creatives(), None),
-        (YTChannelStatistic, "yt_id", CHANNELS, None),
-        (YTVideoStatistic, "yt_id", VIDEOS, None),
-        (KeywordStatistic, "keyword", KEYWORDS, DEFAULT_CTA_STATS),
-        (CityStatistic, "city", get_cities(), None),
-    )
-
-    for model, key, items, special_data in stats:
-        create_ad_group_statistic_for_model(
-            ad_groups=ad_groups,
-            dates=dates,
-            model=model,
-            key=key,
-            items=items,
-            special_data=special_data,
-        )
-
-
-def create_ad_statistic(ads, dates):
-    statistic_subjects = tuple(product(ads, dates))
-    stats = generate_stats(
-        statistic_subjects,
-        lambda i: i[0].ad_group.campaign.salesforce_placement.goal_type_id,
-    )
-    statistics = [
-        AdStatistic(
-            ad=ad,
-            date=dt,
-            average_position=1,
-            impressions=impressions,
-            video_views=views,
-            clicks=clicks,
-            cost=cost,
-            **generate_quartile_data(impressions),
-        )
-        for (ad, dt), impressions, views, clicks, cost in stats
-    ]
-    AdStatistic.objects.bulk_create(statistics)
-
-
-def create_ad_group_statistic_for_model(ad_groups, dates, model, key, items, special_data):
-    multiplier_per_item = {item: random.randint(1, 20) for item in items}
-    statistic_subjects = tuple(product(ad_groups, dates, items))
-    multiplier_for_subjects = [multiplier_per_item[item] for (*_, item) in statistic_subjects]
-    stats = generate_stats(
-        statistic_subjects,
-        lambda i: i[0].campaign.salesforce_placement.goal_type_id,
-        multiplier_for_subjects,
-    )
-    statistics = [
-        model(
-            ad_group=ad_group,
-            date=dt,
-            impressions=impressions,
-            video_views=views,
-            clicks=clicks,
-            cost=cost,
-            **{key: item},
-            **(special_data or dict()),
-            **generate_quartile_data(impressions),
-        )
-        for (ad_group, dt, item), impressions, views, clicks, cost in stats
-    ]
-    model.objects.bulk_create(statistics)
-
-
-def generate_stats(statistic_subjects, goal_type_getter, multipliers=None):
-    count = len(statistic_subjects)
-    return zip(
-        statistic_subjects,
-        randomize_values(Stats.IMPRESSIONS, count, custom_multipliers=multipliers),
-        randomize_values(
-            Stats.VIDEO_VIEWS,
-            count,
-            custom_multipliers=[
-                (1 if goal_type_getter(item) == SalesForceGoalType.CPV else 0)
-                for item in statistic_subjects
-            ]
-        ),
-        randomize_values(Stats.CLICKS, count, custom_multipliers=multipliers),
-        randomize_values(Stats.COST, count, custom_multipliers=multipliers),
-    )
-
-
-def create_creation_entities(accounts, campaigns, ad_groups, ads):
-    create_account_creations(accounts)
-    create_campaign_creations(campaigns)
-    create_ad_group_creations(ad_groups)
-    create_ad_creations(ads)
-
-
-def create_account_creations(accounts):
-    account_creations = [
-        AccountCreation(
-            id=account.id,
-            name=account.name,
-            account=account,
-        )
-        for account in accounts
-    ]
-    AccountCreation.objects.bulk_create(account_creations)
-
-
-def create_campaign_creations(campaigns):
-    today = now_in_default_tz().date()
-    start = today - timedelta(days=DEMO_DATA_PERIOD_DAYS)
-    end = today + timedelta(days=DAYS_LEFT - 1)
-    campaign_creations = [
-        CampaignCreation(
-            name=campaign.name,
-            campaign=campaign,
-            account_creation=campaign.account.account_creation,
-            start=start,
-            end=end,
-
-        )
-        for campaign in campaigns
-    ]
-    campaign_creations = CampaignCreation.objects.bulk_create(campaign_creations)
-    language, _ = Language.objects.get_or_create(id=1000, defaults=dict(name="English"))
-    for campaign_creation in campaign_creations:
+def clone_campaign_creation(source_campaign_creation, campaign, account_creation):
+    campaign_creation = clone_model(source_campaign_creation,
+                                    data=dict(campaign_id=campaign.id,
+                                              account_creation_id=account_creation.id,
+                                              name=campaign.name))
+    for language in source_campaign_creation.languages.all():
         campaign_creation.languages.add(language)
-        LocationRule.objects.create(campaign_creation=campaign_creation)
-        FrequencyCap.objects.create(campaign_creation=campaign_creation, limit=5)
-        AdScheduleRule.objects.create(campaign_creation=campaign_creation, day=1, from_hour=18, to_hour=23)
+    related_models = (LocationRule, FrequencyCap, AdScheduleRule)
+    for model in related_models:
+        clone_bulk(model, dict(campaign_creation=source_campaign_creation),
+                   dict(campaign_creation_id=campaign_creation.id))
+    return campaign_creation
 
 
-def create_ad_group_creations(ad_groups):
-    ad_group_creations = [
-        AdGroupCreation(
-            name=ad_group.name,
-            ad_group=ad_group,
-            campaign_creation=ad_group.campaign.campaign_creation.first(),
-        )
-        for ad_group in ad_groups
+def clone_ad_group(source_ad_group, target_campaign, name_suffix):
+    ad_group = clone_model(source_ad_group, data=dict(name=f"AdGroup #{name_suffix}", campaign_id=target_campaign.id))
+    source_ad_group_creation = source_ad_group.ad_group_creation.first()
+    ad_group_creation = clone_model(source_ad_group_creation,
+                                    data=dict(campaign_creation_id=target_campaign.campaign_creation.first().id,
+                                              ad_group_id=ad_group.id))
+    clone_bulk(TargetingItem, dict(ad_group_creation=source_ad_group_creation),
+               dict(ad_group_creation_id=ad_group_creation.id))
+    for index, ad in enumerate(source_ad_group.ads.all()):
+        clone_ad(ad, ad_group)
+    clone_ad_group_stats(source_ad_group, ad_group)
+    return ad_group
+
+
+def clone_ad(source_ad, target_ad_group):
+    ad = clone_model(source_ad, data=dict(ad_group_id=target_ad_group.id))
+    clone_model(source_ad.ad_creation.first(),
+                data=dict(ad_group_creation_id=target_ad_group.ad_group_creation.first().id, ad_id=ad.id))
+    clone_bulk(AdStatistic, dict(ad=source_ad), dict(ad_id=ad.id))
+    return ad
+
+
+def clone_campaign_stats(source_campaign, campaign):
+    model_classes = (CampaignStatistic, CampaignHourlyStatistic)
+    for cls in model_classes:
+        clone_bulk(cls, dict(campaign=source_campaign), dict(campaign_id=campaign.id))
+
+
+def clone_ad_group_stats(source_ad_group, ad_group):
+    model_classes = (AdGroupStatistic, GenderStatistic, AgeRangeStatistic, TopicStatistic, AudienceStatistic,
+                     VideoCreativeStatistic, YTChannelStatistic, YTVideoStatistic, KeywordStatistic, CityStatistic)
+    for cls in model_classes:
+        clone_bulk(cls, dict(ad_group=source_ad_group), dict(ad_group_id=ad_group.id))
+
+
+def clone_bulk(model, query_filter, data):
+    queryset = model.objects.filter(**query_filter)
+    instances = [
+        clone_model(item, data=data, save=False)
+        for item in queryset
     ]
-    ad_group_creations = AdGroupCreation.objects.bulk_create(ad_group_creations)
-    for ad_group_creation in ad_group_creations:
-        create_targeting(ad_group_creation)
+    model.objects.bulk_create(instances)
 
 
-def create_targeting(ad_group_creation):
-    targeting = flatten([
-        [(targeting_type, item) for item in items]
-        for targeting_type, items in TARGETING.items()
-    ])
-    for index, targeting_tuple in enumerate(targeting):
-        targeting_type, targeting_data = targeting_tuple
-        TargetingItem.objects.create(
-            type=targeting_type.value,
-            is_negative=index % 2 == 0,
-            ad_group_creation=ad_group_creation,
-            criteria=targeting_data["criteria"],
-        )
-
-
-def create_ad_creations(ads):
-    ad_group_creations = [
-        AdCreation(
-            ad=ad,
-            ad_group_creation=ad.ad_group.ad_group_creation.first(),
-        )
-        for ad in ads
-    ]
-    AdCreation.objects.bulk_create(ad_group_creations)
-
-
-def get_or_create_entities(model, key, items):
-    return [
-        model.objects.get_or_create(**{key: item})[0]
-        for item in items
-    ]
-
-
-def generate_dates():
-    days = DEMO_DATA_PERIOD_DAYS
-    today = now_in_default_tz().date()
-    start = today - timedelta(days=days - 1)
-    return [start + timedelta(days=i) for i in range(days)]
-
-
-get_topics = partial(get_or_create_entities, Topic, "name", TOPICS)
-get_audiences = partial(get_or_create_entities, Audience, "name", AUIDIENCES)
-get_creatives = partial(get_or_create_entities, VideoCreative, "id", VIDEO_CREATIVES)
-
-
-def get_cities():
-    return [
-        GeoTarget.objects.get_or_create(
-            name=name,
-            canonical_name=name,
-
-        )[0]
-        for name in CITIES
-    ]
-
-
-def generate_quartile_data(impressions):
-    return {
-        key: percent * impressions
-        for key, percent in QUARTILE_STATS.items()
+def clone_model(source, data=None, fields=None, exclude_fields=("id",), save=True):
+    model = type(source)
+    fields = fields or [field.attname for field in model._meta.fields]
+    instance_data = {
+        field: getattr(source, field)
+        for field in fields if field not in exclude_fields and field not in (data or dict())
     }
-
-
-def randomize_values(total_value, count, buffer=80, custom_multipliers=None):
-    assert 0 <= buffer <= 100
-    const_value = 100 - buffer
-    if count == 0:
-        return []
-    custom_multipliers = custom_multipliers or (1 for _ in range(count))
-    raw_numbers = [
-        random.randint(const_value, 100) * m
-        for m in custom_multipliers
-    ]
-    multiplier = total_value / sum(raw_numbers)
-    return [multiplier * value for value in raw_numbers]
+    new_instance = model(
+        **instance_data,
+        **data
+    )
+    if save:
+        new_instance.save()
+    return new_instance

@@ -11,7 +11,6 @@ from aw_creation.models import AccountCreation
 from aw_reporting.charts.base_chart import ALL_DIMENSIONS
 from aw_reporting.charts.base_chart import Dimension
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -37,6 +36,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -198,7 +198,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.ADS)
 
@@ -250,7 +250,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo_video(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.VIDEO)
 

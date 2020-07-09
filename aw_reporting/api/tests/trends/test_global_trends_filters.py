@@ -8,7 +8,6 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
@@ -18,6 +17,7 @@ from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 
 
@@ -98,7 +98,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         )
 
     def test_demo_account(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,

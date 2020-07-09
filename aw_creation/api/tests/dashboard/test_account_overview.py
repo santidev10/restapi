@@ -8,7 +8,6 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -19,6 +18,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -84,7 +84,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.SHOW_CONVERSIONS: True,
@@ -645,7 +645,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             self.assertEqual(overview["view_through"], view_through)
 
     def test_demo_account_performance_charts(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }

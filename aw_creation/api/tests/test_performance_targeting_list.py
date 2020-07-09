@@ -5,13 +5,13 @@ from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
@@ -120,7 +120,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = reverse("aw_creation_urls:performance_targeting_list")
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True

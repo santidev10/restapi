@@ -11,11 +11,11 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import KeywordStatistic
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -94,7 +94,7 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_fail_change_status_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
 
         ad_group = AdGroup.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()

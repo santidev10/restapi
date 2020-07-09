@@ -12,7 +12,6 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -27,6 +26,7 @@ from aw_reporting.models import SalesForceGoalType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -156,7 +156,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertIs(data["impressions"], None)
 
     def test_success_get_filter_dates_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
                                  start_date=str(today - timedelta(days=2)),
@@ -186,7 +186,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(data["updated_at"], test_time)
 
     def test_created_at_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -411,7 +411,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(data["impressions"], campaign.impressions)
 
     def test_demo_is_editable(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data

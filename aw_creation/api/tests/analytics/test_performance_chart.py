@@ -10,12 +10,11 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
+from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.charts.analytics_charts import Indicator
 from aw_reporting.charts.base_chart import ALL_DIMENSIONS
 from aw_reporting.charts.base_chart import Dimension
-from aw_reporting.charts.analytics_charts import Indicator
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -43,6 +42,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -201,7 +201,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data), 0)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -218,7 +218,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[2]["title"], "Campaign #demo2")
 
     def test_success_demo_data(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -235,7 +235,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[2]["title"], "Campaign #demo2")
 
     def test_cpm_cpv_is_visible(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
 
         account_creation_id = DEMO_ACCOUNT_ID

@@ -19,7 +19,6 @@ from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.charts.dashboard_charts import DateSegment
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -52,6 +51,7 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -809,7 +809,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
 
     def test_success_for_demo_account(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {
@@ -822,7 +822,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_header(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
@@ -929,10 +929,10 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertGreater(view_rate, 0)
 
     def test_demo_account_campaigns(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        campaigns = Campaign.objects.filter()
+        campaigns = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID)
         expected_campaigns_names = {campaign.name for campaign in campaigns}
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -1018,7 +1018,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
 
     def test_demo_cta(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {

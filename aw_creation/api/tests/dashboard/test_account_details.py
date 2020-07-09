@@ -12,7 +12,6 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -29,6 +28,7 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -97,7 +97,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(set(response.data.keys()), self._keys)
 
     def test_properties_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {
@@ -109,7 +109,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(set(response.data.keys()), self._keys)
 
     def test_demo_details_for_chf_acc(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {

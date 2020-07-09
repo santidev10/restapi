@@ -20,13 +20,13 @@ from aw_creation.models import FrequencyCap
 from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -150,7 +150,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,
@@ -164,7 +164,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,

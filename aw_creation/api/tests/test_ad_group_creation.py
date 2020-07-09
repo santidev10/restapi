@@ -12,9 +12,9 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.lang import flatten
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -93,7 +93,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
@@ -107,7 +107,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",

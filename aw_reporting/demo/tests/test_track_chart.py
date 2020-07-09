@@ -7,10 +7,10 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.data import DEMO_DATA_HOURLY_LIMIT
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_demo_data import recreate_test_demo_data
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -20,7 +20,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        recreate_demo_data()
+        recreate_test_demo_data()
 
     def setUp(self):
         self.create_test_user()
