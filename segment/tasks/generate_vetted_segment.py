@@ -4,8 +4,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from saas import celery_app
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
 from segment.tasks.generate_segment import generate_segment
@@ -27,7 +25,7 @@ def generate_vetted_segment(segment_id, recipient=None):
     # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
-        segment.generate_utils.set_vetting(True)
+        segment.is_vetting = True
         query = segment.get_vetted_items_query()
         # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
         # may rapidly change

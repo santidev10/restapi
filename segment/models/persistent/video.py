@@ -4,12 +4,8 @@ PersistentSegmentVideo models module
 from django.db.models import CASCADE
 from django.db.models import ForeignKey
 
-from aw_reporting.models import YTVideoStatistic
 from es_components.constants import Sections
-from es_components.constants import SortDirections
-from es_components.constants import VIEWS_FIELD
 from es_components.managers import VideoManager
-from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated

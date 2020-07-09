@@ -7,6 +7,7 @@ from django.conf import settings
 
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
 from es_components.query_builder import QueryBuilder
 from elasticsearch_dsl import Q
@@ -31,7 +32,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param s3_key: Optional s3 key for file upload
     :return:
     """
-    generate_utils = segment.generate_utils
+    generate_utils = GenerateSegmentUtils(segment)
+    if getattr(segment, "is_vetting", False):
+        generate_utils.set_vetting(True)
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.default_serialization_context
     source_list = None

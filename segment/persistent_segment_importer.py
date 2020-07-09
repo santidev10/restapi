@@ -97,7 +97,7 @@ class PersistentSegmentImporter:
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export
-                self.segment.details = calculate_statistics(segment)
+                self.segment.details = calculate_statistics(self.segment)
                 self.segment.export_file()
                 exported = True
                 break

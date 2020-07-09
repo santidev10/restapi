@@ -19,7 +19,6 @@ from audit_tool.models import AuditCategory
 from segment.models.constants import ChannelConfig
 from segment.models.constants import VideoConfig
 from segment.models.utils.segment_exporter import SegmentExporter
-from segment.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
@@ -79,12 +78,6 @@ class BasePersistentSegment(Timestampable):
         if not getattr(self, "_s3"):
             self._s3 = SegmentExporter(self, bucket_name=settings.AMAZON_S3_BUCKET_NAME)
         return self._s3
-
-    @property
-    def generate_utils(self):
-        if not getattr(self, "_generate_utils", None):
-            self._generate_utils = GenerateSegmentUtils(self)
-        return self._generate_utils
 
     def export_file(self, queryset=None, filename=None):
         now = timezone.now()

@@ -12,7 +12,6 @@ from es_components.query_builder import QueryBuilder
 from segment.api.serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers import CustomSegmentVideoExportSerializer
-from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.api.serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
@@ -177,7 +176,7 @@ class GenerateSegmentUtils:
 
     def _get_video_serializer(self):
         if self._vetting is True:
-            serializer = CustomSegmentChannelVettedExportSerializer
+            serializer = CustomSegmentVideoVettedExportSerializer
         else:
             serializer = CustomSegmentVideoExportSerializer
         return serializer

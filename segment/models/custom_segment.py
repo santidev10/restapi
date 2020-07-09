@@ -7,7 +7,6 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.utils import timezone
 
 from audit_tool.models import AuditProcessor
 from brand_safety.constants import BLACKLIST
@@ -25,7 +24,6 @@ from segment.models.constants import VideoConfig
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
-from segment.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -39,6 +37,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
+    is_vetting = False
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -99,12 +98,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         """ Maps segment integer type (0 = video, 1 = channel) to string"""
         data_type = self.segment_id_to_type[self.segment_type]
         return data_type
-
-    @property
-    def generate_utils(self):
-        if not getattr(self, "_generate_utils", None):
-            self._generate_utils = GenerateSegmentUtils(self)
-        return self._generate_utils
 
     @property
     def audit_utils(self):
