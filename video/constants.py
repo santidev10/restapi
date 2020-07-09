@@ -5,7 +5,7 @@ TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_da
                 "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",
                 "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender")
 
-MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
 RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm", "ads_stats.ctr_v",
