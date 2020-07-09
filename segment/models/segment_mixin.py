@@ -11,7 +11,7 @@ class SegmentMixin:
     Mixin methods for segment models
     Expected attributes and methods on models used in mixin:
     Attributes:
-        related_aw_statistics_model, uuid
+        uuid
     Methods:
         get_s3_key, get_es_manager,
 

@@ -15,7 +15,7 @@ def calculate_statistics(segment, items=None, es_query=None):
     :param es_query: Query object
     :return:
     """
-    related_aw_statistics_model = segment.related_aw_statistics_model
+    related_aw_statistics_model = segment.RELATED_STATISTICS_MODEL
     segment_type = segment.segment_type
 
     if segment_type == PersistentSegmentType.VIDEO or segment_type == 0:

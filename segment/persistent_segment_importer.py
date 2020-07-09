@@ -12,6 +12,7 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.segment_list_generator import SegmentListGenerator
+from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.utils.utils import get_persistent_segment_model_by_type
 
 logger = logging.getLogger(__name__)
@@ -96,7 +97,7 @@ class PersistentSegmentImporter:
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export
-                self.segment.details = self.segment.calculate_statistics()
+                self.segment.details = calculate_statistics(segment)
                 self.segment.export_file()
                 exported = True
                 break

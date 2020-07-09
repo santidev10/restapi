@@ -10,7 +10,6 @@ from es_components.constants import SortDirections
 from es_components.constants import VIEWS_FIELD
 from es_components.managers import VideoManager
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentVideoExportSerializer
-from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
@@ -22,12 +21,8 @@ from .constants import PersistentSegmentType
 
 class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
-    SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
-    SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
     segment_type = PersistentSegmentType.VIDEO
-    serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()
-    related_aw_statistics_model = YTVideoStatistic
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

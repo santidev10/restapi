@@ -84,7 +84,7 @@ class SegmentAuditGenerator:
             self.segment.audit_id = audit_processor.id
             self.segment.save()
         if item_ids is None:
-            item_ids = self.segment.get_extract_export_ids()
+            item_ids = self.segment.s3.get_extract_export_ids()
         for batch in chunks_generator(item_ids, size=self.BATCH_SIZE):
             try:
                 if self.audit_processor_type == 1:

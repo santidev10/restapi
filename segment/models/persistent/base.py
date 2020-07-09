@@ -3,7 +3,6 @@ BasePersistentSegment models module
 """
 import logging
 
-import boto3
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BooleanField
@@ -17,8 +16,10 @@ from django.db.models import UUIDField
 from django.utils import timezone
 
 from audit_tool.models import AuditCategory
-from segment.models.utils.calculate_segment_statistics import calculate_statistics
+from segment.models.constants import ChannelConfig
+from segment.models.constants import VideoConfig
 from segment.models.utils.segment_exporter import SegmentExporter
+from segment.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
@@ -51,7 +52,6 @@ class BasePersistentSegment(Timestampable):
     related = None  # abstract property
     segment_type = None  # abstract property
     files = None  # abstract property
-    related_aw_statistics_model = None  # abstract property
 
     export_content_type = "application/CSV"
     export_last_modified = None
@@ -62,18 +62,37 @@ class BasePersistentSegment(Timestampable):
         abstract = True
         ordering = ["pk"]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_BUCKET_NAME)
-        self.s3_filename = None
+    def __getattr__(self, item):
+        return self.config[item]
+
+    @property
+    def config(self):
+        if not getattr(self, "_config"):
+            if self.segment_type == "video":
+                self._config = VideoConfig
+            else:
+                self._config = ChannelConfig
+        return self._config
+
+    @property
+    def s3(self):
+        if not getattr(self, "_s3"):
+            self._s3 = SegmentExporter(self, bucket_name=settings.AMAZON_S3_BUCKET_NAME)
+        return self._s3
+
+    @property
+    def generate_utils(self):
+        if not getattr(self, "_generate_utils", None):
+            self._generate_utils = GenerateSegmentUtils(self)
+        return self._generate_utils
 
     def export_file(self, queryset=None, filename=None):
         now = timezone.now()
         s3_key = self.get_s3_key(datetime=now)
         if filename:
-            self.s3_exporter.export_file_to_s3(filename, s3_key)
+            self.s3.export_file_to_s3(filename, s3_key)
         else:
-            self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
+            self.s3.export_to_s3(self, s3_key, queryset=queryset)
         PersistentSegmentFileUpload.objects.create(segment_uuid=self.uuid, filename=s3_key, created_at=now)
 
     @property
@@ -86,10 +105,6 @@ class BasePersistentSegment(Timestampable):
     def audit_category(self, audit_category):
         if audit_category and audit_category.id:
             self.audit_category_id = audit_category.id
-
-    def calculate_statistics(self, items=None):
-        statistics = calculate_statistics(self, items=items)
-        return statistics
 
     def get_es_manager(self):
         raise NotImplementedError
@@ -117,41 +132,6 @@ class BasePersistentSegment(Timestampable):
         except IndexError:
             key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
-
-    def _s3(self):
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY
-        )
-        return s3
-
-    def get_s3_export_content(self):
-        s3 = self._s3()
-        # Get latest entry from file upload manager
-        try:
-            key = self.get_s3_key(from_db=True)
-            s3_object = s3.get_object(
-                Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=key
-            )
-            self.s3_filename = key
-        except s3.exceptions.NoSuchKey:
-            raise self.DoesNotExist
-        body = s3_object.get("Body")
-        self.export_last_modified = s3_object.get("LastModified")
-        return body
-
-    def get_export_file(self):
-        try:
-            key = self.get_s3_key(from_db=True)
-            s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
-        # pylint: disable=broad-except
-        except Exception as e:
-            # pylint: enable=broad-except
-            raise e
-        export_content = s3_object.iter_chunks()
-        return export_content
 
 
 class BasePersistentSegmentRelated(Timestampable):

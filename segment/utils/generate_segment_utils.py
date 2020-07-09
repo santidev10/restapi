@@ -17,10 +17,6 @@ from segment.api.serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import \
-    CustomSegmentChannelWithMonetizationExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 
 
 class GenerateSegmentUtils:
@@ -41,7 +37,7 @@ class GenerateSegmentUtils:
         """ Retrieve Postgres vetting data for serialization """
         try:
             vetting = AuditUtils.get_vetting_data(
-                segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
+                segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.DATA_FIELD
             )
         # pylint: disable=broad-except
         except Exception:
@@ -168,7 +164,7 @@ class GenerateSegmentUtils:
 
     def get_source_list(self, segment):
         """ Create set of source list urls from segment export file """
-        source_ids = set(segment.get_extract_export_ids(segment.source.filename))
+        source_ids = set(segment.s3.get_extract_export_ids(segment.source.filename))
         return source_ids
 
     @property

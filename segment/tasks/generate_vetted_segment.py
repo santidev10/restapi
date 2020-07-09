@@ -27,16 +27,12 @@ def generate_vetted_segment(segment_id, recipient=None):
     # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
-        if segment.segment_type == 0:
-            segment.serializer = CustomSegmentVideoVettedExportSerializer
-        else:
-            segment.serializer = CustomSegmentChannelVettedExportSerializer
+        segment.generate_utils.set_vetting(True)
         query = segment.get_vetted_items_query()
         # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
         # may rapidly change
         s3_key_suffix = str(timezone.now()) if recipient else None
         s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
-        segment.generate_utils.set_vetting(True)
         results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])

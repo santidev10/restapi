@@ -42,7 +42,7 @@ def count_segment_adwords_statistics(segment):
     else:
         filters["yt_id__in"] = related_ids
 
-    queryset = segment.related_aw_statistics_model.objects.filter(**filters)
+    queryset = segment.RELATED_STATISTICS_MODEL.objects.filter(**filters)
     # prepare aggregated statistics
     aggregated_data = queryset.aggregate(
         sum_cost=Sum("cost"), sum_video_views=Sum("video_views"),

@@ -5,18 +5,14 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from es_components.constants import Sections
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
 from segment.utils.bulk_search import bulk_search
-from segment.utils.generate_segment_utils import GenerateSegmentUtils
 from es_components.query_builder import QueryBuilder
 from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
-SOURCE_SIZE_GET_LIMIT = 10000
-MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +31,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param s3_key: Optional s3 key for file upload
     :return:
     """
-    generate_utils = GenerateSegmentUtils(segment)
+    generate_utils = segment.generate_utils
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    context = generate_utils.default_serialization_context()
+    context = generate_utils.default_serialization_context
     source_list = None
     source_type = None
     # pylint: disable=broad-except
@@ -62,7 +58,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         if options is None:
             options = default_search_config["options"]
         try:
-            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
+            if source_list and len(source_list) <= segment.LIST_SIZE:
                 ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
                 full_query = Q(query) + ids_query
                 es_generator = segment.es_manager.search(query=full_query.to_dict())
@@ -100,8 +96,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             **aggregations,
         }
         s3_key = segment.get_s3_key() if s3_key is None else s3_key
-        segment.s3_exporter.export_file_to_s3(filename, s3_key)
-        download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        segment.s3.export_file_to_s3(filename, s3_key)
+        download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
             "download_url": download_url,
