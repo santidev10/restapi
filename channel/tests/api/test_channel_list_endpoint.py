@@ -138,6 +138,32 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             with self.subTest(field):
                 self.assertIn(field, response.data["items"][0])
 
+    def test_filter_by_ids(self):
+        self.create_admin_user()
+        items_to_filter = 2
+        channels = [Channel(next(int_iterator)) for _ in range(items_to_filter + 1)]
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.CMS]).upsert(channels)
+
+        url = self.url + "?" + urllib.parse.urlencode({
+            "main.id": ",".join([str(video.main.id) for video in channels[:items_to_filter]])
+        })
+        response = self.client.get(url)
+
+        self.assertEqual(items_to_filter, len(response.data["items"]))
+
+    def test_filter_by_single_id(self):
+        self.create_admin_user()
+        items_to_filter = 1
+        channels = [Channel(next(int_iterator)) for _ in range(items_to_filter + 1)]
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.CMS]).upsert(channels)
+
+        url = self.url + "?" + urllib.parse.urlencode({
+            "main.id": channels[0].main.id
+        })
+        response = self.client.get(url)
+
+        self.assertEqual(items_to_filter, len(response.data["items"]))
+
     def test_similar_channels(self):
         self.create_admin_user()
 
