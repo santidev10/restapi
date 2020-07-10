@@ -20,6 +20,7 @@ from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
@@ -77,7 +78,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter, SentimentParamAdapter)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter, SentimentParamAdapter, FlagsParamAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
@@ -115,17 +116,10 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.CUSTOM_CAPTIONS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flags = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
             with mutate_query_params(self.request.query_params):
                 self.request.query_params["channel.id"] = [channel_id]
-
-        if flags:
-            with mutate_query_params(self.request.query_params):
-                flags = flags.lower().replace(" ", "_")
-                self.request.query_params["stats.flags"] = flags
-                self.terms_filter += ("stats.flags",)
 
         if not self.request.user.has_perm("userprofile.transcripts_filter") and \
             not self.request.user.is_staff:
