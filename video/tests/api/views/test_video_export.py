@@ -173,7 +173,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[1] = "[]"
+        expected_values[1] = ""
         self.assertEqual(
             expected_values,
             values
@@ -262,6 +262,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "title",
             "url",
             "iab_categories",
+            "language",
             "views",
             "monthly_views",
             "weekly_views",
@@ -341,5 +342,5 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[11])
-        self.assertEqual(5, int(rows[0][11]))
-        self.assertEqual(8, int(rows[1][11]))
+        self.assertEqual(5, int(rows[0][12]))
+        self.assertEqual(8, int(rows[1][12]))

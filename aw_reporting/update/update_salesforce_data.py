@@ -59,6 +59,8 @@ def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_up
 
     if do_update:
         sc = sc or SConnection()
+        if not opportunity_ids:
+            opportunity_ids = getattr(settings, "SF_OPPORTUNITIES_UPDATE", None) or None
         perform_update(sc=sc, today=today, opportunity_ids=opportunity_ids, force_update=force_update,
                        skip_placements=skip_placements, skip_opportunities=skip_opportunities,
                        debug_update=debug_update, skip_flights=skip_flights)
@@ -138,15 +140,15 @@ def perform_get(sc):
                     to_create.append(Category(**data))
             else:
                 to_update.append(model(**data))
+        if to_create:
+            model.objects.safe_bulk_create(to_create)
+            logger.debug("Created %s items for: %s", len(to_create), model)
         if to_update:
             # send pre_save signals for notifications
             for item in to_update:
                 pre_save.send(model, instance=item)
             model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
             logger.debug("Updated %s items for: %s", len(to_update), model)
-        if to_create:
-            model.objects.safe_bulk_create(to_create)
-            logger.debug("Created %s items for: %s", len(to_create), model)
 
         # save parent ids
         if method == "get_opportunities":
@@ -251,8 +253,12 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             # 0 is not an acceptable value for this field
             units = units or None
             update["Delivered_Ad_Ops__c"] = units
-        if cost != flight.cost:
-            update["Total_Flight_Cost__c"] = cost
+        if flight.different_spending_currency:
+            if cost != flight.cost_currency:
+                update["Our_Cost_currency_change__c"] = cost
+        else:
+            if cost != flight.cost:
+                update["Total_Flight_Cost__c"] = cost
 
         if ((pacing is None) ^ (flight.pacing is None)) \
             or (pacing is not None and not almost_equal(pacing, flight.pacing)):

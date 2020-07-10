@@ -1,4 +1,3 @@
-from distutils.util import strtobool
 import hashlib
 import json
 import logging
@@ -54,24 +53,32 @@ class BrandSafetyParamAdapter:
 class SentimentParamAdapter:
     sentiment_ranges = {
         video_constants.WELL_LIKED: "90,100",
-        video_constants.AVERAGE: "70,89",
-        video_constants.CONTROVERSIAL: "0,69"
+        video_constants.AVERAGE: "70,100",
+        video_constants.ALL: "0,100"
     }
     parameter_name = "stats.sentiment"
 
     def adapt(self, query_params):
         parameter = query_params.get(self.parameter_name)
         if parameter:
-            sentiment_query = []
-            labels = parameter.title().split(",")
-            for label in labels:
-                sentiment_range = self.sentiment_ranges.get(label.strip())
-                if sentiment_range:
-                    sentiment_query.append(sentiment_range)
-            if sentiment_query:
-                query_params[self.parameter_name] = sentiment_query
+            label = parameter.strip()
+            sentiment_range = self.sentiment_ranges.get(label)
+            if sentiment_range:
+                query_params[self.parameter_name] = sentiment_range
         return query_params
 
+
+class FlagsParamAdapter:
+    parameter_name = "flags"
+    parameter_full_name = "stats.flags"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter_name)
+        if parameter:
+            flags = parameter.lower().replace(" ", "_")
+            query_params[self.parameter_full_name] = flags
+            query_params.pop(self.parameter_name)
+        return query_params
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
@@ -158,7 +165,7 @@ class QueryGenerator:
     def __get_filter_range(self):
         filters = []
         for field in self.range_filter:
-            if field == "brand_safety.overall_score" or field == "stats.sentiment":
+            if field == "brand_safety.overall_score":
                 self.add_should_filters(self.query_params.get(field, None), filters, field)
             else:
                 query_range = self.query_params.get(field, None)
@@ -466,11 +473,8 @@ class ESFilterBackend(BaseFilterBackend):
             aggregations.append("stats.flags")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
-            aggregations.append("custom_captions.items:missing")
             aggregations.append("captions:exists")
-            aggregations.append("captions:missing")
             aggregations.append("transcripts:exists")
-            aggregations.append("transcripts:missing")
             aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg
