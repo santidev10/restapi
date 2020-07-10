@@ -1542,7 +1542,10 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            margin = 1 - goal_spend / actual_spend
+            try:
+                margin = 1 - goal_spend / actual_spend
+            except ZeroDivisionError:
+                margin = 0
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
