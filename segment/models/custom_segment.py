@@ -74,16 +74,11 @@ class CustomSegment(SegmentMixin, Timestampable):
     featured_image_url = models.TextField(default="")
 
     def __getattr__(self, item):
-        return self.config[item]
-
-    @property
-    def config(self):
-        if not getattr(self, "_config"):
-            if self.segment_type == 0:
-                self._config = VideoConfig
-            else:
-                self._config = ChannelConfig
-        return self._config
+        if self.segment_type == 0:
+            config = VideoConfig
+        else:
+            config = ChannelConfig
+        return config[item].value
 
     @property
     def es_manager(self):
@@ -101,13 +96,13 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     @property
     def audit_utils(self):
-        if not getattr(self, "_audit_utils", None):
+        if not hasattr(self, "_audit_utils"):
             self._audit_utils = SegmentAuditUtils(self.segment_type)
         return self._audit_utils
 
     @property
     def s3(self):
-        if not getattr(self, "_exporter"):
+        if not hasattr(self, "_exporter"):
             self._s3 = SegmentExporter(self, bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         return self._s3
 
