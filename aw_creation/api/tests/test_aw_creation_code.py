@@ -51,13 +51,13 @@ class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):
             display_url="www.nasdaq.com",
             final_url="https://www.nasdaq.com",
             companion_banner=SimpleUploadedFile(
-                name='video_thumbnail.png',
+                name="video_thumbnail.png",
                 content=open("aw_creation/fixtures/tests/video_thumbnail.png",
-                             'rb').read(),
-                content_type='image/png',
+                             "rb").read(),
+                content_type="image/png",
             ),
             tracking_template="https://iq.channelfactory.com",
-            custom_params_raw='[{"name": "name", "value": "value1"}]',
+            custom_params_raw="""[{"name": "name", "value": "value1"}]""",
         )
         AdCreation.objects.create(id=2, name="",
                                   ad_group_creation=ad_group_creation)
@@ -70,7 +70,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-        code = data['code']
+        code = data["code"]
 
         self.assertIsNotNone(
             re.search(r"createOrUpdateCampaign\(.*?\"id\": 1", code,
@@ -127,7 +127,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-        code = data['code']
+        code = data["code"]
 
         def get_campaign_creation_invocation(campaign_id):
             return re.search(
@@ -177,7 +177,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-        code = data['code']
+        code = data["code"]
         ad_creation = re.search(
             r"createOrUpdateVideoAd\(.*?\"id\": {}.*$".format(ad.id),
             code,

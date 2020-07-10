@@ -1,5 +1,3 @@
-import string
-
 VIDEO = "video"
 CHANNEL = "channel"
 
@@ -90,9 +88,3 @@ HIGH_RISK = "Unsuitable"
 CHANNELS_INDEX = "channels"
 VIDEOS_INDEX = "videos"
 BLACKLIST_DATA = "blacklist_data"
-
-ENGLISH_CHARACTERS_SET = set(string.digits + string.ascii_letters + '_')
-EUROPEAN_CHARACTERS_SET = {"à", "è", "ì", "ò", "ù", "á", "é", "í", "ó", "ú", "ý", "â", "ê", "î", "ô", "û", "ã", "õ",
-                           "ñ", "ä", "ë", "ï", "ö", "ü", "ÿ", "ø", "å", "æ", "œ", "þ", "ð", "š", "ž", "ç", "č", "ď",
-                           "ě", "ň", "ř", "ť", "ů", "ű", "ő", "ą", "ć", "ę", "ł", "ń", "ś", "ź", "ż", "ă", "ș", "ş",
-                           "ț", "ţ"}

@@ -2,12 +2,20 @@ import json
 from datetime import datetime
 
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import KeywordStatistic
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -37,7 +45,7 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 is_negative=True,
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -62,7 +70,7 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 is_negative=True,
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
@@ -81,7 +89,7 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 is_negative=True,
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
@@ -98,6 +106,6 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict(
                 is_negative=True,
             )),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

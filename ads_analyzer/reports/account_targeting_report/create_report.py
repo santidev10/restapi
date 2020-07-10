@@ -18,42 +18,41 @@ kpi_filters are characterized as important AdGroup targeting metrics such as sum
 overall_summary are values from the AdGroupStatistic table segmented by date
 """
 
+import hashlib
+import json
 from collections import defaultdict
 from collections import namedtuple
 from itertools import chain
 
-import hashlib
-import json
 from django.core.serializers.json import DjangoJSONEncoder
-from utils.api.cache import cache_method
-
-from django.db.models import Q
 from django.db.models import Avg
 from django.db.models import Max
 from django.db.models import Min
+from django.db.models import Q
 from django.db.models import Sum
 
+from ads_analyzer.reports.account_targeting_report.constants import KPI_FILTER_NAME_MAP
+from ads_analyzer.reports.account_targeting_report.constants import TOTAL_SUMMARY_COLUMN_AGG_MAPPING
 from ads_analyzer.reports.account_targeting_report.serializers import AdGroupSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AgeTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AudienceTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import DeviceTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import GenderTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import KeywordTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import ParentTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import PlacementChannelTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import PlacementVideoTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import RemarketTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import TopicTargetingSerializer
-from ads_analyzer.reports.account_targeting_report.serializers import ParentTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import VideoCreativeTargetingSerializer
-from ads_analyzer.reports.account_targeting_report.constants import KPI_FILTER_NAME_MAP
-from ads_analyzer.reports.account_targeting_report.constants import TOTAL_SUMMARY_COLUMN_AGG_MAPPING
 from aw_reporting.models import CriteriaTypeEnum
-
+from utils.api.cache import cache_method
 
 CriterionConfig = namedtuple("CriterionConfig", "model serializer")
 CostDelivery = namedtuple("CostDelivery", "cost impressions views")
 
 
+# pylint: disable=too-many-instance-attributes
 class AccountTargetingReport:
     """
     Description:
@@ -84,7 +83,7 @@ class AccountTargetingReport:
         CriteriaTypeEnum.PARENT.name: ParentTargetingSerializer,
     }
 
-    def __init__(self, account,  criterion_types=None):
+    def __init__(self, account, criterion_types=None):
         """
         reporting_type determines what data to return from the report
         :param account:
@@ -92,9 +91,10 @@ class AccountTargetingReport:
             types to retrieve statistics for
         """
         self.account = account
+        self._all_aggregations = None
         if criterion_types is None:
             self.criterion_types = self.TARGETING.keys()
-        elif type(criterion_types) is str:
+        elif isinstance(criterion_types, (str,)):
             self.criterion_types = [criterion_types]
         else:
             self.criterion_types = criterion_types
@@ -154,6 +154,7 @@ class AccountTargetingReport:
         Supports iterating over many serialized aggregations if report was configured with multiple targeting types
         :return: None
         """
+
         def safe_compare(func, val1, val2):
             """
             Safe compare for val1, val2 None values
@@ -165,6 +166,7 @@ class AccountTargetingReport:
             except TypeError:
                 pass
             return result
+
         # Loop through all aggregations calculated from self._set_aggregations
         for aggregation in self._all_aggregations:
             for kpi_name in self.aggregation_columns:
@@ -173,8 +175,10 @@ class AccountTargetingReport:
                 # statistics "impressions" column
                 self._base_kpi_filters[kpi_name]["title"] = KPI_FILTER_NAME_MAP[kpi_name]
                 self._base_kpi_filters[kpi_name]["avg"] = aggregation.get(f"{kpi_name}__avg")
-                curr_min = safe_compare(min, self._base_kpi_filters[kpi_name]["min"], aggregation.get(f"{kpi_name}__min"))
-                curr_max = safe_compare(max, self._base_kpi_filters[kpi_name]["max"], aggregation.get(f"{kpi_name}__max"))
+                curr_min = safe_compare(min, self._base_kpi_filters[kpi_name]["min"],
+                                        aggregation.get(f"{kpi_name}__min"))
+                curr_max = safe_compare(max, self._base_kpi_filters[kpi_name]["max"],
+                                        aggregation.get(f"{kpi_name}__max"))
                 if curr_min is not None:
                     self._base_kpi_filters[kpi_name]["min"] = curr_min
                 if curr_max is not None:
@@ -317,7 +321,8 @@ class AccountTargetingReport:
         for serializer_class in self.targeting_configs:
             # Get grouped statistics for statistic table
             aggregated_serializer = self.get_aggregated_serializer(
-                serializer_class, self.statistics_filters, self.aggregation_columns, aggregation_filters=self.aggregation_filters
+                serializer_class, self.statistics_filters, self.aggregation_columns,
+                aggregation_filters=self.aggregation_filters
             )
             self._aggregated_serializers.append(aggregated_serializer)
 
@@ -327,3 +332,4 @@ class AccountTargetingReport:
         key_hash = hashlib.md5(key_json.encode()).hexdigest()
         key = f"{self.CACHE_KEY_PREFIX}.{part}.{key_hash}"
         return key, key_json
+# pylint: enable=too-many-instance-attributes

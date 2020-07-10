@@ -1,5 +1,5 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from aw_reporting.adwords_reports import ad_group_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
@@ -8,8 +8,8 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
-from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from aw_reporting.update.adwords_utils import get_base_stats
+from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)

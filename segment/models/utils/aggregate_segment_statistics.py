@@ -27,11 +27,13 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
         "video_clicks": 0,
         "video_impressions": 0,
     }
-    queryset = related_aw_statistics_model.objects\
-        .select_related("ad_group")\
-        .only("ad_group__video_views").filter(**filters)\
-        .annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions"))\
-        .values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
+    queryset = related_aw_statistics_model.objects \
+        .select_related("ad_group") \
+        .only("ad_group__video_views").filter(**filters) \
+        .annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"),
+                  video_impressions=F("impressions")) \
+        .values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks",
+                "video_impressions")
     queryset.query.clear_ordering(force_empty=True)
     for statistic in queryset[:MAX_STATS_TO_GET]:
         if statistic["ad_group_video_views"] > 0:

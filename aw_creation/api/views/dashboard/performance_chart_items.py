@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.dashboard_charts import DeliveryChart
+from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
 from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
@@ -37,7 +37,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
         return filters
 
     def post(self, request, pk, **kwargs):
-        dimension = kwargs.get('dimension')
+        dimension = kwargs.get("dimension")
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
         if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):

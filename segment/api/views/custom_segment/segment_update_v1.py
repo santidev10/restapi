@@ -1,18 +1,17 @@
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
 
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentUpdateSerializer
 from segment.models import CustomSegment
+from segment.utils.utils import CustomSegmentOwnerPermission
 
 
 class CustomSegmentUpdateApiView(UpdateAPIView):
-
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (CustomSegmentOwnerPermission,)
 
     def get_object(self):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get("pk", None)
         return CustomSegment.objects.get(pk=pk)
 
     def get_serializer(self, instance, *args, **kwargs):
@@ -23,7 +22,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         pass the correct serializer
         """
         serializer_class = self.get_serializer_class(instance)
-        kwargs['context'] = self.get_serializer_context()
+        kwargs["context"] = self.get_serializer_context()
         return serializer_class(instance, *args, **kwargs)
 
     def get_serializer_class(self, instance):

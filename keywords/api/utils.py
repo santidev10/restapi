@@ -13,15 +13,13 @@ from aw_reporting.models import base_stats_aggregator
 
 
 def get_keywords_aw_stats(keywords):
-    stats = KeywordStatistic.objects\
-        .filter(keyword__in=keywords)\
-        .values('keyword')\
-        .order_by('keyword')\
-        .annotate(
-            campaigns_count=Count('ad_group__campaign_id', distinct=True),
-            **base_stats_aggregator("ad_group__campaign__")
-        )
-    stats = {s['keyword']: s for s in stats}
+    stats = KeywordStatistic.objects \
+        .filter(keyword__in=keywords) \
+        .values("keyword") \
+        .order_by("keyword") \
+        .annotate(campaigns_count=Count("ad_group__campaign_id", distinct=True),
+                  **base_stats_aggregator("ad_group__campaign__"))
+    stats = {s["keyword"]: s for s in stats}
     return stats
 
 
@@ -75,11 +73,11 @@ def get_keywords_aw_top_bottom_stats(keywords):
 
     fields = list(annotate.keys())
 
-    raw_stats = KeywordStatistic.objects\
-        .filter(keyword__in=keywords)\
-        .values("keyword", "date")\
-        .order_by("keyword", "date")\
-        .annotate(**base_stats_aggregator("ad_group__campaign__"))\
+    raw_stats = KeywordStatistic.objects \
+        .filter(keyword__in=keywords) \
+        .values("keyword", "date") \
+        .order_by("keyword", "date") \
+        .annotate(**base_stats_aggregator("ad_group__campaign__")) \
         .annotate(**annotate)
 
     top_bottom_data = defaultdict(
@@ -88,10 +86,10 @@ def get_keywords_aw_top_bottom_stats(keywords):
 
     for f in fields:
         min_field, max_field = "{}_bottom".format(f), "{}_top".format(f)
-        for r in filter(lambda e: e[f] is not None, raw_stats):
-            min_value, max_value = top_bottom_data[r['keyword']][min_field], top_bottom_data[r['keyword']][max_field]
-            top_bottom_data[r['keyword']][min_field] = r[f] if min_value is None else min(min_value, r[f])
-            top_bottom_data[r['keyword']][max_field] = r[f] \
-                if max_value is None else max(top_bottom_data[r['keyword']][max_field], r[f])
+        for r in filter(lambda e, field=f: e[field] is not None, raw_stats):
+            min_value, max_value = top_bottom_data[r["keyword"]][min_field], top_bottom_data[r["keyword"]][max_field]
+            top_bottom_data[r["keyword"]][min_field] = r[f] if min_value is None else min(min_value, r[f])
+            top_bottom_data[r["keyword"]][max_field] = r[f] \
+                if max_value is None else max(top_bottom_data[r["keyword"]][max_field], r[f])
 
     return top_bottom_data

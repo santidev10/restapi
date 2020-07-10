@@ -1,26 +1,24 @@
+import csv
+import re
 from collections import defaultdict
 from collections import namedtuple
-import csv
 from datetime import datetime
 from datetime import timezone
-import re
 
 import pytz
-
-from flashtext import KeywordProcessor
-from django.db.models import F
 from emoji import UNICODE_EMOJI
+from flashtext import KeywordProcessor
 
-from brand_safety.constants import ENGLISH_CHARACTERS_SET
-from brand_safety.constants import EUROPEAN_CHARACTERS_SET
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
+from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
+
+from .bad_word_processors_by_language import get_bad_word_processors_by_language
 
 
 KeywordHit = namedtuple("KeywordHit", "name location")
@@ -29,11 +27,13 @@ KeywordHit = namedtuple("KeywordHit", "name location")
 class AuditUtils(object):
     def __init__(self):
         """
-        Many of these configurations are shared amongst Video and Channel audit objects, so it is more efficient to initialize
+        Many of these configurations are shared amongst Video and Channel audit objects, so it is more efficient to
+        initialize
         these values once and use as reference values
         """
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
-        # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
+        # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g.
+        # Kid's Content)
         self._default_zero_score = {
             str(category_id): 0
             for category_id in self.bad_word_categories
@@ -46,7 +46,7 @@ class AuditUtils(object):
             str(score): 0
             for score in set(BadWord.objects.values_list("negative_score", flat=True))
         }
-        self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
+        self._bad_word_processors_by_language = get_bad_word_processors_by_language()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
 
@@ -171,8 +171,10 @@ class AuditUtils(object):
         :param keywords: List of keyword strings
         :return: Compiled Regular expression
         """
-        regexp = re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]), re.IGNORECASE)) \
-            if case_insensitive else re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords])))
+        regexp = re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]), re.IGNORECASE)) \
+            if case_insensitive else re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords])))
         return regexp
 
     @staticmethod
@@ -205,27 +207,6 @@ class AuditUtils(object):
             "({})".format("|".join([r"{}".format(re.escape(unicode)) for unicode in UNICODE_EMOJI]))
         )
         return regexp
-
-    @staticmethod
-    def get_bad_word_processors_by_language():
-        """
-        Generate dictionary of keyword processors by language
-            Also provides an "all" key that contains every keyword
-        :return:
-        """
-        bad_words_by_language = defaultdict(KeywordProcessor)
-        all_words = BadWord.objects.annotate(language_name=F("language__language"))
-        for word in all_words:
-            language = word.language_name
-            bad_words_by_language["all"].add_keyword(remove_tags_punctuation(word.name))
-            bad_words_by_language[language].add_keyword(remove_tags_punctuation(word.name))
-        # Cast back to dictionary to avoid creation of new keys
-        bad_words_by_language = dict(bad_words_by_language)
-
-        non_word_boundary_chars = ENGLISH_CHARACTERS_SET.union(EUROPEAN_CHARACTERS_SET)
-        for language in bad_words_by_language:
-            bad_words_by_language[language].set_non_word_boundaries(non_word_boundary_chars)
-        return bad_words_by_language
 
     @staticmethod
     def get_brand_safety_score_mapping():

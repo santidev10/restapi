@@ -10,12 +10,13 @@
 
     <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
     <!--[if mso]>
-		<style>
+    <style>
 			* {
 				font-family: sans-serif !important;
 			}
-		</style>
-	<![endif]-->
+
+    </style>
+    <![endif]-->
 
     <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
     <!--[if !mso]><!-->
@@ -113,6 +114,7 @@
             }
         }
 
+
     </style>
 
     <!-- Progressive Enhancements -->
@@ -181,6 +183,7 @@
 
         }
 
+
     </style>
     <style>
         .chart-bar {
@@ -209,14 +212,15 @@
             line-height: 17px;
             font-family: Arial, Helvetica, sans-serif;
         }
+
     </style>
     <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
     <!--[if gte mso 9]>
     <xml>
-      <o:OfficeDocumentSettings>
-        <o:AllowPNG/>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-     </o:OfficeDocumentSettings>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
     </xml>
     <![endif]-->
 

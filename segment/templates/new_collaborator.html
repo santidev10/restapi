@@ -1,30 +1,31 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-	<meta charset="utf-8"> <!-- utf-8 works for most cases -->
-	<meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
-	<meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
+    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
     <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
-	<title>CHF</title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+    <title>CHF</title> <!-- The title tag shows in email notifications, like Android 4.4. -->
 
 
-	<!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
-	<!--[if mso]>
-		<style>
+    <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
+    <!--[if mso]>
+    <style>
 			* {
 				font-family: sans-serif !important;
 			}
-		</style>
-	<![endif]-->
 
-	<!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
-	<!--[if !mso]><!-->
-		<!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
-	<!--<![endif]-->
+    </style>
+    <![endif]-->
 
-	<!-- Web Font / @font-face : END -->
+    <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
+    <!--[if !mso]><!-->
+    <!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
+    <!--<![endif]-->
 
-	<!-- CSS Reset -->
+    <!-- Web Font / @font-face : END -->
+
+    <!-- CSS Reset -->
     <style>
 
 		/* What it does: Remove spaces around the email design added by some email clients. */
@@ -110,6 +111,7 @@
             }
         }
 
+
     </style>
 
     <!-- Progressive Enhancements -->
@@ -122,100 +124,108 @@
             color:#505050;
         }
 
+
     </style>
 
     <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
     <!--[if gte mso 9]>
     <xml>
-      <o:OfficeDocumentSettings>
-        <o:AllowPNG/>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-     </o:OfficeDocumentSettings>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
     </xml>
     <![endif]-->
 
 </head>
 <body width="100%" bgcolor="#eaeaea" style="margin: 0; mso-line-height-rule: exactly;">
-    <center style="width: 100%; background: #eaeaea; text-align: left;">
+<center style="width: 100%; background: #eaeaea; text-align: left;">
 
-        <!-- Email Body : BEGIN -->
-        <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="margin: auto;" class="email-container">
-            <!-- Clear Spacer : BEGIN -->
-            <tr style="background-color: transparent;">
-                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
-            </tr>
-            <!-- Clear Spacer : END -->
+    <!-- Email Body : BEGIN -->
+    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
+           style="margin: auto;" class="email-container">
+        <!-- Clear Spacer : BEGIN -->
+        <tr style="background-color: transparent;">
+            <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
 
-            <!-- Email title : BEGIN -->
-            <tr>
-				<td bgcolor="#ffffff" style="background-image: url(cid:bg.png); background-size: 100% 100%; padding: 30px 20px; text-align: center;">
-                    <img src="cid:cf_logo_wt_big.png" height="23" hspace="0" vspace="0" border="0" title="Channel Factory" alt="Channel Factory" />
-				</td>
-            </tr>
-            <!-- Email title : END -->
+        <!-- Email title : BEGIN -->
+        <tr>
+            <td bgcolor="#ffffff"
+                style="background-image: url(cid:bg.png); background-size: 100% 100%; padding: 30px 20px; text-align: center;">
+                <img src="cid:cf_logo_wt_big.png" height="23" hspace="0" vspace="0" border="0" title="Channel Factory"
+                     alt="Channel Factory"/>
+            </td>
+        </tr>
+        <!-- Email title : END -->
 
-            <tr>
-                <td bgcolor="#ffffff" style="padding: 70px 20px; text-align: center;">
-                    <img src="cid:img.png" hspace="0" vspace="0" border="0"/>
-                </td>
-            </tr>
+        <tr>
+            <td bgcolor="#ffffff" style="padding: 70px 20px; text-align: center;">
+                <img src="cid:img.png" hspace="0" vspace="0" border="0"/>
+            </td>
+        </tr>
 
-            <tr>
-                <td style="background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
-                    <p>Hello,
+        <tr>
+            <td style="background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
+                <p>Hello,
 
-                    <p>{{message_from}} has invited you to collaborate on a segment in ViewIQ:
+                <p>{{ message_from }} has invited you to collaborate on a segment in ViewIQ:
 
-                    <p><a href="{{segment_url}}">{{segment_title}}</a>
+                <p><a href="{{ segment_url }}">{{ segment_title }}</a>
 
-                    <p>To view/edit this segment, please register your FREE account at {{host}}
+                <p>To view/edit this segment, please register your FREE account at {{ host }}
 
-                </td>
-            </tr>
+            </td>
+        </tr>
 
-            <tr>
-                <td style="background-color: #ffffff; font-size: 0; line-height: 0; padding: 20px 50px;" align="left" valign="top">
-                    <div style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
-                </td>
-            </tr>
+        <tr>
+            <td style="background-color: #ffffff; font-size: 0; line-height: 0; padding: 20px 50px;" align="left"
+                valign="top">
+                <div style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+            </td>
+        </tr>
 
-            <tr>
-                <td style="line-height: 1.5em; padding: 0 100px; background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
-                </td>
-            </tr>
+        <tr>
+            <td style="line-height: 1.5em; padding: 0 100px; background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
+            </td>
+        </tr>
 
-            <tr>
-                <td style="line-height: 1.5em; background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
-                    Kind regards,<br/>
-                    Channel Factory Team
-                </td>
-            </tr>
+        <tr>
+            <td style="line-height: 1.5em; background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
+                Kind regards,<br/>
+                Channel Factory Team
+            </td>
+        </tr>
 
-            <!-- Clear Spacer : BEGIN -->
-            <tr>
-                <td bgcolor="#ffffff" height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
-            </tr>
-            <!-- Clear Spacer : END -->
+        <!-- Clear Spacer : BEGIN -->
+        <tr>
+            <td bgcolor="#ffffff" height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
 
-            <!-- Email Footer : BEGIN -->
-            <tr>
-                <td valign="top" align="center" bgcolor="#333333" style="font-size: 0; line-height: 0; text-align: center; background-color: #333333; padding:20px;" class="x-gmail-data-detectors">
-                    <a href="#">
-                        <img src="cid:logo.gif" width="155" height="19" hspace="0" vspace="0" border="0" title="Channel Factory" alt="Channel Factory" />
-                    </a>
-                </td>
-            </tr>
-            <!-- Email Footer : END -->
+        <!-- Email Footer : BEGIN -->
+        <tr>
+            <td valign="top" align="center" bgcolor="#333333"
+                style="font-size: 0; line-height: 0; text-align: center; background-color: #333333; padding:20px;"
+                class="x-gmail-data-detectors">
+                <a href="#">
+                    <img src="cid:logo.gif" width="155" height="19" hspace="0" vspace="0" border="0"
+                         title="Channel Factory" alt="Channel Factory"/>
+                </a>
+            </td>
+        </tr>
+        <!-- Email Footer : END -->
 
-            <!-- Clear Spacer : BEGIN -->
-            <tr style="background-color: transparent;">
-                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
-            </tr>
-            <!-- Clear Spacer : END -->
+        <!-- Clear Spacer : BEGIN -->
+        <tr style="background-color: transparent;">
+            <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
 
-        </table>
-        <!-- Email Body : END -->
+    </table>
+    <!-- Email Body : END -->
 
-    </center>
+</center>
 </body>
 </html>

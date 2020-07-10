@@ -1,18 +1,17 @@
 import hashlib
-
 from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db.models import Count
 
-from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatus
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
-from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
+from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail
+from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
 from es_components.utils import safe_div
 
 
@@ -58,7 +57,6 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
                 )
                 msg.send(fail_silently=False)
 
-
     def get_flight_alerts(self, opportunity, report):
         flight_alerts = []
         placements = opportunity.placements.filter(
@@ -71,7 +69,7 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
 
             flights = report.get_flights(placement)
 
-            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement.id).\
+            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement.id). \
                 exclude(status=CampaignStatus.ENDED.value).count()
 
             if active_campaign_count > 0:
@@ -100,13 +98,14 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
         if alert_percentage is not None:
             flight_alert = FlightAlert(flight_name=flight_data.get("name"), opportunity_name=opportunity.name,
                                        control_percentage=alert_percentage)
-            mail, created = SavedEmail.objects.get_or_create(id=flight_alert.__hash__())
+            mail, created = SavedEmail.objects.get_or_create(id=flight_alert.get_md5_hash())
 
             if created is True:
                 mail.html = f"{flight_alert.subject}\n{flight_alert.body}"
                 mail.save()
 
                 return flight_alert
+        return None
 
     def check_flight_delivered(self, flight, control_percentage):
         try:
@@ -116,17 +115,20 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
             elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
                 percentage = safe_div(flight.get("video_views", 0), flight.get("plan_video_views", 0)) or 0
             return percentage * 100 >= control_percentage
+        # pylint: disable=bare-except
         except:
             pass
+        # pylint: enable=bare-except
+        return None
 
 
 class FlightAlert:
     def __init__(self, flight_name, opportunity_name, control_percentage):
-        self.subject = "{control_percentage}% DELIVERY - {flight_name}".format(
-            control_percentage=control_percentage, flight_name=flight_name)
-        self.body = "{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
-            flight_name=flight_name, control_percentage=control_percentage, opportunity_name=opportunity_name
-        )
+        self.subject = "{control_percentage}% DELIVERY - {flight_name}".format(control_percentage=control_percentage,
+                                                                               flight_name=flight_name)
+        self.body = "{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered " \
+                    "units".format(flight_name=flight_name, control_percentage=control_percentage,
+                                   opportunity_name=opportunity_name)
 
-    def __hash__(self):
+    def get_md5_hash(self):
         return hashlib.md5(str(self.body).encode()).hexdigest()

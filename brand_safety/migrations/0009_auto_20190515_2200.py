@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('brand_safety', '0008_auto_20190515_2100'),
     ]

@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
 from rest_framework.generics import ListAPIView
 
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \

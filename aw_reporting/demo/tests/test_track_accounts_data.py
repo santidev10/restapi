@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
@@ -39,14 +40,14 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2)
+        self.assertEqual(len(account["trend"]), 2)
 
     def test_success_hourly(self):
         today = now_in_default_tz().date()
@@ -70,11 +71,11 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2 * 24)
+        self.assertEqual(len(account["trend"]), 2 * 24)

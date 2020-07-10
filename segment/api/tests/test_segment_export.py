@@ -1,10 +1,10 @@
-from mock import patch
+import uuid
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
-import uuid
 
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
@@ -12,9 +12,9 @@ from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentVettedFileUpload
-from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.int_iterator import int_iterator
 from utils.aws.s3_exporter import S3Exporter
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
@@ -45,7 +45,7 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         """ Users without vetting admin permissions should not be able to export vetting lists """
         test_user = self._create_user()
         self.create_test_user()
-        segment, export = self._create_segment(segment_params=dict(owner=test_user))
+        segment, _ = self._create_segment(segment_params=dict(owner=test_user))
         url = self._get_url(segment.id) + "?vetted=true"
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
@@ -54,7 +54,7 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         """ Users without vetting admin permissions should not be able to export vetting lists progress """
         user = self._create_user()
         self.create_test_user()
-        segment, export = self._create_segment(segment_params=dict(owner=user))
+        segment, _ = self._create_segment(segment_params=dict(owner=user))
         url = self._get_url(segment.id) + "?vetted=true"
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
@@ -63,7 +63,7 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         """ Admin users should be able to export all lists """
         test_user = self._create_user()
         self.create_admin_user()
-        segment, export = self._create_segment(segment_params=dict(owner=test_user))
+        segment, _ = self._create_segment(segment_params=dict(owner=test_user))
         with patch.object(S3Exporter, "exists", return_value=True):
             response = self.client.get(self._get_url(segment.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -73,11 +73,11 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         test_user = self._create_user()
         self.create_admin_user()
         audit = AuditProcessor.objects.create(source=1)
-        segment, export = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
+        segment, _ = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
         with patch.object(S3Exporter, "exists", return_value=False), \
              patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
-                url = self._get_url(segment.id) + "?vetted=true"
-                response = self.client.get(url)
+            url = self._get_url(segment.id) + "?vetted=true"
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data.get("message"))
         mock_generate.delay.assert_called_once()
@@ -87,10 +87,10 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         test_user = self._create_user()
         self.create_admin_user()
         audit = AuditProcessor.objects.create(source=1)
-        segment, export = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
+        segment, _ = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
         CustomSegmentVettedFileUpload.objects.create(segment=segment)
-        with patch.object(S3Exporter, "exists", return_value=True),\
-            patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
+        with patch.object(S3Exporter, "exists", return_value=True), \
+             patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
             url = self._get_url(segment.id) + "?vetted=true"
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

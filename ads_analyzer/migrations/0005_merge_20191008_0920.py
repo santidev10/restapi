@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('ads_analyzer', '0003_auto_20191003_1355'),
         ('ads_analyzer', '0004_auto_20191007_1547'),

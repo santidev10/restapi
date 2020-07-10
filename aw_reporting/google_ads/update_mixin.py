@@ -1,8 +1,8 @@
 from aw_reporting.google_ads.constants import MIN_FETCH_DATE
 from aw_reporting.google_ads.cta import get_clicks_report
 from aw_reporting.google_ads.cta import get_stats_with_click_type_data
-from aw_reporting.google_ads.utils import drop_latest_stats
 from aw_reporting.google_ads.utils import drop_custom_stats
+from aw_reporting.google_ads.utils import drop_latest_stats
 from aw_reporting.google_ads.utils import extract_placement_code
 from aw_reporting.google_ads.utils import format_query
 from aw_reporting.google_ads.utils import get_account_border_dates
@@ -14,7 +14,7 @@ from aw_reporting.google_ads.utils import max_ready_date
 from aw_reporting.google_ads.utils import reset_denorm_flag
 
 
-class UpdateMixin(object):
+class UpdateMixin:
     MIN_FETCH_DATE = MIN_FETCH_DATE
 
     @staticmethod

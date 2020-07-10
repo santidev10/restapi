@@ -1,24 +1,23 @@
 import logging
 
-from saas import celery_app
-from django.urls import reverse
 from django.conf import settings
 from django.core.mail import EmailMessage
 
 from es_components.constants import Sections
 from es_components.managers import KeywordManager
-from utils.es_components_api_utils import ExportDataGenerator
-from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.es_components_exporter import ESDataS3Exporter
-from utils.aws.export_context_manager import ExportContextManager
-
-from keywords.constants import TERMS_FILTER
-from keywords.constants import RANGE_FILTER
-from keywords.constants import KEYWORD_CSV_HEADERS
 from keywords.api.serializers.keyword_export import KeywordListExportSerializer
+from keywords.constants import KEYWORD_CSV_HEADERS
+from keywords.constants import RANGE_FILTER
+from keywords.constants import TERMS_FILTER
 from keywords.utils import KeywordViralParamAdapter
+from saas import celery_app
+from utils.aws.export_context_manager import ExportContextManager
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import ExportDataGenerator
+from utils.es_components_exporter import ESDataS3Exporter
 
 logger = logging.getLogger(__name__)
+
 
 class KeywordListDataGenerator(ExportDataGenerator):
     serializer_class = KeywordListExportSerializer
@@ -60,7 +59,9 @@ def export_keywords_data(query_params, export_name, user_emails):
             bcc=bcc,
         )
         email.send(fail_silently=False)
+    # pylint: disable=broad-except
     except Exception as e:
-        logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
+        # pylint: enable=broad-except
+        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
     else:
-        logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")
+        logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

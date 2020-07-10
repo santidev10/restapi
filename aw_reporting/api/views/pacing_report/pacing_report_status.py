@@ -1,10 +1,11 @@
-from rest_framework.views import APIView
+from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.views import APIView
 
-from django.utils import timezone
 from aw_reporting.models import Campaign
+
 
 class PacingReportStatusApiView(APIView):
     """
@@ -20,11 +21,11 @@ class PacingReportStatusApiView(APIView):
         :param request.data: Campaign Ids to update
         """
         try:
-            campaign_ids = request.data['campaignIds']
+            campaign_ids = request.data["campaignIds"]
 
         except KeyError:
-            return Response(status=HTTP_400_BAD_REQUEST, data='You must provide campaignIds to update.')
+            return Response(status=HTTP_400_BAD_REQUEST, data="You must provide campaignIds to update.")
 
         Campaign.objects.filter(id__in=campaign_ids).update(sync_time=timezone.now())
 
-        return Response(status=HTTP_200_OK, data='Campaigns sync complete for: {}'.format(', '.join(campaign_ids)))
+        return Response(status=HTTP_200_OK, data="Campaigns sync complete for: {}".format(", ".join(campaign_ids)))

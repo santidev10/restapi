@@ -29,6 +29,10 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import age_range_str
 from aw_reporting.models import gender_str
+from es_components.constants import Sections
+from es_components.managers.video import VideoManager
+from es_components.models import Video
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
@@ -37,10 +41,6 @@ from utils.unittests.patch_now import patch_now
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.xlsx import get_sheet_from_response
-from es_components.tests.utils import ESTestCase
-from es_components.managers.video import VideoManager
-from es_components.models import Video
-from es_components.constants import Sections
 
 
 class SectionName:
@@ -475,7 +475,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
                 UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             }
             with self.patch_user_settings(**user_settings), \
-                self.subTest(section):
+                 self.subTest(section):
                 response = self._request(DEMO_ACCOUNT_ID)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 sheet = get_sheet_from_response(response)

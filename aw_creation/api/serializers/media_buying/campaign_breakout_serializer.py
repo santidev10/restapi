@@ -2,14 +2,14 @@ from django.db.models import F
 from django.db.models import Value
 from django.db.models.functions import Concat
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
+from aw_creation.api.views.media_buying.constants import AD_GROUP_TYPE_CAMPAIGN_BID_TYPE
+from aw_creation.api.views.media_buying.constants import CampaignBidStrategyTypeEnum
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.models import AdGroup
-from aw_creation.api.views.media_buying.constants import CampaignBidStrategyTypeEnum
-from aw_creation.api.views.media_buying.constants import AD_GROUP_TYPE_CAMPAIGN_BID_TYPE
 
 
 class CampaignBreakoutSerializer(serializers.Serializer):
@@ -30,8 +30,8 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_data": {},
         }
         self._validate_dates(data["start"], data["end"])
-        ad_groups = AdGroup.objects\
-            .filter(id__in=data["ad_group_ids"])\
+        ad_groups = AdGroup.objects \
+            .filter(id__in=data["ad_group_ids"]) \
             .annotate(campaign_type=F("campaign__type"))
         # Ensure that source Campaign and AdGroups are of the same type to breakout
         ag_type = set(ad_groups.values_list("type", flat=True))
@@ -83,9 +83,9 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         campaign_creation.save()
 
         ad_group_creations = [AdGroupCreation(campaign_creation=campaign_creation, **data) for data in ad_group_data]
-        AdGroupCreation.objects\
+        AdGroupCreation.objects \
             .bulk_create(ad_group_creations)
         # Update new AdGroupCreation names with id suffix for identification and matching with Google Ads
-        AdGroupCreation.objects.filter(name__in=[item["name"] for item in ad_group_data])\
+        AdGroupCreation.objects.filter(name__in=[item["name"] for item in ad_group_data]) \
             .update(name=Concat(F("name"), Value(" #"), F("id")))
         return campaign_creation

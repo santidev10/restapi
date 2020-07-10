@@ -1,9 +1,8 @@
-import json
 import hashlib
+import json
 
-from django.urls import reverse
 from django.conf import settings
-
+from django.urls import reverse
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -13,8 +12,8 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
 from aw_reporting.reports.tasks import export_pacing_report
 from saas.urls.namespaces import Namespace
-from utils.datetime import now_in_default_tz
 from utils.celery import utils
+from utils.datetime import now_in_default_tz
 
 
 class PacingReportCollectView(ListAPIView, PacingReportHelper):
@@ -49,8 +48,8 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
     @staticmethod
     def generate_report_hash(filters, user_pk):
         _filters = filters.copy()
-        _filters['current_datetime'] = now_in_default_tz().date().strftime("%Y-%m-%d")
-        _filters['user_id'] = user_pk
+        _filters["current_datetime"] = now_in_default_tz().date().strftime("%Y-%m-%d")
+        _filters["user_id"] = user_pk
         serialzed_filters = json.dumps(_filters, sort_keys=True)
         _hash = hashlib.md5(serialzed_filters.encode()).hexdigest()
         return _hash

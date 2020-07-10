@@ -37,10 +37,10 @@ class AudienceToolTestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data[0].keys()),
             {
-                'id',
-                'name',
-                'children',
-                'type',
+                "id",
+                "name",
+                "children",
+                "type",
             }
         )
 
@@ -54,7 +54,7 @@ class AudienceToolTestCase(ExtendedAPITestCase):
         )
         url = "{}?{}".format(
             str(url),
-            urlencode({'auth_token': self.user.tokens.first().key}),
+            urlencode({"auth_token": self.user.tokens.first().key}),
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -73,8 +73,8 @@ class AudienceToolTestCase(ExtendedAPITestCase):
             str(url),
             urlencode(
                 {
-                    'auth_token': self.user.tokens.first().key,
-                    'export_ids': "{},{}".format(parent_2.id, children.id)
+                    "auth_token": self.user.tokens.first().key,
+                    "export_ids": "{},{}".format(parent_2.id, children.id)
                 },
             ),
         )
@@ -82,5 +82,3 @@ class AudienceToolTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
         self.assertEqual(len(lines), 3)
-
-

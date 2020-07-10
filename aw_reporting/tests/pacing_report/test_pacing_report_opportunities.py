@@ -79,21 +79,21 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
 
         first_op_data = opportunities[0]
 
-        self.assertEqual(first_op_data['id'], opportunity.id)
+        self.assertEqual(first_op_data["id"], opportunity.id)
 
-        self.assertEqual(first_op_data['cost'], campaign.cost + campaign2.cost)
+        self.assertEqual(first_op_data["cost"], campaign.cost + campaign2.cost)
         video_views = campaign.video_views + campaign2.video_views
-        self.assertEqual(first_op_data['video_views'], video_views)
+        self.assertEqual(first_op_data["video_views"], video_views)
         clicks = campaign.clicks + campaign2.clicks
-        self.assertEqual(first_op_data['ctr'], clicks / video_views)
-        self.assertEqual(first_op_data['impressions'],
+        self.assertEqual(first_op_data["ctr"], clicks / video_views)
+        self.assertEqual(first_op_data["impressions"],
                          campaign.impressions + campaign2.impressions)
 
-        self.assertEqual(first_op_data['plan_cost'], opportunity.budget)
+        self.assertEqual(first_op_data["plan_cost"], opportunity.budget)
         total_ordered_units = flight.ordered_units + flight2.ordered_units
-        self.assertEqual(first_op_data['plan_cpv'], (
-                flight.total_cost + flight2.total_cost) / total_ordered_units)
-        self.assertEqual(first_op_data['plan_video_views'],
+        self.assertEqual(first_op_data["plan_cpv"], (
+            flight.total_cost + flight2.total_cost) / total_ordered_units)
+        self.assertEqual(first_op_data["plan_video_views"],
                          total_ordered_units * 1.02)
         self.assertEqual(first_op_data["margin"], 0,
                          "Ordered and delivered rates are same")
@@ -119,7 +119,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
-        self.assertEqual(first_op_data['plan_video_views'],
+        self.assertEqual(first_op_data["plan_video_views"],
                          flight.ordered_units * 1.01)
 
     def test_margin_opportunity_hard_cost_outgoing_fee(self):
@@ -183,15 +183,15 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         flight_run_minutes = (now - start_time).total_seconds() // 60
 
         expected_cost = campaign.cost + prev_flight.cost + flight.cost * flight_run_minutes / flight_total_minutes
-        self.assertEqual(first_op_data['cost'], expected_cost)
+        self.assertEqual(first_op_data["cost"], expected_cost)
 
         expected_ordered_cost = cpv_placement.ordered_rate * campaign.video_views
-        expected_margin = 1 - first_op_data['cost'] / expected_ordered_cost
-        self.assertEqual(first_op_data['margin'], expected_margin)
+        expected_margin = 1 - first_op_data["cost"] / expected_ordered_cost
+        self.assertEqual(first_op_data["margin"], expected_margin)
 
     def test_pacing_opportunity_hard_cost_outgoing_fee(self):
         """
-        Hard cost placements shouldn't affect Pacing
+        Hard cost placements shouldn"t affect Pacing
         :return:
         """
         tz_str = settings.DEFAULT_TIMEZONE
@@ -240,10 +240,10 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
-        self.assertEqual(first_op_data['video_views'], campaign.video_views)
-        self.assertEqual(first_op_data['plan_video_views'],
+        self.assertEqual(first_op_data["video_views"], campaign.video_views)
+        self.assertEqual(first_op_data["plan_video_views"],
                          flight.ordered_units * 1.02)
-        self.assertEqual(first_op_data['pacing'], 1)
+        self.assertEqual(first_op_data["pacing"], 1)
 
     def test_get_opportunities_has_dynamic_placements_type(self):
         today = now_in_default_tz().date()

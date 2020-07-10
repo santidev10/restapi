@@ -2,13 +2,23 @@ from collections import defaultdict
 from datetime import timedelta
 from functools import reduce
 from operator import itemgetter
-from operator import add
 
-from django.db.models import FloatField, Max, Value, BooleanField
-from django.db.models import Q, When, Case, Sum
+from django.db.models import BooleanField
+from django.db.models import Case
+from django.db.models import FloatField
+from django.db.models import Max
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 
-from aw_reporting.models import Campaign, SalesForceGoalType, OpPlacement, \
-    CampaignStatistic, AdGroupStatistic, get_average_cpv, get_average_cpm
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import get_average_cpm
+from aw_reporting.models import get_average_cpv
 
 AD_GROUP_COSTS_ANNOTATE = dict(
     sum_cost=Sum("cost"),
@@ -27,9 +37,9 @@ AD_GROUP_COSTS_ANNOTATE = dict(
 
 
 class PricingToolEstimate:
-    def __init__(self, kwargs, opportunities=[]):
+    def __init__(self, kwargs, opportunities=None):
         self.kwargs = kwargs
-        self.set_opportunities(opportunities)
+        self.set_opportunities(opportunities or [])
 
     def set_opportunities(self, opportunities):
         self.opportunities = []
@@ -83,7 +93,7 @@ class PricingToolEstimate:
         queryset = self._get_ad_group_statistic_queryset()
         queryset = queryset.filter(cost__gt=0)
 
-        data = queryset.values('date').order_by('date').annotate(
+        data = queryset.values("date").order_by("date").annotate(
             **AD_GROUP_COSTS_ANNOTATE).values("date", *AD_GROUP_COSTS_ANNOTATE.keys())
         cpv_lines = defaultdict(list)
         cpm_lines = defaultdict(list)
@@ -91,7 +101,7 @@ class PricingToolEstimate:
         for point in data:
             average_cpv = get_average_cpv(cost=point["views_cost"], **point)
             average_cpm = get_average_cpm(cost=point["sum_cost"], **point)
-            date = point['date']
+            date = point["date"]
 
             if average_cpv:
                 if compare_yoy:

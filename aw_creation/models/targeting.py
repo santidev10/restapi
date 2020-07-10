@@ -25,6 +25,6 @@ class TargetingItem(models.Model):
     is_negative = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = (('ad_group_creation', 'type', 'criteria'),)
-        ordering = ['ad_group_creation', 'type', 'is_negative',
-                    'criteria']
+        unique_together = (("ad_group_creation", "type", "criteria"),)
+        ordering = ["ad_group_creation", "type", "is_negative",
+                    "criteria"]

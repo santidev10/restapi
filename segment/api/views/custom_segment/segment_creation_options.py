@@ -1,3 +1,8 @@
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
+from rest_framework.views import APIView
+
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
 from audit_tool.utils.audit_utils import AuditUtils
@@ -8,10 +13,6 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
-from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
-from rest_framework.views import APIView
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 
@@ -66,7 +67,7 @@ class SegmentCreationOptionsApiView(APIView):
                 }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value["general_data.top_lang_code"]["buckets"]]
 
             languages = []
             for code in lang_codes:
@@ -86,7 +87,8 @@ class SegmentCreationOptionsApiView(APIView):
             ]
         options = {
             "age_groups": [
-                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in AuditAgeGroup.ID_CHOICES
+                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
+                AuditAgeGroup.ID_CHOICES
             ],
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()

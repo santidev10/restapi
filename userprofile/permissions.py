@@ -21,12 +21,14 @@ class GlobalPermission(Permission):
         # use verbose_name of existing model to get content type
         verbose_name = "userprofile"
 
+    # pylint: disable=signature-differs
     def save(self, *args, **kwargs):
         ct = ContentType.objects.get(
             model=self._meta.verbose_name,
             app_label=self._meta.app_label)
         self.content_type = ct
         super(GlobalPermission, self).save(*args)
+    # pylint: enable=signature-differs
 
 
 class PermissionHandler:
@@ -47,7 +49,7 @@ class PermissionHandler:
         self.user_permissions.remove(permission)
 
     def get_user_groups(self):
-        groups = self.groups.values_list('name', flat=True)
+        groups = self.groups.values_list("name", flat=True)
         return groups
 
     def add_custom_user_group(self, group_name):
@@ -74,8 +76,8 @@ class PermissionHandler:
         """
         # get data from access
         for access_item in access:
-            group_name = access_item.get('name', None)
-            is_group_for_add = access_item.get('value', None)
+            group_name = access_item.get("name", None)
+            is_group_for_add = access_item.get("value", None)
 
             # set data from access
             if group_name is not None and is_group_for_add is not None:
@@ -116,6 +118,7 @@ class PermissionGroupNames:
     CUSTOM_SEGMENTS = "custom_segments"
     DOMAIN_MANAGEMENT = "Domain Management"
     RESEARCH_EXPORTS = "Research Exports"
+    CUSTOM_TARGET_LIST_CREATION = "Create Custom Target List"
 
 
 class Permissions:
@@ -214,6 +217,9 @@ class Permissions:
         )),
         (PermissionGroupNames.RESEARCH_EXPORTS, (
             "research_exports",
+        )),
+        (PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION, (
+            "custom_target_list_creation"
         ))
     )
 
@@ -262,6 +268,8 @@ class Permissions:
         "domain_management",
         # Exports
         "research_exports",
+        # Custom Target List
+        "custom_target_list_creation"
     )
 
     @staticmethod
@@ -302,6 +310,7 @@ def cleanup_groups_permissions(apps_config, groups_names, permissions_codenames)
 def get_custom_permission(perm, apps_config=None):
     """
     :param perm: str, permission name
+    :param apps_config:
     :return: GlobalPermission object
     """
     apps_config = apps_config or apps

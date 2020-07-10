@@ -6,7 +6,6 @@ from django.db.models import Case
 from django.db.models import CharField
 from django.db.models import F
 from django.db.models import FloatField
-from django.db.models import FloatField as AggrFloatField
 from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Q
@@ -139,11 +138,12 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
-            elif type(args[0]) is list:
+            elif isinstance(args[0], list):
                 ids = [i.id for i in args[0]]
             else:
                 ids = [args[0].id]
             return ids
+        return None
 
     def _get_stats(self, account_creation_ids):
         stats = {}
@@ -190,16 +190,15 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         return {s[account_creation_ref]: pick_dict(s, keys) for s in stats}
 
     def _get_settings(self, account_creation_ids):
-        settings = CampaignCreation.objects.filter(
-            account_creation_id__in=account_creation_ids
-        ).values('account_creation_id').order_by(
-            'account_creation_id').annotate(
-            start=Min("start"), end=Max("end"),
-            video_thumbnail=ConcatAggregate(
-                "ad_group_creations__ad_creations__video_thumbnail",
-                distinct=True)
-        )
-        return {s['account_creation_id']: s for s in settings}
+        settings = CampaignCreation.objects \
+            .filter(account_creation_id__in=account_creation_ids) \
+            .values("account_creation_id") \
+            .order_by("account_creation_id") \
+            .annotate(start=Min("start"), end=Max("end"),
+                      video_thumbnail=ConcatAggregate("ad_group_creations__ad_creations__video_thumbnail",
+                                                      distinct=True)
+                      )
+        return {s["account_creation_id"]: s for s in settings}
 
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
@@ -213,21 +212,21 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         )
         for s in daily_stats:
             daily_chart[s[account_id_key]].append(
-                dict(label=s['date'], value=s['views']))
+                dict(label=s["date"], value=s["views"]))
         return daily_chart
 
     def _get_video_ads_data(self, account_creation_ids):
         ids = account_creation_ids
         group_key = "ad_group__campaign__account__account_creation__id"
-        video_creative_stats = VideoCreativeStatistic.objects.filter(
-            ad_group__campaign__account__account_creation__id__in=ids
-        ).values(group_key, "creative_id").order_by(group_key,
-                                                    "creative_id").annotate(
-            impressions=Sum("impressions"))
+        video_creative_stats = VideoCreativeStatistic.objects \
+            .filter(ad_group__campaign__account__account_creation__id__in=ids) \
+            .values(group_key, "creative_id") \
+            .order_by(group_key, "creative_id") \
+            .annotate(impressions=Sum("impressions"))
         video_ads_data = defaultdict(list)
         for v in video_creative_stats:
             video_ads_data[v[group_key]].append(
-                (v['impressions'], v['creative_id']))
+                (v["impressions"], v["creative_id"]))
         return video_ads_data
 
     @staticmethod
@@ -251,26 +250,24 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         if video_ads_data:
             _, yt_id = sorted(video_ads_data)[-1]
             return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(yt_id)
-        else:
-            settings = self.settings.get(obj.id)
-            if settings:
-                thumbnails = settings['video_thumbnail']
-                if thumbnails:
-                    return thumbnails.split(", ")[0]
+        settings = self.settings.get(obj.id)
+        if settings:
+            thumbnails = settings["video_thumbnail"]
+            if thumbnails:
+                return thumbnails.split(", ")[0]
+        return None
 
     def get_start(self, obj):
         settings = self.settings.get(obj.id)
         if settings:
-            return settings['start']
-        else:
-            return self.stats.get(obj.id, {}).get("start")
+            return settings["start"]
+        return self.stats.get(obj.id, {}).get("start")
 
     def get_end(self, obj):
         settings = self.settings.get(obj.id)
         if settings:
-            return settings['end']
-        else:
-            return self.stats.get(obj.id, {}).get("end")
+            return settings["end"]
+        return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
         return obj.account.update_time if obj.account else None
@@ -284,27 +281,27 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
 
         fs = dict(ad_group__campaign__account=account_creation.account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            ad_network=ConcatAggregate('ad_network', distinct=True),
+            ad_network=ConcatAggregate("ad_network", distinct=True),
             average_position=Avg(
                 Case(
                     When(
                         average_position__gt=0,
-                        then=F('average_position'),
+                        then=F("average_position"),
                     ),
-                    output_field=AggrFloatField(),
+                    output_field=FloatField(),
                 )
             ),
             impressions=Sum("impressions"),
             **ads_and_placements_stats
         )
         dict_quartiles_to_rates(data)
-        del data['impressions']
+        del data["impressions"]
 
-        annotate = dict(v=Sum('cost'))
+        annotate = dict(v=Sum("cost"))
         creative = VideoCreativeStatistic.objects.filter(**fs).values(
-            "creative_id").annotate(**annotate).order_by('v')[:3]
+            "creative_id").annotate(**annotate).order_by("v")[:3]
         if creative:
-            ids = [i['creative_id'] for i in creative]
+            ids = [i["creative_id"] for i in creative]
 
             manager = VideoManager(Sections.GENERAL_DATA)
             videos = list(manager.get_or_create(ids=ids))
@@ -320,18 +317,18 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
 
         # second section
         gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+            "gender_id").order_by("gender_id").annotate(**annotate)
+        gender = [dict(name=Genders[i["gender_id"]], value=i["v"]) for i in
                   gender]
 
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+        age = [dict(name=AgeRanges[i["age_range_id"]], value=i["v"]) for i in
                age]
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
+        device = [dict(name=device_str(i["device_id"]), value=i["v"]) for i in
                   device]
         data.update(gender=gender, age=age, device=device)
 
@@ -344,27 +341,27 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
             impressions=Sum("impressions"),
         )
         if stats:
-            if any(i['views'] for i in stats):
+            if any(i["views"] for i in stats):
                 charts.append(
                     dict(
-                        label='Views',
+                        label="Views",
                         trend=[
-                            dict(label=i['date'], value=i['views'])
+                            dict(label=i["date"], value=i["views"])
                             for i in stats
                         ]
                     )
                 )
 
-            if any(i['impressions'] for i in stats):
+            if any(i["impressions"] for i in stats):
                 charts.append(
                     dict(
-                        label='Impressions',
+                        label="Impressions",
                         trend=[
-                            dict(label=i['date'], value=i['impressions'])
+                            dict(label=i["date"], value=i["impressions"])
                             for i in stats
                         ]
                     )
                 )
-        data['delivery_trend'] = charts
+        data["delivery_trend"] = charts
 
         return data

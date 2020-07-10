@@ -2,10 +2,9 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
-from cache.models import CacheItem
-from cache.constants import PRICING_TOOL_FILTERS_KEY
-
 from aw_reporting.tools.pricing_tool import PricingTool
+from cache.constants import PRICING_TOOL_FILTERS_KEY
+from cache.models import CacheItem
 
 
 class PricingToolFiltersView(RetrieveAPIView):

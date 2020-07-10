@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSerializer
-from aw_reporting.models import campaign_type_str, Campaign
+from aw_reporting.models import Campaign
+from aw_reporting.models import campaign_type_str
 from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
 

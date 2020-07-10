@@ -6,12 +6,12 @@ import datetime
 
 import django.core.validators
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 from django.utils.timezone import utc
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0009_remove_accountcreation_read_only'),
     ]
@@ -21,11 +21,16 @@ class Migration(migrations.Migration):
             name='AdCreation',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=250, validators=[django.core.validators.RegexValidator("^[^#']*$", "# and ' are not allowed for titles")])),
-                ('video_url', models.URLField(validators=[django.core.validators.RegexValidator('^(?:https?:/{2})?(?:w{3}\\.)?youtu(?:be)?\\.(?:com|be)(?:/watch\\?v=|/video/)([^\\s&]+)$', 'Wrong video url')])),
+                ('name', models.CharField(max_length=250, validators=[
+                    django.core.validators.RegexValidator("^[^#']*$", "# and ' are not allowed for titles")])),
+                ('video_url', models.URLField(validators=[django.core.validators.RegexValidator(
+                    '^(?:https?:/{2})?(?:w{3}\\.)?youtu(?:be)?\\.(?:com|be)(?:/watch\\?v=|/video/)([^\\s&]+)$',
+                    'Wrong video url')])),
                 ('display_url', models.CharField(blank=True, max_length=200, null=True)),
                 ('final_url', models.URLField(blank=True, null=True)),
-                ('tracking_template', models.CharField(max_length=250, validators=[django.core.validators.RegexValidator('(https?://\\S+)|(\\{lpurl\\}\\S*)', 'Tracking url template must ba a valid URL or start with {lpurl} tag')])),
+                ('tracking_template', models.CharField(max_length=250, validators=[
+                    django.core.validators.RegexValidator('(https?://\\S+)|(\\{lpurl\\}\\S*)',
+                                                          'Tracking url template must ba a valid URL or start with {lpurl} tag')])),
                 ('custom_params_raw', models.CharField(default='[]', max_length=250)),
             ],
             options={
@@ -91,13 +96,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='accountcreation',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, default=datetime.datetime(2017, 7, 13, 8, 47, 27, 927983, tzinfo=utc)),
+            field=models.DateTimeField(auto_now=True,
+                                       default=datetime.datetime(2017, 7, 13, 8, 47, 27, 927983, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='age_ranges_raw',
-            field=models.CharField(default='["AGE_RANGE_18_24", "AGE_RANGE_25_34", "AGE_RANGE_35_44", "AGE_RANGE_45_54", "AGE_RANGE_55_64", "AGE_RANGE_65_UP", "AGE_RANGE_UNDETERMINED"]', max_length=200),
+            field=models.CharField(
+                default='["AGE_RANGE_18_24", "AGE_RANGE_25_34", "AGE_RANGE_35_44", "AGE_RANGE_45_54", "AGE_RANGE_55_64", "AGE_RANGE_65_UP", "AGE_RANGE_UNDETERMINED"]',
+                max_length=200),
         ),
         migrations.AddField(
             model_name='campaigncreation',
@@ -112,7 +120,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='campaigncreation',
             name='delivery_method',
-            field=models.CharField(choices=[('STANDARD', 'Standard'), ('ACCELERATED', 'Accelerated')], default='STANDARD', max_length=15),
+            field=models.CharField(choices=[('STANDARD', 'Standard'), ('ACCELERATED', 'Accelerated')],
+                                   default='STANDARD', max_length=15),
         ),
         migrations.AddField(
             model_name='campaigncreation',
@@ -122,27 +131,33 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='campaigncreation',
             name='goal_type',
-            field=models.CharField(choices=[('GOAL_VIDEO_VIEWS', 'Views'), ('GOAL_IMPRESSIONS', 'Impressions')], default='GOAL_VIDEO_VIEWS', max_length=20),
+            field=models.CharField(choices=[('GOAL_VIDEO_VIEWS', 'Views'), ('GOAL_IMPRESSIONS', 'Impressions')],
+                                   default='GOAL_VIDEO_VIEWS', max_length=20),
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='parents_raw',
-            field=models.CharField(default='["PARENT_PARENT", "PARENT_NOT_A_PARENT", "PARENT_UNDETERMINED"]', max_length=100),
+            field=models.CharField(default='["PARENT_PARENT", "PARENT_NOT_A_PARENT", "PARENT_UNDETERMINED"]',
+                                   max_length=100),
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='type',
-            field=models.CharField(choices=[('VIDEO', 'Video'), ('DISPLAY', 'Display')], default='VIDEO', max_length=15),
+            field=models.CharField(choices=[('VIDEO', 'Video'), ('DISPLAY', 'Display')], default='VIDEO',
+                                   max_length=15),
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='video_ad_format',
-            field=models.CharField(choices=[('TRUE_VIEW_IN_STREAM', 'In-stream'), ('TRUE_VIEW_IN_DISPLAY', 'Discovery'), ('BUMPER', 'Bumper')], default='TRUE_VIEW_IN_STREAM', max_length=20),
+            field=models.CharField(
+                choices=[('TRUE_VIEW_IN_STREAM', 'In-stream'), ('TRUE_VIEW_IN_DISPLAY', 'Discovery'),
+                         ('BUMPER', 'Bumper')], default='TRUE_VIEW_IN_STREAM', max_length=20),
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='video_networks_raw',
-            field=models.CharField(default='["YOUTUBE_SEARCH", "YOUTUBE_VIDEO", "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"]', max_length=100),
+            field=models.CharField(
+                default='["YOUTUBE_SEARCH", "YOUTUBE_VIDEO", "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"]', max_length=100),
         ),
         migrations.AlterField(
             model_name='adgroupcreation',
@@ -162,6 +177,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='adcreation',
             name='ad_group_creation',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ad_creations', to='aw_creation.AdGroupCreation'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ad_creations',
+                                    to='aw_creation.AdGroupCreation'),
         ),
     ]

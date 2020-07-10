@@ -1,10 +1,11 @@
+# pylint: disable=cyclic-import
 import logging
 
 from django.contrib.auth import get_user_model
-from django.templatetags.static import static
 from django.db import models
 from django.db.models import Count
 from django.db.models import Q
+from django.templatetags.static import static
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.base import BaseModel
@@ -14,6 +15,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
+from aw_reporting.utils import get_dates_range
 from userprofile.managers import UserRelatedManagerMixin
 from utils.db.models.persistent_entities import DemoEntityModelMixin
 
@@ -32,14 +34,14 @@ class Category(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        return dict(id=data['value'])
+        return dict(id=data["value"])
 
 
 class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200, db_index=True)
-    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE, db_index=True)
+    parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE, db_index=True)
 
     @classmethod
     def get_data(cls, data):
@@ -82,7 +84,8 @@ class User(BaseModel):
     @property
     def photo_url(self):
         if self.photo_id:
-            return static('/'.join(('img', 'sf', self.photo_name)))
+            return static("/".join(("img", "sf", self.photo_name)))
+        return None
 
     @classmethod
     def get_data(cls, data):
@@ -129,8 +132,9 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
 
     def have_campaigns(self, user=None):
         return self.get_queryset_for_user(user=user) \
-            .annotate(campaign_count=Count("placements__adwords_campaigns"))\
+            .annotate(campaign_count=Count("placements__adwords_campaigns")) \
             .filter(campaign_count__gt=0)
+
 
 class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
@@ -247,11 +251,13 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     def cpv(self):
         if self.video_views is not None and self.cpv_cost is not None:
             return self.cpv_cost / self.video_views
+        return None
 
     @property
     def cpm(self):
         if self.impressions is not None and self.cpm_cost is not None:
             return self.cpm_cost / self.impressions
+        return None
 
     @property
     def views(self):
@@ -288,8 +294,8 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     def get_data(cls, data):
         Fields = SalesforceFields.Opportunity.map_object()
         rate_type = data.get(Fields.RATE_TYPE) or data.get(Fields.COST_METHOD)
-        if rate_type and 'CPM' in rate_type:
-            if 'CPV' in rate_type:
+        if rate_type and "CPM" in rate_type:
+            if "CPV" in rate_type:
                 goal_type_id = SalesForceGoalType.CPM_AND_CPV
             else:
                 goal_type_id = SalesForceGoalType.CPM
@@ -343,7 +349,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             ad_ops_qa_manager_id=data.get(Fields.AD_OPS_QA_MANAGER_ID),
             cannot_roll_over=data[Fields.CANNOT_ROLL_OVER],
             probability=data[Fields.PROBABILITY],
-            create_date=data[Fields.CREATE_DATE].split('T')[0]
+            create_date=data[Fields.CREATE_DATE].split("T")[0]
             if data[Fields.CREATE_DATE] else None,
             close_date=data[Fields.CLOSE_DATE],
             renewal_approved=data[Fields.RENEWAL_APPROVED],
@@ -360,21 +366,21 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
         )
         if sales_email:
-            res['sales_email'] = sales_email
+            res["sales_email"] = sales_email
         if ad_ops_email:
-            res['ad_ops_email'] = ad_ops_email
+            res["ad_ops_email"] = ad_ops_email
         if am_email:
-            res['am_email'] = am_email
+            res["am_email"] = am_email
         return res
 
     class Meta:
-        ordering = ('-start',)
+        ordering = ("-start",)
 
 
 class OpPlacement(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE, db_index=True)
+    opportunity = models.ForeignKey(Opportunity, related_name="placements", on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=100)
     goal_type_id = models.SmallIntegerField(null=True, db_index=True)
     ordered_units = models.IntegerField(null=True)
@@ -423,9 +429,9 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
         if cost_method:
             if cost_method in SalesForceGoalTypes:
                 goal_type_id = SalesForceGoalTypes.index(cost_method)
-            elif 'CPV' in cost_method:
+            elif "CPV" in cost_method:
                 goal_type_id = SalesForceGoalType.CPV
-            elif 'CPM' in cost_method:
+            elif "CPM" in cost_method:
                 goal_type_id = SalesForceGoalType.CPM
 
         res = dict(
@@ -450,23 +456,25 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
         return res
 
     class Meta:
-        ordering = ('name',)
+        ordering = ("name",)
 
     @property
     def video_views(self):
         if self.goal_type_id == SalesForceGoalType.CPV:
             return self.ordered_units
+        return None
 
     @property
     def impressions(self):
         if self.goal_type_id == SalesForceGoalType.CPM:
             return self.ordered_units
+        return None
 
 
 class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE, db_index=True)
+    placement = models.ForeignKey(OpPlacement, related_name="flights", on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=100, db_index=True)
 
     start = models.DateField(null=True, db_index=True)
@@ -474,6 +482,8 @@ class Flight(BaseModel, DemoEntityModelMixin):
     month = models.SmallIntegerField(null=True)
 
     cost = models.FloatField(null=True, db_index=True)
+    cost_currency = models.FloatField(null=True, db_index=True)
+    different_spending_currency = models.BooleanField(default=False)
     delivered = models.IntegerField(null=True, db_index=True)
 
     ordered_cost = models.FloatField(null=True, db_index=True)
@@ -485,7 +495,7 @@ class Flight(BaseModel, DemoEntityModelMixin):
     pacing = models.FloatField(null=True)
 
     class Meta:
-        ordering = ('start',)
+        ordering = ("start",)
 
     def __str__(self):
         return "%s" % self.name
@@ -509,16 +519,17 @@ class Flight(BaseModel, DemoEntityModelMixin):
 
     @property
     def delivered_cost(self):
-        return self.stats['cost']
+        return self.stats["cost"]
 
     @property
     def delivered_units(self):
         goal_type_id = self.placement.goal_type_id
 
         if goal_type_id == SalesForceGoalType.CPM:
-            return self.stats['impressions']
-        elif goal_type_id == SalesForceGoalType.CPV:
-            return self.stats['video_views']
+            return self.stats["impressions"]
+        if goal_type_id == SalesForceGoalType.CPV:
+            return self.stats["video_views"]
+        return None
 
     @classmethod
     def get_data(cls, data):
@@ -532,6 +543,8 @@ class Flight(BaseModel, DemoEntityModelMixin):
             month=data[Fields.MONTH],
 
             cost=data[Fields.COST],
+            cost_currency=data[Fields.COST_CURRENCY],
+            different_spending_currency=data[Fields.DIFFERENT_SPENDING_CURRENCY],
             total_cost=data[Fields.TOTAL_COST],
             delivered=data[Fields.DELIVERED],
 
@@ -556,15 +569,15 @@ class FlightStatistic(BaseModel):
 
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE, db_index=True)
+    owner = models.ForeignKey(User, related_name="activities", on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=10, db_index=True)
     date = models.DateField()
 
     opportunity = models.ForeignKey(
-        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
+        Opportunity, related_name="activities", null=True, on_delete=models.CASCADE, db_index=True)
     account = models.ForeignKey(
-        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
+        SFAccount, related_name="activities", null=True, on_delete=models.CASCADE, db_index=True)
 
     EMAIL_TYPE = "email"
     MEETING_TYPE = "meeting"
@@ -580,10 +593,61 @@ class Activity(BaseModel):
             type=data["type"],
             date=data[Fields.DATE],
             opportunity_id=item_id
-            if item_id and item_id.startswith('006') else None,
+            if item_id and item_id.startswith("006") else None,
             account_id=data[Fields.ACCOUNT_ID],
         )
         return res
+
+
+class FlightPacingAllocation(models.Model):
+    flight = models.ForeignKey(Flight, related_name="allocations", on_delete=models.CASCADE)
+    date = models.DateField(db_index=True)
+    allocation = models.FloatField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["flight", "date"], name="unique_goal")
+        ]
+
+    @staticmethod
+    def get_allocations(flight_id):
+        """
+        Retrieve all related FlightPacingAllocations for flight
+        Dynamically will create any missing dates as Flight duration may change erratically from Salesforce updates
+        :param flight_id:
+        :return:
+        """
+        flight = Flight.objects.get(id=flight_id)
+        goal_mapping = {
+            plan.date: plan for plan in FlightPacingAllocation.objects.filter(flight_id=flight_id)
+        }
+        # If flight does not have any pacing allocations, each date should use 100% of target
+        if not goal_mapping:
+            default_allocation = 100
+        else:
+            # Flight dates were modified, set any new allocations to 0
+            default_allocation = 0
+        to_create = {}
+        for date in get_dates_range(flight.start, flight.end):
+            try:
+                goal_mapping[date]
+            except KeyError:
+                to_create[date] = FlightPacingAllocation(flight_id=flight_id, date=date, allocation=default_allocation)
+
+        FlightPacingAllocation.objects.bulk_create(to_create.values())
+        goal_mapping.update(to_create)
+        return goal_mapping
+
+
+class Alert(models.Model):
+    record_id = models.CharField(max_length=20, db_index=True)
+    code = models.IntegerField(db_index=True)
+    message = models.TextField(null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["record_id", "code"], name="unique_alert")
+        ]
 
 
 init_signals()

@@ -3,14 +3,17 @@ from copy import deepcopy
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from cache.constants import KEYWORD_AGGREGATIONS_KEY
+from cache.models import CacheItem
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
-from keywords.constants import TERMS_FILTER
-from keywords.constants import RANGE_FILTER
-from keywords.constants import MATCH_PHRASE_FILTER
 from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
+from keywords.constants import MATCH_PHRASE_FILTER
+from keywords.constants import RANGE_FILTER
+from keywords.constants import TERMS_FILTER
 from keywords.utils import KeywordViralParamAdapter
+from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -18,10 +21,6 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
-from cache.models import CacheItem
-from cache.constants import KEYWORD_AGGREGATIONS_KEY
-from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 
 
 class KeywordListApiView(APIViewMixin, ListAPIView):
@@ -69,7 +68,9 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     try:
         cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
         cached_aggregations = cached_aggregations_object.value
+    # pylint: disable=broad-except
     except Exception as e:
+        # pylint: enable=broad-except
         cached_aggregations = None
 
     def get_queryset(self):
@@ -82,7 +83,9 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
             keyword_ids = list(channel.general_data.video_tags)
 
             if keyword_ids:
+                # pylint: disable=protected-access
                 self.request.query_params._mutable = True
+                # pylint: enable=protected-access
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 

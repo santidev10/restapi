@@ -6,8 +6,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from userprofile.api.serializers import UserSerializer as RegularUserSerializer
-from userprofile.models import UserProfile
 from userprofile.models import UserDeviceToken
+from userprofile.models import UserProfile
 
 
 class AuthAsAUserAdminApiView(APIView):

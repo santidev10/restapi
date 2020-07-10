@@ -3,7 +3,9 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from django.db.models import F, OuterRef, Subquery
+from django.db.models import F
+from django.db.models import OuterRef
+from django.db.models import Subquery
 
 from aw_reporting.google_ads.utils import extract_placement_code
 
@@ -39,7 +41,7 @@ def _fix_links(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('aw_reporting', '0034_auto_20180518_1338'),
+        ("aw_reporting", "0034_auto_20180518_1338"),
     ]
 
     operations = [

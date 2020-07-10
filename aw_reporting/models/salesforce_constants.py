@@ -131,6 +131,8 @@ class SalesforceFields:
 
     class Flight(Enum):
         COST = "Total_Flight_Cost__c"
+        COST_CURRENCY = "Our_Cost_currency_change__c"
+        DIFFERENT_SPENDING_CURRENCY = "Different_Spending_Currency__c"
         DELIVERED = "Delivered_Ad_Ops__c"
         END = "Flight_End_Date__c"
         ID = "Id"
@@ -150,3 +152,12 @@ class SalesforceFields:
         ITEM_ID = "WhatId"
         NAME = "Subject"
         OWNER_ID = "OwnerId"
+
+
+class PlacementAlert(Enum):
+    ORDERED_UNITS_CHANGED = 0
+
+
+class FlightAlert(Enum):
+    DATES_CHANGED = 0
+

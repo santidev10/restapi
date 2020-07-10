@@ -22,4 +22,3 @@ class BadVideoCategory:
 
 
 ALL_BAD_VIDEO_CATEGORIES = get_all_class_constants(BadVideoCategory)
-

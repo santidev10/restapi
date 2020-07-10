@@ -1,7 +1,7 @@
 import logging
 
-from elasticsearch.exceptions import NotFoundError
 from django.http import Http404
+from elasticsearch.exceptions import NotFoundError
 from rest_framework.generics import RetrieveAPIView
 
 from es_components.constants import Sections
@@ -24,11 +24,11 @@ class KeywordRetrieveUpdateApiView(RetrieveAPIView):
 
     def get_object(self):
         keyword = self.kwargs.get("pk")
-        logging.info("keyword id {}".format(keyword))
+        logging.info("keyword id %s", keyword)
         sections = (Sections.MAIN, Sections.STATS,)
 
         try:
-            return ESRetrieveAdapter(KeywordManager(sections))\
+            return ESRetrieveAdapter(KeywordManager(sections)) \
                 .id(keyword).fields().get_data()
         except NotFoundError:
             raise Http404

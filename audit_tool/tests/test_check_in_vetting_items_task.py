@@ -7,10 +7,10 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
-from audit_tool.tasks.check_in_vetting_items import check_in_vetting_items
 from audit_tool.tasks.check_in_vetting_items import CHECKOUT_THRESHOLD
-from utils.unittests.test_case import ExtendedAPITestCase
+from audit_tool.tasks.check_in_vetting_items import check_in_vetting_items
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
@@ -21,10 +21,10 @@ class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
         channel_audit = AuditProcessor.objects.create(source=1, audit_type=2)
         video_vets = []
         channel_vets = []
-        for i in range(3):
+        for _ in range(3):
             audit_item = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
             video_vets.append(AuditVideoVet(audit=video_audit, video=audit_item, checked_out_at=before))
-        for i in range(3):
+        for _ in range(3):
             audit_item = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
             channel_vets.append(AuditChannelVet(audit=channel_audit, channel=audit_item, checked_out_at=after))
         AuditVideoVet.objects.bulk_create(video_vets)
@@ -44,10 +44,10 @@ class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
         channel_audit = AuditProcessor.objects.create(source=1, audit_type=2)
         video_vets = []
         channel_vets = []
-        for i in range(3):
+        for _ in range(3):
             audit_item = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
             video_vets.append(AuditVideoVet(audit=video_audit, video=audit_item, checked_out_at=before))
-        for i in range(3):
+        for _ in range(3):
             audit_item = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
             channel_vets.append(AuditChannelVet(audit=channel_audit, channel=audit_item, checked_out_at=before))
         AuditVideoVet.objects.bulk_create(video_vets)

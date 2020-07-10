@@ -1,6 +1,8 @@
 import operator
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.serializers.custom_segment_serializer import CustomSegmentWithoutDownloadUrlSerializer
 from segment.api.serializers.persistent_segment_serializer import PersistentSegmentSerializer

@@ -1,7 +1,7 @@
 from django.db.models import Sum
 
-from aw_reporting.tools.trends_tool.base_filters import BaseTrackFiltersList
 from aw_reporting.models import Account
+from aw_reporting.tools.trends_tool.base_filters import BaseTrackFiltersList
 
 
 class TrackFiltersList(BaseTrackFiltersList):

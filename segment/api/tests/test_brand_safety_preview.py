@@ -1,10 +1,10 @@
+import uuid
 from time import sleep
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
-import uuid
 
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -15,8 +15,8 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
@@ -27,7 +27,7 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
                        kwargs=dict(segment_type=segment_type, pk=pk))
 
     @staticmethod
-    def get_mock_data(count, data_type, uuid):
+    def get_mock_data(count, data_type, segment_uuid):
         if data_type == "video":
             model = Video
             stats_field = "views"
@@ -45,7 +45,7 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
                     "overall_score": value
                 },
                 "segments": {
-                    "uuid": [uuid]
+                    "uuid": [segment_uuid]
                 },
                 "stats": {
                     stats_field: value

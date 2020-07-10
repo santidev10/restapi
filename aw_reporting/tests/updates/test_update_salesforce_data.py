@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from contextlib import contextmanager
 from datetime import date
 from datetime import timedelta
@@ -18,9 +19,11 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection
@@ -29,6 +32,7 @@ from aw_reporting.update.update_salesforce_data import update_salesforce_data
 from email_reports.reports.base import BaseEmailReport
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
+from utils.unittests.str_iterator import str_iterator
 
 
 class UpdateSalesforceDataTestCase(TransactionTestCase):
@@ -992,17 +996,47 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data(do_delete=True, do_get=False, do_update=False)
 
         self.assertFalse(Opportunity.objects.filter(id=opp_1.id).exists())
-        self.assertFalse(OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
-        self.assertFalse(Flight.objects.filter(id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
+        self.assertFalse(
+            OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
+        self.assertFalse(Flight.objects.filter(
+            id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
 
         self.assertTrue(Opportunity.objects.filter(id__in=[opp_2.id, opp_3.id]).exists())
         self.assertTrue(OpPlacement.objects.filter(id__in=[placement_2_a.id, placement_3.id]).exists())
         self.assertTrue(Flight.objects.filter(id__in=[flight_2_a.id, flight_3_a.id]).exists())
 
+    def test_new_parent(self):
+        """ FK constraint error
+        https://channelfactory.atlassian.net/browse/VIQ2-326
+        """
+        account = SFAccount.objects.create(id=next(str_iterator), name="Test Acc", parent=None)
+        parent_id = next(str_iterator)
+        parent2_id = next(str_iterator)
+        sf_mock = MockSalesforceConnection()
+        Fields = SalesforceFields.SFAccount.map_object()
+        sf_mock.add_mocked_items("Account", [
+            {Fields.ID: account.id, Fields.PARENT_ID: parent_id, Fields.NAME: account.name},
+            {Fields.ID: parent_id, Fields.PARENT_ID: parent2_id, Fields.NAME: "Parent lvl 1"},
+            {Fields.ID: parent2_id, Fields.PARENT_ID: None, Fields.NAME: "Parent lvl 2"}
+        ])
+
+        with patch_salesforce_connector(return_value=sf_mock):
+            update_salesforce_data(do_delete=False, do_get=True, do_update=False)
+
+        account.refresh_from_db()
+        parent = SFAccount.objects.get(id=parent_id)
+        parent2 = SFAccount.objects.get(id=parent2_id)
+        self.assertEqual(account.parent_id, parent.id)
+        self.assertEqual(parent.parent_id, parent2.id)
+        self.assertIsNone(parent2.parent_id)
+
 
 class MockSalesforceConnection(Connection):
+    # pylint: disable=super-init-not-called
     def __init__(self):
         self._storage = dict()
+
+    # pylint: enable=super-init-not-called
 
     def add_mocked_items(self, name, items):
         self._storage[name] = self._storage.get(name, []) + items
@@ -1011,7 +1045,7 @@ class MockSalesforceConnection(Connection):
         for item in self._storage.get(name, []):
             yield item
 
-    def describe(self, *_):
+    def describe(self, name=None):
         return {
             "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]
         }
@@ -1077,6 +1111,8 @@ def flight_data(**kwargs):
         Flight_End_Date__c=None,
         Flight_Month__c=None,
         Total_Flight_Cost__c=0,
+        Our_Cost_currency_change__c=0,
+        Different_Spending_Currency__c=False,
         Flight_Value__c=0,
         Delivered_Ad_Ops__c=None,
         Ordered_Amount__c=0,

@@ -21,7 +21,6 @@ from userprofile.api.urls.names import UserprofilePathName
 from userprofile.models import UserDeviceToken
 from utils.unittests.reverse import reverse
 
-
 CUSTOM_AUTH_FLAGS = {
     "test.user@testuser.com": {
         "hide_brand_name": True,
@@ -205,8 +204,8 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_user_enumeration_protection(self):
-        email = 'test_user@email.com'
-        password = 'Test_password123!'
+        email = "test_user@email.com"
+        password = "Test_password123!"
         error_message = "That username / password is not valid."
         user = get_user_model().objects.create(email=email)
         user.set_password(password)
@@ -215,24 +214,24 @@ class AuthAPITestCase(AwReportingAPITestCase):
         bad_email_response = self.client.post(
             self._url,
             data=json.dumps({
-                'username': 'a' + email,
-                'password': password,
+                "username": "a" + email,
+                "password": password,
             }),
-            content_type='application/json'
+            content_type="application/json"
         )
         self.assertEqual(bad_email_response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(bad_email_response.data['message'], error_message)
+        self.assertEqual(bad_email_response.data["message"], error_message)
 
         bad_pass_response = self.client.post(
             self._url,
             data=json.dumps({
-                'username': email,
-                'password': 'a' + password,
+                "username": email,
+                "password": "a" + password,
             }),
-            content_type='application/json'
+            content_type="application/json"
         )
         self.assertEqual(bad_pass_response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(bad_pass_response.data['message'], error_message)
+        self.assertEqual(bad_pass_response.data["message"], error_message)
 
     def test_logout_unauthenticated_fail(self):
         response = self.client.delete(self._url)

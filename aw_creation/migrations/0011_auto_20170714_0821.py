@@ -5,12 +5,12 @@ from __future__ import unicode_literals
 import datetime
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 from django.utils.timezone import utc
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0010_auto_20170713_0847'),
     ]
@@ -37,42 +37,49 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='adcreation',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=datetime.datetime(2017, 7, 14, 8, 20, 54, 326745, tzinfo=utc)),
+            field=models.DateTimeField(auto_now_add=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 20, 54, 326745, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='adcreation',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, default=datetime.datetime(2017, 7, 14, 8, 21, 2, 825658, tzinfo=utc)),
+            field=models.DateTimeField(auto_now=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 21, 2, 825658, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='adgroupcreation',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=datetime.datetime(2017, 7, 14, 8, 21, 13, 591985, tzinfo=utc)),
+            field=models.DateTimeField(auto_now_add=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 21, 13, 591985, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='adgroupcreation',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, default=datetime.datetime(2017, 7, 14, 8, 21, 21, 295700, tzinfo=utc)),
+            field=models.DateTimeField(auto_now=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 21, 21, 295700, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=datetime.datetime(2017, 7, 14, 8, 21, 36, 5615, tzinfo=utc)),
+            field=models.DateTimeField(auto_now_add=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 21, 36, 5615, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='campaigncreation',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, default=datetime.datetime(2017, 7, 14, 8, 21, 38, 400002, tzinfo=utc)),
+            field=models.DateTimeField(auto_now=True,
+                                       default=datetime.datetime(2017, 7, 14, 8, 21, 38, 400002, tzinfo=utc)),
             preserve_default=False,
         ),
         migrations.AlterField(
             model_name='accountcreation',
             name='account',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='account_creations', to='aw_reporting.Account'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='account_creations', to='aw_reporting.Account'),
         ),
     ]

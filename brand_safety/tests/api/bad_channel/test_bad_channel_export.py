@@ -1,5 +1,3 @@
-import csv
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -103,5 +101,5 @@ class BadChannelExportTestCase(ExtendedAPITestCase):
             "Thumbnail URL",
             "Reason",
         ])
-        data = [row for row in csv_data]
+        data = list(csv_data)
         self.assertEqual(len(data), 0)

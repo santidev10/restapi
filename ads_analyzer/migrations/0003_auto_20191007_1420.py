@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('ads_analyzer', '0002_opportunitytargetingreport_created_at'),
     ]

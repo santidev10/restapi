@@ -3,11 +3,11 @@
 from __future__ import unicode_literals
 
 import django.core.validators
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_creation', '0004_auto_20170522_1447'),
     ]

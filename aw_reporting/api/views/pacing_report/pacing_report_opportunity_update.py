@@ -17,7 +17,7 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
         response = super(PacingReportOpportunityUpdateApiView, self).update(
             request, *args, **kwargs)
         if response.status_code == HTTP_200_OK:
-            response.data['thumbnail'] = None
+            response.data["thumbnail"] = None
             ad_ops = self.get_object().ad_ops_manager
             if ad_ops:
                 profile_images = get_user_model().objects.filter(
@@ -26,5 +26,5 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
                 ).exclude(profile_image_url="").values_list(
                     "profile_image_url", flat=True)
                 if profile_images:
-                    response.data['thumbnail'] = profile_images[0]
+                    response.data["thumbnail"] = profile_images[0]
         return response

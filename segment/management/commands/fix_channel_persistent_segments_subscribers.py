@@ -1,11 +1,11 @@
-from django.core.management.base import BaseCommand
 import logging
+
+from django.core.management.base import BaseCommand
 
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from utils.utils import chunks_generator
-from utils.youtube_api import YoutubeAPIConnector
 from utils.utils import convert_subscriber_count
-
+from utils.youtube_api import YoutubeAPIConnector
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         youtube = YoutubeAPIConnector()
 
-        channel_ids = PersistentSegmentRelatedChannel.objects\
-            .filter(details__subscribers__isnull=True)\
-            .values_list("related_id", flat=True)\
+        channel_ids = PersistentSegmentRelatedChannel.objects \
+            .filter(details__subscribers__isnull=True) \
+            .values_list("related_id", flat=True) \
             .distinct()
 
         page_size = 50
@@ -31,19 +31,20 @@ class Command(BaseCommand):
             processed_channels += page_size
             resolved_channels += len(subscribers_info)
 
-            logging.info("processed_channels={}/{},  resolved={}"
-                         .format(processed_channels, total_channels, resolved_channels))
+            logging.info("processed_channels=%s/%s,  resolved=%s",
+                         processed_channels, total_channels, resolved_channels)
 
     @staticmethod
     def get_subscribers(youtube, channel_ids):
         response = youtube.obtain_channels(channels_ids=",".join(channel_ids), part="statistics")
         items = response.get("items", [])
-        info = [(item.get("id", None), convert_subscriber_count(item.get("statistics", {}).get("subscriberCount", 0))) for item in items]
+        info = [(item.get("id", None), convert_subscriber_count(item.get("statistics", {}).get("subscriberCount", 0)))
+                for item in items]
         return info
 
     @staticmethod
     def update_channel_subscribers(channel_id, subscribers):
-        queryset = PersistentSegmentRelatedChannel.objects\
+        queryset = PersistentSegmentRelatedChannel.objects \
             .filter(details__subscribers__isnull=True, related_id=channel_id)
         for channel in queryset:
             if not channel.details:

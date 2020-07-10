@@ -1,23 +1,27 @@
-from collections import defaultdict
 import logging
 import os
 import tempfile
+from collections import defaultdict
 
 from django.conf import settings
 
 from es_components.constants import Sections
-from segment.utils.bulk_search import bulk_search
-from segment.models.constants import SourceListType
 from segment.models import CustomSegmentSourceFileUpload
+from segment.models.constants import SourceListType
+from segment.utils.bulk_search import bulk_search
 from segment.utils.generate_segment_utils import GenerateSegmentUtils
+from es_components.query_builder import QueryBuilder
+from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
+SOURCE_SIZE_GET_LIMIT = 10000
 MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-nested-blocks,too-many-statements
 def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
     """
     Helper method to create segments
@@ -36,40 +40,53 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     context = generate_utils.get_default_serialization_context()
     source_list = None
     source_type = None
+    # pylint: disable=broad-except
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
     except CustomSegmentSourceFileUpload.DoesNotExist:
         pass
     except Exception:
-        logger.exception(f"Error trying to retrieve source list for "
-                         f"segment: {segment.title}, segment_type: {segment.segment_type}")
+        logger.exception("Error trying to retrieve source list for "
+                         "segment: %s, segment_type: %s", segment.title, segment.segment_type)
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-
         default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
+        # a batch may be empty since we check set membership for the current bulk_search batch in the source list
+        write_header = True
         if options is None:
             options = default_search_config["options"]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
-                                     options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
-                if source_list:
-                    if source_type == SourceListType.INCLUSION.value:
-                        batch = [item for item in batch if item.main.id in source_list]
-                    else:
-                        batch = [item for item in batch if item.main.id not in source_list]
+            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
+                ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
+                full_query = Q(query) + ids_query
+                es_generator = segment.es_manager.search(query=full_query.to_dict())
+                es_generator = [es_generator.execute().hits]
+                # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
+            else:
+                bulk_search_kwargs = dict(
+                    options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True
+                )
+                es_generator = bulk_search_with_source_generator(
+                    source_list, source_type,
+                    segment.es_manager.model, query, sort, default_search_config["cursor_field"],
+                    **bulk_search_kwargs)
+            for batch in es_generator:
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                generate_utils.write_to_file(batch, filename, segment, context, aggregations, write_header=seen == 0)
+                generate_utils.write_to_file(batch, filename, segment, context, aggregations,
+                                             write_header=write_header is True)
                 generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
                 seen += len(batch_item_ids)
+                write_header = False
                 if seen >= size:
                     raise MaxItemsException
         except MaxItemsException:
@@ -92,11 +109,31 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         }
         return results
 
-    except Exception:
-        raise
-
     finally:
         os.remove(filename)
+# pylint: enable=too-many-nested-blocks,too-many-statements
+
+
+def bulk_search_with_source_generator(source_list, source_type, model, query, sort, cursor_field, **bulk_search_kwargs):
+    """
+    Wrapper to check source list for each batch in bulk search generator
+    :param source_list: iter: Source list upload
+    :param source_type: int
+    :param model: es_components.models.Model
+    :param query: ES Q object
+    :param sort: str
+    :param cursor_field: str
+    :param bulk_search_kwargs:
+    :return:
+    """
+    bulk_search_generator = bulk_search(model, query, sort, cursor_field, **bulk_search_kwargs)
+    for batch in bulk_search_generator:
+        if source_list:
+            if source_type == SourceListType.INCLUSION.value:
+                batch = [item for item in batch if item.main.id in source_list]
+            else:
+                batch = [item for item in batch if item.main.id not in source_list]
+        yield batch
 
 
 class MaxItemsException(Exception):

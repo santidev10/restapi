@@ -27,7 +27,10 @@ class KeywordAWStatsApiView(APIView):
 
 
 def get_aw_stats(keywords):
-    from aw_reporting.models import dict_norm_base_stats, dict_add_calculated_stats
+    # pylint: disable=import-outside-toplevel
+    from aw_reporting.models import dict_norm_base_stats
+    from aw_reporting.models import dict_add_calculated_stats
+    # pylint: enable=import-outside-toplevel
 
     stats = get_keywords_aw_stats(keywords)
     top_bottom_stats = get_keywords_aw_top_bottom_stats(keywords)
@@ -37,7 +40,7 @@ def get_aw_stats(keywords):
         if item_stats:
             dict_norm_base_stats(item_stats)
             dict_add_calculated_stats(item_stats)
-            del item_stats['keyword']
+            del item_stats["keyword"]
 
             item_top_bottom_stats = top_bottom_stats.get(keyword, {})
             item_stats.update(**item_top_bottom_stats)

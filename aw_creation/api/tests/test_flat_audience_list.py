@@ -1,5 +1,5 @@
-from django.urls import reverse
 from django.http import QueryDict
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name

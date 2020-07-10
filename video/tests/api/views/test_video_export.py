@@ -1,5 +1,4 @@
 from datetime import datetime
-from math import floor
 from unittest import mock
 
 import pytz
@@ -7,6 +6,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+import brand_safety.constants as constants
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from es_components.models import Video
@@ -16,11 +16,9 @@ from saas.urls.namespaces import Namespace
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
-from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 from video.api.urls.names import Name
-
-import brand_safety.constants as constants
 
 EXPECT_MESSSAGE = "File is in queue for preparing. After it is finished exporting, " \
                   "you will receive message via email."
@@ -175,7 +173,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
         expected_values = ["" for _ in range(len(values))]
-        expected_values[1] = "[]"
+        expected_values[1] = ""
         self.assertEqual(
             expected_values,
             values
@@ -223,7 +221,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
@@ -265,6 +262,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "title",
             "url",
             "iab_categories",
+            "language",
             "views",
             "monthly_views",
             "weekly_views",
@@ -344,5 +342,5 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[11])
-        self.assertEqual(5, int(rows[0][11]))
-        self.assertEqual(8, int(rows[1][11]))
+        self.assertEqual(5, int(rows[0][12]))
+        self.assertEqual(8, int(rows[1][12]))

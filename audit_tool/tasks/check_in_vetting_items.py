@@ -8,7 +8,6 @@ from saas import celery_app
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
-
 CHECKOUT_THRESHOLD = 10
 LOCK_NAME = "audit_tool.check_in_vetting_items"
 
@@ -29,4 +28,3 @@ def check_in_vetting_items():
     threshold = timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD)
     AuditChannelVet.objects.filter(checked_out_at__lt=threshold).update(checked_out_at=None)
     AuditVideoVet.objects.filter(checked_out_at__lt=threshold).update(checked_out_at=None)
-
