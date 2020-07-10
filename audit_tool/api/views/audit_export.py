@@ -528,6 +528,7 @@ class AuditExportApiView(APIView):
             "Inclusion Words (video)",
             "Brand Safety Score",
             "Monetised",
+            "Sentiment",
             "Error",
         ]
         try:
@@ -651,6 +652,12 @@ class AuditExportApiView(APIView):
             except Exception:
             # pylint: enable=broad-except
                 primary_video_language = ""
+            try:
+                sentiment = v.likes / v.likes + v.dislikes * 1.0
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                sentiment = ""
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + channel.channel_id,
@@ -680,6 +687,7 @@ class AuditExportApiView(APIView):
                     channel.channel_id) else "",
                 mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
+                sentiment,
                 error_str,
             ]
             try:
