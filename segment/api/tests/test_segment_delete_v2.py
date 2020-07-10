@@ -24,22 +24,13 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
 
-    def test_not_found_admin(self):
+    def test_not_found(self):
         self.create_admin_user()
         CustomSegment.objects.create(id=1, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
         response = self.client.delete(
             self._get_url("video") + "2/"
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-
-    def test_not_found_user(self):
-        self.create_test_user()
-        CustomSegment.objects.create(id=1, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
-        response = self.client.delete(
-            self._get_url("video") + "2/"
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.text, "Custom Segment with id 2 does not exist.")
 
     def test_forbidden(self):
         user = self.create_test_user()
