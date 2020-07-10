@@ -3,7 +3,6 @@ from datetime import datetime
 
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
-from rest_framework.status import HTTP_404_NOT_FOUND
 
 import brand_safety.constants as constants
 from segment.models import CustomSegment
