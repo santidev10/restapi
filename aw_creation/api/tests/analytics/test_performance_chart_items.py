@@ -34,6 +34,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_demo_data import recreate_test_demo_data
@@ -44,7 +45,7 @@ from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
+class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id, dimension):
         return reverse(Name.Analytics.PERFORMANCE_CHART_ITEMS, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
                        args=(account_creation_id, dimension))

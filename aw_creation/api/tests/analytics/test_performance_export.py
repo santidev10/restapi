@@ -38,6 +38,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_demo_data import recreate_test_demo_data
@@ -47,7 +48,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.xlsx import get_sheet_from_response
 
 
-class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
+class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id):
         return reverse(Name.Analytics.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
                        args=(account_creation_id,))
