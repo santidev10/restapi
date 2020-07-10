@@ -3,7 +3,7 @@ TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_da
                 "analytics.verified", "main.id", "general_data.iab_categories", "custom_properties.is_tracked",
                 "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender")
 
-MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
 RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
                 "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm",

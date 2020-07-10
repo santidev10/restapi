@@ -829,9 +829,10 @@ class PacingReport:
             dynamic_placement = f["placement__dynamic_placement"]
             flight = dict(
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],
-                plan_cost=f["total_cost"], margin=None, pacing=None,
+                plan_cost=f["total_cost"], margin=None, pacing=None, delivery=f["delivery"],
                 dynamic_placement=dynamic_placement,
-                tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"]
+                tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"],
+                plan_units=f["plan_units"]
             )
             f_data = [f]
 
@@ -1541,10 +1542,13 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
+            try:
+                margin = 1 - goal_spend / actual_spend
+            except ZeroDivisionError:
+                margin = 0
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
-            actual_units = 0
-            actual_spend = 0
+            actual_units = actual_spend = margin = 0
         if date == today:
             # Do not add today's recommendations to chart, provide separate keys for today's values
             today_goal_units = goal_units
@@ -1559,12 +1563,23 @@ def get_flight_historical_pacing_chart(flight_data):
             label=date,
             goal=goal_spend,
             actual=actual_spend,
+            margin=margin,
         ))
+    try:
+        today_goal_units_percent = plan_units / today_goal_units * 100
+    except (TypeError, ZeroDivisionError):
+        today_goal_units_percent = None
+    try:
+        today_goal_spend_percent = projected_budget / today_goal_spend * 100
+    except (TypeError, ZeroDivisionError):
+        today_goal_spend_percent = None
     data = dict(
         historical_units_chart=historical_units_chart,
         historical_spend_chart=historical_spend_chart,
         today_goal_units=today_goal_units,
+        today_goal_units_percent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
+        today_goal_spend_percent=today_goal_spend_percent,
     )
     return data
 
