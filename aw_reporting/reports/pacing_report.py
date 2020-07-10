@@ -1542,10 +1542,10 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
+            margin = 1 - goal_spend / actual_spend
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
-            actual_units = 0
-            actual_spend = 0
+            actual_units = actual_spend = margin = 0
         if date == today:
             # Do not add today's recommendations to chart, provide separate keys for today's values
             today_goal_units = goal_units
@@ -1560,6 +1560,7 @@ def get_flight_historical_pacing_chart(flight_data):
             label=date,
             goal=goal_spend,
             actual=actual_spend,
+            margin=margin,
         ))
     try:
         today_goal_units_percent = plan_units / today_goal_units * 100
