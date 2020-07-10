@@ -1029,6 +1029,15 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(account.parent_id, parent.id)
         self.assertEqual(parent.parent_id, parent2.id)
         self.assertIsNone(parent2.parent_id)
+    
+    def test_update_with_opportunities_settings(self):
+        TEST_OP = "test_op"
+        sf_mock = MockSalesforceConnection()
+        with override_settings(SF_OPPORTUNITIES_UPDATE=[TEST_OP]), \
+                patch_salesforce_connector(return_value=sf_mock), \
+                patch("aw_reporting.update.update_salesforce_data.perform_update") as mock_update:
+            update_salesforce_data(do_get=False, do_delete=False)
+        self.assertEqual(mock_update.call_args[1]["opportunity_ids"], [TEST_OP])
 
 
 class MockSalesforceConnection(Connection):

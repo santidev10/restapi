@@ -41,7 +41,7 @@ class IsTrackedParamsAdapter:
     def adapt(self, query_params):
         parameter = query_params.get(self.parameter_name)
         if parameter == "Tracked Channels":
-            query_params[self.parameter_name] = True
+            query_params[self.parameter_name] = [True]
         return query_params
 
 

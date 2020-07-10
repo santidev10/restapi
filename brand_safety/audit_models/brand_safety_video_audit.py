@@ -19,7 +19,7 @@ class BrandSafetyVideoAudit(object):
         self.language_processors = audit_utils.bad_word_processors_by_language
         self._set_metadata(data)
         self.blacklist_data = blacklist_data or {}
-        self.is_vetted = data["is_vetted"]
+        self.is_vetted = data.get("is_vetted")
 
     @property
     def pk(self):

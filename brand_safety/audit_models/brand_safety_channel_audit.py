@@ -28,7 +28,7 @@ class BrandSafetyChannelAudit(object):
         self.language_processors = audit_utils.bad_word_processors_by_language
         self._set_metadata(channel_data)
         self.blacklist_data = blacklist_data
-        self.is_vetted = channel_data["is_vetted"]
+        self.is_vetted = channel_data.get("is_vetted")
 
     @property
     def pk(self):
