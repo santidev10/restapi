@@ -14,6 +14,8 @@ from segment.api.urls.names import Name
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from userprofile.permissions import Permissions
+from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -287,3 +289,20 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+
+    def test_user_not_admin_has_permission_success(self, mock_generate):
+        """ User should ctl create permission but is not admin should still be able to create a list """
+        user = self.create_test_user()
+        Permissions.sync_groups()
+        user.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
+        data = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "title": "test blacklist",
+            "content_categories": [],
+            "minimum_views": 0,
+            "segment_type": 0
+        }
+        form = dict(data=json.dumps(data))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
