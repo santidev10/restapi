@@ -475,6 +475,8 @@ class AuditChannelMeta(models.Model):
     hidden_subscriber_count = models.BooleanField(default=False)
     primary_video_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True,
                                 related_name="ac_video_language", on_delete=models.CASCADE)
+    likes = models.IntegerField(default=None, null=True)
+    dislikes = models.IntegerField(default=None, null=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
