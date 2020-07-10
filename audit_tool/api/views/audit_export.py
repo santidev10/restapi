@@ -235,6 +235,7 @@ class AuditExportApiView(APIView):
             "Brand Safety Score",
             "Made For Kids",
             "Age Restricted",
+            "Sentiment",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -354,6 +355,12 @@ class AuditExportApiView(APIView):
             # pylint: enable=broad-except
                 mapped_score = ""
                 print("Problem calculating video score")
+            try:
+                sentiment = acm.likes / acm.likes + acm.dislikes * 1.0
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                sentiment = ""
             data = [
                 "https://www.youtube.com/video/" + vid.video_id,
                 v.name if v else "",
@@ -382,6 +389,7 @@ class AuditExportApiView(APIView):
                 mapped_score,
                 v.made_for_kids if v else "",
                 'Y' if v and v.age_restricted else "",
+                sentiment,
             ]
             try:
                 if len(bad_word_categories) > 0:
