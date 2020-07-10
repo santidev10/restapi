@@ -829,7 +829,7 @@ class PacingReport:
             dynamic_placement = f["placement__dynamic_placement"]
             flight = dict(
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],
-                plan_cost=f["total_cost"], margin=None, pacing=None,
+                plan_cost=f["total_cost"], margin=None, pacing=None, delivery=f["delivery"],
                 dynamic_placement=dynamic_placement,
                 tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"],
                 plan_units=f["plan_units"]
