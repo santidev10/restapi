@@ -358,7 +358,7 @@ class AuditExportApiView(APIView):
                 mapped_score = ""
                 print("Problem calculating video score")
             try:
-                sentiment = v.likes / v.likes + v.dislikes * 1.0
+                sentiment = v.likes / (v.likes + v.dislikes) * 1.0
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
@@ -653,7 +653,7 @@ class AuditExportApiView(APIView):
             # pylint: enable=broad-except
                 primary_video_language = ""
             try:
-                sentiment = v.likes / v.likes + v.dislikes * 1.0
+                sentiment = v.likes / (v.likes + v.dislikes) * 1.0
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
