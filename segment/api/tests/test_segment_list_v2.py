@@ -21,6 +21,15 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        Permissions.sync_groups()
+
+    @classmethod
+    def tearDownClass(cls):
+        CustomSegment.objects.all().delete()
+
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
@@ -299,7 +308,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
-        Permissions.sync_groups()
         admin_user = self.create_test_user()
         admin_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
 
@@ -317,7 +325,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_audit_vetter_list(self):
         """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
-        Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
 
@@ -334,7 +341,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual({item["id"] for item in response.data["items"]}, {seg_1.id, seg_3.id})
 
     def test_vetting_complete(self):
-        Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
 
@@ -358,3 +364,21 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
         self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
         self.assertEqual(data["items"][2].get("is_vetting_complete"), False)
+
+    def test_create_perm_can_download(self):
+        """ Test users with create ctl permission can view and download their own list """
+        user_1 = self.create_test_user()
+        user_2 = self._create_user()
+        user_2.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
+        _, export = self._create_segment(dict(owner=user_1, segment_type=0, title="test_1", list_type=0), export_params=dict(
+            query={},
+            download_url="test_1_url"
+        ))
+        self._create_segment(dict(owner=user_2, segment_type=0, title="test_2", list_type=0),
+                                         export_params=dict(query={}, download_url="test_2_url"))
+        # request uses last user created
+        response = self.client.get(self._get_url("video"))
+        data = response.data
+        owned = data["items"][0]
+        self.assertEqual(owned["owner_id"], str(user_1.id))
+        self.assertEqual(owned["download_url"], export.download_url)
