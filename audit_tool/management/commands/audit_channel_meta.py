@@ -3,6 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import timedelta
+from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
@@ -51,6 +52,9 @@ class Command(BaseCommand):
                                   "&maxResults={num_videos}&type=video"
     CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                                "?key={key}&forUsername={username}&part=id"
+    YOUTUBE_CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
+    YOUTUBE_PLAYLISTITEMS_URL = 'https://www.googleapis.com/youtube/v3/playlistItems'
+    CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS = 500
 
     def __init__(self, stdout=None, stderr=None, no_color=False, force_color=False):
         super(Command, self).__init__(stdout=stdout, stderr=stderr, no_color=no_color, force_color=force_color)
@@ -178,7 +182,7 @@ class Command(BaseCommand):
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
-            if v_id and not v_id in processed_ids:
+            if counter < self.MAX_SOURCE_CHANNELS_CAP and v_id and not v_id in processed_ids:
                 processed_ids.append(v_id)
                 if len(vids) >= self.MAX_SOURCE_CHANNELS:
                     self.clone_audit()
@@ -194,8 +198,6 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
                 counter += 1
-                if counter >= self.MAX_SOURCE_CHANNELS_CAP:
-                    break
         if counter == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -289,15 +291,82 @@ class Command(BaseCommand):
                 db_channel_meta.monetised = True
                 db_channel_meta.save(update_fields=["monetised"])
 
-    def get_videos(self, acp):
-        db_channel = acp.channel
+    def handle_bad_response_code(self, response, response_json, acp):
+        """
+        handles a non-200 response code
+        """
+        quota_exceed = False
+        try:
+            if "quota" in response_json["error"]["message"].lower():
+                quota_exceed = True
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
+            pass
+        if quota_exceed:
+            logger.info("QUOTA EXCEEDED STOP ASAP!")
+            raise Exception("QUOTA EXCEEDED STOP ASAP!")
+        logger.info("problem with api call for video %s", acp.channel.channel_id)
+        acp.clean = False
+        acp.processed = timezone.now()
+        acp.word_hits["error"] = response.status_code
+        acp.save(update_fields=["clean", "processed", "word_hits"])
+
+    def get_videos_using_uploads_playlist(self, num_videos, acp):
+        """
+        page through channel's uploads playlist. This is used if a channel
+        has more than 500 uploads, since the videos endpoint only gets up
+        to 500 video records
+        """
+        # we want upload playlist id from this response
+        channels_url = self.YOUTUBE_CHANNELS_URL + '?' + urlencode({
+            'key': self.DATA_API_KEY,
+            'id': acp.channel.channel_id,
+            'part': ','.join(['contentDetails',]),
+        })
+        channels_res = requests.get(channels_url)
+        channels_json = channels_res.json()
+        if channels_res.status_code != 200:
+            self.handle_bad_response_code(channels_res, channels_json, acp)
+            return
+        channel_json = channels_json['items'][0]
+        uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
+        # page through uploads playlist and collect video ids
+        count = 0
+        next_page_token = None
+        while True:
+            playlist_url_params = {
+                'key': self.DATA_API_KEY,
+                'playlistId': uploads_playlist_id,
+                'part': 'snippet',
+                'maxResults': 50,
+            }
+            if next_page_token:
+                playlist_url_params['pageToken'] = next_page_token
+            playlist_url = self.YOUTUBE_PLAYLISTITEMS_URL + '?' + urlencode(playlist_url_params)
+            playlist_res = requests.get(playlist_url)
+            playlist_json = playlist_res.json()
+            if playlist_res.status_code != 200:
+                self.handle_bad_response_code(playlist_res, playlist_json, acp)
+                return
+            for item in playlist_json['items']:
+                self.update_or_create_video(item['snippet']['resourceId']['videoId'], acp)
+                count += 1
+            if count >= num_videos:
+                break
+            next_page_token = playlist_json.get('nextPageToken', None)
+            if next_page_token is None:
+                break
+
+    def get_videos_using_channel_videos(self, num_videos, acp):
+        """
+        get a channels' videos. Used if a channel has less than 500 video
+        uploads. This only allows paging through the first 500 results
+        """
         has_more = True
         page_token = None
         page = 0
         count = 0
-        num_videos = self.num_videos
-        if not self.audit.params.get("do_videos"):
-            num_videos = 1
         per_page = num_videos
         if per_page > 50:
             per_page = 50
@@ -309,7 +378,7 @@ class Command(BaseCommand):
                 pt = ""
             url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
                 key=self.DATA_API_KEY,
-                id=db_channel.channel_id,
+                id=acp.channel.channel_id,
                 page_token=pt,
                 num_videos=per_page,
             )
@@ -317,39 +386,47 @@ class Command(BaseCommand):
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                quota_exceed = False
-                try:
-                    if "quota" in data["error"]["message"].lower():
-                        quota_exceed = True
-                # pylint: disable=broad-except
-                except Exception:
-                # pylint: enable=broad-except
-                    pass
-                if quota_exceed:
-                    logger.info("QUOTA EXCEEDED STOP ASAP!")
-                    raise Exception("QUOTA EXCEEDED STOP ASAP!")
-                logger.info("problem with api call for video %s", db_channel.channel_id)
-                acp.clean = False
-                acp.processed = timezone.now()
-                acp.word_hits["error"] = r.status_code
-                acp.save(update_fields=["clean", "processed", "word_hits"])
+                self.handle_bad_response_code(r, data, acp)
                 return
             page_token = data.get("nextPageToken")
             if not page_token \
-                or page >= self.max_pages \
-                or not self.audit.params.get("do_videos") \
-                or per_page < 50 \
-                or count >= num_videos:
+                    or page >= self.max_pages \
+                    or not self.audit.params.get("do_videos") \
+                    or per_page < 50 \
+                    or count >= num_videos:
                 has_more = False
             for item in data["items"]:
-                db_video = AuditVideo.get_or_create(item["id"]["videoId"])
-                if not db_video.channel or db_video.channel != db_channel:
-                    db_video.channel = db_channel
-                    db_video.save(update_fields=["channel"])
-                AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=db_video
-                )
+                self.update_or_create_video(item['id']['videoId'], acp)
+
+    def update_or_create_video(self, video_id, acp):
+        """
+        create or update AuditVideo and AuditVideoProcessor records,
+        given a video id
+        """
+        db_video = AuditVideo.get_or_create(video_id)
+        if not db_video.channel or db_video.channel != acp.channel:
+            db_video.channel = acp.channel
+            db_video.save(update_fields=["channel"])
+        AuditVideoProcessor.objects.get_or_create(
+            audit=self.audit,
+            video=db_video
+        )
+
+    def get_videos(self, acp):
+        """
+        Updates or Creates a given Audit Channel's videos up to self.num_videos.
+        """
+        num_videos = self.num_videos
+        if not self.audit.params.get("do_videos"):
+            num_videos = 1
+        try:
+            channel_video_count = acp.channel.auditchannelmeta.video_count
+        except AuditChannelMeta.DoesNotExist:
+            channel_video_count = None
+        if channel_video_count and channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS and num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
+            self.get_videos_using_uploads_playlist(num_videos, acp)
+            return
+        self.get_videos_using_channel_videos(num_videos, acp)
 
     def load_inclusion_list(self):
         if self.inclusion_list:

@@ -89,26 +89,37 @@ class Command(BaseCommand):
             # pylint: enable=broad-except
                 pass
 
-    def calc_video_languages(self, channel):
+    def calc_video_languages_and_sentiment(self, channel):
         videos = AuditVideoMeta.objects.filter(video__channel=channel.channel)
         if videos.count() == 0:
             return
         languages = {}
+        likes = 0
+        dislikes = 0
         for v in videos:
+            if v.likes:
+                likes+=v.likes
+            if v.dislikes:
+                dislikes+=v.dislikes
             if v.language:
                 language = v.language.language
                 if language not in languages:
                     languages[language] = 0
                 languages[language] += 1
+        channel.likes = likes
+        channel.dislikes = dislikes
         if languages and languages != {}:
             try:
                 l = sorted(languages.items(), key=lambda x: x[1], reverse=True)[0][0]
                 if l not in self.cache["languages"]:
                     self.cache["languages"][l] = AuditLanguage.from_string(l)
                 channel.primary_video_language = self.cache["languages"][l]
-                channel.save(update_fields=["primary_video_language"])
             except Exception:
                 pass
+        try:
+            channel.save(update_fields=["primary_video_language", "likes", "dislikes"])
+        except Exception:
+            pass
 
     def calc_language(self, channel):
         str_long = channel.name
@@ -146,7 +157,8 @@ class Command(BaseCommand):
                 # pylint: disable=broad-except
                 except Exception:
                 # pylint: enable=broad-except
-                    db_channel_meta = AuditChannelMeta.objects.get(channel__channel_id=i["id"])
+                    db_channel = AuditChannel.get_or_create(i["id"])
+                    db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
                 if not i.get("brandingSettings"):
                     continue
                 try:
@@ -216,7 +228,7 @@ class Command(BaseCommand):
                 except Exception:
                 # pylint: enable=broad-except
                     logger.info("problem saving channel")
-                self.calc_video_languages(db_channel_meta)
+                self.calc_video_languages_and_sentiment(db_channel_meta)
             AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
         # pylint: disable=broad-except
         except Exception as e:

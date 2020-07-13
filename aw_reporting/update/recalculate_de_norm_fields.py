@@ -132,20 +132,22 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
 
 
 def _recalculate_de_norm_fields_for_account_statistics(account_id):
+    ad_group_ids = list(AdGroup.objects.filter(campaign__account_id=account_id).values_list("id", flat=True))
     formulas = dict(
-        ad_count=Count("campaigns__ad_groups__ads", distinct=True),
-        channel_count=Count("campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
-        video_count=Count("campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
-        interest_count=Count("campaigns__ad_groups__audiences__audience_id", distinct=True),
-        topic_count=Count("campaigns__ad_groups__topics__topic_id", distinct=True),
-        keyword_count=Count("campaigns__ad_groups__keywords__keyword", distinct=True),
+        ad_count=Count("ads", distinct=True),
+        channel_count=Count("channel_statistics__yt_id", distinct=True),
+        video_count=Count("managed_video_statistics__yt_id", distinct=True),
+        interest_count=Count("audiences__audience_id", distinct=True),
+        topic_count=Count("topics__topic_id", distinct=True),
+        keyword_count=Count("keywords__keyword", distinct=True),
     )
-    queryset = Account.objects.filter(pk=account_id)
+    get_queryset = AdGroup.objects.filter(id__in=ad_group_ids)
+    set_queryset = Account.objects.filter(pk=account_id)
     data = dict()
     for k, v in formulas.items():
-        data_item = queryset.aggregate(**{k: v})
+        data_item = get_queryset.aggregate(**{k: v})
         data.update(data_item)
-    queryset.update(**data)
+    set_queryset.update(**data)
 
 
 def _build_boolean_case(ref, value):
