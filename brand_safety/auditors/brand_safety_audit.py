@@ -68,18 +68,19 @@ class BrandSafetyAudit(object):
         self.blacklist_data_ref = {}
         if score_only:
             self.channel_manager = ChannelManager(
-                sections=(Sections.MAIN, Sections.BRAND_SAFETY),
+                sections=(Sections.MAIN, Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES),
                 upsert_sections=(Sections.BRAND_SAFETY,)
             )
         else:
             self.channel_manager = ChannelManager(
                 sections=(
-                Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+                    Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA,
+                    Sections.CUSTOM_PROPERTIES),
                 upsert_sections=(Sections.BRAND_SAFETY,)
             )
         self.video_manager = VideoManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
-                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA),
+                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES),
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
         self.check_rescore = check_rescore
