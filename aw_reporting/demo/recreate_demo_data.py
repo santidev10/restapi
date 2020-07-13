@@ -11,9 +11,6 @@ from aw_reporting.models import Opportunity
 from saas import celery_app
 from saas.settings import DEMO_SOURCE_ACCOUNT_ID
 from .data import DEMO_ACCOUNT_ID
-
-__all__ = ["recreate_demo_data"]
-
 from .data import DEMO_BRAND
 from .data import DEMO_SF_ACCOUNT
 from ..models import AdGroupStatistic
@@ -31,6 +28,7 @@ from ..models import VideoCreativeStatistic
 from ..models import YTChannelStatistic
 from ..models import YTVideoStatistic
 
+__all__ = ["recreate_demo_data"]
 int_iterator = itertools.count(DEMO_ACCOUNT_ID, 1)
 str_iterator = (str(i) for i in int_iterator)
 
