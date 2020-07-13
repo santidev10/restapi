@@ -219,7 +219,7 @@ class Permissions:
             "research_exports",
         )),
         (PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION, (
-            "custom_target_list_creation"
+            "custom_target_list_creation",
         ))
     )
 
