@@ -371,5 +371,5 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[15])
-        self.assertEqual(4, int(rows[0][16]))
-        self.assertEqual(6, int(rows[1][16]))
+        self.assertEqual(4, int(rows[0][15]))
+        self.assertEqual(6, int(rows[1][15]))
