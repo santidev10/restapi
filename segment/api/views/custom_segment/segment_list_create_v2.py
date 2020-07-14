@@ -98,7 +98,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         elif user.has_perm("userprofile.vet_audit"):
             base_filters = {"audit_id__isnull": False}
         else:
-            base_filters = {"owner": self.request.user, "audit_id__isnull": True}
+            base_filters = {"owner": self.request.user}
         queryset = super().get_queryset().filter(**base_filters, segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)
