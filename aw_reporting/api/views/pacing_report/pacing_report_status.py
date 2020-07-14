@@ -24,10 +24,11 @@ class PacingReportStatusApiView(APIView):
             campaign_ids = request.data["campaignIds"]
             budget_history_ids = request.data["budgetHistoryIds"]
         except KeyError:
-            return Response(status=HTTP_400_BAD_REQUEST, data="You must provide campaignIds to update.")
+            return Response(status=HTTP_400_BAD_REQUEST, data="You must provide campaignIds and budgetHistoryIds "
+                                                              "to update.")
         now = timezone.now()
         Campaign.objects.filter(id__in=campaign_ids).update(sync_time=now)
         CampaignBudgetHistory.objects.filter(id__in=budget_history_ids).update(sync_at=now)
 
         return Response(status=HTTP_200_OK,
-                        data="Campaigns sync complete for: {}".format(", ".join([str(c) for c in campaign_ids])))
+                        data="Campaign budget sync complete for: {}".format(", ".join([str(c) for c in campaign_ids])))
