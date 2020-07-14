@@ -6,7 +6,6 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
-from utils.api.fields import CharFieldListBased
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -22,7 +21,6 @@ class ChannelListExportSerializer(Serializer):
     country = CharField(source="general_data.country")
     language = SerializerMethodField()
     iab_categories = SerializerMethodField()
-    emails = CharFieldListBased(source="general_data.emails")
     subscribers = IntegerField(source="stats.subscribers")
     thirty_days_subscribers = IntegerField(source="stats.last_30day_subscribers")
     views = IntegerField(source="stats.views")
