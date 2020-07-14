@@ -9,7 +9,6 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Audience
@@ -20,6 +19,7 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -293,7 +293,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(kpi["average_cpm"]["max"], 250)
 
     def test_success_post_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_targeting_report",
                       args=(DEMO_ACCOUNT_ID,))

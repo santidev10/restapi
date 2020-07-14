@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.db import connections
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
@@ -10,9 +11,9 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import Language
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -81,7 +82,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         user_settings = {

@@ -7,7 +7,6 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.analytics_performance_weekly_report import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
@@ -35,6 +34,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -445,7 +445,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(expected_units, header_value)
 
     def test_demo_account_cta(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         for section in SECTIONS_WITH_CTA:
 
             shared_columns = COLUMN_SET_BY_SECTION_NAME.get(section)
@@ -465,7 +465,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertEqual(title_values, (section,) + shared_columns)
 
     def test_demo_account_cta_no_conversions(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         for section in SECTIONS_WITH_CTA:
 
             shared_columns = COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS.get(section)
