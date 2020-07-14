@@ -99,6 +99,7 @@ class Command(BaseCommand):
     def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.force_data_refresh = self.audit.params.get("force_data_refresh")
         self.exclusion_hit_count = self.audit.params.get("exclusion_hit_count")
         self.inclusion_hit_count = self.audit.params.get("inclusion_hit_count")
         if not self.exclusion_hit_count:
@@ -188,7 +189,7 @@ class Command(BaseCommand):
                     self.clone_audit()
                     vids = []
                 channel = AuditChannel.get_or_create(v_id)
-                if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
+                if channel.processed_time and (self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
                 AuditChannelMeta.objects.get_or_create(channel=channel)
