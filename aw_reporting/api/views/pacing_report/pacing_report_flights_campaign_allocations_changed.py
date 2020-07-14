@@ -1,11 +1,15 @@
 from collections import defaultdict
+import logging
 
 from django.db.models import F
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_reporting.models import Account
-from aw_reporting.models import CampaignBudgetHistory
+from aw_reporting.models import CampaignHistory
+
+
+logger = logging.getLogger(__name__)
 
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
@@ -23,7 +27,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         managed_accounts = Account.objects.filter(managers__id=mcc_account_id)\
             .distinct("pk").values_list("id", flat=True)
 
-        campaign_budget_history = CampaignBudgetHistory.objects.select_related("campaign")\
+        campaign_budget_history = CampaignHistory.objects.select_related("campaign")\
             .annotate(account_id=F("campaign__account_id"))\
             .filter(account_id__in=managed_accounts)\
             .order_by("created_at")
@@ -43,7 +47,11 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             # Do not return already synced changes
             if history.sync_at:
                 continue
-            updated_campaign_budgets[history.account_id][history.campaign.id] = history.budget
+            try:
+                updated_campaign_budgets[history.account_id][history.campaign.id] = history.changes["budget"]
+            except KeyError:
+                logger.error(f"CampaignHistory budget missing. ID: {history.id}")
+                continue
             budget_history_ids.append(history.id)
         payload = {
             "budget_history_ids": budget_history_ids,

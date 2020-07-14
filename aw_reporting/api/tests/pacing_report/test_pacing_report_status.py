@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign
-from aw_reporting.models import CampaignBudgetHistory
+from aw_reporting.models import CampaignHistory
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -22,8 +22,8 @@ class PacingReportStatus(ExtendedAPITestCase):
         self.create_test_user()
         c1 = Campaign.objects.create(id="1")
         c2 = Campaign.objects.create(id="2")
-        CampaignBudgetHistory.objects.create(campaign=c1, budget=1)
-        CampaignBudgetHistory.objects.create(campaign=c2, budget=2)
+        CampaignHistory.objects.create(campaign=c1, changes=dict(budget=1))
+        CampaignHistory.objects.create(campaign=c2, changes=dict(budget=2))
 
     def test_success(self):
         url = self._get_url()

@@ -10,7 +10,7 @@ from aw_reporting.api.views.pacing_report.pacing_report_flights_campaign_allocat
     PacingReportFlightsCampaignAllocationsView
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
-from aw_reporting.models import CampaignBudgetHistory
+from aw_reporting.models import CampaignHistory
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
@@ -276,11 +276,16 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
             campaign_3.id: allocation_3,
             campaign_4.id: allocation_4
         }
-        self.assertTrue(not CampaignBudgetHistory.objects.all().exists())
+        self.assertTrue(not CampaignHistory.objects.all().exists())
         response = self._update(flight.id, put_data)
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
 
-        history = CampaignBudgetHistory.objects.filter(owner=user).order_by("id").values("campaign_id", "budget")
+        history = [
+            dict(
+                campaign_id=h.campaign.id,
+                budget=h.changes["budget"],
+            ) for h in CampaignHistory.objects.filter(owner=user).order_by("id")
+        ]
         self.assertEqual(history[0], dict(campaign_id=campaign_1.id, budget=allocation_1))
         self.assertEqual(history[1], dict(campaign_id=campaign_2.id, budget=allocation_2))
         self.assertEqual(history[2], dict(campaign_id=campaign_3.id, budget=allocation_3))

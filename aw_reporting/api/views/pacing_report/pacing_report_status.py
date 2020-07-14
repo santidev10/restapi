@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from aw_reporting.models import Campaign
-from aw_reporting.models import CampaignBudgetHistory
+from aw_reporting.models import CampaignHistory
 
 
 class PacingReportStatusApiView(APIView):
@@ -28,7 +28,7 @@ class PacingReportStatusApiView(APIView):
                                                               "to update.")
         now = timezone.now()
         Campaign.objects.filter(id__in=campaign_ids).update(sync_time=now)
-        CampaignBudgetHistory.objects.filter(id__in=budget_history_ids).update(sync_at=now)
+        CampaignHistory.objects.filter(id__in=budget_history_ids).update(sync_at=now)
 
         return Response(status=HTTP_200_OK,
                         data="Campaign budget sync complete for: {}".format(", ".join([str(c) for c in campaign_ids])))
