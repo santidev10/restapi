@@ -22,4 +22,4 @@ def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",))
     ]).apply_async()
     # Update channel rescore to false
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(channel_ids).get()
-    channel_manager.update_rescore(query, rescore=False, proceed_conflict=True)
+    channel_manager.update_rescore(query, rescore=False, conflicts="proceed")

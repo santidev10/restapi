@@ -47,4 +47,4 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     to_rescore = auditor.channels_to_rescore
     # Add rescore flag to be rescored by channel discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
-    auditor.channel_manager.update_rescore(query, rescore=True, proceed_conflict=True)
+    auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
