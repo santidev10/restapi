@@ -24,6 +24,7 @@ from .calculations import get_margin
 from .calculations import get_video_view_rate
 from .calculations import multiply_percent
 from .campaign import Campaign
+from .change_history import CampaignBudgetHistory
 from .connection import AWAccountPermission
 from .connection import AWConnection
 from .connection import AWConnectionToUserRelation

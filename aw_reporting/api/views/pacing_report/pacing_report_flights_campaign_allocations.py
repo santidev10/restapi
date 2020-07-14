@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignBudgetHistory
 from aw_reporting.models import Flight
 from aw_reporting.reports.pacing_report import PacingReport
 
@@ -80,6 +81,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             budget=flight_updated_budget
         )
 
+        history = []
         for campaign_id, allocation_value in allocations.items():
             campaign_budget = (flight_updated_budget * allocation_value) / 100
             Campaign.objects.filter(pk=int(campaign_id)).update(
@@ -87,6 +89,10 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 budget=campaign_budget,
                 update_time=timezone.now()
             )
+            history.append(
+                CampaignBudgetHistory(campaign_id=campaign_id, budget=campaign_budget, owner=request.user)
+            )
+        CampaignBudgetHistory.objects.bulk_create(history)
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
         return res
