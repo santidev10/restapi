@@ -70,9 +70,9 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
         self.assertEqual(len(data["budget_history_ids"]), 3)
         self.assertEqual(len(budget_data.values()), 3)
         self.assertEqual({h1.id, h2.id, h3.id}, set(data["budget_history_ids"]))
-        self.assertEqual(budget_data[1], h1.budget)
-        self.assertEqual(budget_data[2], h2.budget)
-        self.assertEqual(budget_data[3], h3.budget)
+        self.assertEqual(budget_data[1], h1.changes["budget"])
+        self.assertEqual(budget_data[2], h2.changes["budget"])
+        self.assertEqual(budget_data[3], h3.changes["budget"])
 
     def test_should_not_get_synced(self):
         """ Response should not return already synced data """
