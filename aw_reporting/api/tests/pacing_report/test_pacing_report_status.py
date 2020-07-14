@@ -27,10 +27,6 @@ class PacingReportStatus(ExtendedAPITestCase):
 
     def test_success(self):
         url = self._get_url()
-        payload = json.dumps({
-            "campaignIds": ["1", "2"],
-            "budgetHistoryIds": ["1", "2"]
-        })
         c1 = Campaign.objects.get(id=1)
         c2 = Campaign.objects.get(id=2)
         h1 = c1.budget_history.first()
@@ -39,6 +35,10 @@ class PacingReportStatus(ExtendedAPITestCase):
         self.assertIsNone(c1.sync_time)
         self.assertIsNone(h1.sync_at)
         self.assertIsNone(h2.sync_at)
+        payload = json.dumps({
+            "campaignIds": [c1.id, c2.id],
+            "budgetHistoryIds": [h1.id, h2.id],
+        })
         response = self.client.patch(url, payload, content_type="application/json")
         c1.refresh_from_db()
         c2.refresh_from_db()
@@ -57,12 +57,3 @@ class PacingReportStatus(ExtendedAPITestCase):
         })
         response = self.client.patch(url, payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_success_message(self):
-        url = self._get_url()
-        payload = json.dumps({
-            "campaignIds": ["1", "2"]
-        })
-        response = self.client.patch(url, payload, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data, "Campaigns sync complete for: 1, 2")
