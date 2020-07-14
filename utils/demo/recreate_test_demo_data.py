@@ -17,6 +17,7 @@ from aw_creation.models import FrequencyCap
 from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -48,7 +49,6 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
-from saas.settings import DEMO_SOURCE_ACCOUNT_ID
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
 from .data import AUIDIENCES
@@ -64,27 +64,27 @@ from .data import DEMO_DATA_PERIOD_DAYS
 from .data import DEMO_SF_ACCOUNT
 from .data import KEYWORDS
 from .data import QUARTILE_STATS
-from .data import SOURCE_NAME
+from .data import DEMO_NAME
 from .data import Stats
 from .data import TARGETING
 from .data import TOPICS
 from .data import VIDEOS
 from .data import VIDEO_CREATIVES
 
-__all__ = ["recreate_demo_source_data"]
+__all__ = ["recreate_test_demo_data"]
 
 int_iterator = itertools.count(3000, 1)
 
 
-def recreate_demo_source_data():
+def recreate_test_demo_data():
     with transaction.atomic():
         remove_data()
         create_data()
 
 
 def remove_data():
-    Opportunity.objects.filter(id=DEMO_SOURCE_ACCOUNT_ID).delete()
-    Account.objects.filter(id=DEMO_SOURCE_ACCOUNT_ID).delete()
+    Opportunity.objects.filter(id=DEMO_ACCOUNT_ID).delete()
+    Account.objects.filter(id=DEMO_ACCOUNT_ID).delete()
 
 
 def create_data():
@@ -102,8 +102,8 @@ def create_data():
 
 def create_account():
     account = Account(
-        id=DEMO_SOURCE_ACCOUNT_ID,
-        name=SOURCE_NAME,
+        id=DEMO_ACCOUNT_ID,
+        name=DEMO_NAME,
         skip_creating_account_creation=True,
         timezone="UTC",
     )
@@ -113,7 +113,7 @@ def create_account():
 
 def create_sf_opportunity():
     opportunity = Opportunity.objects.create(
-        id=DEMO_SOURCE_ACCOUNT_ID,
+        id=DEMO_ACCOUNT_ID,
         account=SFAccount.objects.get_or_create(name=DEMO_SF_ACCOUNT)[0],
         brand=DEMO_BRAND,
     )
@@ -125,7 +125,7 @@ def create_campaigns(account, opportunity, dates):
     campaigns = [
         Campaign(
             id=next(int_iterator),
-            name="Campaign #demo_source{}".format(i + 1),
+            name="Campaign #demo{}".format(i + 1),
             account=account,
             status=CampaignStatus.SERVING.value,
             salesforce_placement=OpPlacement.objects.create(
@@ -147,7 +147,7 @@ def create_flights(campaigns, dates):
     placements = [campaign.salesforce_placement for campaign in campaigns]
     flights = [
         Flight(
-            id="{}:{}".format(DEMO_SOURCE_ACCOUNT_ID, i),
+            id="{}:{}".format(DEMO_ACCOUNT_ID, i),
             placement=placement,
             total_cost=placement.total_cost,
             ordered_units=placement.ordered_units,
@@ -362,7 +362,7 @@ def create_creation_entities(accounts, campaigns, ad_groups, ads):
 def create_account_creations(accounts):
     account_creations = [
         AccountCreation(
-            id=next(int_iterator),
+            id=account.id,
             name=account.name,
             account=account,
         )

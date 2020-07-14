@@ -12,7 +12,7 @@ from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from saas.urls.namespaces import Namespace
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 
 

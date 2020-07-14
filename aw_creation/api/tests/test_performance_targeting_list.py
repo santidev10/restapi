@@ -11,7 +11,7 @@ from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from userprofile.constants import UserSettingsKey
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):

@@ -19,7 +19,7 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 

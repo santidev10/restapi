@@ -1,13 +1,13 @@
 from aw_creation.constants import TargetingType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
-SOURCE_NAME = "Demo Source"
+DEMO_NAME = "Demo"
 DEMO_DATA_PERIOD_DAYS = 19
 DAYS_LEFT = 11
 DEMO_AD_GROUPS = (
     "Topics", "Interests", "Keywords", "Channels", "Videos"
 )
-DEMO_BRAND = "Demo Source Brand"
+DEMO_BRAND = "Demo Brand"
 DEMO_COST_METHOD = ["CPM", "CPV"]
 DEMO_SF_ACCOUNT = "Initiative LA"
 DEMO_DATA_HOURLY_LIMIT = 13

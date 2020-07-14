@@ -13,7 +13,7 @@ from aw_creation.models import Language
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 

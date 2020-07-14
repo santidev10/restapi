@@ -35,7 +35,7 @@ from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse

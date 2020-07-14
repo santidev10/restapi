@@ -16,7 +16,7 @@ from aw_reporting.models import Ad
 from es_components.tests.utils import ESTestCase
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.test_case import ExtendedAPITestCase
 

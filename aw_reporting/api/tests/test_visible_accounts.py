@@ -8,7 +8,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 

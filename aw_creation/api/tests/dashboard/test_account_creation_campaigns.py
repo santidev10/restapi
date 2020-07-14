@@ -10,7 +10,7 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 

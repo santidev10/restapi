@@ -15,7 +15,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import KeywordStatistic
-from utils.demo.recreate_demo_data import recreate_test_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
