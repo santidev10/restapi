@@ -18,6 +18,7 @@ from aw_reporting.models.signals.init_signals import init_signals
 from aw_reporting.utils import get_dates_range
 from userprofile.managers import UserRelatedManagerMixin
 from utils.db.models.persistent_entities import DemoEntityModelMixin
+from utils.db.functions import safe_bulk_create
 
 logger = logging.getLogger(__name__)
 
@@ -634,7 +635,7 @@ class FlightPacingAllocation(models.Model):
             except KeyError:
                 to_create[date] = FlightPacingAllocation(flight_id=flight_id, date=date, allocation=default_allocation)
 
-        FlightPacingAllocation.objects.bulk_create(to_create.values())
+        safe_bulk_create(FlightPacingAllocation, to_create.values())
         goal_mapping.update(to_create)
         return goal_mapping
 
