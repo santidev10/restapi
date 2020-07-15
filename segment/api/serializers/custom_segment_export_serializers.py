@@ -17,7 +17,7 @@ from segment.api.serializers.segment_export_serializer_mixins import SegmentVide
 class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country",
     )
 
@@ -32,6 +32,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Content_Quality = SerializerMethodField("get_content_quality")
     Num_Videos = IntegerField(source="stats.total_videos_count")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
@@ -48,7 +49,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
-        "Content_Type", "Num_Videos", "Mismatched_Language", "Last_Vetted",
+        "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
         "Country",
     )
 
@@ -67,7 +68,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
 class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Mismatched_Language", "Last_Vetted", "Country",
     )
 
@@ -82,6 +83,7 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Content_Quality = SerializerMethodField("get_content_quality")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
     Country = SerializerMethodField("get_country")

@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
@@ -95,6 +97,8 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
             "content_categories": AuditUtils.get_iab_categories(),
+            "content_type_categories": [{"id": _id, "name": name} for _id, name in AuditContentType.ID_CHOICES],
+            "content_quality_categories": [{"id": _id, "name": name} for _id, name in AuditContentQuality.ID_CHOICES],
             "gender": [
                 {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
             ],
