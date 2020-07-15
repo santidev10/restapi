@@ -14,6 +14,7 @@ from utils.serializers.fields import SimpleField
 
 class PacingReportOpportunitiesSerializer(Serializer):
     ad_ops = SimpleField()
+    alerts = SimpleField()
     am = SimpleField()
     apex_deal = BooleanField()
     billing_server = CharField(max_length=30)
