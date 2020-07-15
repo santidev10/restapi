@@ -1,18 +1,13 @@
-import os
-import random
 import csv
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email import encoders
-from io import StringIO
+import os
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
 from django.core.mail import EmailMessage
+from django.core.management.base import BaseCommand
 
 from brand_safety.models.bad_word import BadWord
-from es_components.managers import ChannelManager
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 
 class Command(BaseCommand):
     help = 'Produce an export of all bad word hits with stats'
@@ -21,12 +16,6 @@ class Command(BaseCommand):
     WORD_SLICE_SIZE = 5000
     CHANNEL_SCAN_LIMIT = 2000
     CHANNEL_SCAN_OUTPUT_INTERVAL = 1000
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--video',
-            help='parse videos instead of channels'
-        )
 
     def handle(self, *args, **options):
         self.gather_bad_word_data()
