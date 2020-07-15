@@ -13,11 +13,11 @@ from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 
 
@@ -216,7 +216,7 @@ class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data["name"], "FF 1 (666)")
 
     def test_success_post_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
         url = self._get_url(campaign.campaign_creation.first().id)
         user_settings = {

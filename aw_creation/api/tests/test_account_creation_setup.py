@@ -24,7 +24,6 @@ from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -36,6 +35,7 @@ from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -136,7 +136,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -620,7 +620,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -667,7 +667,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertIs(ac.is_deleted, True)
 
     def test_fail_delete_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,

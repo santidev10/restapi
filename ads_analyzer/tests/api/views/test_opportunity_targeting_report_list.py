@@ -149,6 +149,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
         self.assertEqual(0, response.json()["items_count"])
 
+    @mock_s3
     def test_all_report_list(self):
         Permissions.sync_groups()
         self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
@@ -168,6 +169,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
         self.assertEqual(1, response.json()["items_count"])
 
+    @mock_s3
     def test_get_report_by_recipients(self):
         Permissions.sync_groups()
         self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
