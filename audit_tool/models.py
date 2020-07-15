@@ -720,9 +720,9 @@ class AuditVideoVet(AuditVet):
 
 class AuditContentType(models.Model):
     ID_CHOICES = [
-        (0, "MC / Brand"),
-        (1, "Regular UGC"),
-        (2, "Premium UGC"),
+        (0, "UGC"),
+        (1, "Broadcast"),
+        (2, "Brands"),
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
