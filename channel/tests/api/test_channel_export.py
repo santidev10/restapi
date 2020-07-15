@@ -131,7 +131,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "country",
             "language",
             "iab_categories",
-            "emails",
             "subscribers",
             "thirty_days_subscribers",
             "views",
@@ -197,7 +196,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.general_data.country,
             "Russian",
             ",".join(channel.general_data.iab_categories),
-            ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
             channel.stats.views,
@@ -373,5 +371,5 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[15])
-        self.assertEqual(4, int(rows[0][16]))
-        self.assertEqual(6, int(rows[1][16]))
+        self.assertEqual(4, int(rows[0][15]))
+        self.assertEqual(6, int(rows[1][15]))

@@ -53,7 +53,8 @@ class CustomSegment(SegmentMixin, Timestampable):
     Base segment model
     """
     export_content_type = "application/CSV"
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS,
+                Sections.TASK_US_DATA)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
     SORT_KEY = None

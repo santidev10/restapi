@@ -255,6 +255,7 @@ class AuditProcessor(models.Model):
             "exclusion_hit_count": self.params.get("exclusion_hit_count"),
             "include_unknown_likes": self.params.get("include_unknown_likes"),
             "include_unknown_views": self.params.get("include_unknown_views"),
+            "force_data_refresh": self.params.get("force_data_refresh"),
         }
         d["export_status"] = self.get_export_status()
         d["has_history"] = self.has_history()

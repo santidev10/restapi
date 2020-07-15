@@ -151,6 +151,13 @@ class Command(BaseCommand):
             if r.status_code != 200:
                 logger.info("problem with api call")
                 return
+            # reset the name of previously found channels
+            for c in AuditChannel.objects.filter(processed_time__isnull=False, channel_id__in=ids):
+                try:
+                    c.auditchannelmeta.name = ""
+                    c.auditchannelmeta.save(update_fields=['name'])
+                except Exception:
+                    pass
             for i in data["items"]:
                 try:
                     db_channel_meta = channels[i["id"]]

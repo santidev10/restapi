@@ -10,7 +10,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
 class AdCreationSetupAPITestCase(AwReportingAPITestCase):
@@ -73,7 +73,7 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad = AdCreation.objects.filter(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_creation_available_ad_formats",
                       args=(ad.id,))
