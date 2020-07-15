@@ -1,3 +1,5 @@
+from traceback import format_exception
+
 from django.test import TransactionTestCase
 from django.test import override_settings
 
@@ -6,6 +8,7 @@ from aw_reporting.demo.data import DEMO_BRAND
 from aw_reporting.demo.data import DEMO_SF_ACCOUNT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
+from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
@@ -62,3 +65,16 @@ class RecreateDemoDataTestCase(TransactionTestCase):
 
         self.assertNotEqual(demo_ad_group.name, ad_group.name)
         self.assertEqual(demo_ad_group.name, "AdGroup #1:1")
+
+    def test_missing_ad_creation(self):
+        _, account = self._create_source_root()
+        campaign = account.campaigns.first()
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        Ad.objects.create(ad_group=ad_group)
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
+            try:
+                recreate_demo_data()
+            except Exception as ex:
+                tb = "".join(format_exception(etype=type(ex), value=ex, tb=ex.__traceback__))
+                self.fail(f"Failed with {type(ex)} \n {tb}")

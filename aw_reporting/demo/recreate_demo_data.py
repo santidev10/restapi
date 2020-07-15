@@ -115,7 +115,7 @@ def clone_ad_group(source_ad_group, target_campaign, name_suffix):
                                                   ad_group_id=ad_group.id))
         clone_bulk(TargetingItem, dict(ad_group_creation=source_ad_group_creation),
                    dict(ad_group_creation_id=ad_group_creation.id))
-    for index, ad in enumerate(source_ad_group.ads.all()):
+    for ad in source_ad_group.ads.all():
         clone_ad(ad, ad_group)
     clone_ad_group_stats(source_ad_group, ad_group)
     return ad_group
@@ -123,8 +123,9 @@ def clone_ad_group(source_ad_group, target_campaign, name_suffix):
 
 def clone_ad(source_ad, target_ad_group):
     ad = clone_model(source_ad, data=dict(ad_group_id=target_ad_group.id))
-    clone_model(source_ad.ad_creation.first(),
-                data=dict(ad_group_creation_id=target_ad_group.ad_group_creation.first().id, ad_id=ad.id))
+    if source_ad.ad_creation.exists():
+        clone_model_multiple(source_ad.ad_creation.all(),
+                             data=dict(ad_group_creation_id=target_ad_group.ad_group_creation.first().id, ad_id=ad.id))
     clone_bulk(AdStatistic, dict(ad=source_ad), dict(ad_id=ad.id))
     return ad
 
