@@ -584,9 +584,9 @@ class PacingReport:
             try:
                 if margin and today <= o["end"] - timedelta(days=7) and margin < 0.9:
                     alerts.append(f"{o['name']} if under margin at {margin}. Please adjust IMMEDIATELY.")
-                o["alerts"] = alerts
             except TypeError:
                 pass
+            o["alerts"] = alerts
         return opportunities
 
     # pylint: enable=too-many-statements
