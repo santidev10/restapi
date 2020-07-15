@@ -796,8 +796,10 @@ class PacingReport:
             }
             try:
                 if p["end"] >= today and PlacementAlert.ORDERED_UNITS_CHANGED.value in sf_alerts:
-                    alerts.append(f"{p['name']} - Ordered units were changed from changed "
-                                  f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}")
+                    short = "Ordered Units Changed"
+                    detail = f"{p['name']} - Ordered units were changed from changed " \
+                             f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}"
+                    alerts.append(create_alert(short, detail))
             except TypeError:
                 pass
             p["alerts"] = alerts
