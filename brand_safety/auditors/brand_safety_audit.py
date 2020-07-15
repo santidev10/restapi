@@ -74,7 +74,7 @@ class BrandSafetyAudit(object):
         else:
             self.channel_manager = ChannelManager(
                 sections=(
-                Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+                    Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                 upsert_sections=(Sections.BRAND_SAFETY,)
             )
         self.video_manager = VideoManager(
