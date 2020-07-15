@@ -30,10 +30,7 @@ def video_discovery_scheduler():
     for _ in range(limit):
         videos = video_manager.search(query, limit=Schedulers.VideoDiscovery.TASK_BATCH_SIZE).execute()
         ids = [item.main.id for item in videos]
-        task_signatures.append(
-            video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
-        # Create brand_safety section so next discovery batch does not overlap
-        video_manager.upsert(videos)
+        task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
     group(task_signatures).apply_async()
 
 
@@ -48,3 +45,4 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     # Add rescore flag to be rescored by channel discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
+
