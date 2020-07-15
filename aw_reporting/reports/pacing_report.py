@@ -582,9 +582,9 @@ class PacingReport:
             alerts = []
             margin = o["margin"]
             try:
-                if margin and today <= o["end"] - timedelta(days=7) and margin < 0.1:
+                if margin and today <= o["end"] - timedelta(days=7) and margin < 0.9:
                     alerts.append(
-                        create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
+                        create_alert("Campaign Under Margin", f"{o['name']} if under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
                     )
             except TypeError:

@@ -93,7 +93,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             set(item.keys()),
             {
                 "ad_ops",
-                "alerts",
                 "am",
                 "apex_deal",
                 "aw_update_time",
