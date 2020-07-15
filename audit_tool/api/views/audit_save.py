@@ -53,6 +53,7 @@ class AuditSaveApiView(APIView):
             query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
         include_unknown_likes = strtobool(
             query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
+        force_data_refresh = strtobool(query_params["force_data_refresh"]) if "force_data_refresh" in query_params else None
 
         if name:
             name = name.strip()
@@ -128,6 +129,7 @@ class AuditSaveApiView(APIView):
             "inclusion_hit_count": inclusion_hit_count,
             "include_unknown_views": include_unknown_views,
             "include_unknown_likes": include_unknown_likes,
+            "force_data_refresh": force_data_refresh,
         }
         if not audit_id:
             if source_file is None:
@@ -204,6 +206,7 @@ class AuditSaveApiView(APIView):
                 audit.max_recommended = max_recommended
                 audit.completed = None
             audit.params["language"] = language
+            audit.params["force_data_refresh"] = force_data_refresh
             audit.params["min_likes"] = min_likes
             audit.params["min_date"] = min_date
             audit.params["min_views"] = min_views

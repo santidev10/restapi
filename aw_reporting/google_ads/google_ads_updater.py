@@ -163,9 +163,12 @@ class GoogleAdsUpdater:
         active_ids_from_opportunities = []
         for opp in active_opportunities:
             try:
-                aw_cid = opp.aw_cid.split(",")
-                active_ids_from_opportunities.extend(
-                    [_id.strip() for _id in aw_cid if _id and _id.strip() not in active_ids_from_placements])
+                aw_cid = [int(_id.strip().replace("-", "")) for _id in opp.aw_cid.split(",")]
+                active_ids_from_opportunities.extend([
+                    _id
+                    for _id in aw_cid
+                    if _id and _id not in active_ids_from_placements
+                ])
             except AttributeError:
                 continue
         active_accounts_from_opportunities = Account.objects \

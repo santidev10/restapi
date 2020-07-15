@@ -8,10 +8,10 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -93,14 +93,14 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_placements_format(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)

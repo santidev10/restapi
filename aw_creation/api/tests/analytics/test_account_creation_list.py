@@ -18,7 +18,6 @@ from aw_creation.models import Language
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -35,6 +34,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 
@@ -510,7 +510,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -984,7 +984,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                 self.assertGreater(item[key], 0)
 
     def test_demo_account_visibility_does_not_affect_result(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         }
@@ -997,7 +997,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(item["id"], DEMO_ACCOUNT_ID)
 
     def test_demo_is_editable(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         }
@@ -1008,7 +1008,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(item["is_editable"], True)
 
     def test_demo_is_first(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         AccountCreation.objects.create(account=account, owner=self.user)

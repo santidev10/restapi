@@ -58,6 +58,24 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(response.data["items"][0]["owner_id"], str(seg_1_params["owner"].id))
+
+    def test_owner_filter_list_vetted(self):
+        """ Users should be able to see and download their own lists, even if vetted """
+        user = self.create_test_user()
+        audit = AuditProcessor.objects.create(source=0)
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
+        seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
+        segment, export = self._create_segment(segment_params=seg_1_params,
+                                               export_params=dict(query={}, download_url="test"))
+        self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        expected_segments_count = 1
+        response = self.client.get(self._get_url("video"))
+        data = response.data["items"][0]
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
+        self.assertEqual(data["download_url"], export.download_url)
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()

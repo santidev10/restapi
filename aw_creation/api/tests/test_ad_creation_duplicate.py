@@ -12,8 +12,8 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 
 
@@ -114,7 +114,7 @@ class AdCreationDuplicateAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data["name"], "FF 1 (200)")
 
     def test_success_post_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad = AdCreation.objects.filter(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = self._get_url(ad.id)
