@@ -207,7 +207,7 @@ class BrandSafetyQueryBuilder:
             score_queries = Q("bool")
             if self.score_threshold == 0:
                 score_queries |= QueryBuilder().build().must_not().exists().field("brand_safety.overall_score").get()
-            score_queries |= QueryBuilder().build().must().range().field("brand_safety.overall_score").gt(
+            score_queries |= QueryBuilder().build().must().range().field("brand_safety.overall_score").gte(
                 self.score_threshold).get()
             must_queries.append(score_queries)
 
@@ -301,11 +301,11 @@ class BrandSafetyQueryBuilder:
         if score_threshold == 1:
             threshold = 0
         elif score_threshold == 2:
-            threshold = 69
+            threshold = 70
         elif score_threshold == 3:
-            threshold = 79
+            threshold = 80
         elif score_threshold == 4:
-            threshold = 89
+            threshold = 90
         else:
             threshold = None
         return threshold
