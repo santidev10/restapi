@@ -14,7 +14,7 @@ class Command(BaseCommand):
     words = {}
 
     WORD_SLICE_SIZE = 5000
-    CHANNEL_SCAN_LIMIT = 2000
+    CHANNEL_SCAN_LIMIT = 0
     CHANNEL_SCAN_OUTPUT_INTERVAL = 1000
 
     def handle(self, *args, **options):
@@ -64,7 +64,7 @@ class Command(BaseCommand):
             count += 1
             if not count % self.CHANNEL_SCAN_OUTPUT_INTERVAL:
                 print(f'channel data progress: {count}/{total}, {round((count/total)*100, 2)}%')
-            if not self.CHANNEL_SCAN_LIMIT or count >= self.CHANNEL_SCAN_LIMIT:
+            if self.CHANNEL_SCAN_LIMIT and count >= self.CHANNEL_SCAN_LIMIT:
                 break
 
     def add_channel_data(self, channel):
@@ -87,9 +87,9 @@ class Command(BaseCommand):
             for word, word_data in self.words.items():
                 row = list()
                 row.append(word)
-                row.append(', '.join(word_data.get('categories', [])))
-                row.append(', '.join(word_data.get('languages', [])))
-                row.append(', '.join([str(number) for number in word_data.get('scores', [])]))
+                row.append('|'.join(word_data.get('categories', [])))
+                row.append('|'.join(word_data.get('languages', [])))
+                row.append('|'.join([str(number) for number in word_data.get('scores', [])]))
                 row.append(word_data['hit_count'])
                 writer.writerow(row)
 

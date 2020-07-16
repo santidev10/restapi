@@ -44,7 +44,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
-    except CustomSegmentSourceFileUpload.DoesNotExist:
+    except (AttributeError, CustomSegmentSourceFileUpload.DoesNotExist):
         pass
     except Exception:
         logger.exception("Error trying to retrieve source list for "
