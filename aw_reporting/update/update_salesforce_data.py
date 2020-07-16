@@ -59,6 +59,8 @@ def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_up
 
     if do_update:
         sc = sc or SConnection()
+        if not opportunity_ids:
+            opportunity_ids = getattr(settings, "SF_OPPORTUNITIES_UPDATE", None) or None
         perform_update(sc=sc, today=today, opportunity_ids=opportunity_ids, force_update=force_update,
                        skip_placements=skip_placements, skip_opportunities=skip_opportunities,
                        debug_update=debug_update, skip_flights=skip_flights)

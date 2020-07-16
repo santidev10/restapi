@@ -13,7 +13,6 @@ from aw_reporting.charts.base_chart import ALL_DIMENSIONS
 from aw_reporting.charts.base_chart import ALL_INDICATORS
 from aw_reporting.charts.dashboard_charts import Indicator
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -25,12 +24,14 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
+
     def _request(self, account_creation_id, **kwargs):
         url = reverse(
             Name.Dashboard.PERFORMANCE_CHART,
@@ -71,7 +72,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_tabs(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.is_staff = True
         self._hide_demo_data(user)
@@ -103,7 +104,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cpm_cpv_is_visible(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)

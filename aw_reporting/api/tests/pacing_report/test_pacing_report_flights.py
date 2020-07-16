@@ -90,6 +90,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "ctr",
                 "ctr_quality",
                 "current_cost_limit",
+                "delivery",
                 "dynamic_placement",
                 "end",
                 "budget",

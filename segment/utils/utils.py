@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 
 from rest_framework import permissions
+from rest_framework.exceptions import ValidationError
 
 import brand_safety.constants as constants
 from segment.models import CustomSegment
@@ -107,5 +108,8 @@ def validate_boolean(value):
 
 class CustomSegmentOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        segment = CustomSegment.objects.get(id=view.kwargs["pk"])
+        try:
+            segment = CustomSegment.objects.get(id=view.kwargs["pk"])
+        except CustomSegment.DoesNotExist:
+            raise ValidationError(f"Custom Segment with id {view.kwargs['pk']} does not exist.")
         return request.user.is_staff or segment.owner == request.user

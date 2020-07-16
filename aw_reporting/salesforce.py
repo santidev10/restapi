@@ -212,7 +212,7 @@ class Connection:
 
     def get_activities(self, where=None):
         where = "{}{}".format(
-            "WhoId != "" AND ActivityDate != NULL",
+            "WhoId != '' AND ActivityDate != NULL",
             " AND {}".format(where) if where else "",
         )
         SalesforceFields.Activity.values()

@@ -12,7 +12,6 @@ from django.test import TransactionTestCase
 from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
@@ -30,6 +29,7 @@ from aw_reporting.salesforce import Connection
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.update.update_salesforce_data import update_salesforce_data
 from email_reports.reports.base import BaseEmailReport
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.str_iterator import str_iterator
@@ -906,7 +906,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             sf_mock().sf.Flight__c.update.assert_not_called()
 
     def test_does_not_remove_demo_data(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
         flights_count = demo_flights_qs.count()
         with patch_salesforce_connector():
@@ -914,7 +914,8 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
     def test_no_demo_data_update(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
+        Opportunity.objects.exclude(id=DEMO_ACCOUNT_ID).delete()
         with patch_salesforce_connector() as connector:
             salesforce = connector().sf
             update_salesforce_data(do_delete=False)
@@ -1029,6 +1030,15 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(account.parent_id, parent.id)
         self.assertEqual(parent.parent_id, parent2.id)
         self.assertIsNone(parent2.parent_id)
+    
+    def test_update_with_opportunities_settings(self):
+        TEST_OP = "test_op"
+        sf_mock = MockSalesforceConnection()
+        with override_settings(SF_OPPORTUNITIES_UPDATE=[TEST_OP]), \
+                patch_salesforce_connector(return_value=sf_mock), \
+                patch("aw_reporting.update.update_salesforce_data.perform_update") as mock_update:
+            update_salesforce_data(do_get=False, do_delete=False)
+        self.assertEqual(mock_update.call_args[1]["opportunity_ids"], [TEST_OP])
 
 
 class MockSalesforceConnection(Connection):
