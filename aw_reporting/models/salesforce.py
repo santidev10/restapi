@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Count
 from django.db.models import Q
+from django.db.utils import IntegrityError
 from django.templatetags.static import static
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
@@ -634,8 +635,12 @@ class FlightPacingAllocation(models.Model):
                 goal_mapping[date]
             except KeyError:
                 to_create[date] = FlightPacingAllocation(flight_id=flight_id, date=date, allocation=default_allocation)
-
-        safe_bulk_create(FlightPacingAllocation, to_create.values())
+        # Mostly to bypass safe_bulk_create raising IntegrityError in transaction unit tests
+        try:
+            safe_bulk_create(FlightPacingAllocation, to_create.values())
+        except IntegrityError:
+            for goal in to_create.values():
+                goal.save()
         goal_mapping.update(to_create)
         return goal_mapping
 
