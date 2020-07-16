@@ -7,6 +7,7 @@ from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditContentType
+from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
@@ -145,6 +146,14 @@ class AuditUtils(object):
         """
         age_groups = AuditAgeGroup.get_by_group()
         return age_groups
+
+    @staticmethod
+    def get_quality_types():
+        data = [{
+            "id": item.id,
+            "value": item.quality
+        } for item in AuditContentQuality.objects.all()]
+        return data
 
     @staticmethod
     def get_audit_language_mapping():

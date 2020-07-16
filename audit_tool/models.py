@@ -720,9 +720,9 @@ class AuditVideoVet(AuditVet):
 
 class AuditContentType(models.Model):
     ID_CHOICES = [
-        (0, "MC / Brand"),
-        (1, "Regular UGC"),
-        (2, "Premium UGC"),
+        (0, "UGC"),
+        (1, "Broadcast"),
+        (2, "Brands"),
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
@@ -803,3 +803,25 @@ class AuditGender(models.Model):
             item_id = value
         gender = AuditGender.objects.get(id=item_id)
         return gender
+
+
+class AuditContentQuality(models.Model):
+    ID_CHOICES = [
+        (0, "Poor"),
+        (1, "Average"),
+        (2, "Premium"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    quality = models.CharField(max_length=15)
+
+    @staticmethod
+    def get(value):
+        if isinstance(value, (str,)):
+            item_id = AuditContentQuality.to_id[value.lower()]
+        else:
+            item_id = value
+        quality = AuditContentQuality.objects.get(id=item_id)
+        return quality

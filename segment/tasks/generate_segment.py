@@ -44,7 +44,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
-    except CustomSegmentSourceFileUpload.DoesNotExist:
+    except (AttributeError, CustomSegmentSourceFileUpload.DoesNotExist):
         pass
     except Exception:
         logger.exception("Error trying to retrieve source list for "
@@ -70,7 +70,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                 # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
             else:
                 bulk_search_kwargs = dict(
-                    options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True
+                    options=options, batch_size=5000, include_cursor_exclusions=True
                 )
                 es_generator = bulk_search_with_source_generator(
                     source_list, source_type,

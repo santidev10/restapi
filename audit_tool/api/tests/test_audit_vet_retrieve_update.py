@@ -77,7 +77,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         doc.populate_monetization(**default_monetzation)
         return doc
 
-    def test_reject_permissions(self):
+    def test_reject_permissions(self, *args):
         self.create_test_user()
         url = self._get_url(kwargs=dict(pk=1))
         response = self.client.get(url)
@@ -113,7 +113,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             gender="2",
             brand_safety=["3", "4"],
             iab_categories=["Video Games"],
-            content_type="1"
+            content_type="1",
+            content_quality="0",
         )
         monetization = dict(is_monetizable=True)
         mock_video_doc = self._create_mock_document(Video, video_audit.video_id, task_us_data=task_us,
@@ -130,6 +131,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["brand_safety"], serialized.data["brand_safety"])
         self.assertEqual(data["iab_categories"], serialized.data["iab_categories"])
         self.assertEqual(data["content_type"], serialized.data["content_type"])
+        self.assertEqual(data["content_quality"], serialized.data["content_quality"])
         self.assertEqual(data["is_monetizable"], monetization["is_monetizable"])
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/watch?v={video_audit.video_id}/")
@@ -175,7 +177,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             gender="2",
             brand_safety=["1", "2"],
             iab_categories=iab_categories,
-            content_type="2"
+            content_type="2",
+            content_quality="2",
         )
         monetization = dict(is_monetizable=False)
         mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us,
@@ -192,6 +195,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["brand_safety"], serialized.data["brand_safety"])
         self.assertCountEqual(data["iab_categories"], valid_iab_categories)
         self.assertEqual(data["content_type"], serialized.data["content_type"])
+        self.assertEqual(data["content_quality"], serialized.data["content_quality"])
         self.assertEqual(data["is_monetizable"], monetization["is_monetizable"])
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/channel/{channel_audit.channel_id}/")
@@ -335,6 +339,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 12
             ],
             "content_type": 2,
+            "content_quality": 0,
             "gender": 0,
             "iab_categories": [
                 "Motorcycles"
@@ -356,6 +361,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["task_us_data"]["age_group"], str(payload["age_group"]))
         self.assertEqual(data["task_us_data"]["brand_safety"], [str(_id) for _id in payload["brand_safety"]])
         self.assertEqual(data["task_us_data"]["content_type"], str(payload["content_type"]))
+        self.assertEqual(data["task_us_data"]["content_quality"], str(payload["content_quality"]))
         self.assertEqual(data["task_us_data"]["gender"], str(payload["gender"]))
         self.assertEqual(data["task_us_data"]["language"], payload["language"])
         self.assertEqual(data["task_us_data"]["iab_categories"], [str(_id) for _id in payload["iab_categories"]])
@@ -394,6 +400,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 4, 11
             ],
             "content_type": 1,
+            "content_quality": 2,
             "gender": 2,
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
@@ -415,6 +422,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["task_us_data"]["age_group"], str(payload["age_group"]))
         self.assertEqual(data["task_us_data"]["brand_safety"], [str(_id) for _id in payload["brand_safety"]])
         self.assertEqual(data["task_us_data"]["content_type"], str(payload["content_type"]))
+        self.assertEqual(data["task_us_data"]["content_quality"], str(payload["content_quality"]))
         self.assertEqual(data["task_us_data"]["gender"], str(payload["gender"]))
         self.assertEqual(data["task_us_data"]["language"], payload["language"])
         self.assertEqual(data["task_us_data"]["iab_categories"], [str(_id) for _id in payload["iab_categories"]])
@@ -623,6 +631,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 12
             ],
             "content_type": 2,
+            "content_quality": 1,
             "gender": 0,
             "iab_categories": [
                 "Motorcycles"
@@ -657,6 +666,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 4, 11
             ],
             "content_type": 1,
+            "content_quality": 0,
             "gender": 2,
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"

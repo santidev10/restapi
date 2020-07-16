@@ -32,6 +32,7 @@ class AuditVetBaseSerializer(Serializer):
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
     content_type = IntegerField(source="task_us_data.content_type", default=None)
+    content_quality = IntegerField(source="task_us_data.content_quality", default=None)
     gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     mismatched_language = BooleanField(source="task_us_data.mismatched_language", default=None)
@@ -173,6 +174,16 @@ class AuditVetBaseSerializer(Serializer):
         content_type = AuditToolValidator.validate_content_type(int(value))
         content_type_id = str(content_type.id)
         return content_type_id
+
+    def validate_content_quality(self, value):
+        """
+        Retrieve AuditContentQuality value. Raises ValidationError if not found
+        :param value: str
+        :return: str
+        """
+        content_quality = AuditToolValidator.validate_content_quality(int(value))
+        content_quality_id = str(content_quality.id)
+        return content_quality_id
 
     def validate_category(self, value):
         """

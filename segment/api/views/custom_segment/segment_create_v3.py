@@ -32,7 +32,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
         "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
-        "countries_include_na",
+        "countries_include_na", "content_type", "content_quality",
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
@@ -154,6 +154,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
+        opts["content_type"] = opts.get("content_type", None)
+        opts["content_quality"] = opts.get("content_quality", None)
         return opts
 
     def _create(self, data: dict):
