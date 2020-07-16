@@ -582,11 +582,14 @@ class PacingReport:
             alerts = []
             margin = o["margin"]
             try:
-                if margin and today <= o["end"] - timedelta(days=7) and margin < 0.9:
-                    alerts.append(f"{o['name']} if under margin at {margin}. Please adjust IMMEDIATELY.")
-                o["alerts"] = alerts
+                if margin and today <= o["end"] - timedelta(days=7) and margin < 0.1:
+                    alerts.append(
+                        create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
+                                                              f" Please adjust IMMEDIATELY.")
+                    )
             except TypeError:
                 pass
+            o["alerts"] = alerts
         return opportunities
 
     # pylint: enable=too-many-statements
@@ -793,8 +796,10 @@ class PacingReport:
             }
             try:
                 if p["end"] >= today and PlacementAlert.ORDERED_UNITS_CHANGED.value in sf_alerts:
-                    alerts.append(f"{p['name']} - Ordered units were changed from changed "
-                                  f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}")
+                    short = "Ordered Units Changed"
+                    detail = f"{p['name']} - Ordered units were changed from changed " \
+                             f"from {sf_alerts[PlacementAlert.ORDERED_UNITS_CHANGED.value]}"
+                    alerts.append(create_alert(short, detail))
             except TypeError:
                 pass
             p["alerts"] = alerts
@@ -890,8 +895,10 @@ class PacingReport:
                 elif delivery_percentage >= 0.8 and f["end"] <= today:
                     delivery_alert = "80%"
                 if delivery_alert:
-                    alerts.append(f"{f['name']} in {f['placement__opportunity__name']} - {f['placement__name']} "
-                                  f"has delivered {delivery_alert} of its ordered units")
+                    short = f"Unit Progrees at {delivery_alert}"
+                    detail = f"{f['name']} in {f['placement__opportunity__name']} - {f['placement__name']} " \
+                             f"has delivered {delivery_alert} of its ordered units"
+                    alerts.append(create_alert(short, detail))
 
             pacing_alert = None
             flight_pacing = flight["pacing"]
@@ -901,19 +908,21 @@ class PacingReport:
                 elif flight["pacing"] < 0.9:
                     pacing_alert = "under pacing by 10%"
                 if pacing_alert:
-                    alerts.append(f"The flight {f['name']} is {pacing_alert} and "
-                                  f"ends on {f['end']}. Please check and adjust IMMEDIATELY")
+                    short = "Campaign Under / Overpacing"
+                    detail = f"The flight {f['name']} is {pacing_alert} and " \
+                             f"ends on {f['end']}. Please check and adjust IMMEDIATELY."
+                    alerts.append(create_alert(short, detail))
 
             sf_alerts = {
                 alert.code: alert.message for alert in Alert.objects.filter(record_id=flight["id"])
             }
             if flight["end"] and flight["end"] >= today and FlightAlert.DATES_CHANGED.value in sf_alerts:
-                    alerts.append(f"{f['placement__name']} - {f['name']} - Flight dates have been "
-                                  f"changed from {sf_alerts[FlightAlert.DATES_CHANGED.value]}")
+                short = "Flight Dates Changed"
+                detail = f"{f['placement__name']} - {f['name']} - Flight dates have been " \
+                         f"changed from {sf_alerts[FlightAlert.DATES_CHANGED.value]}"
+                alerts.append(create_alert(short, detail))
 
-            # Add flight dates changed
             flight["alerts"] = alerts
-
             flights.append(flight)
 
         return flights
@@ -1658,3 +1667,11 @@ def get_flight_daily_budget(flight):
 
     flight_daily_budget = flight_projected_budget * today_allocation.allocation / 100 / days_count
     return flight_daily_budget
+
+
+def create_alert(short, detail):
+    alert = {
+        "short": short,
+        "detail": detail,
+    }
+    return alert
