@@ -56,7 +56,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": [],
             "segment_type": 0,
-            "last_upload_date": "2000/01/01"
+            "last_upload_date": "2000/01/01",
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(
@@ -72,7 +74,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "score_threshold": 1,
             "title": "test whitelist",
             "content_categories": [],
-            "segment_type": 3
+            "segment_type": 3,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -86,7 +90,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": [],
             "segment_type": 0,
-            "last_upload_date": "2000/01/01"
+            "last_upload_date": "2000/01/01",
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -104,7 +110,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": content_categories,
             "segment_type": 0,
-            "last_upload_date": "2000/01/01"
+            "last_upload_date": "2000/01/01",
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -121,7 +129,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test blacklist",
             "content_categories": [],
             "minimum_views": 0,
-            "segment_type": 0
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -129,6 +139,29 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(set(data.keys()), set(SegmentCreateApiViewV3.response_fields + ("statistics",)))
         self.assertTrue(data["pending"])
+
+    def test_success_create_export_query(self, mock_generate):
+        """ Test export query is created correctly """
+        self.create_admin_user()
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "title": "test blacklist",
+            "content_categories": [],
+            "minimum_views": 0,
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        form = dict(data=json.dumps(payload))
+        response = self.client.post(self._get_url(), form)
+        data = response.data[0]
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        segment = CustomSegment.objects.get(id=data["id"])
+        params = segment.export.query["params"]
+        payload.pop("title")
+        payload.pop("segment_type")
+        self.assertEqual(payload, {key: params[key] for key in payload.keys()})
 
     def test_create_integer_values(self, mock_generate):
         self.create_admin_user()
@@ -139,7 +172,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_views": "1,000,000",
             "minimum_views_include_na": False,
-            "segment_type": 1
+            "segment_type": 1,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(payload))
         with patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
@@ -157,7 +192,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "testing",
             "content_categories": [],
             "minimum_option": 0,
-            "segment_type": 0
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
         }
         payload_2 = {
             "brand_safety_categories": [],
@@ -166,7 +203,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "testing",
             "content_categories": [],
             "minimum_option": 0,
-            "segment_type": 0
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form_1 = dict(data=json.dumps(payload_1))
         form_2 = dict(data=json.dumps(payload_2))
@@ -183,6 +222,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_option": 0,
             "vetted_after": "2020-01-01",
+            "content_type": 0,
+            "content_quality": 0,
         }
         with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
             payload["title"] = "video"
@@ -231,7 +272,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
                 "4": [1, 3],
                 "6": [2]
             },
-            "segment_type": 2
+            "segment_type": 2,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(payload))
         segment = CustomSegment.objects.create(
@@ -260,7 +303,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "languages": [],
             "severity_counts": {},
-            "segment_type": 2
+            "segment_type": 2,
+            "content_type": 0,
+            "content_quality": 0,
         }
         file = BytesIO()
         form = dict(
@@ -278,7 +323,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "languages": [],
             "severity_counts": {},
-            "segment_type": 0
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
         }
         file = BytesIO()
         form = dict(
@@ -301,7 +348,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test blacklist",
             "content_categories": [],
             "minimum_views": 0,
-            "segment_type": 0
+            "segment_type": 0,
+            "content_type": 0,
+            "content_quality": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)

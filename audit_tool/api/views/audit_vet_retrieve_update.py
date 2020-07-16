@@ -23,7 +23,7 @@ from utils.views import validate_fields
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
-    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "content_quality", "gender", "iab_categories",
                        "is_monetizable", "language", "vetting_id", "suitable", "language")
 
     permission_classes = (

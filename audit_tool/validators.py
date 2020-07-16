@@ -3,6 +3,7 @@ from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditContentType
+from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
@@ -137,3 +138,23 @@ class AuditToolValidator:
                     message = f"AuditGender with id: {value} not found."
                 raise ValidationError(message)
         return gender
+
+    @staticmethod
+    def validate_content_quality(value, should_raise=True):
+        """
+        Validate AuditContentQuality values
+        :param value: int | str
+        :param should_raise: bool
+        :return: AuditContentQuality
+        """
+        content_quality = None
+        try:
+            content_quality = AuditContentQuality.get(value)
+        except (KeyError, AuditContentQuality.DoesNotExist):
+            if should_raise:
+                if isinstance(value, str):
+                    message = f"AuditContentQuality with quality: {value} not found."
+                else:
+                    message = f"AuditContentQuality with id: {value} not found."
+                raise ValidationError(message)
+        return content_quality

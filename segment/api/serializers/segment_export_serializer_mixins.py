@@ -1,6 +1,7 @@
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from utils.brand_safety import map_brand_safety_score
@@ -47,6 +48,14 @@ class SegmentExportSerializerMixin:
         except (AttributeError, TypeError, AuditContentType.DoesNotExist):
             content_type = None
         return content_type
+
+    def get_content_quality(self, obj):
+        try:
+            quality_id = int(obj.task_us_data.content_quality)
+            quality_type = self.context["quality_types"].get(quality_id)
+        except (AttributeError, TypeError, AuditContentQuality.DoesNotExist):
+            quality_type = None
+        return quality_type
 
     def get_vetting_result(self, obj):
         """
