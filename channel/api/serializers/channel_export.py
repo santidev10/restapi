@@ -5,6 +5,8 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
+from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
+
 from brand_safety.languages import LANGUAGES
 from utils.brand_safety import map_brand_safety_score
 
@@ -15,7 +17,13 @@ class YTChannelLinkFromID(CharField):
         return f"https://www.youtube.com/channel/{str_value}"
 
 
-class ChannelListExportSerializer(Serializer):
+class ListExportSerializerMixin:
+    def get_iab_categories(self, instance):
+        iab_categories = getattr(instance.general_data, "iab_categories", [])
+        return ", ".join([category for category in iab_categories if category not in HIDDEN_IAB_CATEGORIES])
+
+
+class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
     title = CharField(source="general_data.title")
     url = YTChannelLinkFromID(source="main.id")
     country = CharField(source="general_data.country")
@@ -36,10 +44,6 @@ class ChannelListExportSerializer(Serializer):
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
     brand_safety_score = SerializerMethodField()
-
-    def get_iab_categories(self, instance):
-        iab_categories = getattr(instance.general_data, "iab_categories", [])
-        return ", ".join(iab_categories)
 
     def update(self, instance, validated_data):
         raise NotImplementedError
