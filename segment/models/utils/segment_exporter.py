@@ -15,17 +15,21 @@ class SegmentExporter(S3Exporter):
     def get_s3_key(self):
         raise NotImplementedError("Method should be defined segment models")
 
-    def export_to_s3(self, segment, s3_key, queryset=None):
+    def export_to_s3(self, segment, s3_key, queryset=None, extra_args=None):
+        extra_args = extra_args or {}
         with ExportContextManager(segment=segment, queryset=queryset) as exported_file_name:
             self._s3().upload_file(
                 Bucket=self.bucket_name,
                 Key=s3_key,
                 Filename=exported_file_name,
+                ExtraArgs=extra_args,
             )
 
-    def export_file_to_s3(self, filename, s3_key):
+    def export_file_to_s3(self, filename, s3_key, extra_args=None):
+        extra_args = extra_args or {}
         self._s3().upload_file(
             Bucket=self.bucket_name,
             Key=s3_key,
             Filename=filename,
+            ExtraArgs=extra_args,
         )

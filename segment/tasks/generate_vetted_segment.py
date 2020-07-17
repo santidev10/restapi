@@ -27,6 +27,7 @@ def generate_vetted_segment(segment_id, recipient=None):
     # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
+        segment.is_vetting = True
         if segment.segment_type == 0:
             segment.serializer = CustomSegmentVideoVettedExportSerializer
         else:
