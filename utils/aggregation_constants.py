@@ -52,7 +52,8 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "task_us_data:missing",
     "brand_safety",
     "monetization.is_monetizable:exists",
-    "custom_properties.is_tracked"
+    "custom_properties.is_tracked",
+    "ads_stats:exists",
 )
 
 ALLOWED_VIDEO_AGGREGATIONS = (
