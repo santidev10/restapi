@@ -110,7 +110,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         )
         generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
-        file = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
         self.assertTrue(rows)
         self.video_manager.delete([doc.main.id for doc in docs])
