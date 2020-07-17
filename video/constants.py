@@ -3,9 +3,9 @@ TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_da
                 "analytics.verified", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",
-                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender")
+                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender", "stats.flags")
 
-MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
 RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm", "ads_stats.ctr_v",
@@ -42,5 +42,5 @@ VIDEO_CSV_HEADERS = [
 
 WELL_LIKED = "At least 90% liked"
 AVERAGE = "At least 79% liked"
-CONTROVERSIAL = "0% or above liked"
+ALL = "All"
 CUSTOM = "Custom"

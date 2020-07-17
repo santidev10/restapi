@@ -499,7 +499,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         tz = "UTC"
         last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=10)
-        end = today - timedelta(days=2)
+        end = today + timedelta(days=2)
         self.create_test_user()
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end, probability=100
@@ -521,7 +521,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         report = PacingReport()
 
         flight = report.get_flights(placement)[0]
-        flight_alerts = " ".join(flight["alerts"])
+        flight_alerts = " ".join(alert["detail"] for alert in flight["alerts"])
         self.assertTrue("delivered 80%" in flight_alerts)
 
     def test_alert_flight_100_delivery(self):
@@ -529,7 +529,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         tz = "UTC"
         last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
-        end = today - timedelta(days=2)
+        end = today + timedelta(days=2)
         self.create_test_user()
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end, probability=100
@@ -550,12 +550,12 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         report = PacingReport()
         flight = report.get_flights(placement)[0]
-        flight_alerts = " ".join(flight["alerts"])
+        flight_alerts = " ".join(alert["detail"] for alert in flight["alerts"])
         self.assertTrue("delivered 100%" in flight_alerts)
 
     def test_alert_flight_dates_changed(self):
         today = datetime.now()
-        start = today - timedelta(days=3)
+        start = today + timedelta(days=3)
         end = today
         self.create_test_user()
         opportunity = Opportunity.objects.create(
@@ -573,7 +573,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         report = PacingReport()
         flight = report.get_flights(placement)[0]
-        flight_alerts = " ".join(flight["alerts"])
+        flight_alerts = " ".join(alert["detail"] for alert in flight["alerts"])
         self.assertTrue("dates have been changed", flight_alerts)
 
     def test_alert_placement_ordered_units_changed(self):
@@ -596,7 +596,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         report = PacingReport()
         placement = report.get_placements(opportunity)[0]
-        placement_alerts = " ".join(placement["alerts"])
+        placement_alerts = " ".join(alert["detail"] for alert in placement["alerts"])
         self.assertTrue("ordered units have been changed", placement_alerts)
 
     def test_flight_pacing_allocation_serialization(self):

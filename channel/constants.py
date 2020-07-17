@@ -1,9 +1,9 @@
 TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_data.top_language",
                 "general_data.top_lang_code", "general_data.top_category", "custom_properties.preferred",
-                "analytics.verified", "main.id", "general_data.iab_categories",
+                "analytics.verified", "main.id", "general_data.iab_categories", "custom_properties.is_tracked",
                 "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender")
 
-MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
 RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
                 "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm",
@@ -12,7 +12,7 @@ RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment",
                 "analytics.age45_54", "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
                 "general_data.youtube_published_at")
 
-EXISTS_FILTER = ("monetization.is_monetizable", "task_us_data", "custom_properties.is_tracked")
+EXISTS_FILTER = ("monetization.is_monetizable", "task_us_data")
 
 CHANNEL_CSV_HEADERS = [
     "title",
@@ -20,7 +20,6 @@ CHANNEL_CSV_HEADERS = [
     "country",
     "language",
     "iab_categories",
-    "emails",
     "subscribers",
     "thirty_days_subscribers",
     "views",

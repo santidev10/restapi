@@ -48,6 +48,8 @@ class BrandSafetyQueryBuilder:
         self.is_vetted = data.get("is_vetted", None)
         self.vetted_after = data.get("vetted_after", None)
         self.mismatched_language = data.get("mismatched_language", None)
+        self.content_quality = data.get("content_quality", None)
+        self.content_type = data.get("content_type", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(
@@ -60,6 +62,7 @@ class BrandSafetyQueryBuilder:
         return results
 
     def _get_query_params(self):
+        """ Get params used to construct query. Derived from setting self attributes in __init__ """
         query_params = {
             "severity_filters": self.severity_filters,
             "score_threshold": self.original_score_threshold,
@@ -81,6 +84,8 @@ class BrandSafetyQueryBuilder:
             "is_vetted": self.is_vetted,
             "mismatched_language": self.mismatched_language,
             "vetted_after": self.vetted_after,
+            "content_quality": self.content_quality,
+            "content_type": self.content_type,
         }
         return query_params
 
@@ -202,7 +207,7 @@ class BrandSafetyQueryBuilder:
             score_queries = Q("bool")
             if self.score_threshold == 0:
                 score_queries |= QueryBuilder().build().must_not().exists().field("brand_safety.overall_score").get()
-            score_queries |= QueryBuilder().build().must().range().field("brand_safety.overall_score").gt(
+            score_queries |= QueryBuilder().build().must().range().field("brand_safety.overall_score").gte(
                 self.score_threshold).get()
             must_queries.append(score_queries)
 
@@ -231,6 +236,16 @@ class BrandSafetyQueryBuilder:
             mismatched_language_queries |= QueryBuilder().build().must_not().exists().field(
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
+
+        if self.content_type is not None:
+            content_type_query = QueryBuilder().build().must()\
+                .term().field(f"{Sections.TASK_US_DATA}.content_type").value(self.content_type).get()
+            must_queries.append(content_type_query)
+
+        if self.content_quality is not None:
+            content_quality_query = QueryBuilder().build().must() \
+                .term().field(f"{Sections.TASK_US_DATA}.content_quality").value(self.content_quality).get()
+            must_queries.append(content_quality_query)
 
         query = Q("bool", must=must_queries)
 
@@ -286,11 +301,11 @@ class BrandSafetyQueryBuilder:
         if score_threshold == 1:
             threshold = 0
         elif score_threshold == 2:
-            threshold = 69
+            threshold = 70
         elif score_threshold == 3:
-            threshold = 79
+            threshold = 80
         elif score_threshold == 4:
-            threshold = 89
+            threshold = 90
         else:
             threshold = None
         return threshold

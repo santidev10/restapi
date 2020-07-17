@@ -21,6 +21,15 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        Permissions.sync_groups()
+
+    @classmethod
+    def tearDownClass(cls):
+        CustomSegment.objects.all().delete()
+
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
@@ -49,6 +58,24 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(response.data["items"][0]["owner_id"], str(seg_1_params["owner"].id))
+
+    def test_owner_filter_list_vetted(self):
+        """ Users should be able to see and download their own lists, even if vetted """
+        user = self.create_test_user()
+        audit = AuditProcessor.objects.create(source=0)
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
+        seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
+        segment, export = self._create_segment(segment_params=seg_1_params,
+                                               export_params=dict(query={}, download_url="test"))
+        self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        expected_segments_count = 1
+        response = self.client.get(self._get_url("video"))
+        data = response.data["items"][0]
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
+        self.assertEqual(data["download_url"], export.download_url)
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()
@@ -299,7 +326,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
-        Permissions.sync_groups()
         admin_user = self.create_test_user()
         admin_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
 
@@ -317,7 +343,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_audit_vetter_list(self):
         """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
-        Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
 
@@ -334,7 +359,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual({item["id"] for item in response.data["items"]}, {seg_1.id, seg_3.id})
 
     def test_vetting_complete(self):
-        Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
 
@@ -358,3 +382,21 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
         self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
         self.assertEqual(data["items"][2].get("is_vetting_complete"), False)
+
+    def test_create_perm_can_download(self):
+        """ Test users with create ctl permission can view and download their own list """
+        user_1 = self.create_test_user()
+        user_2 = self._create_user()
+        user_2.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
+        _, export = self._create_segment(dict(owner=user_1, segment_type=0, title="test_1", list_type=0), export_params=dict(
+            query={},
+            download_url="test_1_url"
+        ))
+        self._create_segment(dict(owner=user_2, segment_type=0, title="test_2", list_type=0),
+                                         export_params=dict(query={}, download_url="test_2_url"))
+        # request uses last user created
+        response = self.client.get(self._get_url("video"))
+        data = response.data
+        owned = data["items"][0]
+        self.assertEqual(owned["owner_id"], str(user_1.id))
+        self.assertEqual(owned["download_url"], export.download_url)

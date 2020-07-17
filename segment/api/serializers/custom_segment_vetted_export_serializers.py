@@ -14,7 +14,7 @@ __all__ = [
 class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers",
                "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
-               "Age_Group", "Gender", "Content_Type", "Num_Videos",
+               "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
                "Vetting_Result", "Mismatched_Language", "Last_Vetted",
                "Country",)
 
@@ -30,7 +30,7 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
 class CustomSegmentVideoVettedExportSerializer(CustomSegmentVideoExportSerializer):
     columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score",
                "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
-               "Content_Type", "Vetting_Result", "Mismatched_Language",
+               "Content_Type", "Content_Quality", "Vetting_Result", "Mismatched_Language",
                "Last_Vetted", "Country",)
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)

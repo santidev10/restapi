@@ -68,6 +68,17 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
 
         self.assertEqual(items_to_filter, len(response.data["items"]))
 
+    def test_filter_by_single_id(self):
+        self.create_admin_user()
+        items_to_filter = 1
+        videos = [Video(next(int_iterator)) for _ in range(items_to_filter + 1)]
+        VideoManager([Sections.GENERAL_DATA]).upsert(videos)
+
+        url = self.get_url(**{"main.id": videos[0].main.id})
+        response = self.client.get(url)
+
+        self.assertEqual(items_to_filter, len(response.data["items"]))
+
     def test_relevancy_score_sorting(self):
         """
         test that results are returned in the correct order when sorting by _score

@@ -99,6 +99,7 @@ class Command(BaseCommand):
     def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.force_data_refresh = self.audit.params.get("force_data_refresh")
         self.exclusion_hit_count = self.audit.params.get("exclusion_hit_count")
         self.inclusion_hit_count = self.audit.params.get("inclusion_hit_count")
         if not self.exclusion_hit_count:
@@ -182,13 +183,13 @@ class Command(BaseCommand):
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
-            if v_id and not v_id in processed_ids:
+            if counter < self.MAX_SOURCE_CHANNELS_CAP and v_id and not v_id in processed_ids:
                 processed_ids.append(v_id)
                 if len(vids) >= self.MAX_SOURCE_CHANNELS:
                     self.clone_audit()
                     vids = []
                 channel = AuditChannel.get_or_create(v_id)
-                if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
+                if channel.processed_time and (self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
                 AuditChannelMeta.objects.get_or_create(channel=channel)
@@ -198,8 +199,6 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
                 counter += 1
-                if counter >= self.MAX_SOURCE_CHANNELS_CAP:
-                    break
         if counter == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -421,10 +420,11 @@ class Command(BaseCommand):
         num_videos = self.num_videos
         if not self.audit.params.get("do_videos"):
             num_videos = 1
-        channel_video_count = acp.channel.auditchannelmeta.video_count
-        if num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS \
-            and (channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS
-                 or channel_video_count is None):
+        try:
+            channel_video_count = acp.channel.auditchannelmeta.video_count
+        except AuditChannelMeta.DoesNotExist:
+            channel_video_count = None
+        if channel_video_count and channel_video_count > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS and num_videos > self.CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS:
             self.get_videos_using_uploads_playlist(num_videos, acp)
             return
         self.get_videos_using_channel_videos(num_videos, acp)

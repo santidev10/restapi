@@ -255,6 +255,7 @@ class AuditProcessor(models.Model):
             "exclusion_hit_count": self.params.get("exclusion_hit_count"),
             "include_unknown_likes": self.params.get("include_unknown_likes"),
             "include_unknown_views": self.params.get("include_unknown_views"),
+            "force_data_refresh": self.params.get("force_data_refresh"),
         }
         d["export_status"] = self.get_export_status()
         d["has_history"] = self.has_history()
@@ -475,6 +476,8 @@ class AuditChannelMeta(models.Model):
     hidden_subscriber_count = models.BooleanField(default=False)
     primary_video_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True,
                                 related_name="ac_video_language", on_delete=models.CASCADE)
+    likes = models.IntegerField(default=None, null=True)
+    dislikes = models.IntegerField(default=None, null=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -717,9 +720,9 @@ class AuditVideoVet(AuditVet):
 
 class AuditContentType(models.Model):
     ID_CHOICES = [
-        (0, "MC / Brand"),
-        (1, "Regular UGC"),
-        (2, "Premium UGC"),
+        (0, "UGC"),
+        (1, "Broadcast"),
+        (2, "Brands"),
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
@@ -800,3 +803,25 @@ class AuditGender(models.Model):
             item_id = value
         gender = AuditGender.objects.get(id=item_id)
         return gender
+
+
+class AuditContentQuality(models.Model):
+    ID_CHOICES = [
+        (0, "Poor"),
+        (1, "Average"),
+        (2, "Premium"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    quality = models.CharField(max_length=15)
+
+    @staticmethod
+    def get(value):
+        if isinstance(value, (str,)):
+            item_id = AuditContentQuality.to_id[value.lower()]
+        else:
+            item_id = value
+        quality = AuditContentQuality.objects.get(id=item_id)
+        return quality

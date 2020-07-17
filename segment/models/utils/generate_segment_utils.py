@@ -3,6 +3,7 @@ import csv
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.models import BadWordCategory
 from es_components.constants import SUBSCRIBERS_FIELD
@@ -71,6 +72,7 @@ class GenerateSegmentUtils:
                 "age_groups": AuditAgeGroup.to_str,
                 "genders": AuditGender.to_str,
                 "content_types": AuditContentType.to_str,
+                "quality_types": AuditContentQuality.to_str,
             }
         return context
 
