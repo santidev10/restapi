@@ -890,12 +890,12 @@ class PacingReport:
             except (TypeError, ZeroDivisionError):
                 delivery_percentage = None
             if delivery_percentage is not None:
-                if delivery_percentage >= 1.0 and f["end"] <= today:
+                if delivery_percentage >= 1.0 and f["end"] >= today:
                     delivery_alert = "100%"
-                elif delivery_percentage >= 0.8 and f["end"] <= today:
+                elif delivery_percentage >= 0.8 and f["end"] >= today:
                     delivery_alert = "80%"
                 if delivery_alert:
-                    short = f"Unit Progrees at {delivery_alert}"
+                    short = f"Unit Progress at {delivery_alert}"
                     detail = f"{f['name']} in {f['placement__opportunity__name']} - {f['placement__name']} " \
                              f"has delivered {delivery_alert} of its ordered units"
                     alerts.append(create_alert(short, detail))
@@ -1534,10 +1534,17 @@ def get_flight_historical_pacing_chart(flight_data):
     today_goal_spend = None
     goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
     allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
-    # Get mapping of how much was actually delivered for each date to match with recommendation
-    delivery_mapping = {
-        delivery["date"]: delivery for delivery in flight_data["daily_delivery"]
-    }
+    delivery_mapping = {}
+    for delivery in flight_data["daily_delivery"]:
+        # Sum the daily delivery of all campaigns
+        try:
+            data = delivery_mapping[delivery["date"]]
+            data["impressions"] += delivery["impressions"] or 0
+            data["cost"] += delivery["cost"] or 0
+            data["video_views"] += delivery["video_views"] or 0
+        except KeyError:
+            delivery_mapping[delivery["date"]] = delivery
+
     end = min(flight_data["end"], today)
     plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
     projected_budget = flight_data["projected_budget"]
