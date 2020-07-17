@@ -59,6 +59,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     RETRY_SLEEP_COEFF = 1
     SORT_KEY = None
     LIST_SIZE = None
+    is_vetting = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

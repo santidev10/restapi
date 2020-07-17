@@ -273,9 +273,9 @@ class QueryGenerator:
 
             query = QueryBuilder().build()
 
-            if value is True or value == "true":
+            if value is True or value.lower() == "true":
                 query = query.must()
-            elif value is False or value == "false":
+            elif value is False or value.lower() == "false":
                 query = query.must_not()
             else:
                 continue

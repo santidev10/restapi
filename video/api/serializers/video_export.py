@@ -6,6 +6,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
+from channel.api.serializers.channel_export import ListExportSerializerMixin
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -15,7 +16,7 @@ class YTVideoLinkFromID(CharField):
         return f"https://www.youtube.com/watch?v={str_value}"
 
 
-class VideoListExportSerializer(Serializer):
+class VideoListExportSerializer(ListExportSerializerMixin, Serializer):
     title = CharField(source="general_data.title")
     url = YTVideoLinkFromID(source="main.id")
     iab_categories = SerializerMethodField()
@@ -33,10 +34,6 @@ class VideoListExportSerializer(Serializer):
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
     brand_safety_score = SerializerMethodField()
-
-    def get_iab_categories(self, instance):
-        iab_categories = getattr(instance.general_data, "iab_categories", [])
-        return ", ".join(iab_categories)
 
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)

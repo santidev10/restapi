@@ -116,6 +116,28 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.video_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
+    def test_generate_filename(self):
+        """" Test export filename should be segment title """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        # Prepare docs to build segment
+        docs = []
+        for _ in range(5):
+            _id = next(int_iterator)
+            doc = VideoManager.model(f"id_{_id}")
+            doc.populate_general_data(title=f"title_{_id}", age_restricted=False)
+            docs.append(doc)
+        self.video_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, uuid=uuid4(), list_type=0
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        file = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()
+        self.assertIn(segment.title, file["ContentDisposition"])
+
+    @mock_s3
     def test_generate_video_export_data(self):
         """ Test video export contains all data """
         bs_category = BadWordCategory.objects.first()
