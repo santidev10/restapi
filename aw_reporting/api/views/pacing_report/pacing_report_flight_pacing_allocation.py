@@ -1,7 +1,6 @@
 from datetime import datetime
 from collections import namedtuple
 
-from django.utils import timezone
 from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +10,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import FlightPacingAllocation
 from aw_reporting.utils import get_dates_range
 from utils.views import get_object
+from utils.datetime import now_in_default_tz
 
 Range = namedtuple("Range", ["start", "end"])
 
@@ -28,7 +28,7 @@ class PacingReportFlightAllocationAPIView(APIView):
         return Response()
 
     def _validate(self, flight, data):
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
 
         allocations = FlightPacingAllocation.get_allocations(flight.id)
         total_allocation = sum(float(item["allocation"]) for item in data)
