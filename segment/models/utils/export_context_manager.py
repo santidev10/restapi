@@ -11,7 +11,7 @@ class ExportContextManager(object):
     def __init__(self, segment, queryset=None):
         self.segment = segment
         if queryset is None:
-            self.queryset = self.segment.get_queryset(sort=self.segment.SORT_KEY)
+            self.queryset = self.segment.get_queryset(sort=self.segment.config.SORT_KEY)
         else:
             self.queryset = queryset
 

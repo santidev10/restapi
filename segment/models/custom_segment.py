@@ -74,12 +74,16 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
 
-    def __getattr__(self, item):
-        if self.segment_type == 0:
-            config = VideoConfig
-        else:
-            config = ChannelConfig
-        return config[item].value
+    @property
+    def config(self):
+        try:
+            self._config
+        except AttributeError:
+            if self.segment_type == 0:
+                self._config = VideoConfig
+            else:
+                self._config = ChannelConfig
+        return self._config
 
     @property
     def es_manager(self):
@@ -97,13 +101,17 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     @property
     def audit_utils(self):
-        if not hasattr(self, "_audit_utils"):
+        try:
+            self._audit_utils
+        except AttributeError:
             self._audit_utils = SegmentAuditUtils(self.segment_type)
         return self._audit_utils
 
     @property
     def s3(self):
-        if not hasattr(self, "_exporter"):
+        try:
+            self._s3
+        except AttributeError:
             self._s3 = SegmentExporter(self, bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         return self._s3
 
@@ -156,7 +164,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         :return:
         """
         annotation = {
-            "yt_id": models.F(f"{self.DATA_FIELD}__{self.DATA_FIELD}_id")
+            "yt_id": models.F(f"{self.config.DATA_FIELD}__{self.config.DATA_FIELD}_id")
         }
         audit = AuditProcessor.objects.get(id=self.audit_id)
         vetting_yt_ids = self.audit_utils.vetting_model.objects \

@@ -25,7 +25,7 @@ CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY = "custom_segments/featured_images/{uuid}.
 CUSTOM_SEGMENT_DEFAULT_IMAGE_URL = "https://viewiq-ui-assets.s3.amazonaws.com/common/default_audit_image.png"
 
 
-class VideoConfig(enum.Enum):
+class VideoConfig:
     DATA_FIELD = "video"
     AUDIT_TYPE = 1
     SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
@@ -33,7 +33,7 @@ class VideoConfig(enum.Enum):
     LIST_SIZE = 100000
 
 
-class ChannelConfig(enum.Enum):
+class ChannelConfig:
     DATA_FIELD = "channel"
     AUDIT_TYPE = 2
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}

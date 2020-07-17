@@ -37,7 +37,7 @@ class GenerateSegmentUtils:
         """ Retrieve Postgres vetting data for serialization """
         try:
             vetting = AuditUtils.get_vetting_data(
-                segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.DATA_FIELD
+                segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.config.DATA_FIELD
             )
         # pylint: disable=broad-except
         except Exception:
@@ -47,11 +47,12 @@ class GenerateSegmentUtils:
 
     @property
     def default_search_config(self):
+        """ Get default bulk search function config depending on segment type """
         segment_type = self.segment.segment_type
         if segment_type in (0, "video"):
-            config = self._get_default_video_search_config
+            config = self._get_default_video_search_config()
         else:
-            config = self._get_default_channel_search_config
+            config = self._get_default_channel_search_config()
         return config
 
     @property
@@ -105,12 +106,12 @@ class GenerateSegmentUtils:
     def write_to_file(self, items, filename, segment, serializer_context, aggregations, write_header=False, mode="a"):
         """ Write data to csv file """
         rows = []
-        fieldnames = segment.serializer.columns
+        fieldnames = self.serializer.columns
         for item in items:
             # YT_GENRE_CHANNELS have no data and should not be on any export
             if item.main.id in YT_GENRE_CHANNELS:
                 continue
-            row = segment.serializer(item, context=serializer_context).data
+            row = self.serializer(item, context=serializer_context).data
             rows.append(row)
         with open(filename, mode=mode, newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -170,6 +171,7 @@ class GenerateSegmentUtils:
 
     @property
     def serializer(self):
+        """ Get export serializer depending on channel or video segment """
         if self.segment.segment_type in (0, "video"):
             serializer = self._get_video_serializer()
         else:
@@ -177,6 +179,7 @@ class GenerateSegmentUtils:
         return serializer
 
     def _get_video_serializer(self):
+        """ Get video export serializer depending on vetting """
         if self._vetting is True:
             serializer = CustomSegmentVideoVettedExportSerializer
         else:
@@ -184,6 +187,7 @@ class GenerateSegmentUtils:
         return serializer
 
     def _get_channel_serializer(self):
+        """ Get channel export serializer depending on vetting and segment owner permissions """
         if self._vetting is True:
             serializer = CustomSegmentChannelVettedExportSerializer
         else:

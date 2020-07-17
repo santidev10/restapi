@@ -33,6 +33,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :return:
     """
     generate_utils = GenerateSegmentUtils(segment)
+    # Set generate_utils serializer to vetting serializer. Segment is_vetting set as True should only be True if
+    # segment owner has proper vetting permissions
     if getattr(segment, "is_vetting", False):
         generate_utils.set_vetting(True)
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
@@ -49,7 +51,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         logger.exception("Error trying to retrieve source list for "
                          "segment: %s, segment_type: %s", segment.title, segment.segment_type)
     try:
-        sort = sort or [segment.SORT_KEY]
+        sort = sort or [segment.config.SORT_KEY]
         seen = 0
         item_ids = []
         top_three_items = []
@@ -61,12 +63,12 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         if options is None:
             options = default_search_config["options"]
         try:
-            if source_list and len(source_list) <= segment.LIST_SIZE:
+            # Use query by ids along with filters to avoid requesting entire database with bulk_search
+            if source_list and len(source_list) <= segment.config.LIST_SIZE:
                 ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
                 full_query = Q(query) + ids_query
                 es_generator = segment.es_manager.search(query=full_query.to_dict())
                 es_generator = [es_generator.execute().hits]
-                # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
             else:
                 bulk_search_kwargs = dict(
                     options=options, batch_size=5000, include_cursor_exclusions=True
@@ -79,6 +81,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
+                # Get the current batch's Postgres vetting data context for serialization
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
                 generate_utils.write_to_file(batch, filename, segment, context, aggregations,
