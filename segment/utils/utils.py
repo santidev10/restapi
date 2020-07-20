@@ -129,14 +129,11 @@ def with_all(all_options=None, choice=None):
             "name": "All",
         })
     else:
-        try:
-            choice = int(choice)
-            if choice == -1:
-                data = None
-            else:
-                data = choice
-        except TypeError:
-            raise
+        choice = int(choice)
+        if choice == -1:
+            data = None
+        else:
+            data = choice
     return data
 
 
