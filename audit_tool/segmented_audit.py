@@ -88,14 +88,14 @@ class SegmentedAudit:
         ). \
             sources(includes=["main.id", "general_data.title", "general_data.description",
                               "general_data.thumbnail_image_url", "general_data.top_category",
-                              "general_data.top_language", "stats.subscribers", "stats.likes", "stats.dislikes",
+                              "general_data.top_lang_code", "stats.subscribers", "stats.likes", "stats.dislikes",
                               "stats.views"])
 
         for channel in channels:
             if not channel.general_data.top_category:
                 channel.general_data.top_category = "Unclassified"
-            if not channel.general_data.top_language:
-                channel.general_data.top_language = "Unknown"
+            if not channel.general_data.top_lang_code:
+                channel.general_data.top_lang_code = "Unknown"
 
         if not channels:
             channels = self.get_next_channels_batch(limit=limit)
@@ -107,7 +107,7 @@ class SegmentedAudit:
 
         fields_to_load = ["main.id", "channel.id", "general_data.title", "general_data.description",
                           "general_data.thumbnail_image_url", "general_data.category", "general_data.tags",
-                          "general_data.language", "stats.subscribers", "stats.likes", "stats.dislikes",
+                          "general_data.lang_code", "stats.subscribers", "stats.likes", "stats.dislikes",
                           "stats.views", "captions"]
         sort = [{"main.id": {"order": SortDirections.ASCENDING}}]
         filters = manager.by_channel_ids_query(channel_ids)
@@ -123,8 +123,8 @@ class SegmentedAudit:
             for video in videos:
                 if not video.general_data.category:
                     video.general_data.category = "Unknown"
-                if not video.general_data.language:
-                    video.general_data.language = "Unknown"
+                if not video.general_data.lang_code:
+                    video.general_data.lang_code = "Unknown"
                 yield video
             offset += self.BATCH_SIZE
 
@@ -146,8 +146,8 @@ class SegmentedAudit:
 
     def _segment_category(self, item):
         category = PersistentSegmentCategory.WHITELIST
-        language = item.get("general_data").get("language") or item.get("general_data").get("top_language")
-        if item[self.BAD_WORDS_DATA_KEY] or language != "English":
+        lang_code = item.get("general_data").get("lang_code") or item.get("general_data").get("top_lang_code")
+        if item[self.BAD_WORDS_DATA_KEY] or lang_code != "en":
             category = PersistentSegmentCategory.BLACKLIST
         return category
 
@@ -158,7 +158,7 @@ class SegmentedAudit:
             views=video.get("stats").get("views"),
             tags=video.get("general_data").get("tags"),
             description=video.get("general_data").get("description"),
-            language=video.get("general_data").get("language"),
+            language=video.get("general_data").get("lang_code"),
             bad_words=video[self.BAD_WORDS_DATA_KEY],
         )
         return details
@@ -171,7 +171,7 @@ class SegmentedAudit:
             views=channel.get("stats").get("views"),
             tags=channel.get("general_data").get("tags"),
             description=channel.get("general_data").get("description"),
-            language=channel.get("general_data").get("top_language"),
+            language=channel.get("general_data").get("top_lang_code"),
             bad_words=channel[self.BAD_WORDS_DATA_KEY],
             audited_videos=channel[self.AUDITED_VIDEOS_DATA_KEY],
         )
