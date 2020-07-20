@@ -16,7 +16,6 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.managers.base import BaseManager
 from es_components.tests.utils import ESTestCase
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import \
@@ -27,7 +26,6 @@ from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_segment import generate_segment
-from segment.tasks.generate_segment import SOURCE_SIZE_GET_LIMIT
 from utils.brand_safety import map_brand_safety_score
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -408,33 +406,3 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertNotIn(excluded.main.id, rows)
         self.channel_manager.delete([doc.main.id for doc in docs])
         self.assertEqual(rows.count(columns), 1)
-
-    def test_uses_get_source_list(self):
-        """ Test generate_segment uses more efficient get method instead of filters if source list is less
-        than threshold size"""
-
-        @mock_s3
-        def test_writes_header_once(self):
-            """ Test that header is only written once when batch is empty due to source urls not being in batch """
-            conn = boto3.resource("s3", region_name="us-east-1")
-            conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-            inclusion_urls = [b"a_url" for _ in range(SOURCE_SIZE_GET_LIMIT)]
-            source_file = io.BytesIO()
-            source_file.write(b"URL\n")
-            source_file.write(b"\n".join(inclusion_urls))
-            source_file.seek(0)
-            source_key = f"source_{next(int_iterator)}"
-            conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source_key).put(Body=source_file)
-            segment = CustomSegment.objects.create(
-                title=f"title_{next(int_iterator)}",
-                segment_type=1, uuid=uuid4(), list_type=0
-            )
-            CustomSegmentSourceFileUpload.objects.create(
-                segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
-            )
-            with patch.object(BaseManager, "get") as get_method, \
-                    patch("segment.tasks.generate_segment.bulk_search") as bulk_search_mock:
-                generate_segment(segment, Q(), len(inclusion_urls))
-
-            get_method.assert_called_once()
-            bulk_search_mock.assert_not_called()
