@@ -18,7 +18,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
-        "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country",
+        "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country", "Monthly_Views"
     )
 
     URL = SerializerMethodField("get_url")
@@ -37,6 +37,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
     Country = SerializerMethodField("get_country")
+    Monthly_Views = IntegerField(source="stats.last_30day_views")
 
     def update(self, instance, validated_data):
         raise NotImplementedError
@@ -50,7 +51,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
         "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
-        "Country",
+        "Country", "Monthly_Views"
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
@@ -67,9 +68,9 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
 
 class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = (
-        "URL", "Title", "Language", "Category", "Views", "Overall_Score",
+        "URL", "Title", "Language", "Category", "Views", "Monthly_Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
-        "Mismatched_Language", "Last_Vetted", "Country",
+        "Mismatched_Language", "Last_Vetted", "Country"
     )
 
     URL = SerializerMethodField("get_url")
@@ -77,6 +78,7 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     Language = SerializerMethodField("get_language")
     Category = SerializerMethodField("get_category")
     Views = IntegerField(source="stats.views")
+    Monthly_Views = IntegerField(source="stats.last_30day_views")
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
     Brand_Safety = SerializerMethodField("get_brand_safety")

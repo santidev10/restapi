@@ -12,7 +12,7 @@ from segment.api.serializers.segment_export_serializer_mixins import SegmentVide
 
 class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
-               "Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
+               "Views", "Monthly_Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
                "Gender", "Content_Type")
 
     URL = SerializerMethodField("get_url")
@@ -22,6 +22,7 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
     Likes = IntegerField(source="stats.likes")
     Dislikes = IntegerField(source="stats.dislikes")
     Views = IntegerField(source="stats.views")
+    Monthly_Views = IntegerField(source="stats.last_30day_views")
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
     Brand_Safety = SerializerMethodField("get_brand_safety")
@@ -41,7 +42,7 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
 
 class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",
-               "Dislikes", "Views", "Audited_Videos", "Overall_Score", "Vetted",
+               "Dislikes", "Views", "Monthly_Views", "Audited_Videos", "Overall_Score", "Vetted",
                "Brand_Safety", "Age_Group", "Gender", "Content_Type")
 
     # Fields map to segment export rows
@@ -53,6 +54,7 @@ class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMix
     Likes = IntegerField(source="stats.observed_videos_likes")
     Dislikes = IntegerField(source="stats.observed_videos_dislikes")
     Views = IntegerField(source="stats.views")
+    Monthly_Views = IntegerField(source="stats.last_30day_views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
