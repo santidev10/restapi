@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from moto import mock_s3
+from moto import mock_s3 as moto_s3
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -17,6 +17,7 @@ from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.custom_segment import CustomSegment
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.s3_mock import mock_s3 as mock_s3
 
 
 class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
@@ -104,7 +105,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    @mock_s3
+    @moto_s3
     def test_update_content_disposition(self):
         """ Test updating title should update object content disposition """
         conn = boto3.resource("s3", region_name="us-east-1")
