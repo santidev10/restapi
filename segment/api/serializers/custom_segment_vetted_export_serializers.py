@@ -11,7 +11,7 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
                "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
                "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
                "Vetting_Result", "Mismatched_Language", "Last_Vetted",
-               "Country",)
+               "Country", "Monthly_Views",)
 
     Vetting_Result = SerializerMethodField("get_vetting_result")
 
