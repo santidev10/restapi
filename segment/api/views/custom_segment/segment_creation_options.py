@@ -17,6 +17,7 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
+from segment.utils.utils import with_all
 
 
 class SegmentCreationOptionsApiView(APIView):
@@ -97,8 +98,6 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
             "content_categories": AuditUtils.get_iab_categories(),
-            "content_type_categories": [{"id": _id, "name": name} for _id, name in AuditContentType.ID_CHOICES],
-            "content_quality_categories": [{"id": _id, "name": name} for _id, name in AuditContentQuality.ID_CHOICES],
             "gender": [
                 {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
             ],
@@ -109,6 +108,8 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": True, "name": "Include Only Vetted"},
                 {"id": None, "name": "Include All"}
             ],
+            "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
+            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES)
         }
         return options
 
@@ -137,3 +138,4 @@ class SegmentCreationOptionsApiView(APIView):
         except ValueError as err:
             raise ValidationError(f"Invalid value: {err}")
         return options
+
