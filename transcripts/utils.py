@@ -25,7 +25,6 @@ from utils.lang import replace_apostrophes
 
 class YTTranscriptsScraper(object):
     EMAILER_LOCK_NAME = "transcripts_alert_emailer"
-    NUM_PORTS = 65535
     NUM_RETRIES = 3
     NUM_THREADS = settings.TRANSCRIPTS_NUM_THREADS
     TIMEOUT = settings.TRANSCRIPTS_TIMEOUT
