@@ -61,15 +61,19 @@ PLAN_STATS_ANNOTATION = dict(
 )
 
 PLAN_RATES_ANNOTATION = dict(
-    plan_cpm=Case(When(
-        cpm_ordered_units__gt=0,
-        then=F("cpm_total_cost") / F("cpm_ordered_units") * 1000),
+    plan_cpm=Case(
+        When(
+            cpm_ordered_units__gt=0,
+            then=F("cpm_total_cost") / F("cpm_ordered_units") * 1000
+        ),
         default=Value(None),
         output_field=FloatField()
     ),
-    plan_cpv=Case(When(
-        cpv_ordered_units__gt=0,
-        then=F("cpv_total_cost") / F("cpv_ordered_units")),
+    plan_cpv=Case(
+        When(
+            cpv_ordered_units__gt=0,
+            then=F("cpv_total_cost") / F("cpv_ordered_units")
+        ),
         default=Value(None),
         output_field=FloatField()
     )
@@ -136,6 +140,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "start",
             "statistic_max_date",
             "statistic_min_date",
+            "status",
             "thumbnail",
             "updated_at",
             "video_view_rate",
@@ -154,7 +159,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
-            elif type(args[0]) is list:
+            elif isinstance(args[0], list):
                 ids = [i.id for i in args[0]]
             else:
                 ids = [args[0].id]
@@ -216,7 +221,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY)
 
-        data = queryset\
+        data = queryset \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **stats_aggregator())
@@ -250,8 +255,10 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             account_data.update(dates_by_id[account_id])
             dict_norm_base_stats(account_data)
-            account_data["video_views"] = video_views_impressions.get(account_id, {}).get("video_views", account_data["video_views"])
-            account_data["video_impressions"] = video_views_impressions.get(account_id, {}).get("video_impressions", account_data["video_impressions"])
+            account_data["video_views"] = video_views_impressions.get(account_id, {}).get("video_views",
+                                                                                          account_data["video_views"])
+            account_data["video_impressions"] = video_views_impressions.get(account_id, {}) \
+                .get("video_impressions", account_data["video_impressions"])
             dict_add_calculated_stats(account_data)
 
             if show_client_cost:
@@ -284,44 +291,43 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return {s[account_creation_ref]: pick_dict(s, keys) for s in stats}
 
     def _get_settings(self, account_creation_ids):
-        settings = CampaignCreation.objects.filter(
-            account_creation_id__in=account_creation_ids
-        ).values('account_creation_id').order_by(
-            'account_creation_id').annotate(
-            start=Min("start"), end=Max("end"),
-            video_thumbnail=ConcatAggregate(
-                "ad_group_creations__ad_creations__video_thumbnail",
-                distinct=True)
-        )
-        return {s['account_creation_id']: s for s in settings}
+        settings = CampaignCreation.objects \
+            .filter(account_creation_id__in=account_creation_ids) \
+            .values("account_creation_id") \
+            .order_by("account_creation_id") \
+            .annotate(start=Min("start"), end=Max("end"),
+                      video_thumbnail=ConcatAggregate("ad_group_creations__ad_creations__video_thumbnail",
+                                                      distinct=True)
+                      )
+        return {s["account_creation_id"]: s for s in settings}
 
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
         daily_chart = defaultdict(list)
         account_id_key = "ad_group__campaign__account__account_creation__id"
         group_by = (account_id_key, "date")
-        daily_stats = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account__account_creation__id__in=ids
-        ).values(*group_by).order_by(*group_by).annotate(
-            views=Sum("video_views")
-        )
+        daily_stats = AdGroupStatistic.objects \
+            .filter(ad_group__campaign__account__account_creation__id__in=ids) \
+            .values(*group_by) \
+            .order_by(*group_by) \
+            .annotate(views=Sum("video_views"))
         for s in daily_stats:
             daily_chart[s[account_id_key]].append(
-                dict(label=s['date'], value=s['views']))
+                dict(label=s["date"], value=s["views"]))
         return daily_chart
 
     def _get_video_ads_data(self, account_creation_ids):
         ids = account_creation_ids
         group_key = "ad_group__campaign__account__account_creation__id"
-        video_creative_stats = VideoCreativeStatistic.objects.filter(
-            ad_group__campaign__account__account_creation__id__in=ids
-        ).values(group_key, "creative_id").order_by(group_key,
-                                                    "creative_id").annotate(
-            impressions=Sum("impressions"))
+        video_creative_stats = VideoCreativeStatistic.objects \
+            .filter(ad_group__campaign__account__account_creation__id__in=ids) \
+            .values(group_key, "creative_id") \
+            .order_by(group_key, "creative_id") \
+            .annotate(impressions=Sum("impressions"))
         video_ads_data = defaultdict(list)
         for v in video_creative_stats:
             video_ads_data[v[group_key]].append(
-                (v['impressions'], v['creative_id']))
+                (v["impressions"], v["creative_id"]))
         return video_ads_data
 
     def _fields_to_exclude(self):
@@ -351,26 +357,24 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         if video_ads_data:
             _, yt_id = sorted(video_ads_data)[-1]
             return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(yt_id)
-        else:
-            settings = self.settings.get(obj.id)
-            if settings:
-                thumbnails = settings['video_thumbnail']
-                if thumbnails:
-                    return thumbnails.split(", ")[0]
+        settings = self.settings.get(obj.id)
+        if settings:
+            thumbnails = settings["video_thumbnail"]
+            if thumbnails:
+                return thumbnails.split(", ")[0]
+        return None
 
     def get_start(self, obj):
         settings = self.settings.get(obj.id)
         if settings:
-            return settings['start']
-        else:
-            return self.stats.get(obj.id, {}).get("start")
+            return settings["start"]
+        return self.stats.get(obj.id, {}).get("start")
 
     def get_end(self, obj):
         settings = self.settings.get(obj.id)
         if settings:
-            return settings['end']
-        else:
-            return self.stats.get(obj.id, {}).get("end")
+            return settings["end"]
+        return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
         return obj.account.update_time if obj.account else None
@@ -396,5 +400,13 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .distinct()
         opp_count = opportunities.count()
         if opp_count > 1:
-            logger.warning("AccountCreation (id: {}) has more then one opportunity ({})".format(obj.id, opp_count))
+            logger.warning("AccountCreation (id: %s) has more then one opportunity (%s)", obj.id, opp_count)
         return opportunities.first()
+
+    def get_status(self, obj):
+        exists = Campaign.objects.filter(account=obj.account, status="serving").exists()
+        if exists:
+            status = "Running"
+        else:
+            status = "Not Running"
+        return status

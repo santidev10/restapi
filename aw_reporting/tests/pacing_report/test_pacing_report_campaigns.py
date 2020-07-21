@@ -1,11 +1,17 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Account, Campaign, CampaignStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -39,13 +45,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(campaigns), 2)
 
         first = campaigns[0]
-        self.assertEqual(first['impressions'], stats_1["impressions"])
-        self.assertEqual(first['video_views'], stats_1["video_views"])
-        self.assertEqual(first['cost'], stats_1["cost"])
-        self.assertEqual(first['cpv'], stats_1["cost"] / stats_1["video_views"])
-        self.assertEqual(first['cpm'], stats_1["cost"] / stats_1["impressions"] * 1000)
-        self.assertEqual(first['ctr'], stats_1["clicks"] / stats_1["video_views"])
-        self.assertEqual(first['video_view_rate'], stats_1["video_views"] / stats_1["impressions"])
+        self.assertEqual(first["impressions"], stats_1["impressions"])
+        self.assertEqual(first["video_views"], stats_1["video_views"])
+        self.assertEqual(first["cost"], stats_1["cost"])
+        self.assertEqual(first["cpv"], stats_1["cost"] / stats_1["video_views"])
+        self.assertEqual(first["cpm"], stats_1["cost"] / stats_1["impressions"] * 1000)
+        self.assertEqual(first["ctr"], stats_1["clicks"] / stats_1["video_views"])
+        self.assertEqual(first["video_view_rate"], stats_1["video_views"] / stats_1["impressions"])
 
     def test_get_budget_under_50000(self):
         today = timezone.now()
@@ -67,7 +73,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(campaigns), 1)
 
         data = campaigns[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.02)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.02)
 
     def test_get_budget_over_50000(self):
         today = timezone.now()
@@ -89,7 +95,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(campaigns), 1)
 
         data = campaigns[0]
-        self.assertEqual(data['plan_video_views'], flight.ordered_units * 1.01)
+        self.assertEqual(data["plan_video_views"], flight.ordered_units * 1.01)
 
     def test_campaigns_goal_allocation(self):
         """
@@ -98,7 +104,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = datetime(2017, 3, 1).date()
-        opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today)
+        opportunity = Opportunity.objects.create(id="1", name="", start=today, end=today)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
         )
@@ -114,16 +120,16 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         campaign_data = campaigns[0]
         self.assertEqual(campaign_data["id"], campaign_1.id)
-        self.assertEqual(campaign_data['plan_video_views'], 510)
-        self.assertEqual(campaign_data['today_goal'], 510 / 30)
-        first_chart = campaign_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 510)
+        self.assertEqual(campaign_data["plan_video_views"], 510)
+        self.assertEqual(campaign_data["today_goal"], 510 / 30)
+        first_chart = campaign_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 510)
 
         campaign_data = campaigns[1]
         self.assertEqual(campaign_data["id"], campaign_2.id)
-        self.assertEqual(campaign_data['plan_video_views'], 510)
-        self.assertEqual(campaign_data['today_goal'], 510 / 30)
-        first_chart = campaign_data['charts'][0]
-        self.assertEqual(first_chart['title'], 'Ideal Pacing')
-        self.assertEqual(first_chart['data'][-1]['value'], 510)
+        self.assertEqual(campaign_data["plan_video_views"], 510)
+        self.assertEqual(campaign_data["today_goal"], 510 / 30)
+        first_chart = campaign_data["charts"][0]
+        self.assertEqual(first_chart["title"], "Ideal Pacing")
+        self.assertEqual(first_chart["data"][-1]["value"], 510)

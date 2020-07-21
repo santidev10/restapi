@@ -6,10 +6,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0036_auto_20180830_1347'),
-        ('aw_reporting', '0036_account_is_active'),
+        ("aw_reporting", "0036_auto_20180830_1347"),
+        ("aw_reporting", "0036_account_is_active"),
     ]
 
     operations = [

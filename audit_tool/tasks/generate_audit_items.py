@@ -1,8 +1,7 @@
 from logging import getLogger
 
-from saas import celery_app
 from audit_tool.segment_audit_generator import SegmentAuditGenerator
-
+from saas import celery_app
 
 logger = getLogger(__name__)
 
@@ -18,4 +17,3 @@ def generate_audit_items(segment_id, data_field="video"):
     """
     audit_item_generator = SegmentAuditGenerator(segment_id, data_field=data_field)
     audit_item_generator.run()
-

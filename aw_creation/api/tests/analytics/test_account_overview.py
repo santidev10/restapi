@@ -6,7 +6,6 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -17,10 +16,11 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
@@ -102,7 +102,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(overview.keys()), self._keys)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         overview = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(set(overview.keys()), self._keys)
 

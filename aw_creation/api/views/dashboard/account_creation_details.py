@@ -68,12 +68,12 @@ class DashboardAccountCreationDetailsAPIView(APIView):
 
         fs = dict(ad_group__campaign__account=account_creation.account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            ad_network=ConcatAggregate('ad_network', distinct=True),
+            ad_network=ConcatAggregate("ad_network", distinct=True),
             average_position=Avg(
                 Case(
                     When(
                         average_position__gt=0,
-                        then=F('average_position'),
+                        then=F("average_position"),
                     ),
                     output_field=AggrFloatField(),
                 )
@@ -82,13 +82,13 @@ class DashboardAccountCreationDetailsAPIView(APIView):
             **ads_and_placements_stats
         )
         dict_quartiles_to_rates(data)
-        del data['impressions']
+        del data["impressions"]
 
-        annotate = dict(v=Sum('cost'))
+        annotate = dict(v=Sum("cost"))
         creative = VideoCreativeStatistic.objects.filter(**fs).values(
-            "creative_id").annotate(**annotate).order_by('v')[:3]
+            "creative_id").annotate(**annotate).order_by("v")[:3]
         if creative:
-            ids = [i['creative_id'] for i in creative]
+            ids = [i["creative_id"] for i in creative]
             manager = VideoManager(Sections.GENERAL_DATA)
             videos = list(manager.get_or_create(ids=ids))
             creative = [
@@ -103,18 +103,18 @@ class DashboardAccountCreationDetailsAPIView(APIView):
 
         # second section
         gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+            "gender_id").order_by("gender_id").annotate(**annotate)
+        gender = [dict(name=Genders[i["gender_id"]], value=i["v"]) for i in
                   gender]
 
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+        age = [dict(name=AgeRanges[i["age_range_id"]], value=i["v"]) for i in
                age]
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
+        device = [dict(name=device_str(i["device_id"]), value=i["v"]) for i in
                   device]
         data.update(gender=gender, age=age, device=device)
 
@@ -127,27 +127,27 @@ class DashboardAccountCreationDetailsAPIView(APIView):
             impressions=Sum("impressions"),
         )
         if stats:
-            if any(i['views'] for i in stats):
+            if any(i["views"] for i in stats):
                 charts.append(
                     dict(
-                        label='Views',
+                        label="Views",
                         trend=[
-                            dict(label=i['date'], value=i['views'])
+                            dict(label=i["date"], value=i["views"])
                             for i in stats
                         ]
                     )
                 )
 
-            if any(i['impressions'] for i in stats):
+            if any(i["impressions"] for i in stats):
                 charts.append(
                     dict(
-                        label='Impressions',
+                        label="Impressions",
                         trend=[
-                            dict(label=i['date'], value=i['impressions'])
+                            dict(label=i["date"], value=i["impressions"])
                             for i in stats
                         ]
                     )
                 )
-        data['delivery_trend'] = charts
+        data["delivery_trend"] = charts
 
         return data

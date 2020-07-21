@@ -6,10 +6,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0029_auto_20180503_1505'),
-        ('aw_reporting', '0002_load_geo_targets_from_fixture'),
+        ("aw_reporting", "0029_auto_20180503_1505"),
+        ("aw_reporting", "0002_load_geo_targets_from_fixture"),
     ]
 
     operations = [

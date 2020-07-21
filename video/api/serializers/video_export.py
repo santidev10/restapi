@@ -5,6 +5,8 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
+from brand_safety.languages import LANGUAGES
+from channel.api.serializers.channel_export import ListExportSerializerMixin
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -14,10 +16,11 @@ class YTVideoLinkFromID(CharField):
         return f"https://www.youtube.com/watch?v={str_value}"
 
 
-class VideoListExportSerializer(Serializer):
+class VideoListExportSerializer(ListExportSerializerMixin, Serializer):
     title = CharField(source="general_data.title")
     url = YTVideoLinkFromID(source="main.id")
-    iab_categories = CharField(source="general_data.iab_categories")
+    iab_categories = SerializerMethodField()
+    language = SerializerMethodField()
     views = IntegerField(source="stats.views")
     monthly_views = IntegerField(source="stats.last_30day_views")
     weekly_views = IntegerField(source="stats.last_7day_views")
@@ -35,3 +38,17 @@ class VideoListExportSerializer(Serializer):
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)
         return score
+
+    def get_language(self, instance):
+        try:
+            lang_code = getattr(instance.general_data, "lang_code", "")
+            language = LANGUAGES.get(lang_code) or lang_code
+            return language
+        except Exception:
+            return ""
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError

@@ -3,6 +3,7 @@ from collections import defaultdict
 from functools import reduce
 
 from django.conf import settings
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Case
 from django.db.models import Count
 from django.db.models import F
@@ -15,7 +16,6 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
-from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
@@ -23,15 +23,15 @@ from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
-from aw_reporting.models import Campaign
 from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
@@ -63,10 +63,10 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
 
         if not settings.IS_TEST:
             logger.debug(
-                "Calculating de-norm fields. Model={}, account_id={}".format(
-                    model.__name__,
-                    account_id
-                ))
+                "Calculating de-norm fields. Model=%s, account_id=%s",
+                model.__name__,
+                account_id
+            )
 
         ag_link = "ad_groups__" if model is Campaign else ""
         items = model.objects.filter(id__in=items_ids).values("id").order_by("id")
@@ -93,7 +93,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
         )
 
         if model is Campaign:
-            ad_group_ids_map = AdGroup.objects.filter(campaign_id__in=items_ids)\
+            ad_group_ids_map = AdGroup.objects.filter(campaign_id__in=items_ids) \
                 .values("campaign_id").order_by("campaign_id").annotate(ids=ArrayAgg("id"))
             ad_group_ids_map = {item.get("campaign_id"): item.get("ids") for item in ad_group_ids_map}
         else:
@@ -102,33 +102,19 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
         aggregated_data = {}
 
         for key, ids in ad_group_ids_map.items():
-            _item_filter = {f"ad_group_id__in": ids}
+            _item_filter = {"ad_group_id__in": ids}
             aggregated_data[key] = {}
 
-            aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter)\
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["keyword_count"] = KeywordStatistic.objects.filter(**_item_filter)\
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["channel_count"] = YTChannelStatistic.objects.filter(**_item_filter)\
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["video_count"] = YTVideoStatistic.objects.filter(**_item_filter)\
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["rem_count"] = RemarkStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
-            aggregated_data[key]["topic_count"] = TopicStatistic.objects.filter(**_item_filter) \
-                .aggregate(count=Count("id")).get("count")
-
+            aggregated_data[key]["has_interests"] = AudienceStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_keywords"] = KeywordStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_channels"] = YTChannelStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_videos"] = YTVideoStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_remarketing"] = RemarkStatistic.objects.filter(**_item_filter).exists()
+            aggregated_data[key]["has_topics"] = TopicStatistic.objects.filter(**_item_filter).exists()
 
         update = {}
         for i in data:
             uid = i["id"]
-            sum_stats = sum_statistic_map.get(uid, {})
-            stats = stats_by_id[uid]
 
             update[uid] = dict(
                 de_norm_fields_are_recalculated=True,
@@ -136,15 +122,9 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
                 min_stat_date=i["min_date"],
                 max_stat_date=i["max_date"],
 
-                **sum_stats,
-                **stats,
-
-                has_interests=bool(aggregated_data.get(uid, {}).get("audience_count")),
-                has_keywords=bool(aggregated_data.get(uid, {}).get("keyword_count")),
-                has_channels=bool(aggregated_data.get(uid, {}).get("channel_count")),
-                has_videos=bool(aggregated_data.get(uid, {}).get("video_count")),
-                has_remarketing=bool(aggregated_data.get(uid, {}).get("rem_count")),
-                has_topics=bool(aggregated_data.get(uid, {}).get("topic_count")),
+                **sum_statistic_map.get(uid, {}),
+                **stats_by_id[uid],
+                **aggregated_data.get(uid, {}),
             )
 
         for uid, updates in update.items():
@@ -152,20 +132,22 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
 
 
 def _recalculate_de_norm_fields_for_account_statistics(account_id):
+    ad_group_ids = list(AdGroup.objects.filter(campaign__account_id=account_id).values_list("id", flat=True))
     formulas = dict(
-        ad_count=Count("campaigns__ad_groups__ads", distinct=True),
-        channel_count=Count("campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
-        video_count=Count("campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
-        interest_count=Count("campaigns__ad_groups__audiences__audience_id", distinct=True),
-        topic_count=Count("campaigns__ad_groups__topics__topic_id", distinct=True),
-        keyword_count=Count("campaigns__ad_groups__keywords__keyword", distinct=True),
+        ad_count=Count("ads", distinct=True),
+        channel_count=Count("channel_statistics__yt_id", distinct=True),
+        video_count=Count("managed_video_statistics__yt_id", distinct=True),
+        interest_count=Count("audiences__audience_id", distinct=True),
+        topic_count=Count("topics__topic_id", distinct=True),
+        keyword_count=Count("keywords__keyword", distinct=True),
     )
-    queryset = Account.objects.filter(pk=account_id)
+    get_queryset = AdGroup.objects.filter(id__in=ad_group_ids)
+    set_queryset = Account.objects.filter(pk=account_id)
     data = dict()
     for k, v in formulas.items():
-        data_item = queryset.aggregate(**{k: v})
+        data_item = get_queryset.aggregate(**{k: v})
         data.update(data_item)
-    queryset.update(**data)
+    set_queryset.update(**data)
 
 
 def _build_boolean_case(ref, value):
@@ -308,7 +290,7 @@ def _recalculate_de_norm_fields_for_account_flights(account_id):
     for flight in flights_annotated.values():
         defaults = {
             key: flight.get(key) or 0
-            for key in FLIGHTS_DELIVERY_ANNOTATE.keys()
+            for key in FLIGHTS_DELIVERY_ANNOTATE
         }
         FlightStatistic.objects.update_or_create(
             flight_id=flight["id"],

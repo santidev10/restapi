@@ -17,8 +17,8 @@ CONVERSIONS = ("all_conversions", "conversions", "view_through")
 
 SUM_STATS = BASE_STATS + CONVERSIONS
 
-QUARTILE_RATES = ('quartile_25_rate', 'quartile_50_rate',
-                  'quartile_75_rate', 'quartile_100_rate')
+QUARTILE_RATES = ("quartile_25_rate", "quartile_50_rate",
+                  "quartile_75_rate", "quartile_100_rate")
 
 QUARTILE_STATS = ("video_views_25_quartile", "video_views_50_quartile",
                   "video_views_75_quartile", "video_views_100_quartile")
@@ -87,6 +87,12 @@ _DEVICE_REPRESENTATION = {
     Device.CONNECTED_TV: "TV Screens",
 }
 
+_PARENT_REPRESENTATION = {
+    Parent.PARENT: "Parent",
+    Parent.NOT_A_PARENT: "Not a parent",
+    Parent.UNDETERMINED: "Undetermined"
+}
+
 
 def age_range_str(age_range_id: int) -> str:
     return _AGE_RANGE_REPRESENTATION.get(age_range_id)
@@ -98,6 +104,10 @@ def gender_str(gender_id: int) -> str:
 
 def device_str(device_id: int) -> str:
     return _DEVICE_REPRESENTATION.get(device_id, "Undetermined")
+
+
+def parent_str(parent_id):
+    return _PARENT_REPRESENTATION.get(parent_id)
 
 
 class CampaignStatus(ExtendedEnum):
@@ -150,8 +160,10 @@ def get_device_id_by_name(device_repr):
             return device_id
         if device_repr == "Devices streaming video content to TV screens":
             return Device.CONNECTED_TV
-    logger.debug("Undefined device name <{}>".format(device_repr))
+    logger.debug("Undefined device name <%s>", device_repr)
+    # pylint: disable=protected-access
     return Device._UNDETERMINED
+    # pylint: enable=protected-access
 
 
 class BudgetType(ExtendedEnum):
@@ -166,8 +178,4 @@ CAMPAIGN_BIDDING_STRATEGY_TYPES = {
 
 
 def get_bidding_strategy_type(strategy_type):
-    if strategy_type in CAMPAIGN_BIDDING_STRATEGY_TYPES:
-        value = CAMPAIGN_BIDDING_STRATEGY_TYPES[strategy_type]
-    else:
-        value = strategy_type
-    return value
+    return CAMPAIGN_BIDDING_STRATEGY_TYPES.get(strategy_type, strategy_type)

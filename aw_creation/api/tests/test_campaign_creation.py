@@ -1,23 +1,32 @@
 import json
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
 import pytz
 from django.urls import reverse
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
-from aw_creation.models import AccountCreation, CampaignCreation, Language, \
-    LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -126,22 +135,22 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             set(data.keys()),
             campaign_keys
         )
-        ad_group_data = data['ad_group_creations'][0]
+        ad_group_data = data["ad_group_creations"][0]
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'updated_at', 'ad_creations',
-                'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate', 'video_ad_format',
+                "id", "name", "updated_at", "ad_creations",
+                "genders", "parents", "age_ranges",
+                "targeting", "max_rate", "video_ad_format",
             }
         )
         self.assertEqual(
-            set(ad_group_data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(ad_group_data["targeting"]),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,
@@ -155,13 +164,13 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
         response = self.client.patch(
-            url, json.dumps({}), content_type='application/json',
+            url, json.dumps({}), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
@@ -185,10 +194,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             name=update_name
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data.get('name'), update_name)
+        self.assertEqual(response.data.get("name"), update_name)
 
     def test_success_update(self):
         today = now_in_default_tz().date()
@@ -219,23 +228,23 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 dict(geo_target=0, radius=666),
                 dict(latitude=100, longitude=200, radius=2),
             ],
-            devices=['DESKTOP_DEVICE'],
+            devices=["DESKTOP_DEVICE"],
             content_exclusions=content_exclusions,
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_deleted, False)
 
-        self.assertEqual(len(response.data['ad_schedule_rules']), 2)
-        self.assertEqual(len(response.data['frequency_capping']), 2)
-        self.assertEqual(len(response.data['location_rules']), 2)
-        self.assertEqual(len(response.data['devices']), 1)
-        self.assertEqual(len(response.data['content_exclusions']), 1)
-        self.assertEqual(response.data['content_exclusions'][0]['id'],
+        self.assertEqual(len(response.data["ad_schedule_rules"]), 2)
+        self.assertEqual(len(response.data["frequency_capping"]), 2)
+        self.assertEqual(len(response.data["location_rules"]), 2)
+        self.assertEqual(len(response.data["devices"]), 1)
+        self.assertEqual(len(response.data["content_exclusions"]), 1)
+        self.assertEqual(response.data["content_exclusions"][0]["id"],
                          content_exclusions[0])
 
     def test_success_update_empty_dates(self):
@@ -272,7 +281,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                                "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"],
         }
         response = self.client.put(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -295,7 +304,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=str(today),
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "End date must be > start date")
@@ -315,7 +324,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             start=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "dates in the past are not allowed")
@@ -342,7 +351,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 content_exclusions=campaign_creation.content_exclusions,
                 devices=campaign_creation.devices,
                 video_networks=campaign_creation.video_networks,
-            )), content_type='application/json',
+            )), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -361,7 +370,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "dates in the past are not allowed")
@@ -383,7 +392,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=str(today + timedelta(days=1)),
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -404,7 +413,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             start=str(today + timedelta(days=1)),
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "Because start date > end date")
@@ -458,7 +467,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                       args=(campaign.id,))
 
         response = self.client.put(url, json.dumps(update_data),
-                                   content_type='application/json')
+                                   content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -488,7 +497,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -517,7 +526,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -546,7 +555,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -577,7 +586,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -603,7 +612,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_creation.refresh_from_db()
@@ -631,7 +640,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         with patch_now(today):
             response = self.client.put(url, json.dumps(update_data),
-                                       content_type='application/json')
+                                       content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         campaign_creation.refresh_from_db()

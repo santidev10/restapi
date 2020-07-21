@@ -1,30 +1,28 @@
-from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditContentType
-from audit_tool.models import AuditGender
-from audit_tool.utils.audit_utils import AuditUtils
-from brand_safety.models import BadWordCategory
-from collections import defaultdict
-from django.conf import settings
-from es_components.constants import SUBSCRIBERS_FIELD
-from es_components.constants import Sections
-from es_components.constants import VIEWS_FIELD
-from es_components.query_builder import QueryBuilder
-from segment.models.persistent.constants import YT_GENRE_CHANNELS
-from segment.utils.bulk_search import bulk_search
-from utils.brand_safety import map_brand_safety_score
-import csv
 import logging
 import os
 import tempfile
+from collections import defaultdict
+
+from django.conf import settings
+
+from es_components.constants import Sections
+from segment.models import CustomSegmentSourceFileUpload
+from segment.models.constants import SourceListType
+from segment.utils.bulk_search import bulk_search
+from segment.utils.generate_segment_utils import GenerateSegmentUtils
+from es_components.query_builder import QueryBuilder
+from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
+SOURCE_SIZE_GET_LIMIT = 10000
 MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
+# pylint: disable=too-many-nested-blocks,too-many-statements
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -34,118 +32,76 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
     :param size: int
     :param sort: list -> Additional sort fields
     :param add_uuid: Add uuid to document segments section
-    :param get_exists_params: dict -> Parameters to pass to get_exists util method
+    :param s3_key: Optional s3 key for file upload
     :return:
     """
+    generate_utils = GenerateSegmentUtils()
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    context = prepare_context()
+    context = generate_utils.get_default_serialization_context()
+    source_list = None
+    source_type = None
+    # pylint: disable=broad-except
+    try:
+        source_list = generate_utils.get_source_list(segment)
+        source_type = segment.source.source_type
+    except (AttributeError, CustomSegmentSourceFileUpload.DoesNotExist):
+        pass
+    except Exception:
+        logger.exception("Error trying to retrieve source list for "
+                         "segment: %s, segment_type: %s", segment.title, segment.segment_type)
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-
-        # If video, retrieve videos ordered by views
-        if segment.segment_type == 0 or segment.segment_type == "video":
-            cursor_field = VIEWS_FIELD
-            # Exclude all age_restricted items
-            if options is None:
-                options = [
-                    QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
-                ]
-        else:
-            cursor_field = SUBSCRIBERS_FIELD
-            # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
-            # for is_monetizable channel items to appear first on export
-            if options is None:
-                options = [
-                    QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
-                    QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
-                ]
+        default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
+        # a batch may be empty since we check set membership for the current bulk_search batch in the source list
+        write_header = True
+        if options is None:
+            options = default_search_config["options"]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options,
-                                     batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
-                # Retrieve Postgres vetting data for vetting exports
-                # no longer need to check if vetted for this, as this data is being used on all exports
-                item_ids = [item.main.id for item in batch]
-                try:
-                    vetting = AuditUtils.get_vetting_data(
-                        segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
-                    )
-                except Exception as e:
-                    logger.warning(f"Error getting segment extra data: {e}")
-                    vetting = {}
-
+            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
+                ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
+                full_query = Q(query) + ids_query
+                es_generator = segment.es_manager.search(query=full_query.to_dict())
+                es_generator = [es_generator.execute().hits]
+                # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
+            else:
+                bulk_search_kwargs = dict(
+                    options=options, batch_size=5000, include_cursor_exclusions=True
+                )
+                es_generator = bulk_search_with_source_generator(
+                    source_list, source_type,
+                    segment.es_manager.model, query, sort, default_search_config["cursor_field"],
+                    **bulk_search_kwargs)
+            for batch in es_generator:
+                batch = batch[:size - seen]
+                batch_item_ids = [item.main.id for item in batch]
+                item_ids.extend(batch_item_ids)
+                vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                with open(filename, mode="a", newline="") as file:
-                    fieldnames = segment.serializer.columns
-                    writer = csv.DictWriter(file, fieldnames=fieldnames)
-                    if seen == 0:
-                        writer.writeheader()
-
-                    for item in batch:
-                        # YT_GENRE_CHANNELS have no data and should not be on any export
-                        if item.main.id in YT_GENRE_CHANNELS:
-                            continue
-                        if len(top_three_items) < 3 \
-                                and getattr(item.general_data, "title", None) \
-                                and getattr(item.general_data, "thumbnail_image_url", None):
-                            top_three_items.append({
-                                "id": item.main.id,
-                                "title": item.general_data.title,
-                                "image_url": item.general_data.thumbnail_image_url
-                            })
-
-                        item_ids.append(item.main.id)
-                        row = segment.serializer(item, context=context).data
-                        writer.writerow(row)
-
-                        # Calculating aggregations with each items already retrieved is much more efficient than
-                        # executing an additional aggregation query
-                        aggregations["monthly_views"] += item.stats.last_30day_views or 0
-                        aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
-                        aggregations["views"] += item.stats.views or 0
-                        aggregations["ctr"] += item.ads_stats.ctr or 0
-                        aggregations["ctr_v"] += item.ads_stats.ctr_v or 0
-                        aggregations["video_view_rate"] += item.ads_stats.video_view_rate or 0
-                        aggregations["average_cpm"] += item.ads_stats.average_cpm or 0
-                        aggregations["average_cpv"] += item.ads_stats.average_cpv or 0
-
-                        if segment.segment_type == 0 or segment.segment_type == "video":
-                            aggregations["likes"] += item.stats.likes or 0
-                            aggregations["dislikes"] += item.stats.dislikes or 0
-                        else:
-                            aggregations["likes"] += item.stats.observed_videos_likes or 0
-                            aggregations["dislikes"] += item.stats.observed_videos_dislikes or 0
-                            aggregations["monthly_subscribers"] += item.stats.last_30day_subscribers or 0
-                            aggregations["subscribers"] += item.stats.subscribers or 0
-                            aggregations["audited_videos"] += item.brand_safety.videos_scored or 0
-
-                        seen += 1
-                        # Number of results from bulk_search is imprecise
-                        if seen >= size:
-                            raise MaxItemsException
+                generate_utils.write_to_file(batch, filename, segment, context, aggregations,
+                                             write_header=write_header is True)
+                generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
+                seen += len(batch_item_ids)
+                write_header = False
+                if seen >= size:
+                    raise MaxItemsException
         except MaxItemsException:
             pass
-
-        # Average fields
-        aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))
-        aggregations["ctr"] /= seen or 1
-        aggregations["ctr_v"] /= seen or 1
-        aggregations["video_view_rate"] /= seen or 1
-        aggregations["average_cpm"] /= seen or 1
-        aggregations["average_cpv"] /= seen or 1
-
-        if add_uuid:
-            segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
+        generate_utils.finalize_aggregations(aggregations, seen)
+        if add_uuid is True:
+            generate_utils.add_segment_uuid(segment, item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE])
         statistics = {
             "items_count": seen,
             "top_three_items": top_three_items,
             **aggregations,
         }
         s3_key = segment.get_s3_key() if s3_key is None else s3_key
-        segment.s3_exporter.export_file_to_s3(filename, s3_key)
+        content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
+        segment.s3_exporter.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
         download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
@@ -154,26 +110,40 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
         }
         return results
 
-    except Exception:
-        raise
-
     finally:
         os.remove(filename)
+# pylint: enable=too-many-nested-blocks,too-many-statements
+
+
+def bulk_search_with_source_generator(source_list, source_type, model, query, sort, cursor_field, **bulk_search_kwargs):
+    """
+    Wrapper to check source list for each batch in bulk search generator
+    :param source_list: iter: Source list upload
+    :param source_type: int
+    :param model: es_components.models.Model
+    :param query: ES Q object
+    :param sort: str
+    :param cursor_field: str
+    :param bulk_search_kwargs:
+    :return:
+    """
+    bulk_search_generator = bulk_search(model, query, sort, cursor_field, **bulk_search_kwargs)
+    for batch in bulk_search_generator:
+        if source_list:
+            if source_type == SourceListType.INCLUSION.value:
+                batch = [item for item in batch if item.main.id in source_list]
+            else:
+                batch = [item for item in batch if item.main.id not in source_list]
+        yield batch
+
+
+def get_content_disposition(segment, is_vetting=False, ext="csv"):
+    title = segment.title
+    if is_vetting is True:
+        title += " Vetted"
+    content_disposition = f"attachment;filename={title}.{ext}"
+    return content_disposition
 
 
 class MaxItemsException(Exception):
     pass
-
-
-def prepare_context():
-    brand_safety_categories = {
-        category.id: category.name
-        for category in BadWordCategory.objects.all()
-    }
-    context = {
-        "brand_safety_categories": brand_safety_categories,
-        "age_groups": AuditAgeGroup.to_str,
-        "genders": AuditGender.to_str,
-        "content_types": AuditContentType.to_str,
-    }
-    return context

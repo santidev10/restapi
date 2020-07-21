@@ -1,27 +1,50 @@
+import hashlib
+
+from django.db.models import Case
+from django.db.models import CharField as DBCharField
+from django.db.models import F
+from django.db.models import FloatField as DBFloatField
+from django.db.models import OuterRef
 from django.db.models import QuerySet
+from django.db.models import Subquery
+from django.db.models import Value
+from django.db.models import When
+from django.db.models.functions import Cast
 from rest_framework.fields import CharField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
-from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import SerializerMethodField
 
-from .constants import STATISTICS_ANNOTATIONS
 from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
+from aw_reporting.models import AdGroupTargeting
+from aw_reporting.models import TargetingStatusEnum
+from .constants import COST_SHARE
+from .constants import IMPRESSIONS_SHARE
+from .constants import STATISTICS_ANNOTATIONS
+from .constants import VIDEO_VIEWS_SHARE
+from .constants import VIDEO_VIEW_RATE
 
 
 class BaseSerializer(ModelSerializer):
     """
     Serializer base class for AccountTargetingReport statistics models
     """
+    targeting_id = SerializerMethodField()
+
     # Values should be set by children
+    report_name = None
+    criteria_field = None
+    type_id = None
     config = None
-    criterion_name = ReadOnlyField(default="N/A")
-    target_name = ReadOnlyField(default="N/A")
-    type = ReadOnlyField(default="N/A")
+    criteria = None
+    type = None
+    target_name = None
+    type_name = None
 
     # cls.Meta.values_shared
+    ad_group_id = IntegerField()
     ad_group_name = CharField(source="ad_group__name")
-    ad_group_id = IntegerField(source="ad_group__id")
     campaign_name = CharField(source="ad_group__campaign__name")
     campaign_status = CharField(source="ad_group__campaign__status")
     campaign_id = IntegerField(source="ad_group__campaign__id")
@@ -33,6 +56,8 @@ class BaseSerializer(ModelSerializer):
     sum_video_views = IntegerField()
     sum_clicks = IntegerField()
     sum_cost = FloatField()
+
+    targeting_status = SerializerMethodField()
 
     # Added during last annotation of _build_queryset
     revenue = FloatField()
@@ -50,11 +75,14 @@ class BaseSerializer(ModelSerializer):
     class Meta:
         model = None
         fields = (
+            "targeting_id",
             "target_name",
             "type",
+            "type_name",
             "campaign_id",
             "campaign_name",
             "campaign_status",
+            "criteria",
             "ad_group_id",
             "ad_group_name",
             "contracted_rate",
@@ -66,6 +94,7 @@ class BaseSerializer(ModelSerializer):
             "ctr_i",
             "ctr_v",
             "revenue",
+            "rate_type",
             "video_view_rate",
             "profit",
             "margin",
@@ -73,6 +102,7 @@ class BaseSerializer(ModelSerializer):
             "sum_video_views",
             "sum_clicks",
             "sum_cost",
+            "targeting_status",
         )
         group_by = ("id",)
         values_shared = (
@@ -80,11 +110,14 @@ class BaseSerializer(ModelSerializer):
             "ad_group__cost",
             "ad_group__video_views",
             "ad_group__cpv_bid",
-            "ad_group__id",
+            "ad_group_id",
             "ad_group__name",
             "ad_group__campaign__name",
             "ad_group__campaign__status",
             "ad_group__campaign__id",
+            "ad_group__campaign__impressions",
+            "ad_group__campaign__video_views",
+            "ad_group__campaign__cost",
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
@@ -112,17 +145,46 @@ class BaseSerializer(ModelSerializer):
         :return:
         """
         kpi_filters = kpi_filters or {}
+        # statistics_annotations are annotations calculated from existing statistics fields, such impressions
         statistics_annotations = {column: ANNOTATIONS[column] for column in STATISTICS_ANNOTATIONS}
+        # aggregate_annotations are annotations calculated using the annotations derived from statistics_annotations
         aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
-            .annotate(
-                **statistics_annotations,
-            ) \
-            .annotate(
-                **aggregate_annotations
-            ).order_by()
+            .annotate(**statistics_annotations) \
+            .annotate(**aggregate_annotations) \
+            .order_by()
+        # Add targeting status if serializer has targeting
+        if cls.criteria_field:
+            targeting_subquery = AdGroupTargeting.objects.filter(
+                ad_group_id=OuterRef("ad_group_id"),
+                type_id=cls.type_id,
+                statistic_criteria=Cast(OuterRef(cls.criteria_field), output_field=DBCharField()),
+            )
+            queryset = queryset.annotate(
+                targeting_status=Subquery(targeting_subquery.values("status")[:1]),
+            )
+        queryset = cls._clean_annotations(queryset, aggregate_annotations)
         queryset = cls._filter_aggregated(queryset, kpi_filters)
+        return queryset
+
+    @classmethod
+    def _clean_annotations(cls, queryset, annotations):
+        """
+        Format annotations that may have irregular values
+        """
+        clean_annotations = {}
+        to_clean = [IMPRESSIONS_SHARE, VIDEO_VIEWS_SHARE, COST_SHARE, VIDEO_VIEW_RATE]
+        for annotation in to_clean:
+            if annotation in annotations:
+                # When(impressions_share__gt=1.0, ...)
+                condition = {f"{annotation}__gt": 1.0}
+                clean_annotations[annotation] = Case(
+                    When(**condition, then=Value("1.0")),
+                    default=F(annotation),
+                    output_field=DBFloatField()
+                )
+        queryset = queryset.annotate(**clean_annotations)
         return queryset
 
     @classmethod
@@ -136,3 +198,17 @@ class BaseSerializer(ModelSerializer):
         if filters is not None:
             queryset = queryset.filter(**filters).order_by()
         return queryset
+
+    def get_targeting_status(self, obj):
+        status = obj.get("targeting_status")
+        try:
+            status_value = TargetingStatusEnum(int(status)).name
+        except (ValueError, TypeError):
+            status_value = None
+        return status_value
+
+    @classmethod
+    def get_targeting_id(cls, obj):
+        base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
+        hash_str = hashlib.sha1(str.encode(base)).hexdigest()
+        return hash_str

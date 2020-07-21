@@ -4,6 +4,7 @@ Userprofile models module
 import binascii
 import logging
 import os
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -14,12 +15,9 @@ from django.core import validators
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
-from rest_framework.authtoken.models import Token
-from uuid import uuid4
 
 from administration.notifications import send_html_email
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
@@ -58,7 +56,7 @@ def get_default_accesses(via_google=False):
 
 class UserProfileManager(UserManager):
     def get_by_natural_key(self, username):
-        case_insensitive_username_field = '{}__iexact'.format(
+        case_insensitive_username_field = "{}__iexact".format(
             self.model.USERNAME_FIELD)
         return self.get(**{case_insensitive_username_field: username})
 
@@ -77,33 +75,32 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     Username, password and email are required. Other fields are optional.
     """
     username = models.CharField(
-        _('username'), max_length=30, blank=True, null=True,
-        help_text=_('Required. 30 characters or fewer. Letters, digits and '
-                    '@/./+/-/_ only.'),
+        _("username"), max_length=30, blank=True, null=True,
+        help_text=_("Required. 30 characters or fewer. Letters, digits and "
+                    "@/./+/-/_ only."),
         validators=[
             validators.RegexValidator(
-                r'^[\w.@+-]+$',
-                _('Enter a valid username. '
-                  'This value may contain only letters, numbers '
-                  'and @/./+/-/_ characters.'), 'invalid'),
+                r"^[\w.@+-]+$",
+                _("Enter a valid username. "
+                  "This value may contain only letters, numbers "
+                  "and @/./+/-/_ characters."), "invalid"),
         ],
         error_messages={
-            'unique': _("A user with that username already exists."),
+            "unique": _("A user with that username already exists."),
         })
-    first_name = models.CharField(_('first name'), max_length=30, blank=True)
-    last_name = models.CharField(_('last name'), max_length=30, blank=True)
+    first_name = models.CharField(_("first name"), max_length=30, blank=True)
+    last_name = models.CharField(_("last name"), max_length=30, blank=True)
     is_staff = models.BooleanField(
-        _('staff status'), default=False,
-        help_text=_('Designates whether the user can log into this admin '
-                    'site.'))
+        _("staff status"), default=False,
+        help_text=_("Designates whether the user can log into this admin site."))
     is_active = models.BooleanField(
-        _('active'), default=True,
-        help_text=_('Designates whether this user should be treated as '
-                    'active. Unselect this instead of deleting accounts.'))
-    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+        _("active"), default=True,
+        help_text=_("Designates whether this user should be treated as "
+                    "active. Unselect this instead of deleting accounts."))
+    date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
 
     # extra fields and updated fields
-    email = LowercaseEmailField(_('email address'), unique=True)
+    email = LowercaseEmailField(_("email address"), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     phone_number_verified = models.BooleanField(default=False)
@@ -143,28 +140,28 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     objects = UserProfileManager()
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["username"]
 
     class Meta:
         """
         Meta params
         """
-        verbose_name = _('user')
-        verbose_name_plural = _('users')
+        verbose_name = _("user")
+        verbose_name_plural = _("users")
 
     def __str__(self):
         """
         User instance string representation
         :return: str
         """
-        return self.get_full_name() or self.email.split('@')[0]
+        return self.get_full_name() or self.email.split("@")[0]
 
     def get_full_name(self):
         """
         Returns the first_name plus the last_name, with a space in between.
         """
-        full_name = '{} {}'.format(self.first_name, self.last_name)
+        full_name = "{} {}".format(self.first_name, self.last_name)
         return full_name.strip()
 
     def get_short_name(self):
@@ -174,11 +171,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         return self.first_name
 
     def get_aw_settings(self):
-        settings = dict(**self.aw_settings)
+        aw_settings = dict(**self.aw_settings)
         for default_settings_key, default_settings_value in get_default_settings().items():
-            if default_settings_key not in settings:
-                settings[default_settings_key] = default_settings_value
-        return settings
+            if default_settings_key not in aw_settings:
+                aw_settings[default_settings_key] = default_settings_value
+        return aw_settings
 
     def email_user_active(self, request):
         """
@@ -199,7 +196,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     @property
     def access(self):
-        accesses = list(self.groups.values('name'))
+        accesses = list(self.groups.values("name"))
         if self.is_staff:
             accesses.append({"name": "Admin"})
         return accesses
@@ -247,10 +244,12 @@ class UserDeviceToken(models.Model):
         self.created_at = timezone.now()
         self.save()
 
+    # pylint: disable=signature-differs
     def save(self, *args, **kwargs):
         if not self.key:
             self.key = self.generate_key()
         return super().save(*args, **kwargs)
+    # pylint: enable=signature-differs
 
 
 class WhiteLabel(models.Model):
@@ -271,7 +270,7 @@ class WhiteLabel(models.Model):
     @staticmethod
     def extract_sub_domain(host):
         try:
-            domain = host.lower().split('viewiq')[0]
+            domain = host.lower().split("viewiq")[0]
             sub_domain = domain.strip(".") or DEFAULT_DOMAIN
         except (IndexError, AttributeError):
             sub_domain = DEFAULT_DOMAIN

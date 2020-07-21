@@ -1,15 +1,19 @@
 import json
 from datetime import timedelta
 
+from django.db import connections
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, Language
+from aw_creation.models import AccountCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import Language
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -78,7 +82,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         user_settings = {
@@ -120,8 +124,8 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
     def test_success_post(self):
         detail_keys = set(self.detail_keys)
-        detail_keys.add('sync_at')
-        detail_keys.add('target_cpa')
+        detail_keys.add("sync_at")
+        detail_keys.add("target_cpa")
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
@@ -137,12 +141,12 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             detail_keys,
         )
-        self.assertEqual(len(response.data['languages']), 1)
+        self.assertEqual(len(response.data["languages"]), 1)
 
     def test_fail_post_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.post(
-            url, json.dumps(dict()), content_type='application/json',
+            url, json.dumps(dict()), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

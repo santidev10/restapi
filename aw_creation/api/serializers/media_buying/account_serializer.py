@@ -1,11 +1,12 @@
 from rest_framework import serializers
 
-from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
+from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypeStr
 from aw_reporting.reports.pacing_report import PacingReport
+
 
 class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
     stats_aggregations = stats_aggregator(ad_group_stats_prefix="ad_groups__statistics__")
@@ -35,7 +36,7 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
     def get_status(self, obj):
         status = "Not Running"
         try:
-            exists = Campaign.objects.filter(account=obj.account, status="running").exists()
+            exists = Campaign.objects.filter(account=obj.account, status="serving").exists()
             if exists:
                 status = "Running"
         except Account.DoesNotExist:

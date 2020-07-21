@@ -10,45 +10,27 @@ from aw_reporting.adwords_api import API_VERSION
 logger = logging.getLogger(__name__)
 
 MAIN_STATISTICS_FILEDS = (
-    "VideoViews", "Cost", "Clicks", "Impressions",
-    "Conversions", "AllConversions", "ViewThroughConversions",
-)
+    "VideoViews", "Cost", "Clicks", "Impressions", "Conversions", "AllConversions", "ViewThroughConversions",)
 
-statistics_fields = ("VideoViewRate", "Ctr",
-                     "AverageCpv", "AverageCpm") + MAIN_STATISTICS_FILEDS
+statistics_fields = ("VideoViewRate", "Ctr", "AverageCpv", "AverageCpm") + MAIN_STATISTICS_FILEDS
 
-COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate",
-                    "VideoQuartile75Rate", "VideoQuartile100Rate")
+COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate", "VideoQuartile75Rate", "VideoQuartile100Rate")
 
-CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
-                                         "CampaignId", "CampaignName",
-                                         "ServingStatus", "CampaignStatus",
-                                         "StartDate", "EndDate", "Amount", "TotalAmount",
-                                         "AdvertisingChannelType", "BiddingStrategyType"
-                                     ) + COMPLETED_FIELDS \
-                                     + MAIN_STATISTICS_FILEDS
-AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
-                                         "CampaignId",
-                                         "AdGroupId", "AdGroupName",
-                                         "AdGroupStatus", "AdGroupType",
-                                         "Date", "Device", "AdNetworkType1",
-                                         "AveragePosition",
-                                         "ActiveViewImpressions", "Engagements", "ContentBidCriterionTypeGroup",
-                                         "CpvBid", "CpmBid", "CpcBid", "BiddingStrategyType",
-                                     ) + MAIN_STATISTICS_FILEDS \
-                                     + COMPLETED_FIELDS
-GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",
-                              "IsNegative") + MAIN_STATISTICS_FILEDS
+CAMPAIGN_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "CampaignName", "ServingStatus", "CampaignStatus", "StartDate",
+                                      "EndDate", "Amount", "TotalAmount", "AdvertisingChannelType",
+                                      "BiddingStrategyType") + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+AD_GROUP_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "AdGroupId", "AdGroupName", "AdGroupStatus", "AdGroupType", "Date",
+                                      "Device", "AdNetworkType1", "AveragePosition", "ActiveViewImpressions",
+                                      "Engagements", "ContentBidCriterionTypeGroup", "CpvBid", "CpmBid", "CpcBid",
+                                      "BiddingStrategyType",) + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
+GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName", "IsNegative") + MAIN_STATISTICS_FILEDS
 
-DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId", "Date") \
-                                            + MAIN_STATISTICS_FILEDS \
-                                            + COMPLETED_FIELDS
+DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId",
+                                             "Date") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
 
-AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
-                                "ImageCreativeName", "DisplayUrl", "Status",
-                                "Date", "AveragePosition",
-                                "CombinedApprovalStatus") \
-                               + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id", "ImageCreativeName", "DisplayUrl", "Status", "Date",
+                                "AveragePosition",
+                                "CombinedApprovalStatus") + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
 
 class AWErrorType:
@@ -57,10 +39,7 @@ class AWErrorType:
     REPORT_TYPE_MISMATCH = "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH"
 
 
-FATAL_AW_ERRORS = (
-    AWErrorType.PERMISSIONS_DENIED,
-    AWErrorType.REPORT_TYPE_MISMATCH,
-)
+FATAL_AW_ERRORS = (AWErrorType.PERMISSIONS_DENIED, AWErrorType.REPORT_TYPE_MISMATCH,)
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
 
@@ -90,52 +69,47 @@ def date_formatted(dt):
     return dt.strftime("%Y%m%d")
 
 
-def _get_report(client, name, selector, date_range_type=None,
-                include_zero_impressions=False, skip_column_header=True):
+def _get_report(client, name, selector, date_range_type=None, include_zero_impressions=False, skip_column_header=True,
+                use_raw_enum_values=False):
     report_downloader = client.GetReportDownloader(version=API_VERSION)
 
-    report = {
-        "reportName": name,
-        "dateRangeType": date_range_type or "ALL_TIME",
-        "reportType": name,
-        "downloadFormat": "CSV",
-        "selector": selector,
-    }
+    report = {"reportName": name, "dateRangeType": date_range_type or "ALL_TIME", "reportType": name,
+              "downloadFormat": "CSV", "selector": selector, }
     report["selector"]["fields"] = list(report["selector"]["fields"])
     try_num = 0
     while True:
         try:
             try:
-                result = report_downloader.DownloadReportAsStream(
-                    report,
-                    skip_report_header=True,
-                    skip_column_header=skip_column_header,
-                    skip_report_summary=True,
-                    include_zero_impressions=include_zero_impressions
-                )
+                result = report_downloader.DownloadReportAsStream(report, skip_report_header=True,
+                                                                  skip_column_header=skip_column_header,
+                                                                  skip_report_summary=True,
+                                                                  include_zero_impressions=include_zero_impressions,
+                                                                  use_raw_enum_values=use_raw_enum_values, )
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
                 logger.warning(e)
                 if e.type == AWErrorType.NOT_ACTIVE:
                     raise AccountInactiveError()
                 if e.type in FATAL_AW_ERRORS:
-                    return
+                    return None
                 raise
         except AccountInactiveError as ex:
             raise ex
 
+        # pylint: disable=broad-except
         except Exception as e:
+        # pylint: enable=broad-except
             error_str = str(e)
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise
             if "invalid_grant" in error_str:
-                logger.debug("(Error) Invalid grant faced. Skipping. Msg: {}".format(error_str))
+                logger.debug("(Error) Invalid grant faced. Skipping. Msg: %s", error_str)
                 raise e
-            logger.debug("Error: %s" % error_str)
+            logger.debug("Error: %s", error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1
                 seconds = try_num ** 3
-                logger.info("Sleep for %d seconds" % seconds)
+                logger.info("Sleep for %d seconds", seconds)
                 sleep(seconds)
             else:
                 raise e
@@ -144,7 +118,7 @@ def _get_report(client, name, selector, date_range_type=None,
 
 
 def _get_csv_reader(output):
-    if type(output) is str:
+    if isinstance(output, str):
         output = output.strip(" \t\n\r").split("\n")
     return csv.reader(output, delimiter=",", dialect="excel")
 
@@ -156,48 +130,29 @@ def _output_to_rows(output, fields):
     row = namedtuple("Row", fields)
     rows = []
     for line in reader:
-        rows.append(
-            row(*line)
-        )
+        rows.append(row(*line))
     return rows
 
 
-def placement_performance_report(client, dates=None):
+def placement_performance_report(client, dates=None, fields=None, predicates=None):
     """
     Used for getting channels and managed videos
     :param client:
     :param dates:
     :return:
     """
-    fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName") + \
-             MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
+    fields = fields or ("AdGroupId", "Date", "Device", "Criteria", "DisplayName") \
+             + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
 
-    predicates = [
-        {
-            "field": "AdNetworkType1",
-            "operator": "EQUALS",
-            "values": ["YOUTUBE_WATCH"]
-        },
-    ]
-    selector = {
-        "fields": fields,
-        "predicates": predicates,
-    }
+    predicates = predicates or [{"field": "AdNetworkType1", "operator": "EQUALS", "values": ["YOUTUBE_WATCH"]}, ]
+    selector = {"fields": fields, "predicates": predicates, }
     if dates:
         date_range_type = "CUSTOM_DATE"
-        selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
-        }
+        selector["dateRange"] = {"min": dates[0].strftime("%Y%m%d"), "max": dates[1].strftime("%Y%m%d"), }
     else:
         date_range_type = "ALL_TIME"
 
-    result = _get_report(
-        client,
-        "PLACEMENT_PERFORMANCE_REPORT",
-        selector,
-        date_range_type=date_range_type
-    )
+    result = _get_report(client, "PLACEMENT_PERFORMANCE_REPORT", selector, date_range_type=date_range_type, )
 
     return _output_to_rows(result, fields)
 
@@ -208,23 +163,10 @@ def geo_performance_report(client, dates=None, additional_fields=None):
     if additional_fields:
         fields += additional_fields
 
-    predicates = [
-        {
-            "field": "IsTargetingLocation",
-            "operator": "IN",
-            "values": [True, False],
-        },
-        {
-            "field": "LocationType",
-            "operator": "EQUALS",
-            "values": "LOCATION_OF_PRESENCE",
-        },
-    ]
+    predicates = [{"field": "IsTargetingLocation", "operator": "IN", "values": [True, False], },
+                  {"field": "LocationType", "operator": "EQUALS", "values": "LOCATION_OF_PRESENCE", }, ]
 
-    selector = {
-        "fields": fields,
-        "predicates": predicates,
-    }
+    selector = {"fields": fields, "predicates": predicates, }
 
     date_range = {}
     if dates:
@@ -235,138 +177,94 @@ def geo_performance_report(client, dates=None, additional_fields=None):
     if date_range:
         selector["dateRange"] = date_range
 
-    result = _get_report(
-        client, "GEO_PERFORMANCE_REPORT", selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
-    )
+    result = _get_report(client, "GEO_PERFORMANCE_REPORT", selector,
+                         date_range_type="CUSTOM_DATE" if dates else "ALL_TIME", )
     return _output_to_rows(result, fields)
 
 
 def geo_location_report(client):
     fields = GEO_LOCATION_REPORT_FIELDS
-    selector = {
-        "fields": fields,
-        "predicates": [],
-    }
-    result = _get_report(
-        client, "CAMPAIGN_LOCATION_TARGET_REPORT", selector,
-        date_range_type="ALL_TIME",
-        include_zero_impressions=True,
-    )
+    selector = {"fields": fields, "predicates": [], }
+    result = _get_report(client, "CAMPAIGN_LOCATION_TARGET_REPORT", selector, date_range_type="ALL_TIME",
+                         include_zero_impressions=True, )
     return _output_to_rows(result, fields)
 
 
-def _daily_statistic_performance_report(
-        client, name, dates=None, additional_fields=None, fields=None):
+def _daily_statistic_performance_report(client, name, dates=None, additional_fields=None, fields=None,
+                                        use_raw_enum_values=False, predicates=None, include_zero_impressions=False):
     if fields is None:
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 
         if additional_fields:
             fields += additional_fields
 
-    selector = {
-        "fields": fields,
-        "predicates": []
-    }
+    selector = {"fields": fields, "predicates": predicates or []}
     if dates:
-        selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
-        }
-    result = _get_report(
-        client, name, selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME"
-    )
+        selector["dateRange"] = {"min": dates[0].strftime("%Y%m%d"), "max": dates[1].strftime("%Y%m%d"), }
+    result = _get_report(client, name, selector, date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
+                         use_raw_enum_values=use_raw_enum_values, include_zero_impressions=include_zero_impressions, )
     return _output_to_rows(result, fields)
 
 
-def gender_performance_report(client, dates, fields=None):
-    return _daily_statistic_performance_report(
-        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields
-    )
+def gender_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=None)
 
 
-def parent_performance_report(client, dates):
-    return _daily_statistic_performance_report(
-        client, 'PARENTAL_STATUS_PERFORMANCE_REPORT', dates
-    )
+def parent_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "PARENTAL_STATUS_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=None)
 
 
-def age_range_performance_report(client, dates, fields=None):
-    return _daily_statistic_performance_report(
-        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields
-    )
+def age_range_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=None)
 
 
-def keywords_performance_report(client, dates, fields=None):
-    return _daily_statistic_performance_report(
-        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields
-    )
+def keywords_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=None)
 
 
-def topics_performance_report(client, dates, fields=None):
-    return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields
-    )
+def topics_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=None, additional_fields=("VerticalId",))
 
 
-def audience_performance_report(client, dates, fields=None):
-    return _daily_statistic_performance_report(
-        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
-        additional_fields=("UserListName",)
-    )
+def audience_performance_report(client, dates, fields=None, predicates=None):
+    return _daily_statistic_performance_report(client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
+                                               predicates=predicates, additional_fields=("UserListName",))
 
 
 def ad_performance_report(client, dates=None, fields=None):
     if fields is None:
         fields = AD_PERFORMANCE_REPORT_FIELDS
 
-    selector = {
-        "fields": fields,
-        "predicates": [],
-    }
+    selector = {"fields": fields, "predicates": [], }
     if dates:
-        selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
-        }
+        selector["dateRange"] = {"min": dates[0].strftime("%Y%m%d"), "max": dates[1].strftime("%Y%m%d"), }
 
-    result = _get_report(
-        client, "AD_PERFORMANCE_REPORT",
-        selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
-    )
+    result = _get_report(client, "AD_PERFORMANCE_REPORT", selector,
+                         date_range_type="CUSTOM_DATE" if dates else "ALL_TIME", )
     return _output_to_rows(result, fields)
 
 
-def campaign_performance_report(client,
-                                dates=None,
-                                fields=None,
-                                include_zero_impressions=True,
+def campaign_performance_report(client, dates=None, fields=None, include_zero_impressions=True,
                                 additional_fields=None):
     if fields is None:
         fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS
     fields = list(fields)
     if additional_fields:
         fields.extend(additional_fields)
-    selector = {
-        "fields": fields,
-        "predicates": [],
-    }
+    selector = {"fields": fields, "predicates": [], }
     if dates:
-        selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
-        }
+        selector["dateRange"] = {"min": dates[0].strftime("%Y%m%d"), "max": dates[1].strftime("%Y%m%d"), }
         date_range_type = "CUSTOM_DATE"
     else:
         date_range_type = "ALL_TIME"
 
-    result = _get_report(
-        client, "CAMPAIGN_PERFORMANCE_REPORT", selector,
-        date_range_type=date_range_type,
-        include_zero_impressions=include_zero_impressions,
-    )
+    result = _get_report(client, "CAMPAIGN_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
+                         include_zero_impressions=include_zero_impressions, )
     return _output_to_rows(result, fields)
 
 
@@ -374,43 +272,24 @@ def ad_group_performance_report(client, dates=None, fields=None):
     if fields is None:
         fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
-    selector = {
-        "fields": fields,
-        "predicates": [],
-    }
+    selector = {"fields": fields, "predicates": [], }
     if dates:
         start, end = dates
-        selector["dateRange"] = {
-            "min": date_formatted(start),
-            "max": date_formatted(end),
-        }
+        selector["dateRange"] = {"min": date_formatted(start), "max": date_formatted(end), }
 
-    result = _get_report(
-        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector,
-        date_range_type=DateRangeType.CUSTOM_DATE if dates else DateRangeType.ALL_TIME,
-    )
+    result = _get_report(client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector,
+                         date_range_type=DateRangeType.CUSTOM_DATE if dates else DateRangeType.ALL_TIME, )
     return _output_to_rows(result, fields)
 
 
 def video_performance_report(client, dates=None):
     main_stats = tuple(set(MAIN_STATISTICS_FILEDS) - {"AllConversions"})
-    fields = ("VideoChannelId", "VideoDuration", "VideoId", "AdGroupId",
-              "Date") + main_stats + COMPLETED_FIELDS
+    fields = ("VideoChannelId", "VideoDuration", "VideoId", "AdGroupId", "Date") + main_stats + COMPLETED_FIELDS
 
-    selector = {
-        "fields": fields,
-        "predicates": [],
-    }
+    selector = {"fields": fields, "predicates": [], }
     if dates:
-        selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
-        }
+        selector["dateRange"] = {"min": dates[0].strftime("%Y%m%d"), "max": dates[1].strftime("%Y%m%d"), }
 
-    result = _get_report(
-        client, "VIDEO_PERFORMANCE_REPORT",
-        selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
-        include_zero_impressions=False,
-    )
+    result = _get_report(client, "VIDEO_PERFORMANCE_REPORT", selector,
+                         date_range_type="CUSTOM_DATE" if dates else "ALL_TIME", include_zero_impressions=False, )
     return _output_to_rows(result, fields)

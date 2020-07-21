@@ -9,11 +9,10 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.dashboard_charts import ALL_DIMENSIONS
-from aw_reporting.dashboard_charts import ALL_INDICATORS
-from aw_reporting.dashboard_charts import Indicator
+from aw_reporting.charts.base_chart import ALL_DIMENSIONS
+from aw_reporting.charts.base_chart import ALL_INDICATORS
+from aw_reporting.charts.dashboard_charts import Indicator
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -25,12 +24,14 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.reverse import reverse
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
+
     def _request(self, account_creation_id, **kwargs):
         url = reverse(
             Name.Dashboard.PERFORMANCE_CHART,
@@ -49,8 +50,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         )
 
     def create_test_user(self, auth=True):
-        user = super(DashboardPerformanceChartTestCase, self).create_test_user(
-            auth)
+        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth)
         user.add_custom_user_permission("view_dashboard")
         return user
 
@@ -72,7 +72,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_tabs(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.is_staff = True
         self._hide_demo_data(user)
@@ -104,7 +104,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cpm_cpv_is_visible(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
@@ -173,7 +173,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                                            account=account)
         ad_group = AdGroup.objects.create(id=next(int_iterator),
                                           campaign=campaign)
-        impressions, views, aw_cost = 500, 200, 30
+        views, aw_cost = 200, 30
         AdGroupStatistic.objects.create(ad_group=ad_group,
                                         average_position=1,
                                         date=any_date,

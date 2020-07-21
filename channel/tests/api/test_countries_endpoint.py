@@ -1,9 +1,11 @@
-from utils.unittests.test_case import ExtendedAPITestCase
-from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_200_OK
-from utils.unittests.reverse import reverse
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
+
 
 class CountriesEndpointTestCase(ExtendedAPITestCase):
     url = reverse(ChannelPathName.COUNTRIES_LIST, [Namespace.CHANNEL])
@@ -17,4 +19,3 @@ class CountriesEndpointTestCase(ExtendedAPITestCase):
         self.create_test_user()
         authorized_response = self.client.get(self.url)
         self.assertEqual(authorized_response.status_code, HTTP_200_OK)
-

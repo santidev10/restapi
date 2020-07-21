@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from administration.api.serializers import UserSerializer
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserStatuses
@@ -17,25 +18,9 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.url = reverse(AdministrationPathName.USER_LIST, [Namespace.ADMIN])
 
     def test_success(self):
-        expected_fields = {
-            "id",
-            "first_name",
-            "last_name",
-            "company",
-            "domain",
-            "phone_number",
-            "phone_number_verified",
-            "email",
-            "is_staff",
-            "last_login",
-            "date_joined",
-            "access",
-            "google_account_id",
-            "annual_ad_spend",
-            "user_type",
-            "status",
-            "can_access_media_buying",
-        }
+        # pylint: disable=duplicate-code
+        expected_fields = set(UserSerializer.Meta.fields)
+        # pylint: enable=duplicate-code
         self.create_admin_user()
         get_user_model().objects.create(email="test_list@example.com")
         response = self.client.get(self.url)

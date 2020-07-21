@@ -7,31 +7,36 @@ import suds
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from aw_reporting.adwords_api import optimize_keyword, get_client
-from keyword_tool.models import KeyWord, Interest, KeywordsList, AVAILABLE_KEYWORD_LIST_CATEGORIES
-from keyword_tool.tasks import update_keywords_stats, update_kw_list_stats
+from aw_reporting.adwords_api import get_client
+from aw_reporting.adwords_api import optimize_keyword
+from keyword_tool.models import AVAILABLE_KEYWORD_LIST_CATEGORIES
+from keyword_tool.models import Interest
+from keyword_tool.models import KeyWord
+from keyword_tool.models import KeywordsList
+from keyword_tool.tasks import update_keywords_stats
+from keyword_tool.tasks import update_kw_list_stats
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BASE_DIR = os.path.join(BASE_DIR, '../..')
+BASE_DIR = os.path.join(BASE_DIR, "../..")
 
 CF_CATEGORY = AVAILABLE_KEYWORD_LIST_CATEGORIES[2]
 
 
 class Command(BaseCommand):
     client = get_client()
-    file_name = 'vertical_keywords.csv'
+    file_name = "vertical_keywords.csv"
 
     def handle(self, *args, **options):
         for line in self.get_search_data():
             response = []
-            category, *keywords = line.split(',')
-            for chunk in self.chunks(list(set([k.lower() for k in keywords])), 200):
+            category, *keywords = line.split(",")
+            for chunk in self.chunks(list({k.lower() for k in keywords}), 200):
                 response += self.get_awd_response(chunk)
             created, updated = self.create_or_update_keywords(response)
-            kw_list = list(set([str(k.text) for k in created] + [kw['keyword_text'] for kw in updated]))
-            self.create_or_update_kw_lists(email='admin@admin.admin',
+            kw_list = list(set([str(k.text) for k in created] + [kw["keyword_text"] for kw in updated]))
+            self.create_or_update_kw_lists(email="admin@admin.admin",
                                            name=category,
                                            category=CF_CATEGORY,
                                            keywords=kw_list)
@@ -42,12 +47,12 @@ class Command(BaseCommand):
 
         # get ids
         interest_ids = set(
-            Interest.objects.all().values_list('id', flat=True)
+            Interest.objects.all().values_list("id", flat=True)
         )
         keywords_ids = set(
             KeyWord.objects.filter(
-                text__in=[i['keyword_text'] for i in response]
-            ).values_list('text', flat=True)
+                text__in=[i["keyword_text"] for i in response]
+            ).values_list("text", flat=True)
         )
 
         # create items
@@ -55,22 +60,22 @@ class Command(BaseCommand):
         update_kws = []
         interest_relations = []
         for k in response:
-            keyword_text = k['keyword_text']
+            keyword_text = k["keyword_text"]
             if keyword_text in keywords_ids:
                 update_kws.append(k)
             else:
                 kws.append(
                     KeyWord(
                         text=keyword_text,
-                        average_cpc=k.get('average_cpc'),
-                        competition=k.get('competition'),
+                        average_cpc=k.get("average_cpc"),
+                        competition=k.get("competition"),
                         _monthly_searches=json.dumps(
-                            k.get('monthly_searches', [])
+                            k.get("monthly_searches", [])
                         ),
-                        search_volume=k.get('search_volume'),
+                        search_volume=k.get("search_volume"),
                     )
                 )
-                for interest_id in k['interests']:
+                for interest_id in k["interests"]:
                     if interest_id in interest_ids:
                         interest_relations.append(
                             interest_relation(
@@ -106,7 +111,7 @@ class Command(BaseCommand):
         if not new:
             queryset = KeyWord.objects.filter(pk__in=keywords) \
                 .exclude(lists__id=kw_list.id)
-            ids_to_save = set(queryset.values_list('text', flat=True))
+            ids_to_save = set(queryset.values_list("text", flat=True))
 
             if ids_to_save:
                 kw_relations = [keywords_relation(keyword_id=kw_id,
@@ -118,7 +123,7 @@ class Command(BaseCommand):
 
     def get_search_data(self):
         file_path = os.path.join(BASE_DIR, self.file_name)
-        fh = open(file_path, 'r', encoding='utf-8')
+        fh = open(file_path, "r", encoding="utf-8")
         for line in fh:
             yield line.strip()
 
@@ -131,7 +136,7 @@ class Command(BaseCommand):
             try:
                 return optimize_keyword(query=query,
                                         client=self.client,
-                                        request_type='STATS')
+                                        request_type="STATS")
             except suds.WebFault:
                 logger.info("Sleeping RateExceededError")
                 time.sleep(31)

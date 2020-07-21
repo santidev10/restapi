@@ -8,7 +8,6 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import CAMPAIGN_STATS
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_AD_GROUPS
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -18,6 +17,7 @@ from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -33,23 +33,23 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         )
 
     campaign_keys = {
-        'id',
-        'name',
-        'start_date',
-        'end_date',
-        'status',
-        'ad_groups',
-        'campaign_creation_id',
+        "id",
+        "name",
+        "start_date",
+        "end_date",
+        "status",
+        "ad_groups",
+        "campaign_creation_id",
     }
 
     ad_group_keys = {
-        'id',
-        'name',
-        'status',
+        "id",
+        "name",
+        "status",
     }
 
     def create_test_user(self, auth=True, connected=True):
-        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth)
+        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth)
         if connected:
             AWConnectionToUserRelation.objects.create(
                 # user must have a connected account not to see demo data
@@ -87,9 +87,9 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             set(campaign.keys()),
             self.campaign_keys,
         )
-        self.assertIs(campaign['campaign_creation_id'], None)
-        self.assertEqual(len(campaign['ad_groups']), ad_groups_count)
-        ad_group = campaign['ad_groups'][0]
+        self.assertIs(campaign["campaign_creation_id"], None)
+        self.assertEqual(len(campaign["ad_groups"]), ad_groups_count)
+        ad_group = campaign["ad_groups"][0]
         self.assertEqual(
             set(ad_group.keys()),
             self.ad_group_keys,
@@ -129,11 +129,11 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             campaign_creation_id = None
             if campaign["id"] == managed_campaign.id:
                 campaign_creation_id = campaign_creation.id
-            self.assertEqual(campaign['campaign_creation_id'],
+            self.assertEqual(campaign["campaign_creation_id"],
                              campaign_creation_id)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.get(url)
@@ -144,8 +144,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             set(campaign.keys()),
             self.campaign_keys,
         )
-        self.assertEqual(len(campaign['ad_groups']), len(DEMO_AD_GROUPS))
-        ad_group = campaign['ad_groups'][0]
+        self.assertEqual(len(campaign["ad_groups"]), len(DEMO_AD_GROUPS))
+        ad_group = campaign["ad_groups"][0]
         self.assertEqual(
             set(ad_group.keys()),
             self.ad_group_keys,
@@ -156,8 +156,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         SAAS-793
         :return:
         """
-        recreate_demo_data()
-        user = self.create_test_user(connected=False)
+        recreate_test_demo_data()
+        self.create_test_user(connected=False)
 
         url = self._get_url(DEMO_ACCOUNT_ID)
 
@@ -169,8 +169,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             set(campaign.keys()),
             self.campaign_keys,
         )
-        self.assertEqual(len(campaign['ad_groups']), len(DEMO_AD_GROUPS))
-        ad_group = campaign['ad_groups'][0]
+        self.assertEqual(len(campaign["ad_groups"]), len(DEMO_AD_GROUPS))
+        ad_group = campaign["ad_groups"][0]
         self.assertEqual(
             set(ad_group.keys()),
             self.ad_group_keys,

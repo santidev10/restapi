@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
@@ -25,14 +26,19 @@ class AuditVetBaseSerializer(Serializer):
     general_data_language_field = None
     general_data_lang_code_field = None
 
-    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
+    SECTIONS = (
+    Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
     content_type = IntegerField(source="task_us_data.content_type", default=None)
+    content_quality = IntegerField(source="task_us_data.content_quality", default=None)
     gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
+    mismatched_language = BooleanField(source="task_us_data.mismatched_language", default=None)
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    YT_id = CharField(source="main.id", default=None)
+    title = CharField(source="general_data.title", default=None)
     brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
@@ -40,7 +46,7 @@ class AuditVetBaseSerializer(Serializer):
     suitable = BooleanField(required=False)
     processed = DateTimeField(required=False)
     processed_by_user_id = IntegerField(required=False)
-    language_code = CharField(required=False) # Field for saving vetting item
+    language_code = CharField(required=False)  # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
         self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
@@ -135,6 +141,7 @@ class AuditVetBaseSerializer(Serializer):
         :param values: list
         :return: AuditCategory
         """
+        values = list(set(values))
         iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
@@ -168,6 +175,16 @@ class AuditVetBaseSerializer(Serializer):
         content_type_id = str(content_type.id)
         return content_type_id
 
+    def validate_content_quality(self, value):
+        """
+        Retrieve AuditContentQuality value. Raises ValidationError if not found
+        :param value: str
+        :return: str
+        """
+        content_quality = AuditToolValidator.validate_content_quality(int(value))
+        content_quality_id = str(content_quality.id)
+        return content_quality_id
+
     def validate_category(self, value):
         """
         Retrieve audit_tool AuditCategory. Raises ValidationError if not found
@@ -190,7 +207,7 @@ class AuditVetBaseSerializer(Serializer):
                 for item in BadWordCategory.objects.all()
             }
             try:
-                categories = [mapping[val] for val in values]
+                categories = [mapping[val] for val in set(values)]
             except KeyError as e:
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
@@ -214,23 +231,29 @@ class AuditVetBaseSerializer(Serializer):
                 "blacklist_category": new_blacklist_scores,
             })
         # Trigger celery brand safety update task if any blacklist categories created or changed
-        if (created is True and new_blacklist_scores) or (created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
+        if (created is True and new_blacklist_scores) or (
+            created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
             blacklist_item.blacklist_category = new_blacklist_scores
             blacklist_item.save()
             self.update_brand_safety(item_id)
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories):
+    def save_elasticsearch(self, item_id, blacklist_categories, es_manager):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
         :param blacklist_categories: list -> [int, ...]
+        :param es_manager: BaseManager
         :return: None
         """
-        task_us_data = self.validated_data["task_us_data"]
+        task_us_data = {
+            "last_vetted_at": timezone.now(),
+            **self.validated_data["task_us_data"],
+        }
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
-        reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
+            [int(category) for category in blacklist_categories])
         brand_safety_category_overall_scores = {
             str(category_id): {
                 "category_score": 100 if category_id in reset_brand_safety else 0
@@ -257,5 +280,5 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         doc.populate_general_data(**general_data)
-        self.segment.es_manager.upsert_sections = self.SECTIONS
-        self.segment.es_manager.upsert([doc])
+        es_manager.upsert_sections = self.SECTIONS
+        es_manager.upsert([doc])

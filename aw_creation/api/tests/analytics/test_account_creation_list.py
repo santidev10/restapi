@@ -1,10 +1,10 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_202_ACCEPTED
 
@@ -18,7 +18,6 @@ from aw_creation.models import Language
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -32,8 +31,10 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 
@@ -117,7 +118,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                 "frequency_capping", "ad_schedule_rules",
                 "location_rules", "ad_group_creations",
                 "video_networks", "type", "delivery_method",
-                "is_draft", 'bid_strategy_type', "sync_at", "target_cpa"
+                "is_draft", "bid_strategy_type", "sync_at", "target_cpa"
             }
         )
         self.assertEqual(len(campaign_creation["languages"]), 1)
@@ -167,11 +168,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         ad_group = AdGroup.objects.create(id=next(int_iterator), name="", campaign=campaign)
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
-        date = datetime.now()
-        VideoCreativeStatistic.objects.create(creative=creative1, date=date,
+        action_date = datetime.now()
+        VideoCreativeStatistic.objects.create(creative=creative1, date=action_date,
                                               ad_group=ad_group,
                                               impressions=10)
-        VideoCreativeStatistic.objects.create(creative=creative2, date=date,
+        VideoCreativeStatistic.objects.create(creative=creative2, date=action_date,
                                               ad_group=ad_group,
                                               impressions=12)
 
@@ -356,6 +357,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                 self.assertGreaterEqual(item[metric], min2)
                 self.assertLessEqual(item[metric], max2)
 
+    # pylint: disable=too-many-statements
     def test_status_filter(self):
         mcc_account = self.mcc_account
 
@@ -427,6 +429,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(response.data.get("items")[0].get("id"), draft_account_creation.id)
         draft_account_creation.refresh_from_db()
         self.assertEqual(draft_account_creation.status, AccountCreation.STATUS_DRAFT)
+
+    # pylint: enable=too-many-statements
 
     def test_success_dates_filter(self):
         mcc_account = self.mcc_account
@@ -506,7 +510,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -776,19 +780,20 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
 
         client_cost = sum(
-            [get_client_cost(
-                goal_type_id=c.salesforce_placement.goal_type_id,
-                dynamic_placement=c.salesforce_placement.dynamic_placement,
-                placement_type=c.salesforce_placement.placement_type,
-                ordered_rate=c.salesforce_placement.ordered_rate,
-                impressions=c.impressions,
-                video_views=c.video_views,
-                aw_cost=c.cost,
-                total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee,
-                start=c.start_date,
-                end=c.end_date
-            )
+            [
+                get_client_cost(
+                    goal_type_id=c.salesforce_placement.goal_type_id,
+                    dynamic_placement=c.salesforce_placement.dynamic_placement,
+                    placement_type=c.salesforce_placement.placement_type,
+                    ordered_rate=c.salesforce_placement.ordered_rate,
+                    impressions=c.impressions,
+                    video_views=c.video_views,
+                    aw_cost=c.cost,
+                    total_cost=c.salesforce_placement.total_cost,
+                    tech_fee=c.salesforce_placement.tech_fee,
+                    start=c.start_date,
+                    end=c.end_date
+                )
                 for c in campaigns]
         )
 
@@ -979,7 +984,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                 self.assertGreater(item[key], 0)
 
     def test_demo_account_visibility_does_not_affect_result(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         }
@@ -992,7 +997,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(item["id"], DEMO_ACCOUNT_ID)
 
     def test_demo_is_editable(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         }
@@ -1003,7 +1008,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(item["is_editable"], True)
 
     def test_demo_is_first(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         AccountCreation.objects.create(account=account, owner=self.user)

@@ -1,11 +1,11 @@
-from datetime import datetime
-from datetime import timedelta
 import logging
 import re
+from datetime import datetime
+from datetime import timedelta
 
+import pytz
 from django.db.models import Max
 from django.db.models import Min
-import pytz
 
 from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_api import get_web_app_client
@@ -146,18 +146,23 @@ def reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
 
 
 def detect_success_aw_read_permissions():
+    # pylint: disable=import-outside-toplevel
     from aw_reporting.models import AWAccountPermission
-    for permission in AWAccountPermission.objects.filter(
-            can_read=False,
-            account__is_active=True,
-            aw_connection__revoked_access=False,
-    ):
+    # pylint: enable=import-outside-toplevel
+    aw_permissions = AWAccountPermission.objects.filter(
+        can_read=False,
+        account__is_active=True,
+        aw_connection__revoked_access=False,
+    )
+    for permission in aw_permissions:
         try:
             client = get_web_app_client(
                 refresh_token=permission.aw_connection.refresh_token,
                 client_customer_id=permission.account_id,
             )
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             logger.error(e)
         else:
             try:
@@ -166,8 +171,24 @@ def detect_success_aw_read_permissions():
                 account = permission.account
                 account.is_active = False
                 account.save()
+            # pylint: disable=broad-except
             except Exception as e:
+                # pylint: enable=broad-except
                 logger.error(e)
             else:
                 permission.can_read = True
                 permission.save()
+
+
+def get_criteria_exists_key(ad_group_id: int, criteria_type_value: int, statistic_criteria: str):
+    """
+    Method to ensure tuple key is consistent with same Adwords row object and CriteriaTypeEnum.name
+    """
+    if not isinstance(ad_group_id, int):
+        raise ValueError("ad_group_id must be int")
+    if not isinstance(criteria_type_value, int):
+        raise ValueError("criteria_type_value must be int")
+    if not isinstance(statistic_criteria, str):
+        raise ValueError("statistic_criteria must be str")
+    exists_key = (ad_group_id, criteria_type_value, statistic_criteria)
+    return exists_key

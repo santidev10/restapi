@@ -5,13 +5,13 @@ from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from userprofile.constants import UserSettingsKey
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
@@ -83,15 +83,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -115,12 +115,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         response = self.client.get("{}?max_campaigns_count=2".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = reverse("aw_creation_urls:performance_targeting_list")
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -131,21 +131,21 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
 
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
         )
-        self.assertEqual(len(item['weekly_chart']), 7)
+        self.assertEqual(len(item["weekly_chart"]), 7)
 
     def test_success_from_aw(self):
         account_1 = Account.objects.create(id=1,
@@ -164,6 +164,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         url = reverse("aw_creation_urls:performance_targeting_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        accounts_map = dict((acc.get('id'), acc) for acc in response.data.get('items'))
-        self.assertTrue(accounts_map.get(aw_account.id).get('from_aw'))
-        self.assertFalse(accounts_map.get(internal_account.id).get('from_aw'))
+        accounts_map = dict((acc.get("id"), acc) for acc in response.data.get("items"))
+        self.assertTrue(accounts_map.get(aw_account.id).get("from_aw"))
+        self.assertFalse(accounts_map.get(internal_account.id).get("from_aw"))

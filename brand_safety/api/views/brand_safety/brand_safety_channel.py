@@ -18,7 +18,7 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.brand_safety import get_brand_safety_data
 
-REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+REGEX_TO_REMOVE_TIMEMARKS = r"^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
 
 class BrandSafetyChannelAPIView(APIView):
@@ -32,6 +32,7 @@ class BrandSafetyChannelAPIView(APIView):
     channel_manager = ChannelManager(sections=(Sections.STATS, Sections.BRAND_SAFETY))
     video_manager = VideoManager(sections=(Sections.BRAND_SAFETY,))
 
+    # pylint: disable=too-many-branches,too-many-statements
     def get(self, request, **kwargs):
         """
         Retrieve individual channel and underlying video brand safety datas
@@ -75,7 +76,9 @@ class BrandSafetyChannelAPIView(APIView):
             })
         try:
             videos = self._get_channel_video_data(channel_id)
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
         # Add flagged videos to channel brand safety
@@ -92,12 +95,14 @@ class BrandSafetyChannelAPIView(APIView):
         channel_response["total_flagged_videos"] = len(flagged_videos)
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
-        sorting = query_params['sort'] if "sort" in query_params else None
-        ascending = query_params['sortAscending'] if "sortAscending" in query_params else None
+        sorting = query_params["sort"] if "sort" in query_params else None
+        ascending = query_params["sortAscending"] if "sortAscending" in query_params else None
         if ascending is not None:
             try:
                 ascending = strtobool(ascending)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 raise ValueError("Expected sortAscending to be boolean value. Received {}".format(ascending))
         reverse = True
         if ascending:
@@ -112,6 +117,8 @@ class BrandSafetyChannelAPIView(APIView):
         response = self._adapt_response_data(channel_response, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
+    # pylint: enable=too-many-branches,too-many-statements
+
     def __get_transcript(self, captions):
         """
         Parse and format all captions within section
@@ -124,6 +131,7 @@ class BrandSafetyChannelAPIView(APIView):
                 if caption.language_code == "en" and text:
                     transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
                     return transcript
+        return None
 
     def _get_channel_video_data(self, channel_id):
         """
@@ -176,7 +184,10 @@ class BrandSafetyChannelAPIView(APIView):
         for category_id, keyword_data in categories.items():
             if category_id in BadWordCategory.EXCLUDED:
                 continue
-            keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
+            try:
+                keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
+            except KeyError:
+                pass
         return keywords
 
     def _extract_video_data(self, video):

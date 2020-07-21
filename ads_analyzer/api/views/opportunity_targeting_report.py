@@ -1,11 +1,10 @@
 from datetime import timedelta
 
 from django.conf import settings
-
+from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.filters import BaseFilterBackend
 
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
     OpportunityTargetReportModelSerializer
@@ -49,7 +48,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         return OpportunityTargetingReport.objects.filter(
-            created_at__gte=self.get_visible_datetime())\
+            created_at__gte=self.get_visible_datetime()) \
             .order_by("-created_at")
 
     def post(self, request, *args, **kwargs):
@@ -84,7 +83,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
                 download_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
                 status="ready",
             ))
-        elif report.status == ReportStatus.IN_PROGRESS.value:
+        if report.status == ReportStatus.IN_PROGRESS.value:
             return Response(data=dict(
                 message="Processing.  You will receive an email when your export is ready.",
                 status="created",
@@ -101,7 +100,3 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
     @staticmethod
     def get_visible_datetime():
         return now_in_default_tz() - timedelta(days=settings.REPORT_VISIBLE_PERIOD)
-
-
-
-

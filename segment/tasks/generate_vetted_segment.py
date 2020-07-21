@@ -4,6 +4,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from saas import celery_app
+from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
+from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
 from segment.tasks.generate_segment import generate_segment
@@ -22,9 +24,14 @@ def generate_vetted_segment(segment_id, recipient=None):
     Else, vetting is complete. Create CustomSegmentVettedFileUpload and notify admins
     :return:
     """
+    # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
-        segment.set_vetting()
+        segment.is_vetting = True
+        if segment.segment_type == 0:
+            segment.serializer = CustomSegmentVideoVettedExportSerializer
+        else:
+            segment.serializer = CustomSegmentChannelVettedExportSerializer
         query = segment.get_vetted_items_query()
         # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
         # may rapidly change
@@ -45,6 +52,7 @@ def generate_vetted_segment(segment_id, recipient=None):
             segment.save()
             send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])
     except CustomSegment.DoesNotExist:
-        logger.error(f"Segment with id: {segment_id} does not exist.")
+        logger.error("Segment with id: % does not exist.", segment_id)
     except Exception:
-        logger.exception(f"Error generating vetted segment for id: {segment_id}")
+        logger.exception("Error generating vetted segment for id: %s", segment_id)
+    # pylint: enable=broad-except

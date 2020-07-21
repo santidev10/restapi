@@ -1,6 +1,10 @@
 import re
 import socket
+import urllib.parse as urlparse
+from threading import Thread
+from urllib.parse import parse_qs
 
+import requests
 from bs4 import BeautifulSoup as bs
 from datetime import timedelta
 from django.conf import settings
@@ -55,13 +59,14 @@ class YTTranscriptsScraper(object):
         if method == "GET":
             response = requests.get(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}")
             return response
-        elif method == "PUT":
+        if method == "PUT":
             response = requests.put(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}",
                                     data=data)
             return response
+        return None
 
     def authorize_ip_with_proxy(self):
-        ip = requests.get('https://api.ipify.org').text
+        ip = requests.get("https://api.ipify.org").text
         endpoint = "authorized-ips"
         method = "PUT"
         response = self.request_proxy_api(endpoint=endpoint, method=method, data={"ips": [ip]})
@@ -75,7 +80,7 @@ class YTTranscriptsScraper(object):
     def get_available_proxies(self):
         endpoint = "proxies"
         response = self.request_proxy_api(endpoint=endpoint)
-        proxies = response.json()['data']
+        proxies = response.json()["data"]
         self.available_proxies = [
             {
                 "host": proxy.split(":")[0],
@@ -159,7 +164,7 @@ class YTTranscriptsScraper(object):
             vid_id = yt_vid.vid_id
             if yt_vid.vid_url_status != 200:
                 yt_vid.failure_reason = f"Failed to get response from Youtube for Video: '{vid_id}'. " \
-                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'"
+                                        f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'"
             elif not yt_vid.tts_url:
                 yt_vid.failure_reason = f"No TTS_URL for Video: '{vid_id}'."
             elif not yt_vid.subtitles_list_url:
@@ -246,6 +251,7 @@ class YTTranscriptsScraper(object):
 
 
 class YTVideo(object):
+# pylint: disable=too-many-instance-attributes
     NUM_SUBTITLES_TO_PULL = 5
 
     def __init__(self, vid_id, scraper):
@@ -279,7 +285,9 @@ class YTVideo(object):
     def generate_tts_url(self):
         try:
             self.vid_url_response, self.vid_url_status = self.get_vid_url_response(self.vid_url)
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 2 (Single-threaded)
@@ -288,15 +296,19 @@ class YTVideo(object):
             self.set_tts_url()
             self.params = self.parse_tts_url_params(self.tts_url)
             self.subtitles_list_url = self.get_list_url(self.params)
+        # pylint: disable=broad-except
         except Exception as e:
             self.update_failure_reason(e)
+        # pylint: enable=broad-except
 
     # Step 3 (Multithreaded)
     def generate_list_url(self):
         try:
-            self.subtitles_list_url_response, status = self.get_list_url_response(self.subtitles_list_url)
+            self.subtitles_list_url_response, _ = self.get_list_url_response(self.subtitles_list_url)
+        # pylint: disable=broad-except
         except Exception as e:
             self.update_failure_reason(e)
+        # pylint: enable=broad-except
 
     # Step 4 (Single-threaded)
     def parse_tts_url_meta(self):
@@ -307,7 +319,9 @@ class YTVideo(object):
             self.tracks_lang_codes_dict = self.get_lang_codes_dict(self.tracks_meta)
             self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
             self.subtitles = self.get_top_subtitles()
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     # Step 5 (Multithreaded)
@@ -315,14 +329,18 @@ class YTVideo(object):
         try:
             for subtitle in self.subtitles:
                 subtitle.get_subtitles()
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_vid_url_response(self, vid_url):
         try:
             response, status = self.get_response_through_proxy(self.scraper, vid_url)
             return response, status
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_list_url_response(self, list_url):
@@ -331,7 +349,9 @@ class YTVideo(object):
         try:
             response, status = self.get_response_through_proxy(self.scraper, list_url)
             return response, status
+        # pylint: disable=broad-except
         except Exception as e:
+            # pylint: enable=broad-except
             self.update_failure_reason(e)
 
     def get_response_through_proxy(self, scraper, url):
@@ -385,6 +405,7 @@ class YTVideo(object):
         response_status = response.status_code
         return response_text, response_status
 
+
     def get_top_subtitles(self):
         if not self.top_subtitles_meta:
             return None
@@ -434,9 +455,8 @@ class YTVideo(object):
     def set_tts_url(self):
         if self.vid_url_status != 200:
             return None
-        else:
-            yt_response_html = self.vid_url_response
-            # yt_response_html = yt_response.text()
+        yt_response_html = self.vid_url_response
+        # yt_response_html = yt_response.text()
         if "TTS_URL" not in yt_response_html:
             raise ValidationError("No TTS_URL in Youtube Response.")
         strings = yt_response_html.split("TTS_URL")
@@ -446,6 +466,7 @@ class YTVideo(object):
         s = s.replace("\\/", "/")
         s = s.replace("\\u0026", "&")
         self.tts_url = s
+        return None
 
     @staticmethod
     def parse_tts_url_params(tts_url: str):
@@ -469,9 +490,9 @@ class YTVideo(object):
     def parse_list_url(self, list_url_response):
         if not list_url_response:
             return [], []
-        soup = bs(list_url_response, 'xml')
+        soup = bs(list_url_response, "xml")
         transcript_list = soup.transcript_list
-        docid = transcript_list.attrs.get('docid')
+        docid = transcript_list.attrs.get("docid")
         if not docid:
             raise ValidationError("list_url has no 'docid' attribute.")
         tracks = self.get_tracks(soup)
@@ -482,7 +503,7 @@ class YTVideo(object):
 
     @staticmethod
     def get_tracks(soup: bs):
-        return [track for track in soup.find_all("track")]
+        return list(soup.find_all("track"))
 
     @staticmethod
     def get_asr_track(tracks):
@@ -494,7 +515,10 @@ class YTVideo(object):
         return {item.get("lang_code"): item for item in items if item.get("lang_code")}
 
 
-class YTVideoSubtitles(object):
+# pylint: enable=too-many-instance-attributes
+
+# pylint: disable=too-many-instance-attributes
+class YTVideoSubtitles:
     def __init__(self, video, params=None, subtitle_meta=None):
         self.video = video
         self.params = params
@@ -511,12 +535,12 @@ class YTVideoSubtitles(object):
         self.set_meta_data()
 
     def set_meta_data(self):
-        self.subtitle_id = self.subtitle_meta.get('id')
-        self.name = self.subtitle_meta.get('name')
-        self.is_asr = True if self.subtitle_meta.get('kind') == 'asr' else False
-        self.lang_code = self.subtitle_meta.get('lang_code')
-        self.lang_original = self.subtitle_meta.get('lang_original')
-        self.lang_translated = self.subtitle_meta.get('lang_translated')
+        self.subtitle_id = self.subtitle_meta.get("id")
+        self.name = self.subtitle_meta.get("name")
+        self.is_asr = self.subtitle_meta.get("kind") == "asr"
+        self.lang_code = self.subtitle_meta.get("lang_code")
+        self.lang_original = self.subtitle_meta.get("lang_original")
+        self.lang_translated = self.subtitle_meta.get("lang_translated")
         self.type = self.subtitle_meta.name
         self.subtitle_url = self.get_subtitle_url()
 
@@ -536,7 +560,8 @@ class YTVideoSubtitles(object):
         response, status = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
         soup = bs(response, "xml")
         captions = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
-        captions = re.sub(r'<font.+?>', '', captions)
-        captions = re.sub(r'<\/font>', '', captions)
+        captions = re.sub(r"<font.+?>", "", captions)
+        captions = re.sub(r"<\/font>", "", captions)
         captions = captions.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         self.captions = captions
+# pylint: enable=too-many-instance-attributes

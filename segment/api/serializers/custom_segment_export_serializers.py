@@ -1,25 +1,24 @@
-from rest_framework.serializers import BooleanField
-from rest_framework.serializers import CharField
-from rest_framework.serializers import IntegerField
-from rest_framework.serializers import Serializer
-from rest_framework.serializers import SerializerMethodField
-from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
-from segment.api.serializers.segment_export_serializer_mixins import SegmentExportSerializerMixin
-
 """
 CustomSegment export serializers
 
 Each columns tuple for all serializers are used as headers for export files
 """
-class CustomSegmentChannelExportSerializer(
-    SegmentChannelExportSerializerMixin,
-    SegmentExportSerializerMixin,
-    Serializer
-):
+from rest_framework.serializers import BooleanField
+from rest_framework.serializers import CharField
+from rest_framework.serializers import DateTimeField
+from rest_framework.serializers import IntegerField
+from rest_framework.serializers import Serializer
+from rest_framework.serializers import SerializerMethodField
+
+from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
+from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
+
+
+class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Num_Videos",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
+        "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country",
     )
 
     URL = SerializerMethodField("get_url")
@@ -33,16 +32,25 @@ class CustomSegmentChannelExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Content_Quality = SerializerMethodField("get_content_quality")
     Num_Videos = IntegerField(source="stats.total_videos_count")
+    Mismatched_Language = SerializerMethodField("get_mismatched_language")
+    Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
+    Country = SerializerMethodField("get_country")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
 
 
-class CustomSegmentChannelWithMonetizationExportSerializer(
-    CustomSegmentChannelExportSerializer
-):
+class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
-        "Content_Type", "Num_Videos",
+        "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
+        "Country",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
@@ -50,14 +58,18 @@ class CustomSegmentChannelWithMonetizationExportSerializer(
     def __init__(self, instance, *args, **kwargs):
         super().__init__(instance, *args, **kwargs)
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
-class CustomSegmentVideoExportSerializer(
-    SegmentExportSerializerMixin,
-    Serializer
-):
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
+        "Mismatched_Language", "Last_Vetted", "Country",
     )
 
     URL = SerializerMethodField("get_url")
@@ -71,7 +83,13 @@ class CustomSegmentVideoExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Content_Quality = SerializerMethodField("get_content_quality")
+    Mismatched_Language = SerializerMethodField("get_mismatched_language")
+    Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
+    Country = SerializerMethodField("get_country")
 
-    def get_url(self, obj):
-        return f"https://www.youtube.com/watch?v={obj.main.id}"
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
+    def create(self, validated_data):
+        raise NotImplementedError

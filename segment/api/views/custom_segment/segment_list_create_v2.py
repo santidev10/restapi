@@ -1,7 +1,7 @@
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import IntegerField
-from django.db.models.functions import Cast
 from django.db.models import Q
+from django.db.models.functions import Cast
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
@@ -11,8 +11,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from saas.configs.celery import Queue
-from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
+from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
@@ -54,8 +54,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         # Channel and video language query param differ. Filter out empty str items
         languages = self.request.query_params.get("general_data.top_lang_code", "").split(",") \
-            + self.request.query_params.get("general_data.lang_code", "").split(",")
-        languages = list(filter(lambda x: bool(x), languages))
+                    + self.request.query_params.get("general_data.lang_code", "").split(",")
+        languages = list(filter(bool, languages))
         if languages:
             for lang in languages:
                 q_filter |= Q(export__query__params__languages__icontains=lang)
@@ -98,7 +98,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         elif user.has_perm("userprofile.vet_audit"):
             base_filters = {"audit_id__isnull": False}
         else:
-            base_filters = {"owner": self.request.user, "audit_id__isnull": True}
+            base_filters = {"owner": self.request.user}
         queryset = super().get_queryset().filter(**base_filters, segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)

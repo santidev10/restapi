@@ -1,4 +1,10 @@
 from datetime import datetime
+from random import randint
+from typing import Type
+from typing import Union
+
+import pytz
+
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -11,14 +17,11 @@ from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.models.video import VideoSectionBrandSafety
 from es_components.query_builder import QueryBuilder
 from es_components.tests.utils import ESTestCase
-from random import randint
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.utils.bulk_search import bulk_search
-from typing import Union
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
-import pytz
 
 
 class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
@@ -85,26 +88,21 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
             )
             return video
 
-        def test_model(
-                model_class: Union[Channel, Video],
-                populate: callable,
-                manager_class: Union[ChannelManager, VideoManager],
-                sort: list,
-                cursor_field: str,
-                source: list
-        ):
+        def test_model(model_class: Union[Type[Channel], Type[Video]], populate: callable,
+                       manager_class: Union[Type[ChannelManager], Type[VideoManager]], sort: list, cursor_field: str,
+                       source: list):
             """
             Test the bulk_search method with the specified model class
             (currently Channels or Videos)
             """
             instances = []
-            for i in range(instances_count):
+            for _ in range(instances_count):
                 instance_id = next(int_iterator)
                 instance = populate(instance_id)
                 instances.append(instance)
 
             instances_without_cursor_field = []
-            for i in range(instances_no_cursor_field_count):
+            for _ in range(instances_no_cursor_field_count):
                 instance_id = next(int_iterator)
                 instance = populate(instance_id, has_cursor_field=False)
                 instances_without_cursor_field.append(instance)
@@ -119,30 +117,14 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
             query = QueryBuilder().build().must().range() \
                 .field("brand_safety.overall_score").gte(5).get()
             with_exclusions = []
-            for batch in bulk_search(
-                    model=model_class,
-                    query=query,
-                    sort=sort,
-                    cursor_field=cursor_field,
-                    options=None,
-                    batch_size=1000,
-                    source=source,
-                    include_cursor_exclusions=True
-            ):
+            for batch in bulk_search(model=model_class, query=query, sort=sort, cursor_field=cursor_field, options=None,
+                                     batch_size=1000, source=source, include_cursor_exclusions=True):
                 for item in batch:
                     with_exclusions.append(item)
 
             without_exclusions = []
-            for batch in bulk_search(
-                    model=model_class,
-                    query=query,
-                    sort=sort,
-                    cursor_field=cursor_field,
-                    options=None,
-                    batch_size=1000,
-                    source=source,
-                    include_cursor_exclusions=False
-            ):
+            for batch in bulk_search(model=model_class, query=query, sort=sort, cursor_field=cursor_field, options=None,
+                                     batch_size=1000, source=source, include_cursor_exclusions=False):
                 for item in batch:
                     without_exclusions.append(item)
 

@@ -1,18 +1,16 @@
-import string
+from distutils.util import strtobool
 
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.serializers import ValidationError
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
-from distutils.util import strtobool
 from utils.utils import remove_tags_punctuation
-from utils.lang import is_english
 
 
 class BadWordListApiView(ListCreateAPIView):
@@ -34,7 +32,8 @@ class BadWordListApiView(ListCreateAPIView):
                 category_id = int(category)
                 filters["category_id"] = category_id
             except ValueError:
-                raise ValidationError("Category filter param must be Category ID value. Received: {}.".format(category))
+                raise ValidationError(
+                    "Category filter param must be Category ID value. Received: {}.".format(category))
 
         language = self.request.query_params.get("language")
         if language:
@@ -42,7 +41,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         negative_scores = self.request.query_params.get("negative_score")
         if negative_scores:
-            negative_scores = negative_scores.split(',')
+            negative_scores = negative_scores.split(",")
             filters["negative_score__in"] = negative_scores
 
         meta_scoring = self.request.query_params.get("meta_scoring")
@@ -53,7 +52,8 @@ class BadWordListApiView(ListCreateAPIView):
                 try:
                     filters["meta_scoring"] = strtobool(meta_scoring)
                 except ValueError:
-                    raise ValidationError("Meta_scoring filter param must be True or False. Received: {}.".format(meta_scoring))
+                    raise ValidationError(
+                        "Meta_scoring filter param must be True or False. Received: {}.".format(meta_scoring))
 
         comment_scoring = self.request.query_params.get("comment_scoring")
         if comment_scoring is not None:
@@ -63,8 +63,8 @@ class BadWordListApiView(ListCreateAPIView):
                 try:
                     filters["comment_scoring"] = strtobool(comment_scoring)
                 except ValueError:
-                    raise ValidationError("Comment_scoring filter param must be True or False. Received: {}.".format(comment_scoring))
-
+                    raise ValidationError(
+                        "Comment_scoring filter param must be True or False. Received: {}.".format(comment_scoring))
 
         if filters:
             queryset = queryset.filter(**filters)
@@ -86,24 +86,27 @@ class BadWordListApiView(ListCreateAPIView):
         serializers = []
         try:
             tag_names = request.data["name"].split(",")
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             raise ValidationError("'name' field is required for BadWord object.")
 
         for tag_name in tag_names:
             tag_data = dict(request.data)
             tag_data["name"] = remove_tags_punctuation(tag_name.lower().strip())
-            serializer = BadWordSerializer(data=tag_data, context={'request': request})
+            serializer = BadWordSerializer(data=tag_data, context={"request": request})
             serializers.append(serializer)
         results = []
         for serializer in serializers:
             if serializer.is_valid():
                 try:
                     validated_data = serializer.validated_data
-                    existing_word = BadWord.all_objects.get(name=validated_data["name"], language=validated_data["language"])
+                    existing_word = BadWord.all_objects.get(name=validated_data["name"],
+                                                            language=validated_data["language"])
                     # If the word has been soft deleted, reset its deleted_at
                     if existing_word.deleted_at is not None:
                         existing_word.deleted_at = None
-                        existing_word.save(update_fields=['deleted_at'])
+                        existing_word.save(update_fields=["deleted_at"])
                         existing_word_serializer = self.serializer_class(existing_word, data=tag_data)
                         existing_word_serializer.is_valid(raise_exception=True)
                         existing_word_serializer.save()
@@ -112,7 +115,8 @@ class BadWordListApiView(ListCreateAPIView):
                         status = HTTP_201_CREATED
                     else:
                         # Reject trying to create a word that has not been soft deleted
-                        result = "{} and {} must make a unique set.".format(validated_data["name"], str(validated_data["language"]))
+                        result = "{} and {} must make a unique set.".format(validated_data["name"],
+                                                                            str(validated_data["language"]))
                         results.append(result)
                         status = HTTP_400_BAD_REQUEST
                 except BadWord.DoesNotExist:
@@ -124,4 +128,3 @@ class BadWordListApiView(ListCreateAPIView):
                 results.append(result)
                 status = HTTP_400_BAD_REQUEST
         return Response(data=results, status=status)
-

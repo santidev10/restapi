@@ -10,12 +10,11 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.analytics_charts import ALL_DIMENSIONS
-from aw_reporting.analytics_charts import Dimension
-from aw_reporting.analytics_charts import Indicator
 from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import ALL_DIMENSIONS
+from aw_reporting.charts.base_chart import Dimension
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -41,15 +40,17 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
+class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
     def _request(self, account_creation_id, **kwargs):
         url = reverse(
             Name.Analytics.PERFORMANCE_CHART,
@@ -84,8 +85,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
         campaign2 = Campaign.objects.create(id=2, name="#2", account=account)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
-        date = datetime.now().date() - timedelta(days=1)
-        base_stats = dict(date=date, impressions=100, video_views=10, cost=1)
+        action_date = datetime.now().date() - timedelta(days=1)
+        base_stats = dict(date=action_date, impressions=100, video_views=10, cost=1)
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
@@ -128,9 +129,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
-        self.assertEqual(data[0]['title'], "Summary for 2 campaigns")
-        self.assertEqual(data[1]['title'], "#1")
-        self.assertEqual(data[2]['title'], "#2")
+        self.assertEqual(data[0]["title"], "Summary for 2 campaigns")
+        self.assertEqual(data[1]["title"], "#1")
+        self.assertEqual(data[2]["title"], "#2")
 
     def test_success_get_filter_items(self):
         user = self.create_test_user()
@@ -153,8 +154,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['title'], "#1")
-        self.assertEqual(len(data[0]['data'][0]['trend']), 1)
+        self.assertEqual(data[0]["title"], "#1")
+        self.assertEqual(len(data[0]["data"][0]["trend"]), 1)
 
     @generic_test([
         (dimension, (dimension,), dict())
@@ -174,13 +175,13 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.create_stats(account)
 
         filters = {
-            'indicator': 'video_view_rate',
-            'dimension': dimension,
+            "indicator": "video_view_rate",
+            "dimension": dimension,
         }
         response = self._request(account_creation.id, **filters)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
-        self.assertEqual(len(response.data[0]['data']), 1)
+        self.assertEqual(len(response.data[0]["data"]), 1)
 
     def test_success_get_no_account(self):
         user = self.create_test_user()
@@ -190,7 +191,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                                                           sync_at=timezone.now())
 
         account = Account.objects.create(id=1, name="")
-        self.create_stats(account)  # create stats that won't be visible
+        self.create_stats(account)  # create stats that won"t be visible
 
         today = datetime.now().date()
         response = self._request(account_creation.id,
@@ -201,7 +202,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data), 0)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -212,14 +213,14 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
-        self.assertEqual(data[0]['title'], "Summary for 2 campaigns")
-        self.assertEqual(len(data[0]['data'][0]['trend']), 2)
-        self.assertEqual(data[1]['title'], "Campaign #demo1")
-        self.assertEqual(data[2]['title'], "Campaign #demo2")
+        self.assertEqual(data[0]["title"], "Summary for 2 campaigns")
+        self.assertEqual(len(data[0]["data"][0]["trend"]), 2)
+        self.assertEqual(data[1]["title"], "Campaign #demo1")
+        self.assertEqual(data[2]["title"], "Campaign #demo2")
 
     def test_success_demo_data(self):
-        recreate_demo_data()
-        user = self.create_test_user()
+        recreate_test_demo_data()
+        self.create_test_user()
 
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
@@ -229,24 +230,25 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
-        self.assertEqual(data[0]['title'], "Summary for 2 campaigns")
-        self.assertEqual(len(data[0]['data'][0]['trend']), 2)
-        self.assertEqual(data[1]['title'], "Campaign #demo1")
-        self.assertEqual(data[2]['title'], "Campaign #demo2")
+        self.assertEqual(data[0]["title"], "Summary for 2 campaigns")
+        self.assertEqual(len(data[0]["data"][0]["trend"]), 2)
+        self.assertEqual(data[1]["title"], "Campaign #demo1")
+        self.assertEqual(data[2]["title"], "Campaign #demo2")
 
     def test_cpm_cpv_is_visible(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
 
         account_creation_id = DEMO_ACCOUNT_ID
-        for args in product(
-                (True, False),
-                (True, False),
-                (Indicator.CPM, Indicator.CPV),
-                ALL_DIMENSIONS,
-                (True, False),
-                (True, False)
-        ):
+        test_cases = product(
+            (True, False),
+            (True, False),
+            (Indicator.CPM, Indicator.CPV),
+            ALL_DIMENSIONS,
+            (True, False),
+            (True, False)
+        )
+        for args in test_cases:
             msg = "AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, " \
                   "is_demo = {}, is_staff = {}".format(*args)
             dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo, is_staff = args
@@ -285,7 +287,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                                            account=account)
         ad_group = AdGroup.objects.create(id=next(int_iterator),
                                           campaign=campaign)
-        impressions, views, aw_cost = 500, 200, 30
+        views, aw_cost = 200, 30
         AdGroupStatistic.objects.create(ad_group=ad_group,
                                         average_position=1,
                                         date=any_date,

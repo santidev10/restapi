@@ -22,16 +22,16 @@ class S3ExportApiView(APIViewMixin):
         query_params.update(request.data)
 
         export_name = self.generate_report_hash(query_params, request.user.pk)
-        export_url = self._get_url_to_export(export_name)
 
         if self.s3_exporter.exists(export_name):
+            export_url = self._get_url_to_export(export_name)
             return Response(
                 data={
                     "export_url": export_url,
                 }
             )
 
-        self.generate_export_task.delay(query_params, export_name, [request.user.email], export_url)
+        self.generate_export_task.delay(query_params, export_name, [request.user.email])
 
         return Response(
             data={
@@ -41,6 +41,7 @@ class S3ExportApiView(APIViewMixin):
             },
             status=HTTP_200_OK)
 
+    # pylint: disable=unused-argument
     def get(self, request, export_name, *args, **kwargs):
         try:
             content_generator = self.s3_exporter.get_s3_export_content(export_name).iter_chunks()
@@ -54,6 +55,7 @@ class S3ExportApiView(APIViewMixin):
         filename = self.get_filename(export_name)
         response["Content-Disposition"] = "attachment; filename={}".format(filename)
         return response
+    # pylint: enable=unused-argument
 
     def _get_query_params(self, request):
         return request.query_params.dict()
@@ -69,8 +71,8 @@ class S3ExportApiView(APIViewMixin):
     @staticmethod
     def generate_report_hash(filters, user_pk):
         _filters = filters.copy()
-        _filters['current_datetime'] = now_in_default_tz().date().strftime("%Y-%m-%d")
-        _filters['user_id'] = user_pk
+        _filters["current_datetime"] = now_in_default_tz().date().strftime("%Y-%m-%d")
+        _filters["user_id"] = user_pk
         serialzed_filters = json.dumps(_filters, sort_keys=True)
         _hash = hashlib.md5(serialzed_filters.encode()).hexdigest()
         return _hash

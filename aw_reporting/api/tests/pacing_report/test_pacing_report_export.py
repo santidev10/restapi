@@ -1,5 +1,3 @@
-from unittest import mock
-
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
@@ -7,19 +5,18 @@ from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
 from utils.unittests.csv import get_data_from_csv_response
+from utils.unittests.reverse import reverse
 from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.unittests.reverse import reverse
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):
 
     @mock_s3
-    @mock.patch("aw_reporting.reports.pacing_report.PacingReport.get_opportunities", return_value=[])
     def test_success(self, *args, **kwargs):
         report_name = "PacingReport-test"
         pacing_report = PacingReport()
-        opportunities = pacing_report.get_opportunities()
+        opportunities = []
 
         csv_generator = PacingReportCSVExport(pacing_report, opportunities, report_name)
         csv_generator.export_to_s3()

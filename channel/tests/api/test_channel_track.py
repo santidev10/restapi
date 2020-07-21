@@ -1,6 +1,4 @@
-import csv
 from django.contrib.auth.models import Group
-from rest_framework.status import HTTP_200_OK
 
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
@@ -36,7 +34,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         channel_id_3 = str(next(int_iterator))
         channel_id_4 = str(next(int_iterator))
         channel_ids = [channel_id_2, channel_id_3, channel_id_4]
-        response = self.client.post(self.url, data={'channel_ids': ",".join(channel_ids)})
+        response = self.client.post(self.url, data={"channel_ids": ",".join(channel_ids)})
         self.assertEqual("Added 3 manually tracked channels.", response.data)
         channels = self.manager.get(channel_ids)
         for channel in channels:
@@ -51,7 +49,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         new_channel_id_2 = str(next(int_iterator))
         new_channel_ids = [new_channel_id, new_channel_id_2]
         channel_ids = ",".join([self.channel_id_1] + new_channel_ids)
-        response = self.client.post(self.url, data={'channel_ids': channel_ids})
+        response = self.client.post(self.url, data={"channel_ids": channel_ids})
         self.assertEqual(f"Added {len(new_channel_ids)} manually tracked channels.", response.data)
         old_channel = self.manager.get([self.channel_id_1])[0]
         new_channels = self.manager.get([new_channel_ids])

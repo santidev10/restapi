@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+from datetime import date
+from datetime import timedelta
 from numbers import Number
 
 from rest_framework.status import HTTP_200_OK
@@ -7,7 +8,6 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -18,9 +18,10 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.unittests.test_case import ExtendedAPITestCase
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
@@ -83,7 +84,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_success_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.SHOW_CONVERSIONS: True,
@@ -396,19 +397,21 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                 cost=campaign.cost, impressions=campaign.impressions,
                 video_views=campaign.video_views)
         expected_cost = sum(
-            [get_client_cost(
-                goal_type_id=c.salesforce_placement.goal_type_id,
-                dynamic_placement=c.salesforce_placement.dynamic_placement,
-                placement_type=c.salesforce_placement.placement_type,
-                ordered_rate=c.salesforce_placement.ordered_rate,
-                impressions=c.impressions,
-                video_views=c.video_views,
-                aw_cost=c.cost,
-                total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee,
-                start=c.start_date,
-                end=c.end_date)
-                for c in campaigns])
+            [
+                get_client_cost(
+                    goal_type_id=c.salesforce_placement.goal_type_id,
+                    dynamic_placement=c.salesforce_placement.dynamic_placement,
+                    placement_type=c.salesforce_placement.placement_type,
+                    ordered_rate=c.salesforce_placement.ordered_rate,
+                    impressions=c.impressions,
+                    video_views=c.video_views,
+                    aw_cost=c.cost,
+                    total_cost=c.salesforce_placement.total_cost,
+                    tech_fee=c.salesforce_placement.tech_fee,
+                    start=c.start_date,
+                    end=c.end_date)
+                for c in campaigns
+            ])
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -619,7 +622,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             self.assertNotIn("view_through", overview)
 
     def test_conversions_are_visible(self):
-        user = self.create_test_user()
+        self.create_test_user()
         any_date = date(2018, 1, 1)
         conversions = 2
         all_conversions = 3
@@ -642,7 +645,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             self.assertEqual(overview["view_through"], view_through)
 
     def test_demo_account_performance_charts(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }

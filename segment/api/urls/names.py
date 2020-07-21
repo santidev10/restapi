@@ -10,6 +10,7 @@ class Name:
     SEGMENT_DELETE = "segment_delete"
     SEGMENT_CREATE = "segment_create"
     SEGMENT_EXPORT = "segment_export"
+    SEGMENT_SOURCE = "segment_source"
 
     SEGMENT_PREVIEW = "segment_preview"
 
@@ -19,3 +20,5 @@ class Name:
     PERSISTENT_SEGMENT_PREVIEW = "persistent_segment_preview"
 
     PERSISTENT_MASTER_SEGMENTS_LIST = "persistent_master_segments_list"
+
+    CUSTOM_SEGMENT_UPDATE = "custom_segment_update"

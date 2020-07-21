@@ -1,12 +1,12 @@
 version: "2.4"
 
 services:
-  api:
+  dev:
+    image: viewiq/restapi-dev:${BUILD_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    image: viewiq-restapi
     environment:
       ALLOWED_HOSTS: api
       RABBITMQ_HOST: rabbitmq
@@ -21,6 +21,10 @@ services:
       CELERY_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
       APM_ENABLED: ${APM_ENABLED:-False}
       APM_SERVER_URL: ${APM_SERVER_URL:-http://apm-server:8200}
+  api:
+    command: ["python","./manage.py", "runserver", "0.0.0.0:5000"]
+    extends:
+      service: dev
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -69,7 +73,7 @@ services:
       DO_SALESFORCE_UPDATE: 0
 
   pg:
-    image: postgres:9.6
+    image: postgres:12.2
     environment:
       POSTGRES_DB: saas
       POSTGRES_PASSWORD: password
@@ -80,7 +84,7 @@ services:
       retries: 5
 
   pg_audit:
-    image: postgres:9.6
+    image: postgres:12.2
     environment:
       POSTGRES_DB: audit
       POSTGRES_PASSWORD: password
@@ -91,7 +95,7 @@ services:
       retries: 5
 
   es:
-    image: elasticsearch:7.1.0
+    image: elasticsearch:7.4.0
     environment:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
@@ -125,19 +129,19 @@ services:
       CELERY_BROKER_URL: amqp://rabbitmq/restapi
 
   kibana:
-    image: kibana:7.1.0
+    image: kibana:7.4.0
     environment:
       ELASTICSEARCH_HOSTS: http://es:9200
 
   # APM
   apm-es:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-7.7.0}
     environment:
       - cluster.name=docker-cluster
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-7.6.0}
+      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-7.7.0}
       - discovery.type=single-node
     ulimits:
       memlock:
@@ -149,7 +153,7 @@ services:
       interval: 20s
 
   apm-server:
-    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-7.7.0}
     command: >
       apm-server -e
         -E apm-server.frontend.enabled=true
@@ -177,7 +181,7 @@ services:
       retries: 10
       interval: 10s
   apm-kibana:
-    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-7.7.0}
     environment:
       SERVER_NAME: kibana.example.org
       ELASTICSEARCH_HOSTS: http://apm-es:9200

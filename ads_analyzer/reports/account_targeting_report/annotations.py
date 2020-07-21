@@ -1,15 +1,14 @@
-from django.db.models import Case
-from django.db.models import F
-from django.db.models import ExpressionWrapper
-from django.db.models import FloatField as DBFloatField
 from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
+from django.db.models import F
+from django.db.models import FloatField as DBFloatField
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions.comparison import NullIf
 
 import ads_analyzer.reports.account_targeting_report.constants as names
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-
 
 goal_type_ref = "ad_group__campaign__salesforce_placement__goal_type_id"
 ANNOTATIONS = {
@@ -45,15 +44,15 @@ ANNOTATIONS = {
         output_field=DBFloatField()
     ),
     names.IMPRESSIONS_SHARE: ExpressionWrapper(
-        F("sum_impressions") * 1.0 / NullIf(F("ad_group__impressions"), 0),
+        F("sum_impressions") * 1.0 / NullIf(F("ad_group__campaign__impressions"), 0),
         output_field=DBFloatField()
     ),
     names.VIDEO_VIEWS_SHARE: ExpressionWrapper(
-        F("sum_video_views") * 1.0 / NullIf(F("ad_group__video_views"), 0),
+        F("sum_video_views") * 1.0 / NullIf(F("ad_group__campaign__video_views"), 0),
         output_field=DBFloatField()
     ),
     names.COST_SHARE: ExpressionWrapper(
-        F("sum_cost") * 1.0 / NullIf(F("ad_group__cost"), 0),
+        F("sum_cost") * 1.0 / NullIf(F("ad_group__campaign__cost"), 0),
         output_field=DBFloatField()
     ),
     names.CTR_I: ExpressionWrapper(
@@ -79,4 +78,3 @@ ANNOTATIONS = {
     names.CLICKS: F("sum_clicks"),
     names.COST: F("sum_cost"),
 }
-

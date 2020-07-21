@@ -7,28 +7,30 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import BlacklistItem
+from cache.constants import VIDEO_AGGREGATIONS_KEY
+from cache.models import CacheItem
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
+from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import FlagsParamAdapter
+from utils.es_components_api_utils import SentimentParamAdapter
+from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from video.api.serializers.video import VideoSerializer
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
-from video.constants import TERMS_FILTER
+from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
-from video.constants import EXISTS_FILTER
-from video.constants import HISTORY_FIELDS
-from utils.permissions import BrandSafetyDataVisible
-
-from cache.models import CacheItem
-from cache.constants import VIDEO_AGGREGATIONS_KEY
-from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
+from video.constants import TERMS_FILTER
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -76,14 +78,17 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter, SentimentParamAdapter, FlagsParamAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
+        "ads_stats.average_cpm:percentiles",
+        "ads_stats.ctr:percentiles",
         "ads_stats.ctr_v:percentiles",
         "ads_stats.video_view_rate:percentiles",
+        "ads_stats.video_quartile_100_rate:percentiles",
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
@@ -93,14 +98,15 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     try:
         cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
         cached_aggregations = cached_aggregations_object.value
+    # pylint: disable=broad-except
     except Exception as e:
+        # pylint: enable=broad-except
         cached_aggregations = None
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
     def get_serializer_class(self):
-        if self.request and self.request.user and (
-                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+        if self.request and self.request.user and self.request.user.is_staff:
             return VideoWithBlackListSerializer
         return VideoSerializer
 
@@ -110,40 +116,27 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.CUSTOM_CAPTIONS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flags = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
-            self.request.query_params._mutable = True
-            self.request.query_params["channel.id"] = [channel_id]
-            self.request.query_params._mutable = False
-
-        if flags:
-            self.request.query_params._mutable = True
-            flags = flags.lower().replace(" ", "_")
-            self.request.query_params["stats.flags"] = flags
-            self.terms_filter += ("stats.flags",)
-            self.request.query_params._mutable = False
+            with mutate_query_params(self.request.query_params):
+                self.request.query_params["channel.id"] = [channel_id]
 
         if not self.request.user.has_perm("userprofile.transcripts_filter") and \
-                not self.request.user.is_staff:
+            not self.request.user.is_staff:
             if "transcripts" in self.request.query_params:
-                self.request.query_params._mutable = True
-                self.request.query_params["transcripts"] = None
-                self.request.query_params._mutable = False
+                with mutate_query_params(self.request.query_params):
+                    self.request.query_params["transcripts"] = None
+
+        if not self.request.user.has_perm("vet_audit_admin") and not self.request.user.is_staff:
+            vetted_params = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
+            with mutate_query_params(self.request.query_params):
+                for param in vetted_params:
+                    if param in self.request.query_params:
+                        self.request.query_params[param] = None
 
         if not BrandSafetyDataVisible().has_permission(self.request):
             if "brand_safety" in self.request.query_params:
-                self.request.query_params._mutable = True
-                self.request.query_params["brand_safety"] = None
-                self.request.query_params._mutable = False
+                with mutate_query_params(self.request.query_params):
+                    self.request.query_params["brand_safety"] = None
 
-        if not self.request.user.has_perm("userprofile.video_list"):
-            user_channels_ids = set(self.request.user.channels.values_list("channel_id", flat=True))
-
-            if channel_id and (channel_id in user_channels_ids):
-                sections += (Sections.ANALYTICS,)
-
-        if self.request.user.is_staff or \
-                self.request.user.has_perm("userprofile.video_audience"):
-            sections += (Sections.ANALYTICS,)
         return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)

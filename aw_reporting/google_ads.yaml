@@ -4,7 +4,7 @@ adwords:
   client_id: 740015252333-n107mkr5fttl82qidmipu3q4u6rjsv3f.apps.googleusercontent.com
   client_secret: eTwi4mzpAdU59q01ViKGRy84
   refresh_token: 1/n57RBtPczeuTcIo8UQKR3TlV1BRBMIWr83ffweiPAl4
-# The following values are optional:
+  # The following values are optional:
   client_customer_id: 338-623-3102
 #  partial_failure: True
 #  validate_only: True

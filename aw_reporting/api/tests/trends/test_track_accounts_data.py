@@ -1,14 +1,20 @@
-from datetime import datetime, timedelta, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.analytics_charts import Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic
+from aw_reporting.charts.analytics_charts import Indicator
+from aw_reporting.charts.base_chart import Breakdown
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
@@ -53,14 +59,14 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(account_data.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account_data['trend']), 2)
+        self.assertEqual(len(account_data["trend"]), 2)
 
     def test_success_filter_account(self):
         manager = self.account.managers.first()
@@ -93,7 +99,7 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account_data = response.data[0]
-        self.assertEqual(account_data['label'], account.name)
+        self.assertEqual(account_data["label"], account.name)
 
     def test_success_hourly(self):
         today = datetime.now().date()
@@ -123,18 +129,18 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2 * 24)
+        self.assertEqual(len(account["trend"]), 2 * 24)
 
     @generic_test((
-            ("Show AW rates", (True,), {}),
-            ("Hide AW rates", (False,), {}),
+        ("Show AW rates", (True,), {}),
+        ("Hide AW rates", (False,), {}),
     ))
     def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
         """
@@ -157,8 +163,8 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
         }
         self.assertGreater(expected_cpv, 0)
-        with self.patch_user_settings(**user_settings),\
-                patch_now(any_date):
+        with self.patch_user_settings(**user_settings), \
+             patch_now(any_date):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)

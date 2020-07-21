@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 from datetime import date
 from datetime import datetime
@@ -6,7 +7,6 @@ from itertools import cycle
 from itertools import product
 
 from django.test import override_settings
-from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -17,9 +17,8 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTATION
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.dashboard_charts import DateSegment
+from aw_reporting.charts.dashboard_charts import DateSegment
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -48,9 +47,11 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -808,7 +809,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
 
     def test_success_for_demo_account(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {
@@ -821,7 +822,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_header(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
@@ -928,11 +929,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertGreater(view_rate, 0)
 
     def test_demo_account_campaigns(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        campaigns = Campaign.objects.filter()
-        expected_campaigns_names = set([campaign.name for campaign in campaigns])
+        campaigns = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID)
+        expected_campaigns_names = {campaign.name for campaign in campaigns}
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
@@ -944,7 +945,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         sheet = get_sheet_from_response(response)
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         name_index = get_column_index(headers, DashboardPerformanceReportColumn.NAME)
-        campaigns_names = set([row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        campaigns_names = {row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
         self.assertEqual(campaigns_names, expected_campaigns_names)
 
     def test_campaigns_cta(self):
@@ -982,7 +983,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         section_name_index = 0
-        section_names = set([row[section_name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        section_names = {row[section_name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
         self.assertIn(METRIC_REPRESENTATION[Metric.OVERVIEW], section_names)
 
     def test_week_starts_on_sunday(self):
@@ -1017,7 +1018,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
 
     def test_demo_cta(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {

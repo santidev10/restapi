@@ -1,32 +1,32 @@
-from distutils.util import strtobool
 import csv
-import requests
 import os
-from uuid import uuid4
-from datetime import timedelta
 from collections import defaultdict
+from datetime import timedelta
+from distutils.util import strtobool
+from uuid import uuid4
+
+import boto3
+import requests
+from botocore.client import Config
+from django.conf import settings
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
-from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditVideoProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-# from es_components.managers import ChannelManager
-# from es_components.constants import Sections
-
-from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
-
-from rest_framework.response import Response
-from django.conf import settings
+from es_components.constants import Sections
+from es_components.models import Channel
+from es_components.query_builder import QueryBuilder
 from utils.aws.s3_exporter import S3Exporter
-import boto3
-from botocore.client import Config
-from utils.permissions import user_has_permission
 from utils.brand_safety import map_brand_safety_score
+from utils.permissions import user_has_permission
 
 
 class AuditExportApiView(APIView):
@@ -44,9 +44,12 @@ class AuditExportApiView(APIView):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         clean = query_params["clean"] if "clean" in query_params else None
-        export_as_videos = bool(strtobool(query_params["export_as_videos"])) if "export_as_videos" in query_params else False
-        export_as_channels = bool(strtobool(query_params["export_as_channels"])) if "export_as_channels" in query_params else False
-        export_as_keywords = bool(strtobool(query_params["export_as_keywords"])) if "export_as_keywords" in query_params else False
+        export_as_videos = bool(
+            strtobool(query_params["export_as_videos"])) if "export_as_videos" in query_params else False
+        export_as_channels = bool(
+            strtobool(query_params["export_as_channels"])) if "export_as_channels" in query_params else False
+        export_as_keywords = bool(
+            strtobool(query_params["export_as_keywords"])) if "export_as_keywords" in query_params else False
 
         # Validate audit_id
         if audit_id is None:
@@ -58,7 +61,9 @@ class AuditExportApiView(APIView):
                 clean = None
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
         a = AuditExporter.objects.filter(
@@ -150,7 +155,9 @@ class AuditExportApiView(APIView):
             else:
                 time_string = str(time_duration)
             return time_string
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             return ""
 
     def get_lang(self, obj_id):
@@ -180,7 +187,9 @@ class AuditExportApiView(APIView):
             clean_string = 'true' if clean else 'false'
         try:
             name = audit.params['name'].replace("/", "-")
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             name = audit_id
         file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_videos))
         exports = AuditExporter.objects.filter(
@@ -206,7 +215,7 @@ class AuditExportApiView(APIView):
             "Views",
             "Likes",
             "Dislikes",
-            #"Emoji",
+            # "Emoji",
             "Default Audio Language",
             "Duration",
             "Publish Date",
@@ -226,6 +235,9 @@ class AuditExportApiView(APIView):
             "Brand Safety Score",
             "Made For Kids",
             "Age Restricted",
+            "Sentiment",
+            "Live Broadcast",
+            "Aspect Ratio",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -238,7 +250,9 @@ class AuditExportApiView(APIView):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
                     bad_words_category_mapping[bad_word] = category
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             pass
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
@@ -253,47 +267,70 @@ class AuditExportApiView(APIView):
             vid = avp.video
             try:
                 v = vid.auditvideometa
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 v = None
             v_channel = vid.channel
-            acm = v_channel.auditchannelmeta if v_channel else None
+            try:
+                acm = v_channel.auditchannelmeta
+            except Exception:
+                acm = None
             if num_done > self.MAX_ROWS:
                 continue
             try:
                 language = self.get_lang(v.language_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 language = ""
             try:
                 category = self.get_category(v.category_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 category = ""
             try:
                 country = self.get_country(acm.country_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 country = ""
             try:
                 channel_lang = self.get_lang(acm.language_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 channel_lang = ""
             try:
                 video_count = acm.video_count
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 video_count = ""
             try:
                 last_uploaded = acm.last_uploaded.strftime("%m/%d/%Y")
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 last_uploaded = ""
             try:
                 last_uploaded_view_count = acm.last_uploaded_view_count
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 last_uploaded_view_count = ''
             try:
                 last_uploaded_category = self.get_category(acm.last_uploaded_category_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 last_uploaded_category = ''
             try:
                 default_audio_language = self.get_lang(v.default_audio_language_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 default_audio_language = ""
             v_word_hits = avp.word_hits
             if do_inclusion:
@@ -301,7 +338,8 @@ class AuditExportApiView(APIView):
             else:
                 all_good_hit_words = ""
                 unique_good_hit_words = ""
-            if do_exclusion or (v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion')==['ytAgeRestricted']):
+            if do_exclusion or (
+                v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion') == ['ytAgeRestricted']):
                 all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(v_word_hits, clean=False)
             else:
                 all_bad_hit_words = ""
@@ -314,9 +352,17 @@ class AuditExportApiView(APIView):
                     "tags": v.keywords,
                 }, full_audit=False)
                 mapped_score = map_brand_safety_score(video_audit_score)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 mapped_score = ""
                 print("Problem calculating video score")
+            try:
+                sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                sentiment = ""
             data = [
                 "https://www.youtube.com/video/" + vid.video_id,
                 v.name if v else "",
@@ -325,7 +371,7 @@ class AuditExportApiView(APIView):
                 v.views if v else "",
                 v.likes if v else "",
                 v.dislikes if v else "",
-                #'T' if v and v.emoji else 'F',
+                # 'T' if v and v.emoji else 'F',
                 default_audio_language,
                 self.clean_duration(v.duration) if v and v.duration else "",
                 v.publish_date.strftime("%m/%d/%Y") if v and v.publish_date else "",
@@ -344,7 +390,10 @@ class AuditExportApiView(APIView):
                 video_count if video_count else "",
                 mapped_score,
                 v.made_for_kids if v else "",
-                'Y' if v and v.age_restricted else "",
+                "Y" if v and v.age_restricted else "",
+                sentiment,
+                "Y" if v.live_broadcast else "",
+                v.aspect_ratio if v.aspect_ratio else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -354,14 +403,18 @@ class AuditExportApiView(APIView):
                         try:
                             word_category = bad_words_category_mapping.get(word)
                             bad_word_category_dict[word_category].append(word)
-                        except Exception as e:
+                        # pylint: disable=broad-except
+                        except Exception:
+                        # pylint: enable=broad-except
                             pass
                     for category in bad_word_categories:
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:
                             data.append(0)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 pass
             rows.append(data)
             num_done += 1
@@ -394,8 +447,30 @@ class AuditExportApiView(APIView):
                 try:
                     avp.channel = avp.video.channel
                     avp.save(update_fields=['channel'])
-                except Exception as e:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     pass
+
+    def get_scores_for_channels(self, channel_ids, chunk_size=10000):
+        """
+        Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
+        """
+        channel_scores = {}
+        search = Channel.search()
+        search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
+        while True:
+            chunk = channel_ids[:chunk_size]
+            channel_ids = channel_ids[chunk_size:]
+            search.query = QueryBuilder().build().must().terms().field('main.id').value(chunk).get()
+            search = search[0:chunk_size]
+            results = search.execute()
+            for channel in results.hits:
+                channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
+            if not len(channel_ids):
+                break
+
+        return channel_scores
 
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
@@ -405,7 +480,9 @@ class AuditExportApiView(APIView):
             clean_string = 'true' if clean else 'false'
         try:
             name = audit.params['name'].replace("/", "-")
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             name = audit_id
         file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_channels))
         # If audit already exported, simply generate and return temp link
@@ -436,6 +513,7 @@ class AuditExportApiView(APIView):
             "Num Videos Total",
             "Country",
             "Language",
+            "Primary Video Language",
             "Last Video Upload",
             "Last Video Views",
             "Last Video Category",
@@ -450,6 +528,7 @@ class AuditExportApiView(APIView):
             "Inclusion Words (video)",
             "Brand Safety Score",
             "Monetised",
+            "Sentiment",
             "Error",
         ]
         try:
@@ -458,12 +537,14 @@ class AuditExportApiView(APIView):
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
-                cols.extend(bad_word_categories)
+                cols.extend(sorted(bad_word_categories))
                 for i in range(len(audit.params['exclusion'])):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
                     bad_words_category_mapping[bad_word] = category
-        except Exception as e:
+        # pylint: disable=broad-except
+        except Exception:
+        # pylint: enable=broad-except
             pass
         good_hit_words = {}
         bad_hit_words = {}
@@ -473,16 +554,20 @@ class AuditExportApiView(APIView):
         kid_videos_count = {}
         age_restricted_videos_count = {}
         video_count = {}
+        channel_ids = []
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
         for cid in channels:
             full_channel_id = cid.channel.channel_id
+            channel_ids.append(full_channel_id)
             if audit.params.get('do_videos'):
                 try:
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
-                except Exception as e:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     pass
             if do_inclusion:
                 try:
@@ -492,20 +577,28 @@ class AuditExportApiView(APIView):
                     i_v = cid.word_hits.get('inclusion_videos')
                     if i_v:
                         good_video_hit_words[full_channel_id] = set(i_v)
-                except Exception as e:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     pass
             try:
                 kid_videos_count[full_channel_id] = len(cid.word_hits.get('made_for_kids'))
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 pass
             try:
                 age_restricted_videos_count[full_channel_id] = len(cid.word_hits.get('age_restricted_videos'))
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 pass
             if do_exclusion:
                 try:
                     bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
-                except Exception as e:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     pass
                 try:
                     e = cid.word_hits.get('exclusion')
@@ -514,50 +607,57 @@ class AuditExportApiView(APIView):
                     e_v = cid.word_hits.get('exclusion_videos')
                     if e_v:
                         bad_video_hit_words[full_channel_id] = set(e_v)
-                except Exception as e:
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     pass
-        auditor = BrandSafetyAudit(score_only=True)
+        channel_scores = self.get_scores_for_channels(channel_ids)
         rows = [cols]
         count = channels.count()
         num_done = 0
-        #sections = (Sections.MONETIZATION,)
-        #channel_manager = ChannelManager(sections)
+        # sections = (Sections.MONETIZATION,)
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta
             try:
                 language = self.get_lang(v.language_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 language = ""
             try:
                 country = self.get_country(v.country_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 country = ""
             try:
                 last_category = self.get_category(v.last_uploaded_category_id)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 last_category = ""
-            # mapped_score = None
-            try:
-                channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
-                mapped_score = map_brand_safety_score(channel_brand_safety_score)
-            except Exception as e:
-                mapped_score = None
-            # if not v.monetised:
-            #     try:
-            #         cid = channel.channel_id
-            #         cm_channel = channel_manager.get([cid])[0]
-            #         if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
-            #             v.monetised = True
-            #             v.save(update_fields=['monetised'])
-            #     except Exception as e:
-            #         pass
+            mapped_score = channel_scores.get(channel.channel_id, None)
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:
                     error_str = ""
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 error_str = ""
+            try:
+                primary_video_language = self.get_lang(v.primary_video_language_id)
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                primary_video_language = ""
+            try:
+                sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                sentiment = ""
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + channel.channel_id,
@@ -568,12 +668,14 @@ class AuditExportApiView(APIView):
                 v.video_count if v.video_count is not None else "",
                 country,
                 language,
+                primary_video_language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
                 bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
                 kid_videos_count.get(channel.channel_id) if kid_videos_count.get(channel.channel_id) else 0,
-                age_restricted_videos_count.get(channel.channel_id) if age_restricted_videos_count.get(channel.channel_id) else 0,
+                age_restricted_videos_count.get(channel.channel_id) if age_restricted_videos_count.get(
+                    channel.channel_id) else 0,
                 len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
                 len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
                     channel.channel_id) else 0,
@@ -585,6 +687,7 @@ class AuditExportApiView(APIView):
                     channel.channel_id) else "",
                 mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
+                sentiment,
                 error_str,
             ]
             try:
@@ -599,14 +702,18 @@ class AuditExportApiView(APIView):
                         try:
                             word_category = bad_words_category_mapping.get(word)
                             bad_word_category_dict[word_category].append(word)
-                        except Exception as e:
+                        # pylint: disable=broad-except
+                        except Exception:
+                        # pylint: enable=broad-except
                             pass
-                    for category in bad_word_categories:
+                    for category in sorted(bad_word_categories):
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:
                             data.append(0)
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 pass
             rows.append(data)
             num_done += 1
@@ -668,15 +775,15 @@ class AuditExportApiView(APIView):
                         if word not in bad_words:
                             bad_words[word] = 1
                         else:
-                            bad_words[word]+=1
+                            bad_words[word] += 1
                 e = hits.get('inclusion', [])
                 if e:
                     for word in e:
                         if word not in good_words:
                             good_words[word] = 1
                         else:
-                            good_words[word]+=1
-            count+=1
+                            good_words[word] += 1
+            count += 1
             if count % 250 == 0:
                 export.percent_done = round(count / total * 100 * 0.4)
                 export.save(update_fields=['percent_done'])
@@ -705,7 +812,7 @@ class AuditExportApiView(APIView):
     def get_hit_words(self, hits, clean=None):
         uniques = set()
         words_to_use = 'exclusion'
-        if clean is None or clean==True:
+        if clean is None or clean == True:
             words_to_use = 'inclusion'
         if hits:
             if hits.get(words_to_use):

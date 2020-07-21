@@ -1,5 +1,6 @@
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import PaginatorWithAggregationMixin
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 # todo: merge with ESQuerysetAdapter
@@ -13,6 +14,7 @@ class ESRetrieveAdapter:
         self.search_id = search_id
         return self
 
+    # pylint: disable=all
     def fields(self, fields=()):
         fields = [
             field
@@ -22,13 +24,14 @@ class ESRetrieveAdapter:
 
         self.fields_to_load = fields or self.manager.sections
         return self
+    # pylint: enable=all
 
     def get_data(self):
         item = self.manager.model.get(self.search_id, _source=self.fields_to_load)
         return item
 
 
-class ESEmptyResponseAdapter(ESRetrieveAdapter):
+class ESEmptyResponseAdapter(ESQuerysetAdapter):
     def get_data(self, *args, **kwargs):
         return []
 

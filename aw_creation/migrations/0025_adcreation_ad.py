@@ -3,11 +3,11 @@
 from __future__ import unicode_literals
 
 import django.db.models.deletion
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('aw_reporting', '0016_auto_20171120_1210'),
         ('aw_creation', '0024_auto_20171114_1452'),
@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='adcreation',
             name='ad',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='ad_creation', to='aw_reporting.Ad'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='ad_creation', to='aw_reporting.Ad'),
         ),
     ]

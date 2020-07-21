@@ -1,7 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety.models import BadWordCategory
-from es_components.models import Channel
 
 
 class BrandSafetyChannelAudit(object):
@@ -20,13 +19,16 @@ class BrandSafetyChannelAudit(object):
         self.video_audits = channel_data["video_audits"]
         self.audit_utils = audit_utils
         self.score_mapping = audit_utils.score_mapping
-        # If channel has video audits, then channel should start with default_zero_score to find average category scores
-        # Else, channel should start with full_score since no average can be calculated and will be used to subtract metadata scores
-        self.default_category_scores = audit_utils.default_zero_score if len(self.video_audits) > 0 else audit_utils.default_full_score
+        # If channel has video audits, then channel should start with default_zero_score to find average category
+        # scores
+        # Else, channel should start with full_score since no average can be calculated and will be used to subtract
+        # metadata scores
+        self.default_category_scores = audit_utils.default_zero_score if len(
+            self.video_audits) > 0 else audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
         self._set_metadata(channel_data)
         self.blacklist_data = blacklist_data
-        self.is_vetted = channel_data["is_vetted"]
+        self.is_vetted = channel_data.get("is_vetted")
 
     @property
     def pk(self):
@@ -43,7 +45,7 @@ class BrandSafetyChannelAudit(object):
             data.get("title", "") or "",
             data.get("description", "") or "",
             data.get("video_tags", "") or "",
-            ])
+        ])
         detected = {
             "has_emoji": self.audit_utils.has_emoji(text),
             "language": self.audit_utils.get_language(text)
@@ -73,7 +75,8 @@ class BrandSafetyChannelAudit(object):
             keyword_processor = self.language_processors["all"]
             universal_processor = False
         title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, keyword_processor)
-        description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
+        description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION,
+                                                  keyword_processor)
         all_hits = title_hits + description_hits
         # Universal keywords hits
         if universal_processor:
@@ -91,12 +94,14 @@ class BrandSafetyChannelAudit(object):
         :param channel_metadata_hits: All channel metadata hits
         :return:
         """
-        channel_brand_safety_score = BrandSafetyChannelScore(self.pk, len(self.video_audits), self.default_category_scores)
+        channel_brand_safety_score = BrandSafetyChannelScore(self.pk, len(self.video_audits),
+                                                             self.default_category_scores)
         # Aggregate video audits scores for channel
         for audit in self.video_audits:
             video_brand_safety_score = getattr(audit, constants.BRAND_SAFETY_SCORE)
             for keyword_name, data in video_brand_safety_score.keyword_scores.items():
-                channel_brand_safety_score.add_keyword_score(keyword_name, data["category"], data["negative_score"], data["hits"])
+                channel_brand_safety_score.add_keyword_score(keyword_name, data["category"], data["negative_score"],
+                                                             data["hits"])
 
             for category, score in video_brand_safety_score.category_scores.items():
                 channel_brand_safety_score.add_category_score(category, score)

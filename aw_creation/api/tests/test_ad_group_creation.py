@@ -2,15 +2,19 @@ import json
 from datetime import timedelta
 
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, TargetingItem
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.lang import flatten
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -72,24 +76,24 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'ad_creations', 'updated_at', 'max_rate',
-                'targeting', 'parents', 'genders', 'age_ranges',
-                'video_ad_format',
+                "id", "name", "ad_creations", "updated_at", "max_rate",
+                "targeting", "parents", "genders", "age_ranges",
+                "video_ad_format",
             }
         )
-        for f in ('age_ranges', 'genders', 'parents'):
+        for f in ("age_ranges", "genders", "parents"):
             if len(data[f]) > 0:
                 self.assertEqual(
                     set(data[f][0].keys()),
-                    {'id', 'name'}
+                    {"id", "name"}
                 )
         self.assertEqual(
-            set(data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(data["targeting"]),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
@@ -103,14 +107,14 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
 
         response = self.client.patch(
-            url, json.dumps({}), content_type='application/json',
+            url, json.dumps({}), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -145,7 +149,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             }
         )
         response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -153,17 +157,17 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(account_creation.is_deleted, False)
 
         ad_group.refresh_from_db()
-        self.assertEqual(ad_group.name, data['name'])
-        self.assertEqual(set(ad_group.genders), set(data['genders']))
-        self.assertEqual(set(ad_group.parents), set(data['parents']))
-        self.assertEqual(set(ad_group.age_ranges), set(data['age_ranges']))
+        self.assertEqual(ad_group.name, data["name"])
+        self.assertEqual(set(ad_group.genders), set(data["genders"]))
+        self.assertEqual(set(ad_group.parents), set(data["parents"]))
+        self.assertEqual(set(ad_group.age_ranges), set(data["age_ranges"]))
         self.assertEqual(
             set(
                 ad_group.targeting_items.filter(
                     type="keyword", is_negative=False
                 ).values_list("criteria", flat=True)
             ),
-            set(data['targeting']['keyword']['positive'])
+            set(data["targeting"]["keyword"]["positive"])
         )
         self.assertEqual(
             set(
@@ -171,7 +175,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                     type="keyword", is_negative=True
                 ).values_list("criteria", flat=True)
             ),
-            set(data['targeting']['keyword']['negative'])
+            set(data["targeting"]["keyword"]["negative"])
         )
         self.assertEqual(
             set(
@@ -179,7 +183,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                     type="video", is_negative=False
                 ).values_list("criteria", flat=True)
             ),
-            set(data['targeting']['video']['positive'])
+            set(data["targeting"]["video"]["positive"])
         )
         self.assertEqual(
             set(
@@ -187,7 +191,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                     type="video", is_negative=True
                 ).values_list("criteria", flat=True)
             ),
-            set(data['targeting']['video']['negative'])
+            set(data["targeting"]["video"]["negative"])
         )
 
     def test_success_put(self):
@@ -216,7 +220,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         }
 
         response = self.client.put(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -254,7 +258,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             video["negative"].append("vn{}".format(i))
 
         response = self.client.put(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -263,7 +267,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         data["targeting"]["keyword"]["positive"].append("Rick&Morty")
 
         response = self.client.put(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -317,7 +321,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         }
 
         response = self.client.put(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -336,10 +340,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         data = {
             "name": "AdGroup 1", "max_rate": 0,
             "targeting": {
-                "keyword": {"positive": [_ for _ in range(5000)], "negative": []},
-                "topic": {"positive": [], "negative": [_ for _ in range(5000)]},
-                "interest": {"positive": [_ for _ in range(5000)], "negative": []},
-                "channel": {"positive": [_ for _ in range(5000)], "negative": []},
+                "keyword": {"positive": list(range(5000)), "negative": []},
+                "topic": {"positive": [], "negative": list(range(5000))},
+                "interest": {"positive": list(range(5000)), "negative": []},
+                "channel": {"positive": list(range(5000)), "negative": []},
                 "video": {"positive": [], "negative": []}
             },
             "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
@@ -375,7 +379,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         data = {
             "name": "AdGroup 1", "max_rate": 0,
             "targeting": {
-                "keyword": {"positive": [], "negative": [_ for _ in range(5000)]},
+                "keyword": {"positive": [], "negative": list(range(5000))},
                 "topic": {"positive": [], "negative": []},
                 "interest": {"positive": [], "negative": []},
                 "channel": {"positive": [], "negative": []},

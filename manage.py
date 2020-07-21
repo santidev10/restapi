@@ -11,7 +11,9 @@ if __name__ == "__main__":
         # issue is really that Django is missing to avoid masking other
         # exceptions on Python 2.
         try:
+            # pylint: disable=unused-import
             import django
+            # pylint: enable=unused-import
         except ImportError:
             raise ImportError(
                 "Couldn't import Django. Are you sure it's installed and "
@@ -21,7 +23,9 @@ if __name__ == "__main__":
         raise
     try:
         execute_from_command_line(sys.argv)
+    # pylint: disable=broad-except
     except Exception as ex:
+    # pylint: enable=broad-except
         import logging
 
         logging.getLogger(__name__).exception(ex)

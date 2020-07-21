@@ -1,26 +1,20 @@
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from utils.brand_safety import map_brand_safety_score
 
 
 class SegmentExportSerializerMixin:
-    def get_language(self, obj):
-        try:
-            lang_code = getattr(obj.general_data, "lang_code", "")
-        except Exception:
-            lang_code = None
-        language = LANGUAGES.get(lang_code, lang_code)
-        return language
 
     def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", []) or []
-        joined = ", ".join(categories)
+        categories = getattr(obj.general_data, "iab_categories", [])
+        joined = ", ".join([category for category in categories if isinstance(category, str)])
         return joined
 
-    def get_brand_safety(self,  obj):
+    def get_brand_safety(self, obj):
         try:
             categories = self.context["brand_safety_categories"]
             ids = [int(_id) for _id in obj.task_us_data.brand_safety if _id is not None]
@@ -55,6 +49,14 @@ class SegmentExportSerializerMixin:
             content_type = None
         return content_type
 
+    def get_content_quality(self, obj):
+        try:
+            quality_id = int(obj.task_us_data.content_quality)
+            quality_type = self.context["quality_types"].get(quality_id)
+        except (AttributeError, TypeError, AuditContentQuality.DoesNotExist):
+            quality_type = None
+        return quality_type
+
     def get_vetting_result(self, obj):
         """
         context provided by base class
@@ -78,15 +80,48 @@ class SegmentExportSerializerMixin:
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
-    def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", [])
-        if not categories:
-            categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join(categories)
-        return joined
+    def get_mismatched_language(self, obj):
+        mismatched_language = getattr(obj.task_us_data, "mismatched_language", None)
+        if mismatched_language:
+            mismatched_language = "Y"
+        elif mismatched_language is False:
+            mismatched_language = "N"
+        else:
+            mismatched_language = None
+        return mismatched_language
+
+    def get_country(self, obj):
+        """ actually returns a country code... """
+        return getattr(obj.general_data, "country_code", "")
 
 
-class SegmentChannelExportSerializerMixin:
+class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "lang_code", "")
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
+
+    def get_url(self, obj):
+        return f"https://www.youtube.com/watch?v={obj.main.id}"
+
+
+class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"

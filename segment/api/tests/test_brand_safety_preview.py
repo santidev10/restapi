@@ -1,10 +1,10 @@
+import uuid
 from time import sleep
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
-import uuid
 
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -14,10 +14,9 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
-from utils.unittests.test_case import ExtendedAPITestCase
+from segment.models import CustomSegment
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
@@ -28,7 +27,7 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
                        kwargs=dict(segment_type=segment_type, pk=pk))
 
     @staticmethod
-    def get_mock_data(count, data_type, uuid):
+    def get_mock_data(count, data_type, segment_uuid):
         if data_type == "video":
             model = Video
             stats_field = "views"
@@ -46,7 +45,7 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
                     "overall_score": value
                 },
                 "segments": {
-                    "uuid": [uuid]
+                    "uuid": [segment_uuid]
                 },
                 "stats": {
                     stats_field: value
@@ -60,9 +59,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_persistent_segment_channel_segment_preview(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentChannel.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=1,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
@@ -77,9 +77,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_persistent_segment_video_segment_preview(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentVideo.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=0,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "video", str(segment.uuid))
@@ -94,9 +95,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_negative_page(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentVideo.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=0,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "video", str(segment.uuid))
@@ -110,9 +112,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_negative_size(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentChannel.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=1,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
@@ -126,9 +129,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_sorted_videos_by_views(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentVideo.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=0,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "video", str(segment.uuid))
@@ -143,9 +147,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_sorted_channels_by_subscribers(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentChannel.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=1,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
@@ -160,9 +165,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_invalid_page(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentChannel.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=1,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
@@ -175,9 +181,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_invalid_size(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentVideo.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=0,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "video", str(segment.uuid))
@@ -190,9 +197,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_channel_segment_not_found(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentChannel.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=1,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
@@ -205,9 +213,10 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_video_segment_not_found(self):
         self.create_admin_user()
         items = 5
-        segment = PersistentSegmentVideo.objects.create(
+        segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
+            segment_type=0,
             id=next(int_iterator),
         )
         mock_data = self.get_mock_data(items, "video", str(segment.uuid))

@@ -3,6 +3,8 @@ from io import BytesIO
 
 import xlsxwriter
 from django.db.models import Q
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
@@ -58,6 +60,16 @@ def create_opportunity_targeting_report(report_id):
     )
     notify_opportunity_targeting_report_is_ready.si(report_id=report_id) \
         .apply_async()
+
+
+# pylint: disable=unused-argument
+@receiver(post_save, sender=OpportunityTargetingReport, dispatch_uid="save_opportunity_report_receiver")
+def save_opportunity_report_receiver(sender, instance, created, **_):
+    if created:
+        report = instance
+        create_opportunity_targeting_report.si(report_id=report.pk, ) \
+            .apply_async()
+# pylint: enable=unused-argument
 
 
 class OpportunityTargetingReportXLSXGenerator:

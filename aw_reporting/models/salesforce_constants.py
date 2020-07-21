@@ -108,6 +108,7 @@ class SalesforceFields:
         TYPES_OF_TARGETING = "Types_of__c"
         VIDEO_VIEWS = "CPV_Units_Purchased__c"
         MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
+        IAS_CAMPAIGN_NAME = "IAS_Campaign_Name__c"
 
     class Placement(Enum):
         AD_WORDS_PLACEMENT = "Adwords_Placement_IQ__c"
@@ -130,6 +131,8 @@ class SalesforceFields:
 
     class Flight(Enum):
         COST = "Total_Flight_Cost__c"
+        COST_CURRENCY = "Our_Cost_currency_change__c"
+        DIFFERENT_SPENDING_CURRENCY = "Different_Spending_Currency__c"
         DELIVERED = "Delivered_Ad_Ops__c"
         END = "Flight_End_Date__c"
         ID = "Id"
@@ -149,3 +152,12 @@ class SalesforceFields:
         ITEM_ID = "WhatId"
         NAME = "Subject"
         OWNER_ID = "OwnerId"
+
+
+class PlacementAlert(Enum):
+    ORDERED_UNITS_CHANGED = 0
+
+
+class FlightAlert(Enum):
+    DATES_CHANGED = 0
+

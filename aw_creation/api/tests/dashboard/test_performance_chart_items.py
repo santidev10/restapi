@@ -6,8 +6,8 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_reporting.dashboard_charts import ALL_DIMENSIONS
-from aw_reporting.dashboard_charts import Dimension
+from aw_reporting.charts.base_chart import ALL_DIMENSIONS
+from aw_reporting.charts.base_chart import Dimension
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account

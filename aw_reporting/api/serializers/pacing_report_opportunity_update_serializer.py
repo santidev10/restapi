@@ -2,7 +2,8 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import PrimaryKeyRelatedField
 
-from aw_reporting.models import Opportunity, User
+from aw_reporting.models import Opportunity
+from aw_reporting.models import User
 
 
 class PacingReportOpportunityUpdateSerializer(ModelSerializer):

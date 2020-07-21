@@ -5,7 +5,9 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from utils.api.fields import CharFieldListBased
+from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
+
+from brand_safety.languages import LANGUAGES
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -15,12 +17,18 @@ class YTChannelLinkFromID(CharField):
         return f"https://www.youtube.com/channel/{str_value}"
 
 
-class ChannelListExportSerializer(Serializer):
+class ListExportSerializerMixin:
+    def get_iab_categories(self, instance):
+        iab_categories = getattr(instance.general_data, "iab_categories", [])
+        return ", ".join([category for category in iab_categories if category not in HIDDEN_IAB_CATEGORIES])
+
+
+class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
     title = CharField(source="general_data.title")
     url = YTChannelLinkFromID(source="main.id")
     country = CharField(source="general_data.country")
-    iab_categories = CharField(source="general_data.iab_categories")
-    emails = CharFieldListBased(source="general_data.emails")
+    language = SerializerMethodField()
+    iab_categories = SerializerMethodField()
     subscribers = IntegerField(source="stats.subscribers")
     thirty_days_subscribers = IntegerField(source="stats.last_30day_subscribers")
     views = IntegerField(source="stats.views")
@@ -37,6 +45,20 @@ class ChannelListExportSerializer(Serializer):
     average_cpv = FloatField(source="ads_stats.average_cpv")
     brand_safety_score = SerializerMethodField()
 
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)
         return score
+
+    def get_language(self, instance):
+        try:
+            lang_code = getattr(instance.general_data, "top_lang_code", "")
+            language = LANGUAGES.get(lang_code) or lang_code
+            return language
+        except Exception:
+            return ""

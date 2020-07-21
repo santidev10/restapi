@@ -1,16 +1,15 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from aw_reporting.adwords_reports import ad_group_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
-from aw_reporting.models import CriterionType
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
-from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from aw_reporting.update.adwords_utils import get_base_stats
+from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -21,7 +20,6 @@ class AdGroupUpdater(UpdateMixin):
 
     def __init__(self, account):
         self.account = account
-        self.criterion_mapping = CriterionType.get_mapping_to_id()
 
     def update(self, client, start_date=None, end_date=None):
         click_type_report_fields = (
@@ -52,8 +50,7 @@ class AdGroupUpdater(UpdateMixin):
                 if max_date \
                 else (self.MIN_FETCH_DATE, max_available_date)
 
-        report = ad_group_performance_report(
-            client, dates=dates)
+        report = ad_group_performance_report(client, dates=dates)
         if report:
             click_type_report = ad_group_performance_report(client, dates=dates, fields=click_type_report_fields)
             click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
@@ -82,17 +79,12 @@ class AdGroupUpdater(UpdateMixin):
                 # update ad groups
                 if ad_group_id not in updated_ad_groups:
                     updated_ad_groups.append(ad_group_id)
-                    criterion_type = row_obj.ContentBidCriterionTypeGroup
-                    criterion_id = self.criterion_mapping.get(criterion_type)
-                    if criterion_id is None:
-                        logger.info(f"Missing AdGroup.ContentBidCriterionTypeGroup: {criterion_type}")
                     stats = {
                         "de_norm_fields_are_recalculated": False,
                         "name": row_obj.AdGroupName,
                         "status": row_obj.AdGroupStatus,
                         "type": row_obj.AdGroupType,
                         "campaign_id": campaign_id,
-                        "criterion_type_id": criterion_id,
                         "cpv_bid": self._validate_integer(row_obj.CpvBid),
                         "cpm_bid": self._validate_integer(row_obj.CpmBid),
                         "cpc_bid": self._validate_integer(row_obj.CpcBid),

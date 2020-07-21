@@ -1,30 +1,32 @@
-import logging
-from saas import celery_app
-from elasticsearch_dsl import Search
-from elasticsearch_dsl import Q
 import asyncio
+import logging
 import time
-from aiohttp import ClientSession
 
-from es_components.connections import init_es_connection
+from aiohttp import ClientSession
+from aiohttp.web import HTTPTooManyRequests
 from bs4 import BeautifulSoup as bs
+from django.conf import settings
+from elasticsearch_dsl import Q
+from elasticsearch_dsl import Search
+
 from audit_tool.models import AuditVideoTranscript
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from es_components.connections import init_es_connection
+from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
-from es_components.constants import Sections
-from utils.transform import populate_video_custom_captions
-from utils.lang import replace_apostrophes
+from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
+from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from aiohttp.web import HTTPTooManyRequests
-from django.conf import settings
-from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
+from utils.lang import replace_apostrophes
+from utils.transform import populate_video_custom_captions
 
 logger = logging.getLogger(__name__)
 
-LOCK_NAME = 'custom_transcripts'
+LOCK_NAME = "custom_transcripts"
 
 TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
@@ -34,47 +36,55 @@ TASK_RETRY_COUNTS = 10
 def pull_custom_transcripts():
     try:
         lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
-    except Exception as e:
-        lang_codes = ['en']
+    # pylint: disable=broad-except
+    except Exception:
+        lang_codes = ["en"]
+    # pylint: enable=broad-except
 
     try:
         num_vids = settings.CUSTOM_TRANSCRIPTS_RATE
-    except Exception as e:
+    # pylint: disable=broad-except
+    except Exception:
         num_vids = 1000
+    # pylint: enable=broad-except
 
     try:
+        # pylint: disable=no-value-for-parameter
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        # pylint: enable=no-value-for-parameter
         init_es_connection()
         if lang_codes:
             for lang_code in lang_codes:
-                logger.info(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
+                logger.info("Pulling %s '%s' custom transcripts.", num_vids, lang_code)
                 unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
                 pull_and_update_transcripts(unparsed_vids)
         else:
-            logger.info(f"Pulling {num_vids} custom transcripts.")
+            logger.info("Pulling %s custom transcripts.", num_vids)
             unparsed_vids = get_unparsed_vids(num_vids=num_vids)
             pull_and_update_transcripts(unparsed_vids)
         unlock(LOCK_NAME)
         logger.info("Finished pulling custom transcripts task.")
-    except Exception as e:
+    # pylint: disable=broad-except
+    except Exception:
         pass
+    # pylint: enable=broad-except
 
 
 def pull_and_update_transcripts(unparsed_vids):
-    video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+    video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                  upsert_sections=(Sections.CUSTOM_CAPTIONS,))
     total_elapsed = 0
     transcripts_counter = 0
     vid_counter = 0
-    vid_ids = set([vid.main.id for vid in unparsed_vids])
+    vid_ids = {vid.main.id for vid in unparsed_vids}
     start = time.perf_counter()
     all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
     all_videos = video_manager.get(list(vid_ids))
     for vid_obj in all_videos:
         vid_id = vid_obj.main.id
         transcripts_counter = parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                         lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                         transcripts_counter=transcripts_counter)
+                                                               lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                                               transcripts_counter=transcripts_counter)
         vid_counter += 1
         # logger.info(f"Parsed video with id: {vid_id}")
         # logger.info(f"Number of videos parsed: {vid_counter}")
@@ -82,7 +92,7 @@ def pull_and_update_transcripts(unparsed_vids):
     video_manager.upsert(all_videos)
     elapsed = time.perf_counter() - start
     total_elapsed += elapsed
-    logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+    logger.info("Upserted %s videos in %s seconds.", len(all_videos), elapsed)
     rescore_brand_safety_videos.delay(vid_ids=list(vid_ids))
 
 
@@ -93,18 +103,41 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
         return transcripts_counter
     vid_id = vid_obj.main.id
-    for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
+    top_5_transcripts = get_top_5_transcripts(lang_codes_soups_dict, vid_obj.general_data.lang_code)
+    for vid_lang_code, transcript_soup in top_5_transcripts.items():
         transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
         transcript_text = transcript_text.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
-            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+            logger.info("VIDEO WITH ID %s HAS A CUSTOM TRANSCRIPT.", vid_id)
             transcripts_counter += 1
             transcript_texts.append(transcript_text)
             lang_codes.append(vid_lang_code)
     populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
     return transcripts_counter
+
+
+def get_top_5_transcripts(transcripts_dict, video_lang_code):
+    available_lang_codes = {key.split("-")[0].lower(): key for key in transcripts_dict}
+    language_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
+    if video_lang_code not in language_priorities:
+        language_priorities.insert(0, video_lang_code)
+    top_5_transcripts = {}
+    for lang_code in language_priorities:
+        if len(top_5_transcripts) >= 5:
+            return top_5_transcripts
+        if lang_code in available_lang_codes:
+            lang_code_key = available_lang_codes[lang_code]
+            top_5_transcripts[lang_code] = transcripts_dict.pop(lang_code_key)
+    for lang_code, transcript in transcripts_dict.items():
+        if len(top_5_transcripts) >= 5:
+            return top_5_transcripts
+        cleaned_lang_code = lang_code.split("-")[0].lower()
+        if cleaned_lang_code in top_5_transcripts:
+            pass
+        top_5_transcripts[cleaned_lang_code] = transcript
+    return top_5_transcripts
 
 
 async def create_video_soups_dict(vid_ids: set):
@@ -122,6 +155,7 @@ async def create_video_soups_dict_multi_lang(vids_lang_code_dict: dict):
     return soups_dict
 
 
+# pylint: disable=too-many-nested-blocks
 async def update_soup_dict(session: ClientSession, vid_id: str, soups_dict):
     lang_code_transcript_urls = {}
     lang_codes_url = f"http://video.google.com/timedtext?type=list&v={vid_id}"
@@ -147,8 +181,8 @@ async def update_soup_dict(session: ClientSession, vid_id: str, soups_dict):
                 if transcript_response.status == 429:
                     await asyncio.sleep(TASK_RETRY_TIME)
                     counter += 1
-                    logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                                 f"Sleeping for {TASK_RETRY_TIME} seconds.")
+                    logger.debug("Transcript request for video %s Attempt #%s of %s failed. Sleeping for %s seconds.",
+                                 vid_id, counter, TASK_RETRY_COUNTS, TASK_RETRY_TIME)
                 else:
                     if transcript_response.status == 200:
                         soup = bs(await transcript_response.text(), "xml")
@@ -157,20 +191,22 @@ async def update_soup_dict(session: ClientSession, vid_id: str, soups_dict):
             except HTTPTooManyRequests:
                 await asyncio.sleep(TASK_RETRY_TIME)
                 counter += 1
-                logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                      f"Sleeping for {TASK_RETRY_TIME} seconds.")
+                logger.debug("Transcript request for video %s Attempt #%s of %s failed. Sleeping for %s seconds.",
+                             vid_id, counter, TASK_RETRY_COUNTS, TASK_RETRY_TIME)
+            # pylint: disable=broad-except
             except Exception as e:
                 logger.debug(e)
                 raise e
+            # pylint: enable=broad-except
     if lang_code_soups_dict:
         soups_dict[vid_id] = lang_code_soups_dict
     else:
         soups_dict[vid_id] = None
-
+# pylint: enable=too-many-nested-blocks
 
 def get_unparsed_vids(lang_code=None, num_vids=1000):
     forced_filters = VideoManager().forced_filters()
-    s = Search(using='default')
+    s = Search(using="default")
     s = s.index(Video.Index.name)
     s = s.query(forced_filters)
     # Get Videos Query for Specified Language
@@ -216,13 +252,13 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
             "bool": {
                 "should": [
                     {
-                      "bool": {
-                        "must_not": {
-                          "exists": {
-                            "field": "custom_captions"
-                          }
+                        "bool": {
+                            "must_not": {
+                                "exists": {
+                                    "field": "custom_captions"
+                                }
+                            }
                         }
-                      }
                     },
                     {
                         "bool": {
@@ -238,9 +274,9 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
         }
     )
     if lang_code:
-        s = s.query(q1+q2+q3+q4)
+        s = s.query(q1 + q2 + q3 + q4)
     else:
-        s = s.query(q2+q3+q4)
+        s = s.query(q2 + q3 + q4)
     s = s.sort({"stats.views": {"order": "desc"}})
 
     s = s[:num_vids]

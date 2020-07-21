@@ -13,24 +13,25 @@ from aw_reporting.models.ad_words.constants import QUARTILE_STATS
 def get_average_cpv(*args, **kwargs):
     if len(args) == 2:
         cost, video_views = args
-    elif 'cost' in kwargs and 'video_views' in kwargs:
-        cost = kwargs['cost'] or 0
-        video_views = kwargs['video_views']
+    elif "cost" in kwargs and "video_views" in kwargs:
+        cost = kwargs["cost"] or 0
+        video_views = kwargs["video_views"]
     else:
-        return
+        return None
 
     if video_views:
         return cost / video_views
+    return None
 
 
 def get_average_cpm(*args, **kwargs):
     if len(args) == 2:
         cost, impressions = args
-    elif 'cost' in kwargs and 'impressions' in kwargs:
-        cost = kwargs['cost']
-        impressions = kwargs['impressions']
+    elif "cost" in kwargs and "impressions" in kwargs:
+        cost = kwargs["cost"]
+        impressions = kwargs["impressions"]
     else:
-        return
+        return None
 
     if cost is None or not impressions:
         return None
@@ -40,27 +41,29 @@ def get_average_cpm(*args, **kwargs):
 def get_video_view_rate(*args, **kwargs):
     if len(args) == 2:
         views, impressions = args
-    elif 'video_impressions' in kwargs and 'video_views' in kwargs:
-        views = kwargs['video_views']
-        impressions = kwargs['video_impressions']
+    elif "video_impressions" in kwargs and "video_views" in kwargs:
+        views = kwargs["video_views"]
+        impressions = kwargs["video_impressions"]
     else:
-        return
+        return None
 
     if impressions:
         return views / impressions
+    return None
 
 
 def get_ctr(*args, **kwargs):
     if len(args) == 2:
         clicks, impressions = args
-    elif 'clicks' in kwargs and 'impressions' in kwargs:
-        clicks = kwargs['clicks']
-        impressions = kwargs['impressions']
+    elif "clicks" in kwargs and "impressions" in kwargs:
+        clicks = kwargs["clicks"]
+        impressions = kwargs["impressions"]
     else:
-        return
+        return None
 
     if impressions:
         return clicks / impressions
+    return None
 
 
 def get_ctr_v(*args, **kwargs):
@@ -70,9 +73,10 @@ def get_ctr_v(*args, **kwargs):
         clicks = kwargs["video_clicks"]
         video_views = kwargs["video_views"]
     else:
-        return
+        return None
     if video_views:
         return clicks / video_views
+    return None
 
 
 def get_margin(*_, plan_cost, cost, client_cost=None):
@@ -131,12 +135,12 @@ CALCULATED_STATS = {
 
 def dict_add_calculated_stats(data):
     for n, i in CALCULATED_STATS.items():
-        args_names = i.get('args', tuple())
+        args_names = i.get("args", tuple())
         args = [data.get(d) for d in args_names]
 
-        kwargs_names = i.get('kwargs', tuple())
-        kwargs_map = i.get('kwargs_map', tuple())
-        rec = i['receipt']
+        kwargs_names = i.get("kwargs", tuple())
+        kwargs_map = i.get("kwargs_map", tuple())
+        rec = i["receipt"]
 
         kwargs = dict(
             tuple((
@@ -151,7 +155,7 @@ def dict_add_calculated_stats(data):
 
 
 def dict_quartiles_to_rates(data):
-    impressions = data.get('impressions')
+    impressions = data.get("impressions")
     for i in range(1, 5):
         qart = i * 25
         qf = "video_views_%d_quartile" % qart
@@ -208,16 +212,6 @@ client_cost_campaign_required_annotation = aw_placement_annotation(
 client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
     *CLIENT_COST_REQUIRED_FIELDS, prefix="ad_group__campaign__"
 )
-
-
-def click_stats_aggregations():
-    return dict(
-        clicks_website=Sum("clicks_website"),
-        clicks_call_to_action_overlay=Sum("clicks_call_to_action_overlay"),
-        clicks_app_store=Sum("clicks_app_store"),
-        clicks_cards=Sum("clicks_cards"),
-        clicks_end_cap=Sum("clicks_end_cap")
-    )
 
 
 def all_stats_aggregator(prefix=None):

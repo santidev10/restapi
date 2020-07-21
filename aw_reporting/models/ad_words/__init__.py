@@ -1,6 +1,10 @@
 from .account import Account
 from .ad import Ad
 from .ad_group import AdGroup
+from .ad_group_targeting import AdGroupTargeting
+from .ad_group_targeting import CriteriaType
+from .ad_group_targeting import CriteriaTypeEnum
+from .ad_group_targeting import TargetingStatusEnum
 from .ad_words import *
 from .calculations import CALCULATED_STATS
 from .calculations import CLIENT_COST_REQUIRED_FIELDS
@@ -20,9 +24,8 @@ from .calculations import get_margin
 from .calculations import get_video_view_rate
 from .calculations import multiply_percent
 from .campaign import Campaign
+from .change_history import CampaignHistory
 from .connection import AWAccountPermission
 from .connection import AWConnection
 from .connection import AWConnectionToUserRelation
-from .common import CriterionType
 from .constants import *
-

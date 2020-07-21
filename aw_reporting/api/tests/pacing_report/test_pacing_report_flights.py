@@ -1,13 +1,13 @@
+# pylint: disable=too-many-lines
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from itertools import product
 
 import pytz
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.db.models import Sum
 from django.utils import timezone
-from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -24,6 +24,7 @@ from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import DefaultRate
 from aw_reporting.reports.pacing_report import PacingReportChartId
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -77,6 +78,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "alerts",
                 "aw_update_time",
                 "before_yesterday_budget",
                 "before_yesterday_delivered_impressions",
@@ -88,6 +90,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "ctr",
                 "ctr_quality",
                 "current_cost_limit",
+                "delivery",
                 "dynamic_placement",
                 "end",
                 "budget",
@@ -110,6 +113,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "plan_cpv",
                 "plan_impressions",
                 "plan_video_views",
+                "plan_units",
                 "start",
                 "targeting",
                 "tech_fee",
@@ -117,6 +121,8 @@ class PacingReportFlightsTestCase(APITestCase):
                 "today_goal",
                 "today_goal_impressions",
                 "today_goal_views",
+                "today_goal_spend_percent",
+                "today_goal_units_percent",
                 "video_view_rate",
                 "video_view_rate_quality",
                 "video_views",
@@ -124,13 +130,19 @@ class PacingReportFlightsTestCase(APITestCase):
                 "yesterday_delivered",
                 "yesterday_delivered_impressions",
                 "yesterday_delivered_views",
+                "historical_spend_chart",
+                "historical_units_chart",
+                "pacing_allocations",
+                "projected_budget",
+                "today_goal_spend",
+                "today_goal_units",
             }
         )
         flight.refresh_from_db()
-        self.assertEqual(item['id'], flight.id)
-        self.assertEqual(item['name'], flight.name)
-        self.assertEqual(item['start'], flight.start)
-        self.assertEqual(item['end'], flight.end)
+        self.assertEqual(item["id"], flight.id)
+        self.assertEqual(item["name"], flight.name)
+        self.assertEqual(item["start"], flight.start)
+        self.assertEqual(item["end"], flight.end)
 
     def test_hard_cost_placement(self):
         opportunity = Opportunity.objects.create(probability=50)
@@ -605,8 +617,7 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(
-            self):
+    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -699,8 +710,7 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(
-            self):
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -811,6 +821,7 @@ class PacingReportFlightsTestCase(APITestCase):
         pl = response.data[0]
         self.assertEqual(pl["plan_cost"], placement.total_cost)
 
+    # pylint: disable=too-many-locals
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
         timezone_str = "UTC"
@@ -883,6 +894,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertEqual(fl["video_views"], views)
         self.assertAlmostEqual(fl["margin"], expected_margin)
         self.assertAlmostEqual(fl["pacing"], expected_pacing)
+    # pylint: enable=too-many-locals
 
     def test_dynamic_placement_rate_and_tech_fee_daily_chart(self):
         today = date(2017, 1, 1)
@@ -1058,8 +1070,8 @@ class PacingReportFlightsTestCase(APITestCase):
         account = Account.objects.create(update_time=today_time, timezone="UTC")
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         Flight.objects.create(placement=placement,
-                                       total_cost=total_cost,
-                                       start=start, end=end)
+                              total_cost=total_cost,
+                              start=start, end=end)
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=start,
                                          cost=aw_cost)

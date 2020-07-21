@@ -6,10 +6,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0047_campaign_budget_type'),
-        ('aw_reporting', '0048_opportunity_margin_cap_required'),
+        ("aw_reporting", "0047_campaign_budget_type"),
+        ("aw_reporting", "0048_opportunity_margin_cap_required"),
     ]
 
     operations = [

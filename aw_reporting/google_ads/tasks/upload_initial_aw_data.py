@@ -3,8 +3,8 @@ import logging
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.models import Account
 from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
 from saas import celery_app
 
 logger = logging.getLogger(__name__)

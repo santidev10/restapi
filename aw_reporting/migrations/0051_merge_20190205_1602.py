@@ -6,10 +6,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('aw_reporting', '0050_increase_account_name_length'),
-        ('aw_reporting', '0050_merge_20190109_1501'),
+        ("aw_reporting", "0050_increase_account_name_length"),
+        ("aw_reporting", "0050_merge_20190109_1501"),
     ]
 
     operations = [

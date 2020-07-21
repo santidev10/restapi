@@ -1,17 +1,16 @@
 from datetime import timedelta
 
-
 CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
                   "brand_safety.updated_at")
 VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
-                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
+                "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
 
 class BaseScheduler:
     NAME = None
-    TASK_EXPIRATION = dict(hours=1)
+    TASK_EXPIRATION = dict(hours=2)
     TASK_BATCH_SIZE = 100
-    MAX_QUEUE_SIZE = 10
+    MAX_QUEUE_SIZE = 50
 
     @classmethod
     def get_expiration(cls):

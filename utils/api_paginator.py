@@ -32,10 +32,10 @@ class CustomPageNumberPaginator:
 
     def _get_response_data(self, data):
         return {
-            'items_count': self.page.paginator.count,
-            'items': data,
-            'current_page': self.page.number,
-            'max_page': self.page.paginator.num_pages,
+            "items_count": self.page.paginator.count,
+            "items": data,
+            "current_page": self.page.number,
+            "max_page": self.page.paginator.num_pages,
         }
 
     def get_page_size(self, request):
@@ -51,7 +51,7 @@ class CustomPageNumberPaginator:
 
         return self.page_size
 
-    def paginate_queryset(self, queryset, request, view=None):
+    def paginate_queryset(self, queryset, request, *args, **kwargs):
         page_size = self.get_page_size(request)
 
         paginator = PaginatorWithZeroPage(queryset, page_size, max_page_number=self.max_page_number)

@@ -2,8 +2,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit_tool.utils.audit_utils import AuditUtils
-from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class AuditVettingOptionsAPIView(APIView):
@@ -21,6 +21,7 @@ class AuditVettingOptionsAPIView(APIView):
             "languages": AuditUtils.get_languages(),
             "age_groups": AuditUtils.get_age_groups(),
             "channel_types": AuditUtils.get_channel_types(),
+            "quality_types": AuditUtils.get_quality_types(),
             "genders": AuditUtils.get_genders(),
         }
         response = Response(data=options)

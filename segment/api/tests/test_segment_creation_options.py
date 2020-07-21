@@ -6,14 +6,13 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
-from audit_tool.models import AuditCategory
 from audit_tool.utils.audit_utils import AuditUtils
+from brand_safety.languages import LANGUAGES
 from cache.models import CacheItem
+from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
-from es_components.countries import COUNTRIES
-from brand_safety.languages import LANGUAGES
 
 
 @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
@@ -101,7 +100,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
-            "segment_type": 1
+            "segment_type": 1,
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
@@ -129,6 +128,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "sentiment": None,
             "content_categories": None,
             "last_upload_date": None,
+            "vetted_after": None,
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"

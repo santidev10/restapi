@@ -1,15 +1,17 @@
 from datetime import timedelta
 
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -74,14 +76,14 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data[0].keys()),
             {
-                'id', 'name', 'targeting', 'updated_at',
-                'age_ranges', 'genders', 'parents',
-                'ad_creations', 'max_rate', 'video_ad_format',
+                "id", "name", "targeting", "updated_at",
+                "age_ranges", "genders", "parents",
+                "ad_creations", "max_rate", "video_ad_format",
             }
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign_creation = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
@@ -94,7 +96,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_fail_post_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         campaign_creation = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
@@ -120,7 +122,3 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.perform_get_format_check([response.data])
-
-
-
-

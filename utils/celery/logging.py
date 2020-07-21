@@ -31,8 +31,10 @@ def on_task_failure(sender, exception, **kwargs):
     logger.exception(wrapped_error)
 
 
+# pylint: disable=unused-argument,redefined-builtin
 @setup_logging.connect
 def jobinator_setup_logging(loglevel, logfile, format, colorize, **kwargs):
     # fixme: dirty hack. Find better solution
     # empty function is required to make celery logging working.
     pass
+# pylint: enable=unused-argument,redefined-builtin

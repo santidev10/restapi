@@ -3,13 +3,15 @@ from urllib.parse import unquote
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
-from django.db.models import OneToOneField
+from django.db.models import IntegerField
 from django.db.models import Model
+from django.db.models import OneToOneField
 from django.db.models import TextField
 from elasticsearch_dsl import Q
 
 from es_components.config import CHANNEL_INDEX_NAME
 from es_components.config import VIDEO_INDEX_NAME
+from segment.models.constants import SourceListType
 from segment.models.custom_segment import CustomSegment
 
 
@@ -24,6 +26,7 @@ class CustomSegmentFileUpload(Model):
     segment = OneToOneField(CustomSegment, related_name="export", on_delete=CASCADE)
     query = JSONField()
     updated_at = DateTimeField(null=True, db_index=True)
+    filename = TextField(null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -75,7 +78,7 @@ class CustomSegmentFileUpload(Model):
 
     def parse_download_url(self):
         try:
-            s3_key = unquote(self.download_url.split('.com/')[1].split('?X-Amz-Algorithm')[0])
+            s3_key = unquote(self.download_url.split(".com/")[1].split("?X-Amz-Algorithm")[0])
         except AttributeError:
             s3_key = None
         return s3_key
@@ -86,10 +89,17 @@ class CustomSegmentVettedFileUpload(Model):
     created_at = DateTimeField(auto_now_add=True)
     download_url = TextField(null=True)
     segment = OneToOneField(CustomSegment, related_name="vetted_export", on_delete=CASCADE)
+    filename = TextField(null=True)
 
-    def get_ids_query(self):
-        # Get the ids of vetted items in segment
-        pass
+
+class CustomSegmentSourceFileUpload(Model):
+    SOURCE_TYPE_CHOICES = (
+        [SourceListType.INCLUSION, "inclusion"],
+        [SourceListType.EXCLUSION, "exclusion"],
+    )
+    source_type = IntegerField(choices=SOURCE_TYPE_CHOICES)
+    segment = OneToOneField(CustomSegment, related_name="source", on_delete=CASCADE)
+    filename = TextField(null=True)
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

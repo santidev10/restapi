@@ -8,6 +8,7 @@ class UserSetPasswordSerializer(Serializer):
     """
     Serializer for password set endpoint.
     """
+
     new_password = CharField(required=True, validators=[
         password_validators.upper_case_password_validator,
         password_validators.min_length_password_validator,
@@ -16,3 +17,9 @@ class UserSetPasswordSerializer(Serializer):
     ])
     email = CharField(required=True)
     token = CharField(required=True)
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError

@@ -17,6 +17,7 @@ class CampaignListSerializer(ModelSerializer):
             campaign_creation_id = int(cid_search.group(1))
             if campaign_creation_id in self.campaign_creation_ids:
                 return campaign_creation_id
+        return None
 
     class Meta:
         model = Campaign

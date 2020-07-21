@@ -1,23 +1,21 @@
 import json
-from unittest.mock import MagicMock
-from mock import patch
 import os
+from unittest.mock import MagicMock
 
 from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.utils import timezone
+from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from userprofile.models import UserDeviceToken
-from utils.unittests.reverse import reverse
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-
 
 CUSTOM_AUTH_FLAGS = {
     "test.user@testuser.com": {
@@ -132,7 +130,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test username / password login with temp auth_token in response
         """
-        user, token = self._create_user(with_token=False)
+        user, _ = self._create_user(with_token=False)
         self.assertFalse(UserDeviceToken.objects.filter(user=user).exists())
         with patch("userprofile.api.views.user_auth.boto3.client"):
             response = self.client.post(
@@ -177,7 +175,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test handling creating duplicate Cognito user
         """
-        user, token = self._create_user()
+        _, token = self._create_user()
         mock_client = MagicMock()
         mock_res = {
             "Session": "test_session",
@@ -203,7 +201,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test handling trying creating then updating user
         """
-        user, token = self._create_user()
+        _, token = self._create_user()
         mock_client = MagicMock()
         mock_exception_1 = {
             "Error": {
@@ -217,7 +215,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             }
         }
         mock_client.admin_create_user.side_effect = ClientError(mock_exception_1, "admin_create_user")
-        mock_client.admin_update_user_attributes.side_effect = ClientError(mock_exception_2, "admin_update_user_attributes")
+        mock_client.admin_update_user_attributes.side_effect = ClientError(mock_exception_2,
+                                                                           "admin_update_user_attributes")
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
@@ -230,7 +229,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test response for first step in mfa process
         """
-        user, token = self._create_user()
+        _, token = self._create_user()
         mock_res = {
             "Session": "test_session",
             "ChallengeParameters": {"retries": 5}
@@ -250,7 +249,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test handle text mfa with non verified phone number
         """
-        user, token = self._create_user()
+        _, token = self._create_user()
         with patch("userprofile.api.views.user_auth.boto3.client"):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
@@ -326,7 +325,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
                 "Message": "Incorrect username or password."
             }
         }
-        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
+        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception,
+                                                                              "admin_respond_to_auth_challenge")
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),
@@ -340,7 +340,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         """
         Test handle incorrect mfa answer
         """
-        user, token = self._create_user()
+        _, token = self._create_user()
         session = "test_session"
         retries = 4
         mock_res = {
@@ -375,7 +375,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
                 "Code": ""
             }
         }
-        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
+        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception,
+                                                                              "admin_respond_to_auth_challenge")
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),

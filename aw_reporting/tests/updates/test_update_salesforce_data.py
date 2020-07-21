@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from contextlib import contextmanager
 from datetime import date
 from datetime import timedelta
@@ -11,24 +12,27 @@ from django.test import TransactionTestCase
 from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.update.update_salesforce_data import update_salesforce_data
 from email_reports.reports.base import BaseEmailReport
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
+from utils.unittests.str_iterator import str_iterator
 
 
 class UpdateSalesforceDataTestCase(TransactionTestCase):
@@ -902,7 +906,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             sf_mock().sf.Flight__c.update.assert_not_called()
 
     def test_does_not_remove_demo_data(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
         flights_count = demo_flights_qs.count()
         with patch_salesforce_connector():
@@ -910,7 +914,8 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
     def test_no_demo_data_update(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
+        Opportunity.objects.exclude(id=DEMO_ACCOUNT_ID).delete()
         with patch_salesforce_connector() as connector:
             salesforce = connector().sf
             update_salesforce_data(do_delete=False)
@@ -992,17 +997,56 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data(do_delete=True, do_get=False, do_update=False)
 
         self.assertFalse(Opportunity.objects.filter(id=opp_1.id).exists())
-        self.assertFalse(OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
-        self.assertFalse(Flight.objects.filter(id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
+        self.assertFalse(
+            OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
+        self.assertFalse(Flight.objects.filter(
+            id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
 
         self.assertTrue(Opportunity.objects.filter(id__in=[opp_2.id, opp_3.id]).exists())
         self.assertTrue(OpPlacement.objects.filter(id__in=[placement_2_a.id, placement_3.id]).exists())
         self.assertTrue(Flight.objects.filter(id__in=[flight_2_a.id, flight_3_a.id]).exists())
 
+    def test_new_parent(self):
+        """ FK constraint error
+        https://channelfactory.atlassian.net/browse/VIQ2-326
+        """
+        account = SFAccount.objects.create(id=next(str_iterator), name="Test Acc", parent=None)
+        parent_id = next(str_iterator)
+        parent2_id = next(str_iterator)
+        sf_mock = MockSalesforceConnection()
+        Fields = SalesforceFields.SFAccount.map_object()
+        sf_mock.add_mocked_items("Account", [
+            {Fields.ID: account.id, Fields.PARENT_ID: parent_id, Fields.NAME: account.name},
+            {Fields.ID: parent_id, Fields.PARENT_ID: parent2_id, Fields.NAME: "Parent lvl 1"},
+            {Fields.ID: parent2_id, Fields.PARENT_ID: None, Fields.NAME: "Parent lvl 2"}
+        ])
+
+        with patch_salesforce_connector(return_value=sf_mock):
+            update_salesforce_data(do_delete=False, do_get=True, do_update=False)
+
+        account.refresh_from_db()
+        parent = SFAccount.objects.get(id=parent_id)
+        parent2 = SFAccount.objects.get(id=parent2_id)
+        self.assertEqual(account.parent_id, parent.id)
+        self.assertEqual(parent.parent_id, parent2.id)
+        self.assertIsNone(parent2.parent_id)
+    
+    def test_update_with_opportunities_settings(self):
+        TEST_OP = "test_op"
+        sf_mock = MockSalesforceConnection()
+        with override_settings(SF_OPPORTUNITIES_UPDATE=[TEST_OP]), \
+                patch_salesforce_connector(return_value=sf_mock), \
+                patch("aw_reporting.update.update_salesforce_data.perform_update") as mock_update:
+            update_salesforce_data(do_get=False, do_delete=False)
+        self.assertEqual(mock_update.call_args[1]["opportunity_ids"], [TEST_OP])
+
 
 class MockSalesforceConnection(Connection):
+    # pylint: disable=super-init-not-called
     def __init__(self):
         self._storage = dict()
+
+    # pylint: enable=super-init-not-called
 
     def add_mocked_items(self, name, items):
         self._storage[name] = self._storage.get(name, []) + items
@@ -1011,7 +1055,7 @@ class MockSalesforceConnection(Connection):
         for item in self._storage.get(name, []):
             yield item
 
-    def describe(self, *_):
+    def describe(self, name=None):
         return {
             "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]
         }
@@ -1077,6 +1121,8 @@ def flight_data(**kwargs):
         Flight_End_Date__c=None,
         Flight_Month__c=None,
         Total_Flight_Cost__c=0,
+        Our_Cost_currency_change__c=0,
+        Different_Spending_Currency__c=False,
         Flight_Value__c=0,
         Delivered_Ad_Ops__c=None,
         Ordered_Amount__c=0,

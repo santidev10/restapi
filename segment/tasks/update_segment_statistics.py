@@ -3,7 +3,6 @@ from audit_tool.models import AuditProcessor
 from saas import celery_app
 from segment.models import CustomSegment
 
-
 LOCK_NAME = "segment.update_segment_statistics"
 
 

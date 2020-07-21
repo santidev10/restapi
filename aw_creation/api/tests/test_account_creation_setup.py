@@ -24,7 +24,6 @@ from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -36,6 +35,7 @@ from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -136,7 +136,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -186,112 +186,112 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             set(data.keys()),
             account_keys
         )
-        campaign_data = data['campaign_creations'][0]
+        campaign_data = data["campaign_creations"][0]
         self.assertEqual(
             set(campaign_data.keys()),
             campaign_keys
         )
-        self.assertEqual(len(campaign_data['content_exclusions']), 2)
+        self.assertEqual(len(campaign_data["content_exclusions"]), 2)
         self.assertEqual(
-            set(campaign_data['content_exclusions'][0].keys()),
-            {'id', 'name'}
+            set(campaign_data["content_exclusions"][0].keys()),
+            {"id", "name"}
         )
 
-        self.assertEqual(len(campaign_data['languages']), 1)
+        self.assertEqual(len(campaign_data["languages"]), 1)
         self.assertEqual(
-            campaign_data['languages'][0],
+            campaign_data["languages"][0],
             dict(id=1000, name="English"),
         )
-        self.assertEqual(len(campaign_data['location_rules']), 1)
+        self.assertEqual(len(campaign_data["location_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['location_rules'][0].keys()),
+            set(campaign_data["location_rules"][0].keys()),
             {
-                'longitude',
-                'radius',
-                'latitude',
-                'bid_modifier',
-                'radius_units',
-                'geo_target',
+                "longitude",
+                "radius",
+                "latitude",
+                "bid_modifier",
+                "radius_units",
+                "geo_target",
             }
         )
-        self.assertEqual(len(campaign_data['devices']), 3)
+        self.assertEqual(len(campaign_data["devices"]), 3)
         self.assertEqual(
-            set(campaign_data['devices'][0].keys()),
+            set(campaign_data["devices"][0].keys()),
             {
-                'id',
-                'name',
+                "id",
+                "name",
             }
         )
         self.assertEqual(
-            set(campaign_data['location_rules'][0]['radius_units']),
-            {'id', 'name'}
+            set(campaign_data["location_rules"][0]["radius_units"]),
+            {"id", "name"}
         )
-        self.assertEqual(len(campaign_data['frequency_capping']), 1)
+        self.assertEqual(len(campaign_data["frequency_capping"]), 1)
         self.assertEqual(
-            set(campaign_data['frequency_capping'][0].keys()),
+            set(campaign_data["frequency_capping"][0].keys()),
             {
-                'event_type',
-                'limit',
-                'level',
-                'time_unit',
+                "event_type",
+                "limit",
+                "level",
+                "time_unit",
             }
         )
-        for f in ('event_type', 'level', 'time_unit'):
+        for f in ("event_type", "level", "time_unit"):
             self.assertEqual(
-                set(campaign_data['frequency_capping'][0][f].keys()),
-                {'id', 'name'}
+                set(campaign_data["frequency_capping"][0][f].keys()),
+                {"id", "name"}
             )
 
-        self.assertGreaterEqual(len(campaign_data['ad_schedule_rules']), 1)
+        self.assertGreaterEqual(len(campaign_data["ad_schedule_rules"]), 1)
         self.assertEqual(
-            set(campaign_data['ad_schedule_rules'][0].keys()),
+            set(campaign_data["ad_schedule_rules"][0].keys()),
             {
-                'id',
-                'from_hour',
-                'from_minute',
-                'campaign_creation',
-                'to_minute',
-                'to_hour',
-                'day',
+                "id",
+                "from_hour",
+                "from_minute",
+                "campaign_creation",
+                "to_minute",
+                "to_hour",
+                "day",
             }
         )
         self.assertEqual(
-            campaign_data['type'],
+            campaign_data["type"],
             dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
                  name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
-            campaign_data['delivery_method'],
+            campaign_data["delivery_method"],
             dict(id=CampaignCreation.STANDARD_DELIVERY,
                  name=CampaignCreation.DELIVERY_METHODS[0][1]),
         )
         self.assertEqual(
-            campaign_data['video_networks'],
+            campaign_data["video_networks"],
             [dict(id=uid, name=n)
              for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
-        ad_group_data = campaign_data['ad_group_creations'][0]
+        ad_group_data = campaign_data["ad_group_creations"][0]
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'updated_at', 'ad_creations',
-                'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate', 'video_ad_format',
+                "id", "name", "updated_at", "ad_creations",
+                "genders", "parents", "age_ranges",
+                "targeting", "max_rate", "video_ad_format",
             }
         )
-        for f in ('age_ranges', 'genders', 'parents'):
+        for f in ("age_ranges", "genders", "parents"):
             if len(ad_group_data[f]) > 0:
                 self.assertEqual(
                     set(ad_group_data[f][0].keys()),
-                    {'id', 'name'}
+                    {"id", "name"}
                 )
         self.assertEqual(
-            set(ad_group_data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(ad_group_data["targeting"]),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
         self.assertEqual(
-            set(ad_group_data['targeting']['keyword']['negative'][0]),
-            {'criteria', 'is_negative', 'type', 'name'}
+            set(ad_group_data["targeting"]["keyword"]["negative"][0]),
+            {"criteria", "is_negative", "type", "name"}
         )
 
     def test_success_update(self):
@@ -311,7 +311,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_ended=True,
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         for k, v in request_data.items():
@@ -325,7 +325,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_approved=True,
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -342,7 +342,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         request_data = dict(is_approved=True, mcc_account_id=manager.id)
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: test_id):
-            response = self.client.patch(url, json.dumps(request_data), content_type='application/json')
+            response = self.client.patch(url, json.dumps(request_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         ac.refresh_from_db()
         self.assertEqual(ac.account.id, test_id)
@@ -363,7 +363,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         request_data = dict(is_approved=True, mcc_account_id=wrong_id)
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: "uid_from_aw"):
-            response = self.client.patch(url, json.dumps(request_data), content_type='application/json')
+            response = self.client.patch(url, json.dumps(request_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_approve_and_send_tags(self):
@@ -416,7 +416,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         url = self._get_url(account_creation.id)
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 1)
@@ -465,7 +465,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         url = self._get_url(account_creation.id)
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 0)
@@ -498,7 +498,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: "uid_from_aw"):
             response = self.client.patch(
-                url, json.dumps(request_data), content_type='application/json',
+                url, json.dumps(request_data), content_type="application/json",
             )
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
@@ -529,7 +529,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=write_operation):
             response = self.client.patch(
-                url, json.dumps(request_data), content_type='application/json',
+                url, json.dumps(request_data), content_type="application/json",
             )
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             self.assertIn("error", response.data)
@@ -562,7 +562,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=write_operation):
             response = self.client.patch(
-                url, json.dumps(request_data), content_type='application/json',
+                url, json.dumps(request_data), content_type="application/json",
             )
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             self.assertIn("error", response.data)
@@ -596,10 +596,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         url = self._get_url(account_creation.id)
 
         request_data = dict(name="Account 15")
-        with patch(
-                "aw_creation.api.views.account_creation_setup.update_customer_account") as update_method:
+        with patch("aw_creation.api.views.account_creation_setup.update_customer_account") as update_method:
             response = self.client.patch(
-                url, json.dumps(request_data), content_type='application/json',
+                url, json.dumps(request_data), content_type="application/json",
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(update_method.call_count, 1)
@@ -616,12 +615,12 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_approved=False,
         )
         response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
+            url, json.dumps(request_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -629,7 +628,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self.client.patch(
                 url, json.dumps(dict(is_paused=True)),
-                content_type='application/json',
+                content_type="application/json",
             )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -646,10 +645,10 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             name="#Campaign '",
         )
         response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
+            url, json.dumps(data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(data['name'], response.data.get('name'))
+        self.assertEqual(data["name"], response.data.get("name"))
 
     def test_success_delete(self):
         today = datetime.now().date()
@@ -668,7 +667,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertIs(ac.is_deleted, True)
 
     def test_fail_delete_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -705,20 +704,20 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['campaign_creations']), 1)
+        self.assertEqual(len(response.data["campaign_creations"]), 1)
         self.assertEqual(
-            len(response.data['campaign_creations'][0]['ad_group_creations']),
+            len(response.data["campaign_creations"][0]["ad_group_creations"]),
             1)
-        ads = response.data['campaign_creations'][0]['ad_group_creations'][0][
-            'ad_creations']
+        ads = response.data["campaign_creations"][0]["ad_group_creations"][0][
+            "ad_creations"]
         self.assertEqual(len(ads), 2)
 
-        campaign_map = dict((ad['id'], ad) for ad in ads)
+        campaign_map = dict((ad["id"], ad) for ad in ads)
 
         self.assertEqual(campaign_map.keys(),
                          {ad_creation_1.id, ad_creation_2.id})
-        self.assertTrue(campaign_map[ad_creation_1.id].get('is_disapproved'))
-        self.assertFalse(campaign_map[ad_creation_2.id].get('is_disapproved'))
+        self.assertTrue(campaign_map[ad_creation_1.id].get("is_disapproved"))
+        self.assertFalse(campaign_map[ad_creation_2.id].get("is_disapproved"))
 
     def test_enterprise_user_should_be_able_to_edit_account_creation(self):
         user = self.user
@@ -768,7 +767,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         AWConnectionToUserRelation.objects.create(connection=connection, user=user)
         AWAccountPermission.objects.create(aw_connection=connection, account=manager)
         account_creation = AccountCreation.objects \
-            .create(name="Name", owner=user,)
+            .create(name="Name", owner=user, )
         campaign_creation = CampaignCreation.objects.create(
             id=next(int_iterator),
             account_creation=account_creation,

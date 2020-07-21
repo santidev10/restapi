@@ -1,30 +1,29 @@
+from datetime import timedelta
 from operator import attrgetter
 
+from django.db.models import Q
 from django.utils import timezone
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch.exceptions import RequestError
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+from rest_framework.views import APIView
 
 from audit_tool.models import AuditProcessor
-from datetime import timedelta
-
 from audit_tool.validators import AuditToolValidator
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
-from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 from utils.views import get_object
 from utils.views import validate_fields
-from django.db.models import Q
 
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
-    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "content_quality", "gender", "iab_categories",
                        "is_monetizable", "language", "vetting_id", "suitable", "language")
 
     permission_classes = (
@@ -54,10 +53,11 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             data = {
                 "message": "Vetting for this list is complete. Please move on to the next list."
             }
-        except MissingItemException:
+        except MissingItemException as e:
             data = {
                 "message": 'The item you requested has been deleted. ' \
-                   'Please save the item as "skipped" with option: "Doesn\'t Exist'
+                           'Please save the item as "skipped" with option: "Doesn\'t Exist',
+                "vetting_id": e.vetting_id,
             }
         return Response(status=HTTP_200_OK, data=data)
 
@@ -128,15 +128,16 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         # id_key = video.video_id, channel.channel_id
         id_key = segment.data_field + "." + segment.data_field + "_id"
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now()-timedelta(minutes=30))).first()
+        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(
+            Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now() - timedelta(minutes=30))).first()
         # If next item is None, then all are checked out
         if next_item:
             try:
                 item_id = attrgetter(id_key)(next_item)
             except AttributeError:
-                raise MissingItemException
+                raise MissingItemException(next_item.id)
             segment.es_manager.sections = self.ES_SECTIONS
-            response = self._get_document(segment.es_manager, item_id)
+            response = self._get_document(segment.es_manager, item_id, next_item.id)
             data = segment.audit_utils.serializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
             if response:
@@ -149,7 +150,9 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             try:
                 o = getattr(next_item, segment.data_field)
                 data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
-            except Exception as e:
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
                 pass
             next_item.save(update_fields=['checked_out_at'])
         else:
@@ -192,7 +195,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             raise ValidationError(f"Invalid skip type. Must be 0-1, inclusive.")
         vetting_item.save()
 
-    def _get_document(self, es_manager, item_id):
+    def _get_document(self, es_manager, item_id, vetting_id):
         """
         Handle retrieving Elasticsearch document
         In some cases an item was available during list creation was deleted before vetting could take place or
@@ -207,12 +210,14 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             if not document:
                 raise NotFoundError
         except (IndexError, NotFoundError, RequestError):
-            raise MissingItemException
+            raise MissingItemException(vetting_id)
         return document
 
 
 class MissingItemException(Exception):
-    pass
+    def __init__(self, vetting_id):
+        super().__init__()
+        self.vetting_id = vetting_id
 
 
 class VettingCompleteException(Exception):

@@ -1,14 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -17,7 +18,7 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
-        recreate_demo_data()
+        recreate_test_demo_data()
 
     def setUp(self):
         self.create_test_user()
@@ -39,14 +40,14 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2)
+        self.assertEqual(len(account["trend"]), 2)
 
     def test_success_hourly(self):
         today = now_in_default_tz().date()
@@ -70,11 +71,11 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(account.keys()),
             {
-                'id',
-                'label',
-                'average_1d',
-                'average_5d',
-                'trend',
+                "id",
+                "label",
+                "average_1d",
+                "average_5d",
+                "trend",
             }
         )
-        self.assertEqual(len(account['trend']), 2 * 24)
+        self.assertEqual(len(account["trend"]), 2 * 24)

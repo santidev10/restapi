@@ -2,26 +2,27 @@ import json
 from datetime import timedelta
 
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, AdCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import AdGroup
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdCreationListAPITestCase(ExtendedAPITestCase):
-
     detail_keys = {
-        'id', 'name', 'updated_at', 'video_url', 'final_url',
-        'tracking_template', 'custom_params', 'display_url', 'video_ad_format',
-        'companion_banner',
-        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
+        "id", "name", "updated_at", "video_url", "final_url",
+        "tracking_template", "custom_params", "display_url", "video_ad_format",
+        "companion_banner",
+        "video_id", "video_title", "video_description", "video_thumbnail", "video_channel_title", "video_duration",
 
         "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
         "beacon_view_1", "beacon_view_2", "beacon_view_3",
@@ -101,7 +102,7 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_creation_list_setup",
                       args=(ad_group.id,))
@@ -114,7 +115,7 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_fail_post_demo(self):
-        recreate_demo_data()
+        recreate_test_demo_data()
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_creation_list_setup",
                       args=(ad_group.id,))
@@ -139,14 +140,10 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         post_data = dict()
 
         response = self.client.post(
-            url, json.dumps(post_data), content_type='application/json',
+            url, json.dumps(post_data), content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
             self.detail_keys
         )
-
-
-
-

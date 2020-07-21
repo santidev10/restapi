@@ -1,5 +1,5 @@
-from aw_reporting.api.views.trends.base_global_trends import \
-    get_account_queryset, get_filters
+from aw_reporting.api.views.trends.base_global_trends import get_account_queryset
+from aw_reporting.api.views.trends.base_global_trends import get_filters
 from aw_reporting.api.views.trends.base_track_data import BaseTrackDataApiView
 
 

@@ -1,11 +1,10 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from elasticsearch.exceptions import NotFoundError
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-
-from elasticsearch.exceptions import NotFoundError
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
@@ -70,7 +69,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             emails = emails.split(",")
             channel.populate_custom_properties(emails=emails)
 
-        # this solution should be used until task to update social section wouldn't be added to DMP
+        # this solution should be used until task to update social section wouldn"t be added to DMP
         # only custom_properties section can be updated from restapi
         soical_links = data.pop("social_links") if data.get("social_links") else None
         if soical_links:
@@ -92,7 +91,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
 
-        channel_id = kwargs.get('pk')
+        channel_id = kwargs.get("pk")
         allowed_sections_to_load = (
             Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
             Sections.STATS, Sections.ADS_STATS,
@@ -100,7 +99,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
-                or self.request.user.is_staff:
+            or self.request.user.is_staff:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
         if self.request.user.has_perm("userprofile.monetization_filter"):
@@ -125,7 +124,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         average_views = 0
 
-        if len(videos):
+        if videos:
             average_views = round(
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
@@ -138,8 +137,21 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             }
         })
         try:
-            result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+            result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
+        # pylint: disable=broad-except
         except Exception:
+            # pylint: enable=broad-except
+            pass
+
+        try:
+            if result["stats"].get("hidden_subscriber_count"):
+                result["stats"]["subscribers"] = None
+                result["stats"]["last_day_subscribers"] = None
+                result["stats"]["last_7day_subscribers"] = None
+                result["stats"]["last_30day_subscribers"] = None
+        # pylint: disable=broad-except
+        except Exception:
+            # pylint: enable=broad-except
             pass
 
         return Response(result)

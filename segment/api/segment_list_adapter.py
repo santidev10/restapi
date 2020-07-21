@@ -6,9 +6,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 import brand_safety.constants as constants
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.constants import Sections
-from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import ESQuerysetAdapter
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 
 class SegmentListAPIViewAdapter(ListAPIView):
@@ -39,7 +39,9 @@ class SegmentListAPIViewAdapter(ListAPIView):
             segment = self.segment_model.objects.get(id=pk)
         except self.segment_model.DoesNotExist:
             raise Http404
+        # pylint: disable=protected-access
         self.request.query_params._mutable = True
+        # pylint: enable=protected-access
         page = self.request.query_params.get("page", 0)
         size = self.request.query_params.get("size", 0)
         try:

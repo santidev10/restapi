@@ -18,7 +18,8 @@ urlpatterns = [
         name=ChannelPathName.CHANNEL_AUTHENTICATION),
     url(r"^channels/$", ChannelListApiView.as_view(), name=ChannelPathName.CHANNEL_LIST),
     url(r"^channels/export/$", ChannelListExportApiView.as_view(), name=ChannelPathName.CHANNEL_LIST_PREPARE_EXPORT),
-    url(r"^channels/export/(?P<export_name>.+)/$", ChannelListExportApiView.as_view(), name=ChannelPathName.CHANNEL_LIST_EXPORT),
+    url(r"^channels/export/(?P<export_name>.+)/$", ChannelListExportApiView.as_view(),
+        name=ChannelPathName.CHANNEL_LIST_EXPORT),
     url(r"^channels/(?P<pk>[\w-]+)/$", ChannelRetrieveUpdateDeleteApiView.as_view(), name=ChannelPathName.CHANNEL),
     url(r"^channel_set/$", ChannelSetApiView.as_view(), name=ChannelPathName.CHANNEL_SET),
     url(r"^channel_track/$", ChannelTrackApiView.as_view(), name=ChannelPathName.CHANNEL_TRACK)

@@ -1,15 +1,15 @@
-from concurrent.futures import ThreadPoolExecutor
 import itertools
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from audit_tool.models import BlacklistItem
-from brand_safety.constants import BRAND_SAFETY_SCORE
-from brand_safety.constants import BLACKLIST_DATA
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from brand_safety.auditors.serializers import BrandSafetyChannelSerializer
 from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
 from brand_safety.auditors.utils import AuditUtils
+from brand_safety.constants import BLACKLIST_DATA
+from brand_safety.constants import BRAND_SAFETY_SCORE
 from es_components.constants import Sections
 from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
@@ -17,7 +17,6 @@ from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
-
 
 """ BrandSafetyAudit - Used to run brand safety audit on channel and video documents
 Main methods: process_channels, process_videos
@@ -43,19 +42,20 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    CHANNEL_BATCH_SIZE = 10
+    CHANNEL_BATCH_SIZE = 1
     VIDEO_BATCH_SIZE = 2000
     ES_LIMIT = 10000
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
     MINIMUM_VIEW_COUNT = 1000
     SLEEP = 2
-    MAX_CYCLE_COUNT = 20 # Number of update cycles before terminating to relieve memory
+    MAX_CYCLE_COUNT = 20  # Number of update cycles before terminating to relieve memory
     MAX_THREAD_POOL = 10
     THREAD_BATCH_SIZE = 5
     batch_counter = 0
 
-    def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True, score_only=False, **kwargs):
+    def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True,
+                 score_only=False, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
@@ -73,7 +73,8 @@ class BrandSafetyAudit(object):
             )
         else:
             self.channel_manager = ChannelManager(
-                sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+                sections=(
+                    Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                 upsert_sections=(Sections.BRAND_SAFETY,)
             )
         self.video_manager = VideoManager(
@@ -91,7 +92,7 @@ class BrandSafetyAudit(object):
         :param ids:
         :return:
         """
-        return manager.get(ids)
+        return manager.get(ids, skip_none=True)
 
     def _add_ignore_vetted_query(self, query):
         query &= QueryBuilder().build().must_not().exists().field("task_us_data").get()
@@ -204,6 +205,11 @@ class BrandSafetyAudit(object):
                 item.item_id: item.blacklist_category
                 for item in BlacklistItem.get(video_ids, 0)
             }
+
+        channel_mapping = {
+            channel.main.id: channel
+            for channel in self.channel_manager.get(set([video["channel_id"] for video in video_data]), skip_none=True)
+        }
         for video in video_data:
             try:
                 video = video.to_dict()
@@ -218,7 +224,8 @@ class BrandSafetyAudit(object):
                 video_audits.append(audit)
 
                 if self.check_rescore:
-                    self._check_rescore_channel(audit)
+                    channel = channel_mapping[video["channel_id"]]
+                    self._check_rescore_channel(channel, audit)
             except KeyError as e:
                 # Ignore videos without full data in accessed audit
                 continue
@@ -288,7 +295,8 @@ class BrandSafetyAudit(object):
         :return:
         """
         with ThreadPoolExecutor(max_workers=self.MAX_THREAD_POOL) as executor:
-            results = executor.map(self._query_channel_videos, self.audit_utils.batch(channel_ids, self.THREAD_BATCH_SIZE))
+            results = executor.map(self._query_channel_videos,
+                                   self.audit_utils.batch(channel_ids, self.THREAD_BATCH_SIZE))
         all_results = list(itertools.chain.from_iterable(results))
         data = BrandSafetyVideoSerializer(all_results, many=True).data
         return data
@@ -395,7 +403,7 @@ class BrandSafetyAudit(object):
         for item in items:
             item[BLACKLIST_DATA] = blacklist_items.get(item["id"], None)
 
-    def _check_rescore_channel(self, video_audit):
+    def _check_rescore_channel(self, channel, video_audit):
         """
         Checks whether a new video's channel should be rescored
         If the video has a negative score, then it may have a large impact on its channels score
@@ -403,8 +411,12 @@ class BrandSafetyAudit(object):
         :param video_audit: BrandSafetyVideoAudit
         :return:
         """
-        overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
-        if overall_score < self.VIDEO_CHANNEL_RESCORE_THRESHOLD:
+        if self.ignore_vetted_channels is True and channel.task_us_data:
+            return
+        video_overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+        channel_overall_score = getattr(channel.brand_safety, "overall_score", None)
+        if channel_overall_score and channel_overall_score > 0 and video_overall_score < \
+            self.VIDEO_CHANNEL_RESCORE_THRESHOLD:
             try:
                 channel_id = video_audit.metadata["channel_id"]
                 self.channels_to_rescore.append(channel_id)

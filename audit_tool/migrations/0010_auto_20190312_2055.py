@@ -3,12 +3,12 @@
 from __future__ import unicode_literals
 
 import django.contrib.postgres.fields.jsonb
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('audit_tool', '0009_auto_20190312_2054'),
     ]
@@ -25,7 +25,8 @@ class Migration(migrations.Migration):
                 ('like_count', models.IntegerField(db_index=True, default=0)),
                 ('reply_count', models.IntegerField(default=0)),
                 ('found_items', django.contrib.postgres.fields.jsonb.JSONField(default={})),
-                ('parent', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='audit_tool.Comment')),
+                ('parent', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                             to='audit_tool.Comment')),
             ],
         ),
         migrations.CreateModel(
@@ -47,11 +48,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='comment',
             name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_comments', to='audit_tool.YoutubeUser'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_comments',
+                                    to='audit_tool.YoutubeUser'),
         ),
         migrations.AddField(
             model_name='comment',
             name='video',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_comments', to='audit_tool.CommentVideo'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_comments',
+                                    to='audit_tool.CommentVideo'),
         ),
     ]
