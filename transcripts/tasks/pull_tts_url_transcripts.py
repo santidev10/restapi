@@ -90,12 +90,12 @@ def pull_tts_url_transcripts():
                         if vid_ids_to_rescore:
                             rescore_start = time.perf_counter()
                             rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                            video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+                            video_manager.update_rescore(filter_query=rescore_filter, rescore=True,
+                                                         proceed_conflict=True)
                             rescore_end = time.perf_counter()
                             rescore_time = rescore_end - rescore_start
-                            logger.info(
-                                f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be rescored "
-                                f"in {rescore_time} seconds.")
+                            logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
+                                        f"seconds.")
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         transcripts_scraper.send_yt_blocked_email()
@@ -110,8 +110,6 @@ def pull_tts_url_transcripts():
                         vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
                         updated_videos.append(vid_obj)
                         continue
-                    vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
-                    continue
                 vid_transcripts = [subtitle.captions for subtitle in
                                    transcripts_scraper.successful_vids[vid_id].subtitles]
                 vid_lang_codes = [subtitle.lang_code for subtitle in
@@ -139,11 +137,10 @@ def pull_tts_url_transcripts():
             if vid_ids_to_rescore:
                 rescore_start = time.perf_counter()
                 rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+                video_manager.update_rescore(filter_query=rescore_filter, rescore=True, proceed_conflict=True)
                 rescore_end = time.perf_counter()
                 rescore_time = rescore_end - rescore_start
-                logger.info(f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be rescored "
-                            f"in {rescore_time} seconds.")
+                logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info("Parsed and stored %s Video Transcripts in %s seconds.", len(all_videos), total_time)
