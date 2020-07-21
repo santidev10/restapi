@@ -5,13 +5,14 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import FloatField
 
 from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
 from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
 class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
-    columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
+    columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes", "Sentiment",
                "Views", "Monthly_Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
                "Gender", "Content_Type")
 
@@ -21,6 +22,7 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
     Category = SerializerMethodField("get_category")
     Likes = IntegerField(source="stats.likes")
     Dislikes = IntegerField(source="stats.dislikes")
+    Sentiment = FloatField(source="stats.sentiment")
     Views = IntegerField(source="stats.views")
     Monthly_Views = IntegerField(source="stats.last_30day_views")
     Overall_Score = SerializerMethodField("get_overall_score")
@@ -42,7 +44,7 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
 
 class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",
-               "Dislikes", "Views", "Monthly_Views", "Audited_Videos", "Overall_Score", "Vetted",
+               "Dislikes", "Sentiment", "Views", "Monthly_Views", "Audited_Videos", "Overall_Score", "Vetted",
                "Brand_Safety", "Age_Group", "Gender", "Content_Type")
 
     # Fields map to segment export rows
@@ -53,6 +55,7 @@ class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMix
     Subscribers = IntegerField(source="stats.subscribers")
     Likes = IntegerField(source="stats.observed_videos_likes")
     Dislikes = IntegerField(source="stats.observed_videos_dislikes")
+    Sentiment = FloatField(source="stats.sentiment")
     Views = IntegerField(source="stats.views")
     Monthly_Views = IntegerField(source="stats.last_30day_views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
