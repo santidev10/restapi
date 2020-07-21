@@ -12,6 +12,6 @@ def get_currency_code(account_creation):
     if currency_code is None:
         try:
             currency_code = account_creation.account.currency_code
-        except Account.DoesNotExist:
+        except (Account.DoesNotExist, AttributeError):
             pass
     return currency_code
