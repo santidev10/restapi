@@ -226,14 +226,14 @@ def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categ
         )
     else:
         brand_safety_query = None
-    # Get Videos Query <= stats.views
+    # Get Videos Query >= stats.views
     no_views_query = Q(
         {
             "bool": {
                 "must": {
                     "range": {
                         "stats.views": {
-                            "gte": 8000
+                            "gte": 10000
                         }
                     }
                 }
