@@ -98,3 +98,14 @@ class S3Exporter(ABC):
             Bucket=cls.bucket_name,
             Key=s3_object_key
         )
+
+    @classmethod
+    def copy_from(cls, source_key, dest_key, metadata=None, metadata_directive="REPLACE", **params):
+        params = dict(
+            Key=dest_key, Bucket=cls.bucket_name,
+            CopySource={"Bucket": cls.bucket_name, "Key": source_key},
+            Metadata=metadata or {}, MetadataDirective=metadata_directive,
+            **params or {}
+        )
+        result = S3Exporter._s3().copy_object(**params)
+        return result
