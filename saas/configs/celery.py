@@ -32,6 +32,69 @@ DMP_CELERY_RESULT_SERIALIZER = "celery_result"
 CELERY_TIMEZONE = "UTC"
 
 CELERY_BEAT_SCHEDULE = {
+    "google_ads_campaign_update": {
+        "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",
+        "schedule": crontab(hour="*", minute="*/5"),
+    },
+    "google_ads_update_without_campaigns": {
+        "task": "aw_reporting.google_ads.tasks.update_without_campaigns.setup_update_without_campaigns",
+        "schedule": crontab(hour="*", minute="*/5"),
+    },
+    "google_ads_update_audiences": {
+        "task": "aw_reporting.google_ads.tasks.update_audiences.update_audiences",
+        "schedule": crontab(day_of_month="1", hour="0", minute="0"),
+    },
+    "google_ads_update_geo_targets": {
+        "task": "aw_reporting.google_ads.tasks.update_geo_targets.update_geo_targets",
+        "schedule": crontab(day_of_month="1", hour="1", minute="0"),
+    },
+    "full-sf-update": {
+        "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
+        "schedule": crontab(hour="*", minute="0"),
+        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
+    },
+    "schedule_daily_email_notifications": {
+        "task": "email_reports.tasks.schedule_daily_reports",
+        "schedule": crontab(hour="0", minute="0"),
+        "kwargs": dict(
+            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
+                     "CampaignOverPacing", "FlightDeliveredReport"],
+        ),
+    },
+    "daily_es_monitoring_report": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["ESMonitoringEmailReport"],
+        ),
+    },
+    "daily_apex_notifications": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["DailyApexCampaignEmailReport"],
+        ),
+    },
+    "recreate-demo-data": {
+        "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
+        "schedule": crontab(hour="0", minute="0"),
+    },
+    "update-videos-percentiles": {
+        "task": "video.tasks.update_videos_percentiles.update_videos_percentiles",
+        "schedule": 3600,
+    },
+    "update-channels-percentiles": {
+        "task": "channel.tasks.update_channels_percentiles.update_channels_percentiles",
+        "schedule": 3600,
+    },
+    "update-keywords-percentiles": {
+        "task": "keywords.tasks.update_keywords_percentiles.update_keywords_percentiles",
+        "schedule": 3600,
+    },
+    "pull-custom-transcripts": {
+        "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
+        "schedule": 90
+    },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
         "schedule": crontab(hour="*", minute="*/30"),
