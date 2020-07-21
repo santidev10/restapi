@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from es_components.iab_categories import IAB_TIER2_SET
@@ -24,6 +26,7 @@ from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from segment.utils.utils import with_all
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
@@ -154,8 +157,9 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
-        opts["content_type"] = opts.get("content_type", None)
-        opts["content_quality"] = opts.get("content_quality", None)
+
+        opts["content_type"] = with_all(choice=opts.get("content_type", None))
+        opts["content_quality"] = with_all(choice=opts.get("content_quality", None))
         return opts
 
     def _create(self, data: dict):
