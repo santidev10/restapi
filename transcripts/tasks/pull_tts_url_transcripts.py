@@ -53,8 +53,8 @@ def pull_tts_url_transcripts():
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
-        sort = [{"stats.views": {"order": "desc"}}, {"brand_safety.overall_score": {"order": "desc"}}]
-        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY),
+        sort = [{"brand_safety.overall_score": {"order": "desc"}}]
+        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
         retrieval_start = time.perf_counter()
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
@@ -127,7 +127,8 @@ def pull_tts_url_transcripts():
                 populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
                                                asr_lang=asr_lang)
                 updated_videos.append(vid_obj)
-                vid_ids_to_rescore.append(vid_id)
+                if "task_us_data" not in vid_obj:
+                    vid_ids_to_rescore.append(vid_id)
             update_end = time.perf_counter()
             update_time = update_end - update_start
             logger.info(f"Populated Transcripts for {len(updated_videos)} Videos in {update_time} seconds.")
@@ -225,6 +226,20 @@ def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categ
         )
     else:
         brand_safety_query = None
+    # Get Videos Query <= stats.views
+    no_views_query = Q(
+        {
+            "bool": {
+                "must": {
+                    "range": {
+                        "stats.views": {
+                            "gte": 8000
+                        }
+                    }
+                }
+            }
+        }
+    )
 
     # Get Videos where Custom Captions have been parsed
     custom_captions_parsed_query = Q(
@@ -289,4 +304,5 @@ def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categ
         query &= category_query
     if brand_safety_query:
         query &= brand_safety_query
+    query &= no_views_query
     return query
