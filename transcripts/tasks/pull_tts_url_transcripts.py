@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from elasticsearch_dsl import Q
 from elasticsearch_dsl import Search
-from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
