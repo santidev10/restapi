@@ -55,6 +55,7 @@ def pull_tts_url_transcripts():
         sort = [{"brand_safety.overall_score": {"order": "desc"}}]
         video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
+        # pylint: enable=no-value-for-parameter
         retrieval_start = time.perf_counter()
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
         retrieval_end = time.perf_counter()
@@ -167,6 +168,7 @@ def get_video_ids_query(vid_ids):
             }
         }
     )
+    # pylint: enable=broad-except
 
 # pylint: enable=too-many-nested-blocks,too-many-statements,too-many-locals
 
