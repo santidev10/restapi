@@ -46,53 +46,10 @@ class YTTranscriptsScraper(object):
         self.successful_vids = {}
         self.num_failed_vids = None
         self.failure_reasons = None
-        self.available_proxies = []
-        self.get_available_proxies()
-        self.host = None
-        self.port = None
+        self.host = "5.79.66.2"
+        self.port = "13010"
         self.ua = UserAgent(fallback='Mozilla/5.0 (compatible; Google2SRT/0.7.8)')
-        self.proxy_counter = 0
-        self.update_proxy()
         self.create_yt_vids()
-
-    def request_proxy_api(self, endpoint, method="GET", data=None):
-        if method == "GET":
-            response = requests.get(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}")
-            return response
-        if method == "PUT":
-            response = requests.put(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}",
-                                    data=data)
-            return response
-        return None
-
-    def authorize_ip_with_proxy(self):
-        ip = requests.get("https://api.ipify.org").text
-        endpoint = "authorized-ips"
-        method = "PUT"
-        response = self.request_proxy_api(endpoint=endpoint, method=method, data={"ips": [ip]})
-        return response
-
-    def get_authorized_ips(self):
-        endpoint = "authorized-ips"
-        response = self.request_proxy_api(endpoint=endpoint)
-        return response
-
-    def get_available_proxies(self):
-        endpoint = "proxies"
-        response = self.request_proxy_api(endpoint=endpoint)
-        proxies = response.json()["data"]
-        self.available_proxies = [
-            {
-                "host": proxy.split(":")[0],
-                "port": proxy.split(":")[1]
-            }
-            for proxy in proxies[self.PROXY_OFFSET:self.PROXY_OFFSET+self.NUM_THREADS//10]
-        ]
-
-    def get_geo(self):
-        endpoint = "geo"
-        response = self.request_proxy_api(endpoint=endpoint)
-        return response
 
     def run_scraper(self):
         # Multithreaded requests
@@ -191,49 +148,6 @@ class YTTranscriptsScraper(object):
         headers['User-Agent'] = self.get_user_agent()
         return headers
 
-    def update_proxy(self):
-        if self.available_proxies:
-            self.update_host(host=self.available_proxies[self.proxy_counter]["host"])
-            self.update_port(port=self.available_proxies[self.proxy_counter]["port"])
-            self.increment_proxy_counter()
-        else:
-            raise ValidationError("All proxies have been blocked.")
-
-    def increment_proxy_counter(self):
-        if len(self.available_proxies) > 0:
-            self.proxy_counter = (self.proxy_counter + 1) % len(self.available_proxies)
-        else:
-            self.proxy_counter = 0
-
-    def update_host(self, host=None):
-        if host:
-            self.host = host
-        else:
-            hostname = socket.gethostname()
-            ip = socket.gethostbyname(hostname)
-            self.host = ip
-
-    def update_port(self, port=None):
-        if port:
-            self.port = port
-        elif self.port is None:
-            self.port = 9150
-        else:
-            self.increment_port()
-
-    def increment_port(self):
-        self.port = (self.port % self.NUM_PORTS) + 1
-
-    def blacklist_and_update_proxy(self, host, port):
-        proxy = {
-            "host": host,
-            "port": port
-        }
-        if proxy in self.available_proxies:
-            self.available_proxies.remove(proxy)
-            self.proxy_counter = self.proxy_counter % len(self.available_proxies)
-        self.update_proxy()
-
     def send_yt_blocked_email(self):
         try:
             lock(lock_name=self.EMAILER_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
@@ -272,9 +186,6 @@ class YTVideo(object):
         self.top_subtitles_meta = None
         self.subtitles = None
         self.failure_reason = None
-        self.proxy = None
-        self.host = None
-        self.port = None
         self.headers = None
 
     def update_failure_reason(self, e):
@@ -355,12 +266,8 @@ class YTVideo(object):
             self.update_failure_reason(e)
 
     def get_response_through_proxy(self, scraper, url):
-        proxy = self.proxy or scraper.get_proxy()
-        host = self.host or scraper.host
-        port = self.port or scraper.port
-        headers = self.headers or scraper.get_headers()
-        if not self.proxy:
-            scraper.update_proxy()
+        proxy = scraper.get_proxy()
+        headers = scraper.get_headers()
         response = None
         counter = 0
         try:
@@ -374,33 +281,14 @@ class YTVideo(object):
         while (not response or response.status_code != 200) and counter < scraper.NUM_RETRIES:
             counter += 1
             try:
-                # print(f"Blacklisting proxy: {proxy}")
-                scraper.blacklist_and_update_proxy(host=host, port=port)
-                proxy = scraper.get_proxy()
-                host = scraper.host
-                port = scraper.port
                 headers = scraper.get_headers()
-                # print(f"New proxy: {proxy}")
-                # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
                 response = requests.get(url=url, proxies=proxy, headers=headers, timeout=scraper.TIMEOUT)
-                # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-            except ConnectionError as e:
-                # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
-                #       f"Error message: '{e}'")
+            except ConnectionError:
                 continue
             except Timeout:
                 continue
         if counter >= scraper.NUM_RETRIES:
-            self.proxy = None
-            self.host = None
-            self.port = None
-            self.headers = None
             raise Exception("Exceeded connection attempts to URL.")
-        if response.status_code == 200:
-            self.proxy = proxy
-            self.host = host
-            self.port = port
-            self.headers = headers
         response_text = response.text
         response_status = response.status_code
         return response_text, response_status
