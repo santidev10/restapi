@@ -93,7 +93,7 @@ class GenerateSegmentUtils:
             row = segment.serializer(item, context=serializer_context).data
             rows.append(row)
         with open(filename, mode=mode, newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
             if write_header is True:
                 writer.writeheader()
             writer.writerows(rows)

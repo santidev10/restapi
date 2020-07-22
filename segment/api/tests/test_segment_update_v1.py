@@ -1,9 +1,13 @@
+import io
 import json
 import uuid
 
+import boto3
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from moto import mock_s3 as moto_s3
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -12,8 +16,8 @@ from segment.api.serializers.custom_segment_update_serializers import CustomSegm
 from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.custom_segment import CustomSegment
-from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.s3_mock import mock_s3 as mock_s3
 
 
 class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
@@ -30,6 +34,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             "segment_type": 0,
         })
 
+    @mock_s3
     def test_partial_admin_update(self):
         user = self.create_admin_user()
         segment = self._create_custom_segment(owner=user)
@@ -68,6 +73,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         self.assertIn(str(segment.uuid), res_featured_image_url)
         self.assertEqual(segment.featured_image_url, res_featured_image_url)
 
+    @mock_s3
     def test_non_admin_owner_update(self):
         user = self.create_test_user()
         segment = self._create_custom_segment(owner=user)
@@ -83,6 +89,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
+    @mock_s3
     def test_non_admin_non_owner_update(self):
         owner = get_user_model().objects.create(email="owner@xyz.com")
         self.create_test_user()
@@ -97,3 +104,25 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         )
         segment.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    @moto_s3
+    def test_update_content_disposition(self):
+        """ Test updating title should update object content disposition """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        user = self.create_admin_user()
+        segment = self._create_custom_segment(owner=user)
+        export_key = segment.get_s3_key()
+        export_file = io.BytesIO()
+        conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).put(Body=export_file)
+        payload = {
+            "title": "new title"
+        }
+        response = self.client.patch(
+            self._get_url(reverse_args=[segment.id]), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        segment.refresh_from_db()
+
+        obj = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()
+        self.assertIn(payload["title"], obj["ContentDisposition"])
