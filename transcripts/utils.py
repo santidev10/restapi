@@ -47,7 +47,7 @@ class YTTranscriptsScraper(object):
         self.failure_reasons = None
         self.host = "5.79.66.2"
         self.port = "13010"
-        self.ua = UserAgent(fallback='Mozilla/5.0 (compatible; Google2SRT/0.7.8)')
+        self.ua = 'Mozilla/5.0 (compatible; Google2SRT/0.7.8)'
         self.create_yt_vids()
 
     def run_scraper(self):
@@ -140,7 +140,7 @@ class YTTranscriptsScraper(object):
         }
 
     def get_user_agent(self):
-        return self.ua.random
+        return 'Mozilla/5.0 (compatible; Google2SRT/0.7.8)'
 
     def get_headers(self):
         headers = self.YT_HEADERS
