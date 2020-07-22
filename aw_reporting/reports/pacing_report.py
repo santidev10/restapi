@@ -1637,15 +1637,23 @@ def get_flight_pacing_allocation_ranges(flight_id):
 
     # Get start and end date ranges grouped by allocation value
     pacing_allocation_ranges = []
-    for allocation, group in groupby(pacing_allocations, key=lambda x: x.allocation):
-        sorted_dates = sorted(group, key=lambda x: x.date)
-        start = sorted_dates[0].date
-        end = sorted_dates[-1].date
-        pacing_allocation_ranges.append(dict(
-            start=start,
-            end=end,
-            allocation=allocation
-        ))
+    curr = 0
+    start = pacing_allocations[curr]
+    # Find the start and end of each date range allocation
+    while curr < len(pacing_allocations):
+        step = pacing_allocations[curr]
+        if step.is_end or curr == len(pacing_allocations) - 1:
+            pacing_allocation_ranges.append({
+                "start": start.date,
+                "end": step.date,
+                "allocation": step.allocation,
+            })
+            try:
+                # Reached end of allocations
+                start = pacing_allocations[curr + 1]
+            except IndexError:
+                break
+        curr += 1
     return pacing_allocation_mapping, pacing_allocation_ranges
 
 

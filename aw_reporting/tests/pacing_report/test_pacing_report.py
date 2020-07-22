@@ -603,7 +603,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         """ Test flight pacing allocation serialization formats into correct date ranges """
         today = datetime.now()
         start = today
-        end = today + timedelta(days=10)
+        end = today + timedelta(days=20)
         self.create_test_user()
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end, probability=100
@@ -617,25 +617,58 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         FlightStatistic.objects.create(flight=flight, delivery=100, video_views=100, sum_cost=10)
         allocations = list(FlightPacingAllocation.get_allocations(flight.id).values())
-        border_1 = len(allocations) // 3
+        border_1 = len(allocations) // 5
         border_2 = border_1 * 2
-        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[:border_1]]).update(allocation=20)
-        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_1:border_2]]).update(
-            allocation=30)
-        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_2:]]).update(allocation=50)
+        border_3 = border_2 + 5
+        border_4 = border_3 + 4
+        border_5 = border_4 + 1
+        border_6 = border_5 + 1
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[:border_1]]).update(allocation=20.1)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_1:border_2]]).update(allocation=20.1)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_2:border_3]]).update(allocation=13.4)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_3:border_4]]).update(allocation=13.4)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_4:border_5]]).update(allocation=14.6)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_5:border_6]]).update(allocation=14.6)
+        FlightPacingAllocation.objects.filter(id__in=[item.id for item in allocations[border_6:]]).update(allocation=3.8)
+        end_ids = [
+            allocations[border_1 - 1].id, allocations[border_2 - 1].id,
+            allocations[border_3 - 1].id, allocations[border_4 - 1].id,
+            allocations[border_5 - 1].id, allocations[border_6 - 1].id,
+        ]
+        FlightPacingAllocation.objects.filter(id__in=end_ids).update(is_end=True)
         report = PacingReport()
         serialized = report.get_flights(placement)[0]["pacing_allocations"]
         range_1 = serialized[0]
         range_2 = serialized[1]
         range_3 = serialized[2]
+        range_4 = serialized[3]
+        range_5 = serialized[4]
+        range_6 = serialized[5]
+        range_7 = serialized[6]
         self.assertTrue(range_1["start"] == allocations[0].date)
         self.assertTrue(range_1["end"] == allocations[border_1 - 1].date)
-        self.assertTrue(range_1["allocation"] == 20)
+        self.assertTrue(range_1["allocation"] == 20.1)
 
         self.assertTrue(range_2["start"] == allocations[border_1].date)
         self.assertTrue(range_2["end"] == allocations[border_2 - 1].date)
-        self.assertTrue(range_2["allocation"] == 30)
+        self.assertTrue(range_2["allocation"] == 20.1)
 
         self.assertTrue(range_3["start"] == allocations[border_2].date)
-        self.assertTrue(range_3["end"] == allocations[-1].date)
-        self.assertTrue(range_3["allocation"] == 50)
+        self.assertTrue(range_3["end"] == allocations[border_3 - 1].date)
+        self.assertTrue(range_3["allocation"] == 13.4)
+
+        self.assertTrue(range_4["start"] == allocations[border_3].date)
+        self.assertTrue(range_4["end"] == allocations[border_4 - 1].date)
+        self.assertTrue(range_4["allocation"] == 13.4)
+
+        self.assertTrue(range_5["start"] == allocations[border_4].date)
+        self.assertTrue(range_5["end"] == allocations[border_5 -1].date)
+        self.assertTrue(range_5["allocation"] == 14.6)
+
+        self.assertTrue(range_6["start"] == allocations[border_5].date)
+        self.assertTrue(range_6["end"] == allocations[border_6 -1].date)
+        self.assertTrue(range_6["allocation"] == 14.6)
+
+        self.assertTrue(range_7["start"] == allocations[border_6].date)
+        self.assertTrue(range_7["end"] == allocations[-1].date)
+        self.assertTrue(range_7["allocation"] == 3.8)

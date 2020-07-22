@@ -605,6 +605,9 @@ class FlightPacingAllocation(models.Model):
     flight = models.ForeignKey(Flight, related_name="allocations", on_delete=models.CASCADE)
     date = models.DateField(db_index=True)
     allocation = models.FloatField()
+    # We need some way to keep track when an allocation is the end of a range.
+    # For example if we want to save that dates 1 - 5 and 6 - 10 are both 30% allocation
+    is_end = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
