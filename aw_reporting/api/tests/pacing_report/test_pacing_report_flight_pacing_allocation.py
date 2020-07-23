@@ -1,7 +1,6 @@
 from datetime import timedelta
 import json
 
-from django.utils import timezone
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -13,6 +12,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import FlightPacingAllocation
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.datetime import now_in_default_tz
 
 
 class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
@@ -22,7 +22,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_start_date(self):
         """ Test that start date of first date range must be start date of flight """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -57,7 +57,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_end_date(self):
         """ Test that end date of last date range must be end date of flight """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -94,7 +94,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_total_allocation_must_equal_100(self):
         """ Test that sum of allocations must be 100 """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -131,7 +131,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_cannot_modify_past_allocation(self):
         """ Test that modifying an allocation in a date range that is in the past is not allowed """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         border = flight_start
         flight_end = flight_start + timedelta(days=5)
@@ -172,7 +172,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_overlapping_dates(self):
         """ Test that dates must not overlap between date ranges """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         border = today
         flight_end = today + timedelta(days=2)
@@ -211,7 +211,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_first_allocation_modification_includes_today_date(self):
         """ Test that modifying allocations for the first time must include today's date """
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today - timedelta(days=3)
         border = today - timedelta(days=1)
         flight_end = border + timedelta(days=2)
@@ -248,7 +248,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
 
     def test_success(self):
         self.create_admin_user()
-        today = timezone.now()
+        today = now_in_default_tz()
         flight_start = today + timedelta(days=3)
         border = flight_start
         flight_end = border + timedelta(days=2)
@@ -283,3 +283,42 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
                                      content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_reject_date_ranges_must_consecutive(self):
+        """ Test date ranges must be consecutive """
+        self.create_admin_user()
+        today = now_in_default_tz()
+        flight_start = today + timedelta(days=3)
+        border = flight_start
+        flight_end = border + timedelta(days=2)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=today - timedelta(days=3),
+            end=today + timedelta(days=3),
+        )
+        placement = OpPlacement.objects.create(
+            id="2", name="pl", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            start=flight_start, end=today + timedelta(days=2),
+        )
+        flight = Flight.objects.create(
+            id="3", placement=placement, total_cost=200,
+            start=flight_start, end=flight_end, ordered_units=10,
+        )
+        allocations = FlightPacingAllocation.get_allocations(flight.id)
+        # Just simulate allocations have been changed before
+        FlightPacingAllocation.objects.filter(id=list(allocations.values())[0].id).update(allocation=10)
+        payload = [
+            dict(
+                start=str(flight.start.date()),
+                end=str(border.date()),
+                allocation=80
+            ),
+            dict(
+                start=str((border + timedelta(days=2)).date()),
+                end=str(flight_end.date()),
+                allocation=20
+            )
+        ]
+        response = self.client.patch(self._get_url(flight.id), data=json.dumps(payload),
+                                     content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

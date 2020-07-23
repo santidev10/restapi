@@ -1,14 +1,17 @@
 import io
 
-from PIL import Image
+from botocore.exceptions import ClientError
 from django.conf import settings
+from PIL import Image
 from rest_framework import serializers
 
 from audit_tool.models import get_hash_name
 from segment.api.serializers.custom_segment_serializer import FeaturedImageUrlMixin
 from segment.models.custom_segment import CustomSegment
+from segment.models.utils.segment_exporter import SegmentExporter
 from utils.file_storage.s3_connector import delete_file
 from utils.file_storage.s3_connector import upload_file
+from segment.tasks.generate_segment import get_content_disposition
 
 
 __all__ = [
@@ -33,10 +36,27 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
         for field, value in validated_data.items():
             setattr(instance, field, value)
         instance.save()
+        instance.refresh_from_db()
+        self._update_content_disposition(instance)
         return instance
 
     def create(self, validated_data):
         pass
+
+    def _update_content_disposition(self, segment):
+        s3 = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        try:
+            key = segment.get_s3_key()
+            content_disposition = get_content_disposition(segment)
+            s3.copy_from(key, key, ContentDisposition=content_disposition)
+        except ClientError:
+            pass
+        try:
+            vetted_key = segment.get_vetted_s3_key()
+            vetted_content_disposition = get_content_disposition(segment, is_vetting=True)
+            s3.copy_from(vetted_key, vetted_key, ContentDisposition=vetted_content_disposition)
+        except ClientError:
+            pass
 
 
 class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpdateSerializer):
@@ -98,6 +118,7 @@ class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpd
         for field, value in validated_data.items():
             setattr(instance, field, value)
         instance.save()
+        self._update_content_disposition(instance)
         return instance
 
     def create(self, validated_data):

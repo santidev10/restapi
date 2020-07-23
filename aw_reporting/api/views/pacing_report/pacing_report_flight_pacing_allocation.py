@@ -1,7 +1,6 @@
 from datetime import datetime
 from collections import namedtuple
 
-from django.utils import timezone
 from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +10,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import FlightPacingAllocation
 from aw_reporting.utils import get_dates_range
 from utils.views import get_object
+from utils.datetime import now_in_default_tz
 
 Range = namedtuple("Range", ["start", "end"])
 
@@ -28,7 +28,7 @@ class PacingReportFlightAllocationAPIView(APIView):
         return Response()
 
     def _validate(self, flight, data):
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
 
         allocations = FlightPacingAllocation.get_allocations(flight.id)
         total_allocation = sum(float(item["allocation"]) for item in data)
@@ -37,6 +37,7 @@ class PacingReportFlightAllocationAPIView(APIView):
                 f"Total allocations must be between: {self.MIN_ALLOCATION_SUM} - {self.MAX_ALLOCATION_SUM}.")
 
         with transaction.atomic():
+            all_dates_ordinal = []
             for i, updated_allocation_range in enumerate(data):
                 to_update = []
                 start_date = self._parse_date(updated_allocation_range["start"])
@@ -46,21 +47,32 @@ class PacingReportFlightAllocationAPIView(APIView):
                     raise ValidationError(f"Start date must be less than end date: {start_date} - {end_date}")
 
                 # If modifying allocations for the first time, the first date range must include today's date
-                if all(item.allocation == 100 for item in allocations.values()) and i == 0 and end_date != today:
+                if all(item.allocation == 100 for item in allocations.values()) and i == 0 and end_date < today:
                     raise ValidationError("You are trying to allocate pacing for the first time. "
                                           "Your first date range must include today's date.")
-                # Validate if trying to change past allocation
-                if end_date < today:
-                    raise ValidationError("You can not modify an allocation in a past date range.")
 
                 for date in get_dates_range(start_date, end_date):
                     try:
                         allocation_obj = allocations[date]
                     except KeyError:
                         raise ValidationError(f"Date not in flight duration: {self._format_date(date)}")
+
                     updated_allocation_range_value = float(updated_allocation_range["allocation"])
+
+                    # Validate if trying to change past allocation
+                    if updated_allocation_range_value != allocation_obj.allocation and end_date < today:
+                        raise ValidationError("You can not modify an allocation in a past date range.")
+
                     allocation_obj.allocation = updated_allocation_range_value
+
+                    # Keep track which dates are the end of ranges
+                    if date == end_date:
+                        allocation_obj.is_end = True
+                    else:
+                        allocation_obj.is_end = False
+
                     to_update.append(allocation_obj)
+                    all_dates_ordinal.append(date.toordinal())
                 try:
                     # Check if overlapping date between date ranges
                     overlap = self._get_overlap(
@@ -75,7 +87,12 @@ class PacingReportFlightAllocationAPIView(APIView):
                 except IndexError:
                     # On last date range
                     pass
-                FlightPacingAllocation.objects.bulk_update(to_update, fields=["allocation"])
+
+                # Validate that all date ranges are consecutive
+                if max(all_dates_ordinal) - min(all_dates_ordinal) != len(all_dates_ordinal) - 1:
+                    raise ValidationError("Date ranges must be consecutive.")
+
+                FlightPacingAllocation.objects.bulk_update(to_update, fields=["allocation", "is_end"])
 
             # check first and last dates
             first = self._parse_date(data[0]["start"])

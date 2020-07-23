@@ -234,7 +234,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
                 "average_cpm": 0,
                 "views": 0,
                 "monthly_views": 0,
-                "average_brand_safety_score": 0
+                "average_brand_safety_score": 0,
+                "sentiment": 0
             }
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})

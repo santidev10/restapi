@@ -102,8 +102,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             **aggregations,
         }
         s3_key = segment.get_s3_key() if s3_key is None else s3_key
-        segment.s3.export_file_to_s3(filename, s3_key)
-        download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
+        segment.s3_exporter.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+        download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
             "download_url": download_url,
@@ -136,6 +137,14 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
             else:
                 batch = [item for item in batch if item.main.id not in source_list]
         yield batch
+
+
+def get_content_disposition(segment, is_vetting=False, ext="csv"):
+    title = segment.title
+    if is_vetting is True:
+        title += " Vetted"
+    content_disposition = f"attachment;filename={title}.{ext}"
+    return content_disposition
 
 
 class MaxItemsException(Exception):
