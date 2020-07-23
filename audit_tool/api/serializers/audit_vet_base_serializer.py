@@ -21,6 +21,7 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
+    REVIEW_SCORE_THRESHOLD = 8
     data_type = None
     document_model = None
     general_data_language_field = None
@@ -251,6 +252,27 @@ class AuditVetBaseSerializer(Serializer):
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
         }
+        brand_safety_category_overall_scores = self._get_brand_safety(blacklist_categories)
+        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        general_data = self._get_general_data(task_us_data)
+        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
+
+        # Update Elasticsearch document
+        doc = self.document_model(item_id)
+        doc.populate_monetization(**self.validated_data["monetization"])
+        doc.populate_task_us_data(**task_us_data)
+        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
+        doc.populate_general_data(**general_data)
+        es_manager.upsert_sections = self.SECTIONS
+        es_manager.upsert([doc])
+
+    def _get_brand_safety(self, blacklist_categories):
+        """
+        Get updated brand safety categories based on blacklist_categories
+        If category is in blacklist_category, will have a score of 0. Else will have a score of 100
+        :param blacklist_categories: list
+        :return:
+        """
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
         reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
             [int(category) for category in blacklist_categories])
@@ -260,7 +282,14 @@ class AuditVetBaseSerializer(Serializer):
             }
             for category_id in self.all_brand_safety_category_ids
         }
-        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        return brand_safety_category_overall_scores
+
+    def _get_general_data(self, task_us_data):
+        """
+        Get updated general data based on vetted task us data
+        :param task_us_data: dict
+        :return:
+        """
         general_data = {}
         lang_code = task_us_data.get("lang_code")
         if lang_code and LANGUAGES.get(lang_code):
@@ -273,12 +302,27 @@ class AuditVetBaseSerializer(Serializer):
             general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
         else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
-        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
-        # Update Elasticsearch document
-        doc = self.document_model(item_id)
-        doc.populate_monetization(**self.validated_data["monetization"])
-        doc.populate_task_us_data(**task_us_data)
-        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
-        doc.populate_general_data(**general_data)
-        es_manager.upsert_sections = self.SECTIONS
-        es_manager.upsert([doc])
+        return general_data
+
+    def _check_review(self, brand_safety, task_us_data):
+        """
+        Determine if the vetting item should be reviewed.
+        If is pending review and vetting affirms the score, then review is complete
+        If not pending review and vetting determines opposite of system score, should be reviewed
+        :return:
+        """
+        # If being vetted by admin, review is not applied / removed
+        try:
+            if self.context["user"].has_perm():
+                pass
+        except (KeyError, AttributeError):
+            pass
+
+        if brand_safety["overall_score"] < self.REVIEW_SCORE_THRESHOLD:
+            # Vetting is setting item as safe although system scored item as not safe
+            if not task_us_data["brand_safety"]:
+                brand_safety["review"] = True
+        elif brand_safety["overall_score"] > self.REVIEW_SCORE_THRESHOLD:
+            # Vetting is setting item as not safe although system scored item as safe
+            if task_us_data["brand_safety"]:
+                brand_safety["review"] = True
