@@ -21,7 +21,7 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
-    REVIEW_SCORE_THRESHOLD = 8
+    REVIEW_SCORE_THRESHOLD = 80
     data_type = None
     document_model = None
     general_data_language_field = None
@@ -216,6 +216,7 @@ class AuditVetBaseSerializer(Serializer):
     def save_brand_safety(self, item_id):
         """
         Save brand safety categories in BlacklistItem table
+        Will rescore the video if there is a change in brand safety
         :param item_id: str -> channel or video id
         :return: list -> Brand safety category ids
         """
@@ -311,18 +312,27 @@ class AuditVetBaseSerializer(Serializer):
         If not pending review and vetting determines opposite of system score, should be reviewed
         :return:
         """
+        should_rescore = False
         # If being vetted by admin, review is not applied / removed
         try:
             if self.context["user"].has_perm():
-                pass
+                brand_safety["review"] = False
+                return
         except (KeyError, AttributeError):
             pass
 
+        # Regular vetting permissions
         if brand_safety["overall_score"] < self.REVIEW_SCORE_THRESHOLD:
             # Vetting is setting item as safe although system scored item as not safe
             if not task_us_data["brand_safety"]:
                 brand_safety["review"] = True
-        elif brand_safety["overall_score"] > self.REVIEW_SCORE_THRESHOLD:
+            # Vetting is confirming system unsafe score
+            else:
+                brand_safety["review"] = False
+        else:
             # Vetting is setting item as not safe although system scored item as safe
             if task_us_data["brand_safety"]:
                 brand_safety["review"] = True
+            # Vetting is confirming system safe score
+            else:
+                brand_safety["review"] = False
