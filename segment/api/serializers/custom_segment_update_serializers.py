@@ -11,7 +11,7 @@ from segment.models.custom_segment import CustomSegment
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.file_storage.s3_connector import delete_file
 from utils.file_storage.s3_connector import upload_file
-from segment.tasks.generate_segment import get_content_disposition
+from segment.utils.utils import get_content_disposition
 
 
 __all__ = [

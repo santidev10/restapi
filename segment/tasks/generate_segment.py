@@ -9,6 +9,7 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
+from segment.utils.utils import get_content_disposition
 from es_components.query_builder import QueryBuilder
 from elasticsearch_dsl import Q
 
@@ -137,14 +138,6 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
             else:
                 batch = [item for item in batch if item.main.id not in source_list]
         yield batch
-
-
-def get_content_disposition(segment, is_vetting=False, ext="csv"):
-    title = segment.title
-    if is_vetting is True:
-        title += " Vetted"
-    content_disposition = f"attachment;filename={title}.{ext}"
-    return content_disposition
 
 
 class MaxItemsException(Exception):
