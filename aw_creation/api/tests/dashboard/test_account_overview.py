@@ -35,6 +35,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         "cost",
         "ctr",
         "ctr_v",
+        "currency_code",
         "delivered_cost",
         "delivered_impressions",
         "delivered_video_views",

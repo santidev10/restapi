@@ -11,6 +11,7 @@ from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from aw_creation.api.serializers.common.utils import get_currency_code
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import AdGroupStatistic
@@ -122,6 +123,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             data["delivered_cost"] = self._get_client_cost(fs)
 
         self._filter_costs(data, current_user)
+        data["currency_code"] = get_currency_code(account_creation)
         return data
 
     def _filter_costs(self, data, current_user):

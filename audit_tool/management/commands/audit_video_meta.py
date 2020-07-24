@@ -101,6 +101,7 @@ class Command(BaseCommand):
     def process_audit(self, num=2000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.force_data_refresh = self.audit.params.get("force_data_refresh")
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=["started"])
@@ -257,7 +258,7 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
+            if not db_video.processed_time or self.force_data_refresh or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=["processed_time"])
