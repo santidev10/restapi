@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from aw_creation.api.serializers.common.utils import get_currency_code
 from aw_creation.models import AccountCreation
 from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.charts.dashboard_charts import Indicator
@@ -59,6 +60,9 @@ class DashboardPerformanceChartApiView(APIView):
         chart = DeliveryChart(accounts=account_ids, segmented_by="campaigns",
                               show_aw_costs=show_aw_costs, **filters)
         chart_data = chart.get_response()
+        currency_code = get_currency_code(item)
+        for chart in chart_data:
+            chart["currency_code"] = currency_code
         return Response(data=chart_data)
 
     def filter_hidden_sections(self):

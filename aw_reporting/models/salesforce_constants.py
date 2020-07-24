@@ -109,6 +109,7 @@ class SalesforceFields:
         VIDEO_VIEWS = "CPV_Units_Purchased__c"
         MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
         IAS_CAMPAIGN_NAME = "IAS_Campaign_Name__c"
+        CURRENCY_CODE = "CurrencyIsoCode"
 
     class Placement(Enum):
         AD_WORDS_PLACEMENT = "Adwords_Placement_IQ__c"

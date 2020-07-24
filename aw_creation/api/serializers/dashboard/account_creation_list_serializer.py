@@ -16,6 +16,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
 from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
+from aw_creation.api.serializers.common.utils import get_currency_code
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
@@ -114,6 +115,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     ctr = StatField()
     ctr_v = StatField()
+    currency_code = SerializerMethodField()
 
     class Meta:
         model = AccountCreation
@@ -128,6 +130,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "cost_method",
             "ctr",
             "ctr_v",
+            "currency_code",
             "end",
             "id",
             "impressions",
@@ -410,3 +413,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         else:
             status = "Not Running"
         return status
+
+    def get_currency_code(self, obj):
+        currency_code = get_currency_code(obj)
+        return currency_code
