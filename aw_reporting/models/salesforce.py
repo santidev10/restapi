@@ -229,6 +229,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     apex_deal = models.BooleanField(default=False, db_index=True)
     billing_server = models.CharField(max_length=30, null=True)
     margin_cap_required = models.BooleanField(default=False, db_index=True)
+    currency_code = models.CharField(max_length=5, null=True, db_index=True)
 
     default_thumbnail = None
 
@@ -366,6 +367,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             billing_server=data.get(Fields.BILLING_SERVER),
             margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
             ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
+            currency_code=data.get(Fields.CURRENCY_CODE, None),
         )
         if sales_email:
             res["sales_email"] = sales_email
