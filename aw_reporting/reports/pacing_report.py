@@ -1558,7 +1558,8 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend)
+            goal_type = flight_data["placement__goal_type_id"]
+            margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend, goal_type)
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
@@ -1689,10 +1690,22 @@ def create_alert(short, detail):
     return alert
 
 
-def get_daily_margin(client_rate, delivered, cost):
+def get_daily_margin(client_rate, daily_delivered, daily_cost, goal_type):
+    """
+    Calculate daily margin
+    :param client_rate: Placement CPM or CPV rate
+    :param daily_delivered: Units delivered for the day
+    :param daily_cost: Total cost of delivery for the day
+    :param goal_type: CPM or CPV goal type ID
+    :return:
+    """
     try:
-        client_cost = client_rate * delivered
-        margin = (client_cost - (delivered * cost)) / client_cost
+        if goal_type == SalesForceGoalType.CPM:
+            client_cost = client_rate * daily_delivered / 1000
+        else:
+            # CPV
+            client_cost = client_rate * daily_delivered
+        margin = (client_cost - daily_cost) / client_cost * 100
     except (TypeError, ZeroDivisionError):
         margin = 0
     return margin
