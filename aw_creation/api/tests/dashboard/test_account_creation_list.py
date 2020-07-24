@@ -52,6 +52,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "ctr",
         "ctr_v",
         "ctr_v",
+        "currency_code",
         "end",
         "id",
         "impressions",
