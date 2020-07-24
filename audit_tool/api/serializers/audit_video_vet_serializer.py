@@ -26,6 +26,10 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     segment_title = SerializerMethodField()
     url = SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.es_manager = ChannelManager(sections=[Sections.BRAND_SAFETY], upsert_sections=[])
+
     def get_url(self, doc):
         url = f"https://www.youtube.com/watch?v={doc.main.id}/"
         return url
@@ -65,7 +69,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             channel_id = self.instance.video.channel.channel_id
         except (AttributeError, AuditChannel.DoesNotExist):
             channel_id = None
-        self.save_elasticsearch(video_id, blacklist_categories, self.segment.es_manager)
+        self.save_elasticsearch(video_id, blacklist_categories, self.context["segment"].es_manager)
         if channel_id:
             self._update_channel(channel_id)
 

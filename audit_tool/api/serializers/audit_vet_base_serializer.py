@@ -26,6 +26,7 @@ class AuditVetBaseSerializer(Serializer):
     document_model = None
     general_data_language_field = None
     general_data_lang_code_field = None
+    es_manager = None
 
     SECTIONS = (
     Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
@@ -41,6 +42,7 @@ class AuditVetBaseSerializer(Serializer):
     YT_id = CharField(source="main.id", default=None)
     title = CharField(source="general_data.title", default=None)
     brand_safety = SerializerMethodField()
+    brand_safety_overall_score = IntegerField(source="brand_safety.overall_score", default=None)
     language = SerializerMethodField()
 
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -50,12 +52,8 @@ class AuditVetBaseSerializer(Serializer):
     language_code = CharField(required=False)  # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
-        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
-        try:
-            self.segment = kwargs.pop("segment", None)
-        except KeyError:
-            pass
         super().__init__(*args, **kwargs)
+        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
 
     def get_iab_categories(self, obj):
         """ Remove None values """
@@ -121,7 +119,7 @@ class AuditVetBaseSerializer(Serializer):
         Get segment title if available
         :return: None | str
         """
-        title = getattr(self.segment, "title", None)
+        title = getattr(self.context.get("segment", {}), "title", None)
         return title
 
     def validate_language_code(self, value):
@@ -249,6 +247,10 @@ class AuditVetBaseSerializer(Serializer):
         :param es_manager: BaseManager
         :return: None
         """
+        try:
+            item_overall_score = self.es_manager.get([item_id])[0].brand_safety.overall_score
+        except (IndexError, AttributeError):
+            item_overall_score = None
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
@@ -257,12 +259,13 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = self._get_general_data(task_us_data)
         task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
+        brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score)
 
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
-        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
+        doc.populate_brand_safety(categories=brand_safety_category_overall_scores, **brand_safety_limbo)
         doc.populate_general_data(**general_data)
         es_manager.upsert_sections = self.SECTIONS
         es_manager.upsert([doc], refresh=False)
@@ -305,34 +308,42 @@ class AuditVetBaseSerializer(Serializer):
             general_data["iab_categories"] = task_us_data["iab_categories"]
         return general_data
 
-    def _check_review(self, brand_safety, task_us_data):
+    def _get_brand_safety_limbo(self, task_us_data, overall_score):
         """
         Determine if the vetting item should be reviewed.
-        If is pending review and vetting affirms the score, then review is complete
-        If not pending review and vetting determines opposite of system score, should be reviewed
+        If task_us_data contains brand_safety data, then vetter has determined not safe by saving brand_safety
+        categories.
+
+        If the vetter is a vetting admin, accept vetting result as final
         :return:
         """
-        should_rescore = False
-        # If being vetted by admin, review is not applied / removed
+        limbo_data = {}
         try:
-            if self.context["user"].has_perm():
-                brand_safety["review"] = False
-                return
+            # If vetting admin, accept vetting result as final
+            if self.context["user"].has_perm("user_profile.vet_audit_admin"):
+                limbo_data["limbo_status"] = False
+                return limbo_data
         except (KeyError, AttributeError):
             pass
 
-        # Regular vetting permissions
-        if brand_safety["overall_score"] < self.REVIEW_SCORE_THRESHOLD:
-            # Vetting is setting item as safe although system scored item as not safe
-            if not task_us_data["brand_safety"]:
-                brand_safety["review"] = True
-            # Vetting is confirming system unsafe score
+        if overall_score is not None and overall_score < self.REVIEW_SCORE_THRESHOLD:
+            # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
+            if not task_us_data.get("brand_safety"):
+                limbo_data = {
+                    "limbo_status": True,
+                    "pre_limbo_score": overall_score,
+                }
             else:
-                brand_safety["review"] = False
+                # Vetting agrees with system unsafe result
+                limbo_data["limbo_status"] = False
         else:
-            # Vetting is setting item as not safe although system scored item as safe
-            if task_us_data["brand_safety"]:
-                brand_safety["review"] = True
-            # Vetting is confirming system safe score
+            # System scored as safe but vet marks as not safe
+            if task_us_data.get("brand_safety"):
+                limbo_data = {
+                    "limbo_status": True,
+                    "pre_limbo_score": overall_score,
+                }
             else:
-                brand_safety["review"] = False
+                # Vetting agrees with system safe result
+                limbo_data["limbo_status"] = False
+        return limbo_data
