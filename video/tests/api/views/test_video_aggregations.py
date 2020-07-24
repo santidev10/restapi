@@ -30,7 +30,9 @@ class VideoAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
                         "stats.channel_subscribers:max", "stats.channel_subscribers:min", "stats.last_day_views:max",
                         "stats.last_day_views:min", "stats.sentiment", "stats.views:max", "stats.views:min",
                         "task_us_data.age_group", "task_us_data.content_type", "task_us_data.content_quality",
-                        "task_us_data.gender", "task_us_data:exists", "task_us_data:missing", "captions:exists"]
+                        "task_us_data.gender", "task_us_data:exists", "task_us_data:missing", "captions:exists",
+                        "brand_safety.limbo_status:exists",
+                        ]
         manager.upsert([manager.model("test_video")], refresh="wait_for")
         params = dict(
             aggregations=",".join(aggregations)
