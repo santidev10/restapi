@@ -29,11 +29,68 @@ class Command(BaseCommand):
                                 }
                             }
                         ],
-                        "must_not": {
-                            "exists": {
-                                "field": "task_us_data.iab_categories"
+                        "must_not": [
+                            {
+                                "exists": {
+                                    "field": "task_us_data.iab_categories"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.is_safe"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.is_user_generated_content"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.scalable"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.lang_code"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.age_group"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.content_type"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.content_quality"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.gender"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.brand_safety"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.last_vetted_at"
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "task_us_data.mismatched_language"
+                                }
                             }
-                        }
+                        ]
                     }
                 },
                 "sort": {
