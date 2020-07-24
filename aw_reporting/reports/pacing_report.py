@@ -1558,10 +1558,7 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            try:
-                margin = 1 - goal_spend / actual_spend
-            except ZeroDivisionError:
-                margin = 0
+            margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend)
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
@@ -1690,3 +1687,12 @@ def create_alert(short, detail):
         "detail": detail,
     }
     return alert
+
+
+def get_daily_margin(client_rate, delivered, cost):
+    try:
+        client_cost = client_rate * delivered
+        margin = (client_cost - (delivered * cost)) / client_cost
+    except (TypeError, ZeroDivisionError):
+        margin = 0
+    return margin
