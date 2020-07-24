@@ -281,4 +281,4 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         doc.populate_general_data(**general_data)
         es_manager.upsert_sections = self.SECTIONS
-        es_manager.upsert([doc])
+        es_manager.upsert([doc], refresh=False)
