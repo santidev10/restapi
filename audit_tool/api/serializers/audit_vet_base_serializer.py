@@ -13,7 +13,6 @@ from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from es_components.constants import Sections
 
 
 class AuditVetBaseSerializer(Serializer):
@@ -21,7 +20,7 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
-    REVIEW_SCORE_THRESHOLD = 8
+    REVIEW_SCORE_THRESHOLD = 80
     data_type = None
     document_model = None
     general_data_language_field = None

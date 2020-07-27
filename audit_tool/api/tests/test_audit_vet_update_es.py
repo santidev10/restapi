@@ -387,7 +387,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_brand_safety(
             videos_scored=1,
             language="en",
-            overall_score=9,
+            overall_score=90,
             limbo_status=True,
             pre_limbo_score=9,
         )
@@ -472,7 +472,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_brand_safety(
             videos_scored=1,
             language="en",
-            overall_score=9,
+            overall_score=90,
         )
         self.channel_manager.upsert([channel])
         audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
@@ -558,7 +558,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_brand_safety(
             videos_scored=1,
             language="en",
-            overall_score=9,
+            overall_score=90,
             limbo_status=True,
         )
         self.channel_manager.upsert([channel])
