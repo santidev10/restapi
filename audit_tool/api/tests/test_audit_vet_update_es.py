@@ -33,6 +33,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     video_manager = VideoManager(sections=(Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA))
 
     def _create_audit_meta_vet(self, audit_type, item_id):
+        BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
+        BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
         audit = AuditProcessor.objects.create(audit_type=1)
         if audit_type == "channel":
             audit_item = AuditChannel.objects.create(channel_id=item_id)
@@ -371,9 +373,94 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual({"4"}, set(updated_video.task_us_data.brand_safety))
         self.assertEqual({"Scooters", "Auto Rentals", "Industries"}, set(updated_video.task_us_data.iab_categories))
 
-    def test_patch_channel_review_safe(self):
-        """ Test vetting something as safe with a bad score marks for review """
+    def test_patch_admin_channel(self, mock_generate_vetted):
+        """ Test admin vetting is final and resolves limbo_status """
         user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=1 for channels
+        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        channel = Channel(audit_item_yt_id)
+        channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
+        channel.populate_task_us_data(iab_categories=["more", "wrong"])
+        channel.populate_brand_safety(
+            videos_scored=1,
+            language="en",
+            overall_score=9,
+            limbo_status=True,
+            pre_limbo_score=9,
+        )
+        self.channel_manager.upsert([channel])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            # Saving with brand safety marks as unsafe
+            "brand_safety": [
+                1,
+            ],
+            "content_type": 1,
+            "content_quality": 1,
+            "gender": 1,
+            "iab_categories": [
+                "Auto Rentals", "Scooters", "Auto Rentals",
+            ],
+            "is_monetizable": False,
+            "language": "ja",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
+        BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch(
+                "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_channel = self.channel_manager.get([channel.main.id])[0]
+        self.assertEqual(updated_channel.brand_safety.limbo_status, False)
+
+    def test_patch_admin_video(self, mock_generate_vetted):
+        """ Test admin vetting is final and resolves limbo_status """
+        user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=0 for videos
+        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
+        video = Video(
+            main=dict(id=audit_item_yt_id),
+            brand_safety=dict(overall_score=1)
+        )
+        self.video_manager.upsert([video])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("video", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            # Saving with no brand safety marks as safe
+            "brand_safety": [],
+            "content_type": 1,
+            "content_quality": 1,
+            "gender": 1,
+            "iab_categories": [
+                "Scooters", "Auto Rentals", "Industries", "Industries"
+            ],
+            "is_monetizable": False,
+            "language": "ko",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name=f"test_category_{next(int_iterator)}"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name=f"test_category_{next(int_iterator)}"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch(
+                "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_video = self.video_manager.get([video.main.id])[0]
+        self.assertEqual(updated_video.brand_safety.limbo_status, False)
+
+    def test_patch_channel_review_safe(self, mock_generate_vetted):
+        """ Test vetting something as safe with a bad score marks for review and saves previous system score """
+        user = self.create_test_user()
+        user.add_custom_user_permission("vet_audit")
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
         CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
@@ -391,12 +478,14 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
         payload = {
             "vetting_id": vetting_item.id,
-            "age_group": 2,
+            "age_group": 1,
+            # Saving with brand safety marks as unsafe
             "brand_safety": [
                 1,
             ],
             "content_type": 1,
-            "gender": 2,
+            "content_quality": 1,
+            "gender": 1,
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
@@ -411,30 +500,32 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
             self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         updated_channel = self.channel_manager.get([channel.main.id])[0]
+        self.assertEqual(updated_channel.brand_safety.limbo_status, True)
+        self.assertEqual(updated_channel.brand_safety.pre_limbo_score, updated_channel.brand_safety.overall_score)
 
-    def test_patch_channel_review_unsafe(self):
-        """ Test vetting something as unsafe with a good score marks for review """
-        """ Test vetting updates brand safety and iab categories with no duplicates """
-        user = self.create_admin_user()
+    def test_patch_video_review_unsafe(self, mock_generate_vetted):
+        """ Test vetting something as safe with an unsafe score marks for review and saves previous system score """
+        user = self.create_test_user()
         audit = AuditProcessor.objects.create(audit_type=1)
+        user.add_custom_user_permission("vet_audit")
         # CustomSegment segment_type=0 for videos
         CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
-        video = Video(dict(
+        video = Video(
             main=dict(id=audit_item_yt_id),
-            brand_safety=dict(overall_score=9)
-        ))
+            brand_safety=dict(overall_score=1)
+        )
         self.video_manager.upsert([video])
         audit_item, _, vetting_item = self._create_audit_meta_vet("video", audit_item_yt_id)
         payload = {
             "vetting_id": vetting_item.id,
             "age_group": 1,
-            "brand_safety": [
-                4,
-            ],
+            # Saving with no brand safety marks as safe
+            "brand_safety": [],
             "content_type": 1,
-            "gender": 2,
+            "content_quality": 1,
+            "gender": 1,
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
@@ -442,13 +533,96 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "language": "ko",
             "suitable": True
         }
-        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_1"))
-        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_2"))
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name=f"test_category_{next(int_iterator)}"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name=f"test_category_{next(int_iterator)}"))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch(
                 "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
             self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-        # Vetted brand safety changes should trigger rescore
-        mock_update_brand_safety.assert_called_once()
         updated_video = self.video_manager.get([video.main.id])[0]
+        self.assertEqual(updated_video.brand_safety.limbo_status, True)
+        self.assertEqual(updated_video.brand_safety.overall_score, video.brand_safety.overall_score)
+
+    def test_patch_channel_confirm_safe(self, mock_generate_vetted):
+        """ Test vetting confirm as safe with safe score removes review status by saving limbo_status = False"""
+        user = self.create_test_user()
+        user.add_custom_user_permission("vet_audit")
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=1 for channels
+        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        channel = Channel(audit_item_yt_id)
+        channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
+        channel.populate_task_us_data(iab_categories=["more", "wrong"])
+        channel.populate_brand_safety(
+            videos_scored=1,
+            language="en",
+            overall_score=9,
+            limbo_status=True,
+        )
+        self.channel_manager.upsert([channel])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            # Saving with no brand safety marks as safe
+            "brand_safety": [],
+            "content_type": 1,
+            "content_quality": 1,
+            "gender": 1,
+            "iab_categories": [
+                "Auto Rentals", "Scooters", "Auto Rentals",
+            ],
+            "is_monetizable": False,
+            "language": "ja",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
+        BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch(
+                "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_channel = self.channel_manager.get([channel.main.id])[0]
+        self.assertEqual(updated_channel.brand_safety.limbo_status, False)
+
+    def test_patch_video_confirms_unsafe(self, mock_generate_vetted):
+        """ Test vetting confirms as unsafe with unsafe score removes review status by saving limbo_status = False"""
+        user = self.create_test_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        user.add_custom_user_permission("vet_audit")
+        # CustomSegment segment_type=0 for videos
+        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
+        video = Video(
+            main=dict(id=audit_item_yt_id),
+            brand_safety=dict(overall_score=1, limbo_status=True)
+        )
+        self.video_manager.upsert([video])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("video", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            # Saving with brand safety marks as unsafe
+            "brand_safety": [1],
+            "content_type": 1,
+            "content_quality": 1,
+            "gender": 1,
+            "iab_categories": [
+                "Scooters", "Auto Rentals", "Industries", "Industries"
+            ],
+            "is_monetizable": False,
+            "language": "ko",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name=f"test_category_{next(int_iterator)}"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name=f"test_category_{next(int_iterator)}"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch(
+                "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_video = self.video_manager.get([video.main.id])[0]
+        self.assertEqual(updated_video.brand_safety.limbo_status, False)
 

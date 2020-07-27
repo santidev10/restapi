@@ -21,15 +21,12 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
-    REVIEW_SCORE_THRESHOLD = 80
+    REVIEW_SCORE_THRESHOLD = 8
     data_type = None
     document_model = None
     general_data_language_field = None
     general_data_lang_code_field = None
     es_manager = None
-
-    SECTIONS = (
-    Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
@@ -239,7 +236,7 @@ class AuditVetBaseSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories, es_manager):
+    def save_elasticsearch(self, item_id, blacklist_categories):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -267,8 +264,7 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores, **brand_safety_limbo)
         doc.populate_general_data(**general_data)
-        es_manager.upsert_sections = self.SECTIONS
-        es_manager.upsert([doc], refresh=False)
+        self.es_manager.upsert([doc], refresh=False)
 
     def _get_brand_safety(self, blacklist_categories):
         """
@@ -325,25 +321,29 @@ class AuditVetBaseSerializer(Serializer):
                 return limbo_data
         except (KeyError, AttributeError):
             pass
-
-        if overall_score is not None and overall_score < self.REVIEW_SCORE_THRESHOLD:
-            # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
-            if not task_us_data.get("brand_safety"):
-                limbo_data = {
-                    "limbo_status": True,
-                    "pre_limbo_score": overall_score,
-                }
+        # brand safety may be saved as [None]
+        safe = all(item is None for item in task_us_data.get("brand_safety"))
+        try:
+            if overall_score < self.REVIEW_SCORE_THRESHOLD:
+                # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
+                if safe:
+                    limbo_data = {
+                        "limbo_status": True,
+                        "pre_limbo_score": overall_score,
+                    }
+                else:
+                    # Vetting agrees with system unsafe result
+                    limbo_data["limbo_status"] = False
             else:
-                # Vetting agrees with system unsafe result
-                limbo_data["limbo_status"] = False
-        else:
-            # System scored as safe but vet marks as not safe
-            if task_us_data.get("brand_safety"):
-                limbo_data = {
-                    "limbo_status": True,
-                    "pre_limbo_score": overall_score,
-                }
-            else:
-                # Vetting agrees with system safe result
-                limbo_data["limbo_status"] = False
+                # System scored as safe but vet marks as not safe
+                if not safe:
+                    limbo_data = {
+                        "limbo_status": True,
+                        "pre_limbo_score": overall_score,
+                    }
+                else:
+                    # Vetting agrees with system safe result
+                    limbo_data["limbo_status"] = False
+        except TypeError:
+            pass
         return limbo_data
