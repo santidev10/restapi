@@ -19,11 +19,12 @@ logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_without_campaigns"
 MAX_TASK_COUNT = 50
+LOCK_TIMEOUT = 3600 * 8
 
 
 @celery_app.task
 def setup_update_without_campaigns():
-    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60 * 4).acquire(blocking=False)
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, LOCK_TIMEOUT).acquire(blocking=False)
     if is_acquired:
         setup_cid_update_tasks.delay()
 
