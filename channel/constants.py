@@ -1,7 +1,7 @@
 TERMS_FILTER = ("general_data.country_code", "general_data.top_lang_code", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "main.id", "general_data.iab_categories",
                 "custom_properties.is_tracked", "task_us_data.age_group", "task_us_data.content_type",
-                "task_us_data.gender")
+                "task_us_data.gender", "task_us_data.content_quality")
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
