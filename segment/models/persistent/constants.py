@@ -295,7 +295,7 @@ CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "ge
                                                 "stats.last_30day_subscribers", "stats.subscribers",
                                                 "stats.observed_videos_likes", "general_data.top_lang_code",
                                                 "stats.total_videos_count",)
-VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "general_data.iab_categories", "stats.likes",
+VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.iab_categories", "stats.likes",
                                               "stats.dislikes", "general_data.category", "general_data.lang_code",)
 
 YT_GENRE_CHANNELS = {

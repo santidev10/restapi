@@ -42,7 +42,7 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
             channel = Channel(channel_id)
             channel.populate_general_data(
                 title=f"channel title {channel_id}",
-                country="country",
+                country_code="US",
                 iab_categories="category",
                 emails=[f"channel_{channel_id}@mail.com", ],
             )
