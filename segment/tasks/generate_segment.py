@@ -15,6 +15,7 @@ from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
+SOURCE_SIZE_GET_LIMIT = 10000
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             options = default_search_config["options"]
         try:
             # Use query by ids along with filters to avoid requesting entire database with bulk_search
-            if source_list and len(source_list) <= segment.config.LIST_SIZE:
+            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
                 ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
                 full_query = Q(query) + ids_query
                 es_generator = segment.es_manager.search(query=full_query.to_dict())
