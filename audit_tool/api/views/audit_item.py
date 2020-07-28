@@ -47,7 +47,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
         validate_fields(self.REQUIRED_FIELDS, list(data.keys()))
         data["lang_code"] = data["language"]
         es_manager, serializer = self._get_config(doc_id, sections=[Sections.TASK_US_DATA])
-        serializer = serializer(data=data)
+        serializer = serializer(data=data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
         brand_safety = serializer.save_brand_safety(doc_id)
         serializer.save_elasticsearch(doc_id, brand_safety, es_manager)

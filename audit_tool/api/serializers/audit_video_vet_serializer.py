@@ -7,7 +7,7 @@ from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.video_discovery import video_update
 from es_components.constants import Sections
-from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
 
@@ -24,6 +24,11 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     vetting_history = SerializerMethodField()
     segment_title = SerializerMethodField()
     url = SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.es_manager = VideoManager((Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION,
+                                        Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
 
     def get_url(self, doc):
         url = f"https://www.youtube.com/watch?v={doc.main.id}/"
@@ -64,7 +69,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             channel_id = self.instance.video.channel.channel_id
         except (AttributeError, AuditChannel.DoesNotExist):
             channel_id = None
-        self.save_elasticsearch(video_id, blacklist_categories, self.segment.es_manager)
+        self.save_elasticsearch(video_id, blacklist_categories)
         if channel_id:
             self._update_channel(channel_id)
 

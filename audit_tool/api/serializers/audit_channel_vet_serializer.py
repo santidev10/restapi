@@ -7,6 +7,7 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.channel_update import channel_update
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.query_builder import QueryBuilder
@@ -28,6 +29,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     def __init__(self, *args, **kwargs):
         super(AuditChannelVetSerializer, self).__init__(*args, **kwargs)
         self.has_vetting_history = None
+        self.es_manager = ChannelManager((Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION,
+                                          Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
 
     def get_url(self, doc):
         url = f"https://www.youtube.com/channel/{doc.main.id}/"
@@ -72,7 +75,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
             channel_meta = None
         self._save_vetting_item(channel_meta, channel_id)
         blacklist_categories = self.save_brand_safety(channel_id)
-        self.save_elasticsearch(channel_id, blacklist_categories, self.segment.es_manager)
+        self.save_elasticsearch(channel_id, blacklist_categories)
         self._update_videos(channel_id)
 
     def _save_vetting_item(self, channel_meta, channel_id):
