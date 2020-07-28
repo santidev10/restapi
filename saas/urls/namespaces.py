@@ -15,3 +15,5 @@ class Namespace:
     DOCUMENTATION = "documentation"
     HEALTHCHECK = "healthcheck"
     TRANSCRIPTS = "transcripts"
+    DASHBOARD = "dashboard"
+
