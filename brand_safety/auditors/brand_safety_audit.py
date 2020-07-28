@@ -55,13 +55,14 @@ class BrandSafetyAudit(object):
     batch_counter = 0
 
     def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True,
-                 score_only=False, **kwargs):
+                 ignore_blacklist_data=False, score_only=False, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
         """
         self.ignore_vetted_channels = ignore_vetted_channels
         self.ignore_vetted_videos = ignore_vetted_videos
+        self.ignore_blacklist_data = ignore_blacklist_data
         self.audit_utils = AuditUtils()
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
@@ -120,7 +121,9 @@ class BrandSafetyAudit(object):
                 video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
                 channel["video_audits"] = video_audits
 
-                channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {})
+                channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {}) \
+                    if not self.ignore_blacklist_data \
+                    else {}
                 channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
 
                 curr_batch_video_audits.extend(video_audits)
@@ -255,7 +258,7 @@ class BrandSafetyAudit(object):
                 # Channel not scored
                 audit = None
         else:
-            if blacklist_data is None:
+            if blacklist_data is None and not self.ignore_blacklist_data:
                 try:
                     blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
                 except (IndexError, AttributeError):
