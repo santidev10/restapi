@@ -1,6 +1,7 @@
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 
@@ -18,11 +19,13 @@ class ChannelGroupParamAdapter:
 
 
 class VettedParamsAdapter:
-    parameters = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
+    parameters = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender",
+                  "task_us_data.content_quality"]
     mappings = {
         "task_us_data.age_group": AuditAgeGroup.to_id,
         "task_us_data.content_type": AuditContentType.to_id,
-        "task_us_data.gender": AuditGender.to_id
+        "task_us_data.gender": AuditGender.to_id,
+        "task_us_data.content_quality": AuditContentQuality.to_id,
     }
 
     def adapt(self, query_params):
