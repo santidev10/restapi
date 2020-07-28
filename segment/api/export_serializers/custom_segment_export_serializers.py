@@ -11,15 +11,8 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import FloatField
 
-from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
-from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
-
-
-__all__ = [
-    "CustomSegmentChannelExportSerializer",
-    "CustomSegmentVideoExportSerializer",
-    "CustomSegmentChannelWithMonetizationExportSerializer",
-]
+from .segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
+from .segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
 class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):

@@ -1,8 +1,8 @@
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import SerializerMethodField
 
-from segment.api.serializers import CustomSegmentChannelWithMonetizationExportSerializer
-from segment.api.serializers import CustomSegmentVideoExportSerializer
+from .custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
+from .custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 
 
 __all__ = [
