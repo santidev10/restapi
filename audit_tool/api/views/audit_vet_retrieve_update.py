@@ -142,7 +142,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                 raise MissingItemException(next_item.id)
             segment.es_manager.sections = self.ES_SECTIONS
             response = self._get_document(segment.es_manager, item_id, next_item.id)
-            data = segment.audit_utils.serializer(response, segment=segment).data
+            data = segment.audit_utils.serializer(response, context={"segment": segment}).data
             data["vetting_id"] = next_item.id
             if response:
                 data["title"] = response.general_data.title
