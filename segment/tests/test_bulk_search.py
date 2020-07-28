@@ -17,8 +17,6 @@ from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.models.video import VideoSectionBrandSafety
 from es_components.query_builder import QueryBuilder
 from es_components.tests.utils import ESTestCase
-from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
-from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.utils.bulk_search import bulk_search
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -89,8 +87,7 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
             return video
 
         def test_model(model_class: Union[Type[Channel], Type[Video]], populate: callable,
-                       manager_class: Union[Type[ChannelManager], Type[VideoManager]], sort: list, cursor_field: str,
-                       source: list):
+                       manager_class: Union[Type[ChannelManager], Type[VideoManager]], sort: list, cursor_field: str):
             """
             Test the bulk_search method with the specified model class
             (currently Channels or Videos)
@@ -118,13 +115,13 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
                 .field("brand_safety.overall_score").gte(5).get()
             with_exclusions = []
             for batch in bulk_search(model=model_class, query=query, sort=sort, cursor_field=cursor_field, options=None,
-                                     batch_size=1000, source=source, include_cursor_exclusions=True):
+                                     batch_size=1000, include_cursor_exclusions=True):
                 for item in batch:
                     with_exclusions.append(item)
 
             without_exclusions = []
             for batch in bulk_search(model=model_class, query=query, sort=sort, cursor_field=cursor_field, options=None,
-                                     batch_size=1000, source=source, include_cursor_exclusions=False):
+                                     batch_size=1000, include_cursor_exclusions=False):
                 for item in batch:
                     without_exclusions.append(item)
 
@@ -148,14 +145,12 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
                     SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}
                 }],
                 "cursor_field": SUBSCRIBERS_FIELD,
-                "source": CHANNEL_SOURCE_FIELDS,
             },
             Video: {
                 "populate": make_populated_video,
                 "manager": VideoManager,
                 "sort": [{VIEWS_FIELD: {"order": SortDirections.DESCENDING}}],
                 "cursor_field": VIEWS_FIELD,
-                "source": VIDEO_SOURCE_FIELDS,
             }
         }
 
@@ -166,5 +161,4 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
                 populate=model_map[model]["populate"],
                 sort=model_map[model]["sort"],
                 cursor_field=model_map[model]["cursor_field"],
-                source=model_map[model]["source"]
             )
