@@ -16,8 +16,6 @@ from django.db.models import UUIDField
 from django.utils import timezone
 
 from audit_tool.models import AuditCategory
-from segment.models.constants import ChannelConfig
-from segment.models.constants import VideoConfig
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
@@ -60,17 +58,6 @@ class BasePersistentSegment(Timestampable):
     class Meta:
         abstract = True
         ordering = ["pk"]
-
-    @property
-    def config(self):
-        try:
-            self._config
-        except AttributeError:
-            if self.segment_type == 0:
-                self._config = VideoConfig
-            else:
-                self._config = ChannelConfig
-        return self._config
 
     @property
     def s3(self):
