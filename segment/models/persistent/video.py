@@ -8,6 +8,7 @@ from es_components.constants import Sections
 from es_components.managers import VideoManager
 from segment.api.export_serializers import PersistentSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
+from segment.models.constants import VideoConfig
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -29,6 +30,10 @@ class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     @property
     def export_serializer(self):
         return PersistentSegmentVideoExportSerializer
+
+    @property
+    def config(self):
+        return VideoConfig
 
     def get_export_columns(self):
         if self.category == "whitelist":

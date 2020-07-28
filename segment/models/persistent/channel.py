@@ -6,8 +6,9 @@ from django.db.models import ForeignKey
 
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from segment.models.segment_mixin import SegmentMixin
 from segment.api.export_serializers import PersistentSegmentChannelExportSerializer
+from segment.models.segment_mixin import SegmentMixin
+from segment.models.constants import ChannelConfig
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -28,6 +29,10 @@ class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     @property
     def export_serializer(self):
         return PersistentSegmentChannelExportSerializer
+
+    @property
+    def config(self):
+        return ChannelConfig
 
     def get_export_columns(self):
         if self.category == "whitelist":
