@@ -44,7 +44,7 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
         pass
 
     def _update_content_disposition(self, segment):
-        s3 = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        s3 = SegmentExporter(segment, bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         try:
             key = segment.get_s3_key()
             content_disposition = get_content_disposition(segment)
