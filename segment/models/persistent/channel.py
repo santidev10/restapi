@@ -4,14 +4,10 @@ PersistentSegmentChannel models module
 from django.db.models import CASCADE
 from django.db.models import ForeignKey
 
-from aw_reporting.models import YTChannelStatistic
-from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
-from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
-from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
-from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
+from segment.api.export_serializers import PersistentSegmentChannelExportSerializer
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -21,19 +17,17 @@ from .constants import PersistentSegmentType
 
 class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
-    SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
-    SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
     segment_type = PersistentSegmentType.CHANNEL
-    serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
-    related_aw_statistics_model = YTChannelStatistic
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+    @property
+    def es_manager(self):
+        es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        return es_manager
 
-    def get_es_manager(self):
-        raise NotImplementedError
+    @property
+    def export_serializer(self):
+        return PersistentSegmentChannelExportSerializer
 
     def get_export_columns(self):
         if self.category == "whitelist":

@@ -277,8 +277,8 @@ class SegmentListGenerator:
         if query is None:
             query = segment.get_segment_items_query()
         if size is None:
-            size = segment.LIST_SIZE
-        search_with_params = segment.generate_search_with_params(query=query, sort=segment.SORT_KEY)
+            size = segment.config.LIST_SIZE
+        search_with_params = segment.generate_search_with_params(query=query, sort=segment.config.SORT_KEY)
         for doc in search_with_params.scan():
             all_items.append(doc)
             if len(all_items) >= size:

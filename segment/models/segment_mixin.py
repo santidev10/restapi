@@ -3,7 +3,6 @@ import time
 from es_components.constants import SEGMENTS_UUID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from segment.models.utils.calculate_segment_statistics import calculate_statistics
 
 
 class SegmentMixin:
@@ -11,7 +10,7 @@ class SegmentMixin:
     Mixin methods for segment models
     Expected attributes and methods on models used in mixin:
     Attributes:
-        related_aw_statistics_model, uuid
+        uuid
     Methods:
         get_s3_key, get_es_manager,
 
@@ -25,15 +24,6 @@ class SegmentMixin:
     def get_queryset(self, query=None, sort=None):
         scan = self.generate_search_with_params(query=query, sort=sort).scan()
         return scan
-
-    def calculate_statistics(self, items=None):
-        """
-        Aggregate statistics
-        :param items_count: int
-        :return:
-        """
-        statistics = calculate_statistics(self, items=items)
-        return statistics
 
     @staticmethod
     def extract_aggregations(aggregation_result_dict):

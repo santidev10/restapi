@@ -5,6 +5,7 @@ from pid.decorator import pidfile
 
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
+from segment.models.utils.calculate_segment_statistics import calculate_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,12 @@ class Command(BaseCommand):
 
         # Channels
         for segment in PersistentSegmentChannel.objects.all():
-            segment.details = segment.calculate_statistics()
+            segment.details = calculate_statistics(segment)
             segment.save()
 
         # Videos
         for segment in PersistentSegmentVideo.objects.all():
-            segment.details = segment.calculate_statistics()
+            segment.details = calculate_statistics(segment)
             segment.save()
 
         logger.info("Finish")

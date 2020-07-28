@@ -22,7 +22,7 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
         segment = self.get_object()
         if segment.audit_id:
             raise ValidationError("Vetted lists can not be deleted.")
-        segment.delete_export()
+        segment.s3.delete_export()
         return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):

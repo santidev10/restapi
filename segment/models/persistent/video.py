@@ -4,13 +4,9 @@ PersistentSegmentVideo models module
 from django.db.models import CASCADE
 from django.db.models import ForeignKey
 
-from aw_reporting.models import YTVideoStatistic
 from es_components.constants import Sections
-from es_components.constants import SortDirections
-from es_components.constants import VIEWS_FIELD
 from es_components.managers import VideoManager
-from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentVideoExportSerializer
-from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
+from segment.api.export_serializers import PersistentSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
@@ -22,19 +18,17 @@ from .constants import PersistentSegmentType
 
 class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
-    SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
-    SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
     segment_type = PersistentSegmentType.VIDEO
-    serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()
-    related_aw_statistics_model = YTVideoStatistic
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+    @property
+    def es_manager(self):
+        es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        return es_manager
 
-    def get_es_manager(self):
-        raise NotImplementedError
+    @property
+    def export_serializer(self):
+        return PersistentSegmentVideoExportSerializer
 
     def get_export_columns(self):
         if self.category == "whitelist":

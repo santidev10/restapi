@@ -65,12 +65,12 @@ class BrandSafetyListExportAPIViewTestCase(ExtendedAPITestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         s3_key = segment.get_s3_key()
         s3_obj = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, s3_key)
-        file = BytesIO(",".join(segment.serializer.columns).encode("utf-8"))
+        file = BytesIO(",".join(segment.export_serializer.columns).encode("utf-8"))
         file.seek(0)
         s3_obj.put(Body=file)
         response = self.client.get(self._get_url("channel", segment.id) + "?is_master=false")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.serializer.columns))
+        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.export_serializer.columns))
 
     @mock_s3
     def test_non_master_video_success(self):
@@ -80,9 +80,9 @@ class BrandSafetyListExportAPIViewTestCase(ExtendedAPITestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         s3_key = segment.get_s3_key()
         s3_obj = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, s3_key)
-        file = BytesIO(",".join(segment.serializer.columns).encode("utf-8"))
+        file = BytesIO(",".join(segment.export_serializer.columns).encode("utf-8"))
         file.seek(0)
         s3_obj.put(Body=file)
         response = self.client.get(self._get_url("video", segment.id) + "?is_master=false")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.serializer.columns))
+        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.export_serializer.columns))

@@ -9,6 +9,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
 from audit_tool.tasks.generate_audit_items import generate_audit_items
 from segment.models import CustomSegment
+from segment.models.utils.segment_exporter import SegmentExporter
 from utils.unittests.int_iterator import int_iterator
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
@@ -28,7 +29,7 @@ class GenerateAuditItemsTestCase(TestCase):
         AuditChannel.objects.bulk_create(audit_items)
 
         with patch.object(YoutubeAPIConnector, "_YoutubeAPIConnector__execute_call") as mock_connector, \
-            patch.object(CustomSegment, "get_extract_export_ids", return_value=audit_item_ids), \
+            patch.object(SegmentExporter, "get_extract_export_ids", return_value=audit_item_ids), \
             patch("audit_tool.segment_audit_generator.safe_bulk_create", side_effect=self._bulk_create):
             mock_connector.side_effect = YoutubeAPIConnectorException
             generate_audit_items.delay(segment.id, data_field="channel")
@@ -44,7 +45,7 @@ class GenerateAuditItemsTestCase(TestCase):
         AuditVideo.objects.bulk_create(audit_items)
 
         with patch.object(YoutubeAPIConnector, "_YoutubeAPIConnector__execute_call") as mock_connector, \
-            patch.object(CustomSegment, "get_extract_export_ids", return_value=audit_item_ids), \
+            patch.object(SegmentExporter, "get_extract_export_ids", return_value=audit_item_ids), \
             patch("audit_tool.segment_audit_generator.safe_bulk_create", side_effect=self._bulk_create):
             mock_connector.side_effect = YoutubeAPIConnectorException
             generate_audit_items.delay(segment.id, data_field="video")

@@ -321,13 +321,13 @@ class AuditSaveApiView(APIView):
         if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:
             raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
-            "audit_type": segment.audit_type,
+            "audit_type": segment.config.AUDIT_TYPE,
             "source": 1,
         })
         if created:
             segment.audit_id = audit.id
             segment.save()
-            generate_audit_items.delay(segment.id, data_field=segment.data_field)
+            generate_audit_items.delay(segment.id, data_field=segment.config.DATA_FIELD)
             if not audit.completed:
                 audit.completed = timezone.now()
                 audit.save(update_fields=["completed"])
