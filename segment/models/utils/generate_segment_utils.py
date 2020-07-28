@@ -10,27 +10,17 @@ from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
-from segment.api.serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers import CustomSegmentChannelWithMonetizationExportSerializer
-from segment.api.serializers import CustomSegmentVideoExportSerializer
-from segment.api.serializers import CustomSegmentChannelVettedExportSerializer
-from segment.api.serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
 
 
 class GenerateSegmentUtils:
     _default_context = None
-    _vetting = False
     segment = None
 
     def __init__(self, segment):
         self.segment_type = None
         self.segment = segment
-
-    def set_vetting(self, vetting):
-        """ Set vetting flag """
-        self._vetting = vetting
 
     @staticmethod
     def get_vetting_data(segment, item_ids):
@@ -106,12 +96,12 @@ class GenerateSegmentUtils:
     def write_to_file(self, items, filename, segment, serializer_context, aggregations, write_header=False, mode="a"):
         """ Write data to csv file """
         rows = []
-        fieldnames = self.serializer.columns
+        fieldnames = segment.export_serializer.columns
         for item in items:
             # YT_GENRE_CHANNELS have no data and should not be on any export
             if item.main.id in YT_GENRE_CHANNELS:
                 continue
-            row = self.serializer(item, context=serializer_context).data
+            row = segment.export_serializer(item, context=serializer_context).data
             rows.append(row)
         with open(filename, mode=mode, newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
@@ -168,32 +158,3 @@ class GenerateSegmentUtils:
         """ Create set of source list urls from segment export file """
         source_ids = set(segment.s3.get_extract_export_ids(segment.source.filename))
         return source_ids
-
-    @property
-    def serializer(self):
-        """ Get export serializer depending on channel or video segment """
-        if self.segment.segment_type in (0, "video"):
-            serializer = self._get_video_serializer()
-        else:
-            serializer = self._get_channel_serializer()
-        return serializer
-
-    def _get_video_serializer(self):
-        """ Get video export serializer depending on vetting """
-        if self._vetting is True:
-            serializer = CustomSegmentVideoVettedExportSerializer
-        else:
-            serializer = CustomSegmentVideoExportSerializer
-        return serializer
-
-    def _get_channel_serializer(self):
-        """ Get channel export serializer depending on vetting and segment owner permissions """
-        if self._vetting is True:
-            serializer = CustomSegmentChannelVettedExportSerializer
-        else:
-            owner = getattr(self.segment, "owner", None)
-            if owner and owner.has_perm("userprofile.monetization_filter"):
-                serializer = CustomSegmentChannelWithMonetizationExportSerializer
-            else:
-                serializer = CustomSegmentChannelExportSerializer
-        return serializer

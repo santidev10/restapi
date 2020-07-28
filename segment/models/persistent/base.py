@@ -61,13 +61,12 @@ class BasePersistentSegment(Timestampable):
         abstract = True
         ordering = ["pk"]
 
-    def __getattr__(self, item):
-        return self.config[item]
-
     @property
     def config(self):
-        if not getattr(self, "_config"):
-            if self.segment_type == "video":
+        try:
+            self._config
+        except AttributeError:
+            if self.segment_type == 0:
                 self._config = VideoConfig
             else:
                 self._config = ChannelConfig
@@ -75,7 +74,9 @@ class BasePersistentSegment(Timestampable):
 
     @property
     def s3(self):
-        if not getattr(self, "_s3"):
+        try:
+            self._s3
+        except AttributeError:
             self._s3 = SegmentExporter(self, bucket_name=settings.AMAZON_S3_BUCKET_NAME)
         return self._s3
 
@@ -98,9 +99,6 @@ class BasePersistentSegment(Timestampable):
     def audit_category(self, audit_category):
         if audit_category and audit_category.id:
             self.audit_category_id = audit_category.id
-
-    def get_es_manager(self):
-        raise NotImplementedError
 
     # pylint: disable=signature-differs
     def delete(self, *args, **kwargs):

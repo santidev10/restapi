@@ -34,10 +34,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :return:
     """
     generate_utils = GenerateSegmentUtils(segment)
-    # Set generate_utils serializer to vetting serializer. Segment is_vetting set as True should only be True if
-    # segment owner has proper vetting permissions
-    if getattr(segment, "is_vetting", False):
-        generate_utils.set_vetting(True)
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.default_serialization_context
     source_list = None
@@ -104,8 +100,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         }
         s3_key = segment.get_s3_key() if s3_key is None else s3_key
         content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
-        segment.s3_exporter.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
-        download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+        download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
             "download_url": download_url,

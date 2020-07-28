@@ -6,6 +6,7 @@ from django.db.models import ForeignKey
 
 from es_components.constants import Sections
 from es_components.managers import VideoManager
+from segment.api.export_serializers import PersistentSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
@@ -20,12 +21,14 @@ class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
     objects = PersistentSegmentManager()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+    @property
+    def es_manager(self):
+        es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        return es_manager
 
-    def get_es_manager(self):
-        raise NotImplementedError
+    @property
+    def export_serializer(self):
+        return PersistentSegmentVideoExportSerializer
 
     def get_export_columns(self):
         if self.category == "whitelist":

@@ -18,6 +18,11 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from segment.api.export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
+from segment.api.export_serializers import CustomSegmentVideoExportSerializer
+from segment.api.export_serializers import CustomSegmentChannelVettedExportSerializer
+from segment.api.export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
 from segment.models.constants import VideoConfig
@@ -73,6 +78,35 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
+
+    @property
+    def export_serializer(self):
+        """ Get export serializer depending on channel or video segment """
+        if self.segment_type in (0, "video"):
+            serializer = self._get_video_serializer()
+        else:
+            serializer = self._get_channel_serializer()
+        return serializer
+
+    def _get_video_serializer(self):
+        """ Get video export serializer depending on vetting """
+        if self.is_vetting is True:
+            serializer = CustomSegmentVideoVettedExportSerializer
+        else:
+            serializer = CustomSegmentVideoExportSerializer
+        return serializer
+
+    def _get_channel_serializer(self):
+        """ Get channel export serializer depending on vetting and segment owner permissions """
+        if self.is_vetting is True:
+            serializer = CustomSegmentChannelVettedExportSerializer
+        else:
+            owner = getattr(self, "owner", None)
+            if owner and owner.has_perm("userprofile.monetization_filter"):
+                serializer = CustomSegmentChannelWithMonetizationExportSerializer
+            else:
+                serializer = CustomSegmentChannelExportSerializer
+        return serializer
 
     @property
     def config(self):

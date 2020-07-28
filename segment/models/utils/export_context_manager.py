@@ -19,11 +19,11 @@ class ExportContextManager(object):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
 
         with open(self.filename, mode="w+", newline="") as export_file:
-            field_names = self.segment.serializer.columns
+            field_names = self.segment.export_serializer.columns
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()
             for item in self.queryset:
-                row = self.segment.serializer(item).data
+                row = self.segment.export_serializer(item).data
                 writer.writerow(row)
         return self.filename
 
