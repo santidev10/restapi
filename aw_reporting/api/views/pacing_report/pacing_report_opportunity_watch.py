@@ -2,9 +2,10 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import Opportunity
+from dashboard.models import OpportunityWatch
 from utils.views import get_object
 
 
@@ -14,8 +15,14 @@ class PacingReportOpportunityWatchAPIView(APIView):
     def patch(self, request, *args, **kwargs):
         opportunity = get_object(Opportunity, id=kwargs["pk"])
         user = request.user
-        if user.opportunities.count() >= self.MAX_WATCH:
+        if OpportunityWatch.objects.filter(user=user).count() >= self.MAX_WATCH:
             raise ValidationError(f"You may only watch a max of {self.MAX_WATCH} opportunities.")
         else:
-            user.opportunities.add(opportunity)
-        return Response(data=HTTP_204_NO_CONTENT)
+            OpportunityWatch.objects.create(user=user, opportunity=opportunity)
+        return Response(status=HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        opportunity = get_object(Opportunity, id=kwargs["pk"])
+        user = request.user
+        OpportunityWatch.objects.filter(user=user, opportunity=opportunity).delete()
+        return Response(status=HTTP_200_OK)
