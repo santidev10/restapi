@@ -386,11 +386,12 @@ class BrandSafetyAudit(object):
                 logger.error(f"Missed video: {video}")
 
         # Set reference to blacklist items for all processes to share
-        blacklist_videos = BlacklistItem.get(video_ids, 0)
-        blacklist_channels = BlacklistItem.get(channel_ids, 1)
+        if not self.ignore_blacklist_data:
+            blacklist_videos = BlacklistItem.get(video_ids, 0)
+            blacklist_channels = BlacklistItem.get(channel_ids, 1)
 
-        for item in blacklist_channels + blacklist_videos:
-            self.blacklist_data_ref[item.item_id] = item.blacklist_category
+            for item in blacklist_channels + blacklist_videos:
+                self.blacklist_data_ref[item.item_id] = item.blacklist_category
 
         return list(channel_data.values())
 
