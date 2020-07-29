@@ -16,14 +16,13 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         return url
 
     def test_watch_success(self):
-        """ Test user can not watch more than max allowed """
         user = self.create_admin_user()
         op = Opportunity.objects.create(id=f"id_{next(int_iterator)}")
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 0)
         response = self.client.patch(self._get_url(op.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 1)
-        self.assertEqual(OpportunityWatch.objects.filter(user=user).first().id, op.id)
+        self.assertEqual(OpportunityWatch.objects.filter(user=user).first().opportunity.id, op.id)
 
     def test_max_watch_opportunity(self):
         """ Test user can not watch more than max allowed """
