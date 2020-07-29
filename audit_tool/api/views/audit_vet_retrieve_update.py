@@ -80,7 +80,11 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             # Rename field for validation since language is used as SerializerMethodField for Elasticsearch
             # serialization and SerializerMethodField is read only
             data["lang_code"] = data.pop("language")
-            serializer = segment.audit_utils.serializer(vetting_item, data=data, segment=segment)
+            context = {
+                "user": request.user,
+                "segment": segment,
+            }
+            serializer = segment.audit_utils.serializer(vetting_item, data=data, context=context)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             res = serializer.validated_data
@@ -127,7 +131,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         :return: dict | str
         """
         # id_key = video.video_id, channel.channel_id
-        id_key = segment.data_field + "." + segment.data_field + "_id"
+        id_key = segment.config.DATA_FIELD + "." + segment.config.DATA_FIELD + "_id"
         next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(
             Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now() - timedelta(minutes=30))).first()
         # If next item is None, then all are checked out
@@ -138,18 +142,18 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                 raise MissingItemException(next_item.id)
             segment.es_manager.sections = self.ES_SECTIONS
             response = self._get_document(segment.es_manager, item_id, next_item.id)
-            data = segment.audit_utils.serializer(response, segment=segment).data
+            data = segment.audit_utils.serializer(response, context={"segment": segment}).data
             data["vetting_id"] = next_item.id
             if response:
                 data["title"] = response.general_data.title
-                data['data_type'] = segment.data_field
+                data['data_type'] = segment.config.DATA_FIELD
             data["suitable"] = next_item.clean
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
             data['iab_categories'] = self.filter_invalid_iab_categories(data['iab_categories'])
             try:
-                o = getattr(next_item, segment.data_field)
-                data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
+                o = getattr(next_item, segment.config.DATA_FIELD)
+                data['YT_id'] = getattr(o, "{}_id".format(segment.config.DATA_FIELD))
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except

@@ -1,8 +1,10 @@
 import urllib
 from time import sleep
 from unittest.mock import patch
+from mock import patch
 
 from django.contrib.auth.models import Group
+from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
 from channel.api.urls.names import ChannelPathName
@@ -260,3 +262,25 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data["items"]
         self.assertEqual(asc_items[-1]["general_data"]["title"], most_relevant_channel_title)
+
+    def test_content_quality_filter(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+        manager = ChannelManager(sections=(Sections.TASK_US_DATA,))
+        docs = [
+            manager.model(
+                main={"id": f"test_channel_{next(int_iterator)}"},
+                task_us_data={"content_quality": 1}
+            ),
+            manager.model(
+                main={"id": f"test_channel_{next(int_iterator)}"}
+            )
+        ]
+        manager.upsert(docs)
+        url = self.url + "?" + urllib.parse.urlencode({
+            "task_us_data.content_quality": "Average",
+        })
+        with patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            data = self.client.get(url).data
+        self.assertEqual(data["items_count"], 1)
+        self.assertEqual(data["items"][0]["main"]["id"], docs[0].main.id)

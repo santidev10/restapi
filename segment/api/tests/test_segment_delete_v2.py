@@ -41,7 +41,7 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    @patch("segment.models.CustomSegment.delete_export")
+    @patch("segment.models.utils.segment_exporter.SegmentExporter.delete_export")
     def test_success(self, mock_delete_export):
         mock_delete_export.return_value = {}
         user = self.create_test_user()

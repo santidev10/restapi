@@ -5,6 +5,7 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
+from es_components.countries import COUNTRIES
 from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 
 from brand_safety.languages import LANGUAGES
@@ -19,14 +20,16 @@ class YTChannelLinkFromID(CharField):
 
 class ListExportSerializerMixin:
     def get_iab_categories(self, instance):
-        iab_categories = getattr(instance.general_data, "iab_categories", [])
-        return ", ".join([category for category in iab_categories if category not in HIDDEN_IAB_CATEGORIES])
+        iab_categories = getattr(instance.general_data, "iab_categories", []) or []
+        result = ", ".join([category for category in iab_categories if category is not None and
+                            category not in HIDDEN_IAB_CATEGORIES])
+        return result
 
 
 class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
     title = CharField(source="general_data.title")
     url = YTChannelLinkFromID(source="main.id")
-    country = CharField(source="general_data.country")
+    country = SerializerMethodField()
     language = SerializerMethodField()
     iab_categories = SerializerMethodField()
     subscribers = IntegerField(source="stats.subscribers")
@@ -60,5 +63,13 @@ class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
             lang_code = getattr(instance.general_data, "top_lang_code", "")
             language = LANGUAGES.get(lang_code) or lang_code
             return language
+        except Exception:
+            return ""
+
+    def get_country(self, instance):
+        try:
+            country_code = getattr(instance.general_data, "country_code", "")
+            country = COUNTRIES.get(country_code) or country_code
+            return country_code
         except Exception:
             return ""

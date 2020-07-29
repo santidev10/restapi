@@ -61,7 +61,7 @@ urlpatterns = [
 
     url(r"analytics/", include((analytics_urls, APP_NAME), namespace=Namespace.ANALYTICS)),
     url(r"dashboard/", include((dashboard_urls, APP_NAME), namespace=Namespace.DASHBOARD)),
-    url(r"media_buying/", include((media_buying_uls, APP_NAME), namespace="media_buying")),
+    url(r"media_buying/", include((media_buying_uls, APP_NAME), namespace=Namespace.MEDIA_BUYING)),
 
     # these endpoints are closed for users who don"t have Media Buying add-on
     url(r"^account_creation_setup/(?P<pk>\w+)/$",

@@ -9,8 +9,8 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
+from segment.api.export_serializers import CustomSegmentChannelVettedExportSerializer
+from segment.api.export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models import CustomSegmentVettedFileUpload

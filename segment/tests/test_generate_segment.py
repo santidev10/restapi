@@ -17,10 +17,10 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import \
+from segment.api.export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.export_serializers import \
     CustomSegmentChannelWithMonetizationExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
+from segment.api.export_serializers import CustomSegmentVideoExportSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
@@ -398,7 +398,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        columns = ",".join(segment.serializer.columns)
+        columns = ",".join(segment.export_serializer.columns)
         rows = ",".join([row.decode("utf-8") for row in body])
         for included in inclusion:
             self.assertIn(included.main.id, rows)
