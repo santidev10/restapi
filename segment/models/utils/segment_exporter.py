@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils import timezone
 
 from segment.models.utils.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
@@ -9,7 +10,8 @@ class SegmentExporter(S3Exporter):
     aws_access_key_id = settings.AMAZON_S3_ACCESS_KEY_ID
     aws_secret_access_key = settings.AMAZON_S3_SECRET_ACCESS_KEY
 
-    def __init__(self, bucket_name=None):
+    def __init__(self, segment, bucket_name=None):
+        self.segment = segment
         S3Exporter.bucket_name = bucket_name or S3Exporter.bucket_name
 
     def get_s3_key(self):
@@ -33,3 +35,64 @@ class SegmentExporter(S3Exporter):
             Filename=filename,
             ExtraArgs=extra_args,
         )
+
+    def export_file(self, s3_key=None, updating=False, queryset=None):
+        now = timezone.now()
+        export = self.segment.export
+        if s3_key is None:
+            s3_key = self.segment.get_s3_key()
+        if updating:
+            export.updated_at = now
+        else:
+            export.completed_at = now
+        self.export_to_s3(self, s3_key, queryset=queryset)
+        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        export.download_url = download_url
+        export.save()
+
+    def get_extract_export_ids(self, s3_key=None):
+        """
+        Parse and extract Channel or video ids from csv export
+        :return:
+        """
+        if s3_key is None:
+            s3_key = self.segment.get_s3_key()
+        # pylint: disable=protected-access
+        export_content = self._get_s3_object(s3_key, get_key=False)
+        # pylint: enable=protected-access
+        url_index = None
+        for byte in export_content["Body"].iter_lines():
+            row = (byte.decode("utf-8")).split(",")
+            if url_index is None:
+                try:
+                    url_index = row.index("URL")
+                    continue
+                except ValueError:
+                    url_index = 0
+            item_id = self.parse_url(row[url_index], self.segment.segment_type)
+            yield item_id
+
+    def parse_url(self, url, item_type="0"):
+        item_type = str(item_type)
+        config = {
+            "0": "/watch?v=",
+            "1": "/channel/",
+            "video": "/watch?v=",
+            "channel": "/channel/",
+        }
+        item_id = url.split(config[item_type])[-1]
+        return item_id
+
+    def delete_export(self, s3_key=None):
+        """
+        Delete csv from s3
+        :param s3_key: str -> S3 file keyname
+        :return:
+        """
+        if s3_key is None:
+            s3_key = self.segment.get_s3_key()
+        self.delete_obj(s3_key)
+
+    def get_export_file(self, s3_key):
+        export_content = self.get_s3_export_content(s3_key, get_key=False).iter_chunks()
+        return export_content

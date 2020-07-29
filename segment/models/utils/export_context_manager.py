@@ -11,7 +11,7 @@ class ExportContextManager(object):
     def __init__(self, segment, queryset=None):
         self.segment = segment
         if queryset is None:
-            self.queryset = self.segment.get_queryset(sort=self.segment.SORT_KEY)
+            self.queryset = self.segment.get_queryset(sort=self.segment.config.SORT_KEY)
         else:
             self.queryset = queryset
 
@@ -19,11 +19,11 @@ class ExportContextManager(object):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
 
         with open(self.filename, mode="w+", newline="") as export_file:
-            field_names = self.segment.serializer.columns
+            field_names = self.segment.export_serializer.columns
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()
             for item in self.queryset:
-                row = self.segment.serializer(item).data
+                row = self.segment.export_serializer(item).data
                 writer.writerow(row)
         return self.filename
 

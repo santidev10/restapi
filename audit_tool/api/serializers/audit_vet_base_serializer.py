@@ -23,7 +23,6 @@ class AuditVetBaseSerializer(Serializer):
     REVIEW_SCORE_THRESHOLD = 80
     data_type = None
     document_model = None
-    general_data_language_field = None
     general_data_lang_code_field = None
     es_manager = None
 
@@ -292,8 +291,6 @@ class AuditVetBaseSerializer(Serializer):
         general_data = {}
         lang_code = task_us_data.get("lang_code")
         if lang_code and LANGUAGES.get(lang_code):
-            language = LANGUAGES[lang_code]
-            general_data[self.general_data_language_field] = language
             general_data[self.general_data_lang_code_field] = lang_code
         # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
         # https://github.com/elastic/elasticsearch-dsl-py/issues/460

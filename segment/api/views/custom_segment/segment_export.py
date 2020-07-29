@@ -22,8 +22,8 @@ class SegmentExport(APIView):
         response = {}
         if request.query_params.get("vetted"):
             s3_key = segment.get_vetted_s3_key()
-            if hasattr(segment, "vetted_export") and segment.s3_exporter.exists(s3_key, get_key=False):
-                response["download_url"] = segment.s3_exporter.generate_temporary_url(s3_key)
+            if hasattr(segment, "vetted_export") and segment.s3.exists(s3_key, get_key=False):
+                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             else:
                 generate_vetted_segment.delay(segment.id, recipient=request.user.email)
                 response[
@@ -32,7 +32,7 @@ class SegmentExport(APIView):
         else:
             if hasattr(segment, "export"):
                 s3_key = segment.get_s3_key()
-                response["download_url"] = segment.s3_exporter.generate_temporary_url(s3_key)
+                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             else:
                 response["message"] = "Segment has no export. Please create the list again."
         return Response(response)

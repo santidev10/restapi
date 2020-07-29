@@ -198,7 +198,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
         source = request.FILES["file"]
         key = segment.get_source_s3_key()
-        segment.s3_exporter.export_object_to_s3(source, key)
+        segment.s3.export_object_to_s3(source, key)
         source_upload = CustomSegmentSourceFileUpload.objects.create(
             segment=segment,
             source_type=source_type,

@@ -17,7 +17,6 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
     data_type = "video"
-    general_data_language_field = "language"
     general_data_lang_code_field = "lang_code"
     document_model = Video
 
