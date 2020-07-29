@@ -457,8 +457,8 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None):
-        queryset = self.get_opportunities_queryset(get, user, aw_cid)
+    def get_opportunities(self, get, user=None, aw_cid=None, number=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid, number)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -594,7 +594,7 @@ class PacingReport:
 
     # pylint: enable=too-many-statements
 
-    def get_opportunities_queryset(self, get, user, aw_cid):
+    def get_opportunities_queryset(self, get, user, aw_cid, number):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -605,6 +605,9 @@ class PacingReport:
 
         if aw_cid is not None:
             queryset = queryset.filter(aw_cid__in=aw_cid)
+
+        if number is not None:
+            queryset = queryset.filter(number__in=number)
 
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
