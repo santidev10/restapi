@@ -2,7 +2,7 @@ TERMS_FILTER = ("general_data.country_code", "general_data.lang_code", "general_
                 "channel.id", "channel.title", "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",
                 "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender", "stats.flags",
-                "task_us_data.content_quality")
+                "task_us_data.content_quality", "brand_safety.limbo_status")
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
 
