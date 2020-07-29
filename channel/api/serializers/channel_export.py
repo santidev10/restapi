@@ -20,8 +20,10 @@ class YTChannelLinkFromID(CharField):
 
 class ListExportSerializerMixin:
     def get_iab_categories(self, instance):
-        iab_categories = getattr(instance.general_data, "iab_categories", [])
-        return ", ".join([category for category in iab_categories if category not in HIDDEN_IAB_CATEGORIES])
+        iab_categories = getattr(instance.general_data, "iab_categories", []) or []
+        result = ", ".join([category for category in iab_categories if category is not None and
+                            category not in HIDDEN_IAB_CATEGORIES])
+        return result
 
 
 class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
