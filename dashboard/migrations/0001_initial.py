@@ -11,7 +11,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('aw_reporting', '0096_opportunity_currency_code'),
     ]
 
     operations = [
