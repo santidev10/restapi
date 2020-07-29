@@ -23,7 +23,8 @@ class Command(BaseCommand):
 
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
-    PERCENT_FLAGGED_VIDEOS_THRESHOLD = 5
+    PERCENT_FLAGGED_VIDEOS_THRESHOLD_A = 2
+    PERCENT_FLAGGED_VIDEOS_THRESHOLD_B = 5
     TRIES_AFTER_RECONNECT = 2
 
     def __init__(self, stdout=None, stderr=None, no_color=False, force_color=False):
@@ -36,7 +37,14 @@ class Command(BaseCommand):
         self.export_data = []
         self.serialized = []
         self.csv_header = ('channel id', 'current', 'algorithm only', 'flagged videos', 'total videos',
-                           f'over {self.PERCENT_FLAGGED_VIDEOS_THRESHOLD}% flagged', 'mean', 'median', 'mode')
+                           f'percentage flagged',
+                           f'mean (>={self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_A}% flagged)',
+                           f'median >=({self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_A}% flagged)',
+                           f'modes (>={self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_A}% flagged)',
+                           f'mean (>={self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_B}% flagged)',
+                           f'median (>={self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_B}% flagged)',
+                           f'modes (>={self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_B}% flagged)',
+                           )
         self.channel_manager = ChannelManager(
             sections=(
                 Sections.BRAND_SAFETY,
@@ -104,10 +112,14 @@ class Command(BaseCommand):
             row.append(scores.get('algorithmic_only_score', None))
             row.append(scores.get('flagged_videos_count', None))
             row.append(scores.get('total_videos_count', None))
-            row.append(scores.get('over_percent_flagged_threshold', None))
-            row.append(scores.get('mean_flagged_score', None))
-            row.append(scores.get('median_flagged_score', None))
-            row.append(scores.get('mode_flagged_score', None))
+            # row.append(scores.get('over_percent_flagged_threshold', None))
+            row.append(scores.get('percentage_flagged', None))
+            row.append(scores.get('mean_flagged_score_a', None))
+            row.append(scores.get('median_flagged_score_a', None))
+            row.append(scores.get('mode_flagged_score_a', None))
+            row.append(scores.get('mean_flagged_score_b', None))
+            row.append(scores.get('median_flagged_score_b', None))
+            row.append(scores.get('mode_flagged_score_b', None))
             rows.append(row)
         self.serialized = rows
 
@@ -187,19 +199,14 @@ class Command(BaseCommand):
                     flagged_scores.append(score)
             total_videos_count = len(videos)
             flagged_videos_count = len(flagged_scores)
-            over_percent_flagged_threshold =\
-                True if flagged_videos_count \
-                and (flagged_videos_count / total_videos_count) * 100 > self.PERCENT_FLAGGED_VIDEOS_THRESHOLD \
-                else False
+            percentage_flagged = round((flagged_videos_count / total_videos_count) * 100, 2)
             self.add_score(channel_id, 'total_videos_count', total_videos_count)
             self.add_score(channel_id, 'flagged_videos_count', flagged_videos_count)
-            self.add_score(channel_id, 'over_percent_flagged_threshold', over_percent_flagged_threshold)
+            self.add_score(channel_id, 'percentage_flagged', percentage_flagged)
             if not flagged_videos_count:
                 continue
             mean_score = int(round(statistics.mean(flagged_scores)))
-            self.add_score(channel_id, 'mean_flagged_score', mean_score)
             median_score = int(round(statistics.median(flagged_scores)))
-            self.add_score(channel_id, 'median_flagged_score', median_score)
             try:
                 mode_score = int(round(statistics.mode(flagged_scores)))
             except statistics.StatisticsError as e:
@@ -213,7 +220,15 @@ class Command(BaseCommand):
                     modes.append(item[0])
                     current_count = item[1]
                 mode_score = ', '.join([str(mode) for mode in modes])
-            self.add_score(channel_id, 'mode_flagged_score', mode_score)
+            if percentage_flagged >= self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_A:
+                self.add_score(channel_id, 'mean_flagged_score_a', mean_score)
+                self.add_score(channel_id, 'median_flagged_score_a', median_score)
+                self.add_score(channel_id, 'mode_flagged_score_a', mode_score)
+            if percentage_flagged >= self.PERCENT_FLAGGED_VIDEOS_THRESHOLD_B:
+                self.add_score(channel_id, 'mean_flagged_score_b', mean_score)
+                self.add_score(channel_id, 'median_flagged_score_b', median_score)
+                self.add_score(channel_id, 'mode_flagged_score_b', mode_score)
+
 
     def add_score(self, channel_id, key, value):
         """
