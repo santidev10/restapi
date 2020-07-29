@@ -12,3 +12,4 @@ from .pacing_report_opportunity_update import \
 from .pacing_report_placements import PacingReportPlacementsApiView
 from .pacing_report_flight_pacing_allocation import PacingReportFlightAllocationAPIView
 from .pacing_report_status import PacingReportStatusApiView
+from .pacing_report_opportunity_watch import PacingReportOpportunityWatchAPIView

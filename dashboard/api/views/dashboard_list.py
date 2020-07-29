@@ -1,10 +1,8 @@
-from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from userprofile.permissions import PermissionGroupNames
 from dashboard.constants import Dashboards
-from utils.views import get_object
+from userprofile.permissions import PermissionGroupNames
 
 
 class DashboardListAPIView(APIView):
@@ -16,6 +14,9 @@ class DashboardListAPIView(APIView):
     }
 
     def get(self, request, *args, **kwargs):
-        user = get_object(get_user_model(), id=kwargs["pk"])
-        dashboard = self.DASHBOARD_PERMISSIONS.values()
+        dashboard = []
+        user_permissions = set(request.user.groups.all().values_list("name", flat=True))
+        for dash_perm in self.DASHBOARD_PERMISSIONS.keys():
+            if dash_perm in user_permissions:
+                dashboard.append(self.DASHBOARD_PERMISSIONS[dash_perm])
         return Response(data=dashboard)
