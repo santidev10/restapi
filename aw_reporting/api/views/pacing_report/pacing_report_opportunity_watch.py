@@ -18,7 +18,7 @@ class PacingReportOpportunityWatchAPIView(APIView):
         if OpportunityWatch.objects.filter(user=user).count() >= self.MAX_WATCH:
             raise ValidationError(f"You may only watch a max of {self.MAX_WATCH} opportunities.")
         else:
-            OpportunityWatch.objects.create(user=user, opportunity=opportunity)
+            OpportunityWatch.objects.get_or_create(user=user, opportunity=opportunity)
         return Response(status=HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
