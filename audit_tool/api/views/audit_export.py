@@ -231,6 +231,7 @@ class AuditExportApiView(APIView):
             "Unique Good Hit Words",
             "All Bad Hit Words",
             "Unique Bad Hit Words",
+            "Unique Bad Title Hit Words",
             "Video Count",
             "Brand Safety Score",
             "Made For Kids",
@@ -341,9 +342,13 @@ class AuditExportApiView(APIView):
             if do_exclusion or (
                 v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion') == ['ytAgeRestricted']):
                 all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(v_word_hits, clean=False)
+                title_bad_hit_words = v_word_hits.get('exclusion_title')
+                if title_bad_hit_words:
+                    title_bad_hit_words = ",".join(title_bad_hit_words)
             else:
                 all_bad_hit_words = ""
                 unique_bad_hit_words = ""
+                title_bad_hit_words = ""
             try:
                 video_audit_score = auditor.audit_video({
                     "id": vid.video_id,
@@ -387,6 +392,7 @@ class AuditExportApiView(APIView):
                 unique_good_hit_words,
                 all_bad_hit_words,
                 unique_bad_hit_words,
+                title_bad_hit_words,
                 video_count if video_count else "",
                 mapped_score,
                 v.made_for_kids if v else "",

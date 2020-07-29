@@ -636,12 +636,14 @@ class AuditExporter(models.Model):
         if owner:
             self.owner_id = owner.id
 
+class AuditMachine(models.Model):
+    machine_number = models.IntegerField(unique=True)
+    last_seen = models.DateTimeField(auto_now_add=True, db_index=True)
 
 class AuditProcessorCache(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     count = models.BigIntegerField(default=0, db_index=True)
-
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0
