@@ -5,3 +5,4 @@ from utils.utils import unique_constant_tree
 class DashboardPathName:
     DASHBOARD_LIST = "dashboard_list"
     DASHBOARD_PACING_ALERTS = "dashboard_pacing_alerts"
+    DASHBOARD_AUDIT_QUEUE = "dashboard_audit_queue"
