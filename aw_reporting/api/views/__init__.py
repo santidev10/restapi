@@ -2,7 +2,21 @@ from .connect_aw_account import ConnectAWAccountApiView
 from .connect_aw_account_list import ConnectAWAccountListApiView
 from .forecast_tool import *
 from .health_check_tool import *
-from .pacing_report import *
+from .pacing_report.pacing_report_campaigns import PacingReportCampaignsApiView
+from .pacing_report.pacing_report_collect import PacingReportCollectView
+from .pacing_report.pacing_report_export import PacingReportExportView
+from .pacing_report.pacing_report_filters import PacingReportFiltersApiView
+from .pacing_report.pacing_report_flights import PacingReportFlightsApiView
+from .pacing_report.pacing_report_flights_campaign_allocations import PacingReportFlightsCampaignAllocationsView
+from .pacing_report.pacing_report_flights_campaign_allocations_changed import PacingReportFlightsCampaignAllocationsChangedView
+from .pacing_report.pacing_report_opportunities import PacingReportOpportunitiesApiView
+from .pacing_report.pacing_report_opportunity_buffer_update import PacingReportOpportunityBufferUpdateApiView
+from .pacing_report.pacing_report_opportunity_update import \
+    PacingReportOpportunityUpdateApiView
+from .pacing_report.pacing_report_placements import PacingReportPlacementsApiView
+from .pacing_report.pacing_report_flight_pacing_allocation import PacingReportFlightAllocationAPIView
+from .pacing_report.pacing_report_status import PacingReportStatusApiView
+from .pacing_report.pacing_report_opportunity_watch import PacingReportOpportunityWatchAPIView
 from .pricing_tool import *
 from .trends import *
 from .visible_accounts_api_view import UserAWSettingsApiView
