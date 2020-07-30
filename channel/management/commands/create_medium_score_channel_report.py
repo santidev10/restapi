@@ -1,15 +1,17 @@
 import csv
 import os
 import statistics
-from io import StringIO
+
 from collections import Counter
+from datetime import datetime
+from io import StringIO
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand
-from django.db.utils import OperationalError
 from django.db import connections
+from django.db.utils import OperationalError
 
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
@@ -67,25 +69,34 @@ class Command(BaseCommand):
 
     # pylint: disable=too-many-statements
     def handle(self, *args, **kwargs):
-        # initialize stuff
-        self.init_filename(*args, **kwargs)
+        start = datetime.now()
+
+        self.set_filename(*args, **kwargs)
+        self.read_channel_ids()
+        # TODO remove
+        self.channel_ids = self.channel_ids[:20]
+        # self.get_current_scores()
+        # self.get_algorithmic_scores()
+        self.get_video_scores_for_averaging()
+        self.compute_average_scores()
+        self.serialize()
+        self.write_csv()
+        self.email_csv()
+
+        duration = datetime.now() - start
+        days, seconds = duration.days, duration.seconds
+        hours = days * 24 + seconds // 3600
+        minutes = (seconds % 3600) // 60
+        seconds = seconds % 60
+        print(f'done! took {days}d, {hours}h, {minutes}m, {seconds}s')
+
+    def read_channel_ids(self):
         with open(os.path.join(settings.BASE_DIR, self.filename), "r") as file:
             self.reader = csv.reader(file)
             for row in self.reader:
                 channel_url = self.get_url(row)
                 channel_id = self.get_channel_id(channel_url)
                 self.channel_ids.append(channel_id)
-            # TODO remove
-            # self.channel_ids = self.channel_ids[:30]
-            self.get_current_scores()
-            self.get_algorithmic_scores()
-            self.get_average_flagged_video_scores()
-            self.get_video_scores_for_averaging()
-            self.compute_average_scores()
-            self.serialize()
-            self.write_csv()
-            self.email_csv()
-            print('done!')
 
     def email_csv(self):
         msg = EmailMessage(
@@ -283,7 +294,7 @@ class Command(BaseCommand):
     def get_url(self, row: list):
         return row[0]
 
-    def init_filename(self, *args, **kwargs):
+    def set_filename(self, *args, **kwargs):
         try:
             self.filename = kwargs["filename"]
         except KeyError:
