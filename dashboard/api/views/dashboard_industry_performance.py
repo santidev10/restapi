@@ -1,6 +1,7 @@
 from datetime import timedelta
 import json
 
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,12 +9,22 @@ from cache.models import CacheItem
 from dashboard.api.views.constants import DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX
 from dashboard.utils import get_cache_key
 from es_components.constants import Sections
+from es_components.iab_categories import TOP_LEVEL_CATEGORIES
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.datetime import now_in_default_tz
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class DashboardIndustryPerformanceAPIView(APIView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.channel_list"),
+            IsAdminUser
+        ),
+    )
+
     CACHE_TTL = 3600
     ALLOWED_CHANNEL_SORTS = ["stats.last_30day_subscribers", "stats.last_30day_views", "ads_stats.video_view_rate",
                              "ads_stats.ctr_v"]
@@ -67,6 +78,10 @@ class DashboardIndustryPerformanceAPIView(APIView):
                 }
             }
         ]
+
+        t1_categories = [category.title() for category in TOP_LEVEL_CATEGORIES]
+
+
 
         category_sorting = {
             category_sort: {
