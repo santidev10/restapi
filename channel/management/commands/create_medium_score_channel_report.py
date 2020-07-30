@@ -34,6 +34,7 @@ class Command(BaseCommand):
         self.csv = None
         self.channel_ids = []
         self.channel_score_map = {}
+        self.channel_average_scores_map = {}
         self.export_data = []
         self.serialized = []
         self.csv_header = ('channel id', 'current', 'algorithm only', 'flagged videos', 'total videos',
@@ -54,6 +55,7 @@ class Command(BaseCommand):
         self.video_manager = VideoManager(
             sections=(
                 Sections.BRAND_SAFETY,
+                Sections.CHANNEL,
             ),
         )
 
@@ -74,10 +76,12 @@ class Command(BaseCommand):
                 channel_id = self.get_channel_id(channel_url)
                 self.channel_ids.append(channel_id)
             # TODO remove
-            # self.channel_ids = self.channel_ids[:100]
+            # self.channel_ids = self.channel_ids[:30]
             self.get_current_scores()
             self.get_algorithmic_scores()
             self.get_average_flagged_video_scores()
+            self.get_video_scores_for_averaging()
+            self.compute_average_scores()
             self.serialize()
             self.write_csv()
             self.email_csv()
@@ -166,45 +170,19 @@ class Command(BaseCommand):
             if slice_position > len(self.channel_ids):
                 break
 
-    def get_average_flagged_video_scores(self):
-        print('getting averages...')
-        count = 0
-        channels_count = len(self.channel_ids)
-        for channel_id in self.channel_ids:
-            count += 1
-            print(f"averages progress: {count}/{channels_count} ({round((count/channels_count)*100)}%)")
-            flagged_scores = []
-            tries = 0
-            while tries < self.TRIES_AFTER_RECONNECT:
-                try:
-                    by_channel_filter = self.video_manager.by_channel_ids_query(channel_id)
-                    videos = self.video_manager.search(
-                        filters=by_channel_filter,
-                        limit=self.MAX_SIZE,
-                    ).execute().hits
-                    break
-                except OperationalError as e:
-                    self.reconnect()
-                finally:
-                    tries += 1
-                    print('tries:', tries)
-            if tries >= self.TRIES_AFTER_RECONNECT:
-                continue
-
-            for video in videos:
-                score = video.brand_safety.overall_score
-                if score is None:
-                    continue
-                if score <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
-                    flagged_scores.append(score)
-            total_videos_count = len(videos)
+    def compute_average_scores(self):
+        print('computing averages...')
+        for channel_id, data in self.channel_average_scores_map.items():
+            scores = data.get('scores', {}).values()
+            flagged_scores = data.get('flagged_scores', {}).values()
+            total_videos_count = len(scores)
             flagged_videos_count = len(flagged_scores)
-            percentage_flagged = round((flagged_videos_count / total_videos_count) * 100, 2)
             self.add_score(channel_id, 'total_videos_count', total_videos_count)
             self.add_score(channel_id, 'flagged_videos_count', flagged_videos_count)
-            self.add_score(channel_id, 'percentage_flagged', percentage_flagged)
             if not flagged_videos_count:
                 continue
+            percentage_flagged = round((flagged_videos_count / total_videos_count) * 100, 2)
+            self.add_score(channel_id, 'percentage_flagged', percentage_flagged)
             mean_score = int(round(statistics.mean(flagged_scores)))
             median_score = int(round(statistics.median(flagged_scores)))
             try:
@@ -229,6 +207,61 @@ class Command(BaseCommand):
                 self.add_score(channel_id, 'median_flagged_score_b', median_score)
                 self.add_score(channel_id, 'mode_flagged_score_b', mode_score)
 
+    def get_video_scores_for_averaging(self):
+        print('getting video scores...')
+        slice_position = 0
+        slice_size = 100
+        while True:
+            channel_ids = self.channel_ids[slice_position:slice_position + slice_size]
+            print(f'processing channels: {slice_position}:{slice_position + slice_size} of {len(self.channel_ids)}')
+            tries = 0
+            # try scanning through chunks of channels' videos
+            while tries < self.TRIES_AFTER_RECONNECT:
+                try:
+                    by_channel_filter = self.video_manager.by_channel_ids_query(channel_ids)
+                    videos_generator = self.video_manager.scan(filters=by_channel_filter)
+                    videos_count = self.video_manager.search(filters=by_channel_filter).count()
+                    print(f'{videos_count} videos to process in slice...')
+                    count = 0
+                    reported_progresses = []
+                    for video in videos_generator:
+                        count += 1
+                        # progress indicator
+                        percent_progress = round((count / videos_count) * 100)
+                        if not percent_progress % 10 and percent_progress not in reported_progresses:
+                            reported_progresses.append(percent_progress)
+                            print(f'processed {percent_progress}% of video scores in slice...')
+
+                        channel_id = video.channel.id
+                        video_id = video.main.id
+                        score = video.brand_safety.overall_score
+                        if channel_id is None \
+                            or video_id is None \
+                            or score is None:
+                            continue
+                        channel_data = self.channel_average_scores_map.get(channel_id, {})
+                        scores = channel_data.get('scores', {})
+                        scores[video_id] = score
+                        flagged_scores = channel_data.get('flagged_scores', {})
+                        if score <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
+                            flagged_scores[video_id] = score
+                        channel_data['scores'] = scores
+                        channel_data['flagged_scores'] = flagged_scores
+                        self.channel_average_scores_map[channel_id] = channel_data
+                    break
+                except OperationalError as e:
+                    self.reconnect()
+                finally:
+                    tries += 1
+                    print('tries:', tries)
+
+            if tries >= self.TRIES_AFTER_RECONNECT:
+                print('TOO MANY TRIES')
+                continue
+
+            slice_position += slice_size
+            if slice_position > len(self.channel_ids):
+                break
 
     def add_score(self, channel_id, key, value):
         """
