@@ -8,19 +8,19 @@ from aw_reporting.api.serializers.pacing_report_opportunities_serializer import 
     PacingReportOpportunitiesSerializer
 from aw_reporting.reports.pacing_report import PacingReport
 from cache.models import CacheItem
+from dashboard.api.views.constants import DASHBOARD_PACING_ALERTS_CACHE_PREFIX
 from dashboard.utils import get_cache_key
 from utils.datetime import now_in_default_tz
 
 
 class DashboardPacingAlertsAPIView(APIView):
-    CACHE_PREFIX = "dashboard_pacing_alerts_"
     CACHE_TTL = 1800
 
     def get(self, request, *args, **kwargs):
-        cache_key = get_cache_key(request.user.id, prefix=self.CACHE_PREFIX)
+        cache_key = self.get_cache_key(request.user.id)
         try:
             cache = CacheItem.objects.get(key=cache_key)
-            if cache.updated_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
+            if cache.created_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
                 cache.value = self._get_data(request.user)
                 cache.save()
             data = cache.value
@@ -35,3 +35,8 @@ class DashboardPacingAlertsAPIView(APIView):
         # Sort by name then by alerts length
         data = sorted(opportunities, key=lambda op: (op["name"], len(op.get("alerts", []))))
         return data
+
+    @staticmethod
+    def get_cache_key(user_id):
+        cache_key = get_cache_key(user_id, prefix=DASHBOARD_PACING_ALERTS_CACHE_PREFIX)
+        return cache_key

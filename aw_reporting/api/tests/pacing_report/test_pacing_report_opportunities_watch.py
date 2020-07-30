@@ -4,6 +4,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity
+from cache.models import CacheItem
+from dashboard.api.views import DashboardPacingAlertsAPIView
 from dashboard.models import OpportunityWatch
 from saas.urls.namespaces import Namespace
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
@@ -15,14 +17,23 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         url = reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITY_WATCH, kwargs=dict(pk=op_id))
         return url
 
+    def _create_cache(self, user_id):
+        dashboard_pacing_alert_cache_key = DashboardPacingAlertsAPIView.get_cache_key(user_id)
+        CacheItem.objects.create(key=dashboard_pacing_alert_cache_key, value="stale")
+        return dashboard_pacing_alert_cache_key
+
     def test_watch_success(self):
         user = self.create_admin_user()
         op = Opportunity.objects.create(id=f"id_{next(int_iterator)}")
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 0)
+
+        dashboard_pacing_alert_cache_key = self._create_cache(user.id)
+
         response = self.client.patch(self._get_url(op.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 1)
         self.assertEqual(OpportunityWatch.objects.filter(user=user).first().opportunity.id, op.id)
+        self.assertFalse(CacheItem.objects.filter(key=dashboard_pacing_alert_cache_key).exists())
 
     def test_max_watch_opportunity(self):
         """ Test user can not watch more than max allowed """
@@ -38,6 +49,8 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         op = Opportunity.objects.create(id=f"id_{next(int_iterator)}")
         OpportunityWatch.objects.create(user=user, opportunity=op)
 
+        dashboard_pacing_alert_cache_key = self._create_cache(user.id)
+
         watched = OpportunityWatch.objects.filter(user=user)
         self.assertEqual(watched.count(), 1)
         self.assertEqual(watched[0].opportunity_id, op.id)
@@ -45,3 +58,4 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         response = self.client.delete(self._get_url(op.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 0)
+        self.assertFalse(CacheItem.objects.filter(key=dashboard_pacing_alert_cache_key).exists())

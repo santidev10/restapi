@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from dashboard.constants import Dashboards
+from dashboard.api.views.constants import Dashboards
 from userprofile.permissions import PermissionGroupNames
 
 
