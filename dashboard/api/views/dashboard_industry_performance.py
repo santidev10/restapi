@@ -19,7 +19,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
                              "ads_stats.ctr_v"]
     ALLOWED_VIDEO_SORTS = ["stats.last_30day_views", "ads_stats.video_view_rate", "ads_stats.ctr_v"]
     ALLOWED_CATEGORY_SORTS = ["stats.last_30day_subscribers", "stats.last_30day_views", "ads_stats.video_view_rate",
-                             "ads_stats.ctr_v"]
+                              "ads_stats.ctr_v"]
 
     def get(self, request, *args, **kwargs):
         params = str(request.query_params) + str(kwargs)
@@ -36,9 +36,14 @@ class DashboardIndustryPerformanceAPIView(APIView):
         return Response(data=data)
 
     def _get_data(self, request):
-        channel_sort = request.query_params.get("channel_sort") or "stats.last_30day_subscribers"
-        video_sort = request.query_params.get("video_sort") or "stats.last_30day_views"
-        category_sort = request.query_params.get("category_sort") or "stats.last_30day_subscribers"
+        channel_sort = request.query_params.get("channel_sort") \
+            if request.query_params.get("channel_sort") in self.ALLOWED_CHANNEL_SORTS \
+            else "stats.last_30day_subscribers"
+        video_sort = request.query_params.get("video_sort") \
+            if request.query_params.get("video_sort") in self.ALLOWED_VIDEO_SORTS else "stats.last_30day_views"
+        category_sort = request.query_params.get("category_sort") \
+            if request.query_params.get("category_sort") in self.ALLOWED_CATEGORY_SORTS \
+            else "stats.last_30day_subscribers"
         channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                          upsert_sections=())
         video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
@@ -47,17 +52,21 @@ class DashboardIndustryPerformanceAPIView(APIView):
         video_forced_filters = video_manager.forced_filters(include_deleted=False)
         category_forced_filters = channel_manager.forced_filters(include_deleted=False)
 
-        channel_sorting = {
-            channel_sort: {
-                "order": "desc"
+        channel_sorting = [
+            {
+                channel_sort: {
+                    "order": "desc"
+                }
             }
-        }
+        ]
 
-        video_sorting = {
-            video_sort: {
-                "order": "desc"
+        video_sorting = [
+            {
+                video_sort: {
+                    "order": "desc"
+                }
             }
-        }
+        ]
 
         category_sorting = {
             category_sort: {
@@ -65,8 +74,11 @@ class DashboardIndustryPerformanceAPIView(APIView):
             }
         }
 
-        top_channels = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting, limit=10)
-        top_videos = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10)
+        top_channels = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting, limit=10).execute().hits
+        top_videos = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10).execute().hits
 
-        pass
-        # return data
+        data = {
+            "top_channels": top_channels,
+            "top_videos": top_videos
+        }
+        return data
