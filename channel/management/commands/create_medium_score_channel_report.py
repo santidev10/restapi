@@ -74,9 +74,9 @@ class Command(BaseCommand):
         self.set_filename(*args, **kwargs)
         self.read_channel_ids()
         # TODO remove
-        self.channel_ids = self.channel_ids[:20]
-        # self.get_current_scores()
-        # self.get_algorithmic_scores()
+        # self.channel_ids = self.channel_ids[:20]
+        self.get_current_scores()
+        self.get_algorithmic_scores()
         self.get_video_scores_for_averaging()
         self.compute_average_scores()
         self.serialize()
