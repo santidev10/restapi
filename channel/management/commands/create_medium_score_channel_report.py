@@ -36,7 +36,7 @@ class Command(BaseCommand):
         self.csv = None
         self.channel_ids = []
         self.channel_score_map = {}
-        self.channel_average_scores_map = {}
+        self.channel_video_scores_map = {}
         self.export_data = []
         self.serialized = []
         self.csv_header = ('channel id', 'current', 'algorithm only', 'flagged videos', 'total videos',
@@ -78,7 +78,7 @@ class Command(BaseCommand):
         self.get_current_scores()
         self.get_algorithmic_scores()
         self.get_video_scores_for_averaging()
-        self.compute_average_scores()
+        self.compute_video_score_averages()
         self.serialize()
         self.write_csv()
         self.email_csv()
@@ -127,7 +127,6 @@ class Command(BaseCommand):
             row.append(scores.get('algorithmic_only_score', None))
             row.append(scores.get('flagged_videos_count', None))
             row.append(scores.get('total_videos_count', None))
-            # row.append(scores.get('over_percent_flagged_threshold', None))
             row.append(scores.get('percentage_flagged', None))
             row.append(scores.get('mean_flagged_score_a', None))
             row.append(scores.get('median_flagged_score_a', None))
@@ -181,9 +180,9 @@ class Command(BaseCommand):
             if slice_position > len(self.channel_ids):
                 break
 
-    def compute_average_scores(self):
-        print('computing averages...')
-        for channel_id, data in self.channel_average_scores_map.items():
+    def compute_video_score_averages(self):
+        print('computing video score averages...')
+        for channel_id, data in self.channel_video_scores_map.items():
             scores = data.get('scores', {}).values()
             flagged_scores = data.get('flagged_scores', {}).values()
             total_videos_count = len(scores)
@@ -199,7 +198,7 @@ class Command(BaseCommand):
             try:
                 mode_score = int(round(statistics.mode(flagged_scores)))
             except statistics.StatisticsError as e:
-                # if we have more than one mode, find them here
+                # if we have more than one mode, find the most common ones here
                 most_common = Counter(flagged_scores).most_common()
                 current_count = None
                 modes = []
@@ -250,7 +249,7 @@ class Command(BaseCommand):
                             or video_id is None \
                             or score is None:
                             continue
-                        channel_data = self.channel_average_scores_map.get(channel_id, {})
+                        channel_data = self.channel_video_scores_map.get(channel_id, {})
                         scores = channel_data.get('scores', {})
                         scores[video_id] = score
                         flagged_scores = channel_data.get('flagged_scores', {})
@@ -258,7 +257,7 @@ class Command(BaseCommand):
                             flagged_scores[video_id] = score
                         channel_data['scores'] = scores
                         channel_data['flagged_scores'] = flagged_scores
-                        self.channel_average_scores_map[channel_id] = channel_data
+                        self.channel_video_scores_map[channel_id] = channel_data
                     break
                 except OperationalError as e:
                     self.reconnect()
