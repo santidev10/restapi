@@ -139,9 +139,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     # GDPR Cookie Compliance
     has_accepted_GDPR = models.NullBooleanField(default=None)
 
-    # SF opportunities
-    opportunities = models.ManyToManyField(Opportunity, db_index=True)
-
     objects = UserProfileManager()
 
     USERNAME_FIELD = "email"
