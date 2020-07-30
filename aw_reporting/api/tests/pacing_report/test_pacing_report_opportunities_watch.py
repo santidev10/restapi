@@ -37,5 +37,11 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         user = self.create_admin_user()
         op = Opportunity.objects.create(id=f"id_{next(int_iterator)}")
         OpportunityWatch.objects.create(user=user, opportunity=op)
+
+        watched = OpportunityWatch.objects.filter(user=user)
+        self.assertEqual(watched.count(), 1)
+        self.assertEqual(watched[0].opportunity_id, op.id)
+
         response = self.client.delete(self._get_url(op.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 0)
