@@ -4,3 +4,5 @@ class Dashboards:
     INDUSTRY_TOP_PERFORMERS = "industry_top_performers"
     PERFORMANCE = "performance"
 
+
+DASHBOARD_PACING_ALERTS_CACHE_PREFIX = "dashboard_pacing_alerts_"

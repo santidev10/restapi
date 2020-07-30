@@ -330,7 +330,9 @@ class Command(BaseCommand):
                 avp.word_hits["exclusion"] = None
                 return True
             is_there = False
+            is_there_title = False
             hits = []
+            hits_title = []
             if self.check_titles: # separate blacklist words in title
                 if self.exclusion_list.get(language):
                     is_there, hits = self.check_exists(other_string.lower(), self.exclusion_list[language],

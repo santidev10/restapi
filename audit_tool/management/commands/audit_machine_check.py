@@ -24,5 +24,7 @@ class Command(BaseCommand):
         except Exception:
             # pylint: enable=broad-except
             machine_number = 0
-        AuditMachine.objects.filter(machine_number=machine_number).update(last_seen=timezone.now())
+        a, _ = AuditMachine.objects.get_or_create(machine_number=machine_number)
+        a.last_seen=timezone.now()
+        a.save(update_fields=['last_seen'])
         logger.info("Done machine %s alive.", machine_number)

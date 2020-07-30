@@ -16,6 +16,7 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
+from aw_reporting.api.views.pacing_report.constants import PACING_REPORT_OPPORTUNITIES_MAX_WATCH
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -85,6 +86,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         response = self.client.get("{}?period=this_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("watching", response.data)
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
@@ -737,7 +739,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             "items": [],
             "current_page": 1,
             "items_count": 0,
-            "max_page": 1
+            "max_page": 1,
+            "watching": 0,
+            "max_watch": PACING_REPORT_OPPORTUNITIES_MAX_WATCH,
         })
 
     def test_get_opportunities_filter_category_with_coma(self):

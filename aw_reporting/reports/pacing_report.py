@@ -2,7 +2,7 @@
 from collections import Counter
 from collections import defaultdict
 from datetime import timedelta
-from itertools import groupby
+from distutils.util import strtobool
 from math import ceil
 
 from django.contrib.auth import get_user_model
@@ -457,8 +457,8 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None, number=None):
-        queryset = self.get_opportunities_queryset(get, user, aw_cid, number)
+    def get_opportunities(self, get, user=None, aw_cid=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -594,7 +594,7 @@ class PacingReport:
 
     # pylint: enable=too-many-statements
 
-    def get_opportunities_queryset(self, get, user, aw_cid, number):
+    def get_opportunities_queryset(self, get, user, aw_cid):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -606,13 +606,14 @@ class PacingReport:
         if aw_cid is not None:
             queryset = queryset.filter(aw_cid__in=aw_cid)
 
-        if number is not None:
-            queryset = queryset.filter(number__in=number)
-
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
         if start and end:
             queryset = queryset.filter(start__lte=end, end__gte=start)
+
+        watch = get.get("watch", False)
+        if strtobool(str(watch)):
+            queryset = queryset.filter(id__in=user.watch.values_list("opportunity_id", flat=True))
 
         search = get.get("search")
         if search:
