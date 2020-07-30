@@ -2,7 +2,6 @@ from django.db import models
 from django.conf import settings
 
 from aw_reporting.models import Opportunity
-from userprofile.models import UserProfile
 
 
 class OpportunityWatch(models.Model):
