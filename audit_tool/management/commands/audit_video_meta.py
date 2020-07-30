@@ -65,6 +65,7 @@ class Command(BaseCommand):
         self.exclusion_hit_count = None
         self.db_languages = None
         self.placement_list = None
+        self.check_titles = True
 
     def add_arguments(self, parser):
         parser.add_argument("thread_id", type=int)
@@ -101,6 +102,7 @@ class Command(BaseCommand):
     def process_audit(self, num=2000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.force_data_refresh = self.audit.params.get("force_data_refresh")
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=["started"])
@@ -257,7 +259,7 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
+            if not db_video.processed_time or self.force_data_refresh or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=["processed_time"])
@@ -291,6 +293,11 @@ class Command(BaseCommand):
                 avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
+        title_string = remove_tags_punctuation("" if not db_video_meta.name else db_video_meta.name)
+        other_string = remove_tags_punctuation("{} {}".format(
+            "" if not db_video_meta.description else db_video_meta.description,
+            "" if not db_video_meta.keywords else db_video_meta.keywords,
+        ))
         full_string = remove_tags_punctuation("{} {} {}".format(
             "" if not db_video_meta.name else db_video_meta.name,
             "" if not db_video_meta.description else db_video_meta.description,
@@ -324,22 +331,54 @@ class Command(BaseCommand):
                 return True
             is_there = False
             hits = []
-            if self.exclusion_list.get(language):
-                is_there, hits = self.check_exists(full_string.lower(), self.exclusion_list[language],
-                                                   count=self.exclusion_hit_count)
-            if language != "" and self.exclusion_list.get(""):
-                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""],
-                                                         count=self.exclusion_hit_count)
-                if not is_there and is_there_b:
-                    is_there = True
-                    hits = b_hits_b
-                elif hits and b_hits_b:
-                    hits = hits + b_hits_b
-            avp.word_hits["exclusion"] = hits
-            if is_there:
-                self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
-                self.append_to_channel(avp, hits, "exclusion_videos")
-                return False
+            if self.check_titles: # separate blacklist words in title
+                if self.exclusion_list.get(language):
+                    is_there, hits = self.check_exists(other_string.lower(), self.exclusion_list[language],
+                                                       count=self.exclusion_hit_count)
+                    is_there_title, hits_title = self.check_exists(title_string.lower(), self.exclusion_list[language],
+                                                       count=self.exclusion_hit_count)
+                if language != "" and self.exclusion_list.get(""):
+                    is_there_b, b_hits_b = self.check_exists(other_string.lower(), self.exclusion_list[""],
+                                                             count=self.exclusion_hit_count)
+                    is_there_b_title, b_hits_b_title = self.check_exists(title_string.lower(), self.exclusion_list[""],
+                                                             count=self.exclusion_hit_count)
+                    if not is_there and is_there_b:
+                        is_there = True
+                        hits = b_hits_b
+                    elif hits and b_hits_b:
+                        hits = hits + b_hits_b
+
+                    if not is_there_title and is_there_b_title:
+                        is_there_title = True
+                        hits_title = b_hits_b_title
+                    elif hits_title and b_hits_b_title:
+                        hits_title = hits_title + b_hits_b_title
+                avp.word_hits["exclusion"] = hits
+                avp.word_hits["exclusion_title"] = hits_title
+                if is_there:
+                    self.append_to_channel(avp, hits, "exclusion_videos")
+                if is_there_title:
+                    self.append_to_channel(avp, hits_title, "exclusion_videos_title")
+                if is_there or is_there_title:
+                    self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
+                    return False
+            else:
+                if self.exclusion_list.get(language):
+                    is_there, hits = self.check_exists(full_string.lower(), self.exclusion_list[language],
+                                                       count=self.exclusion_hit_count)
+                if language != "" and self.exclusion_list.get(""):
+                    is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""],
+                                                             count=self.exclusion_hit_count)
+                    if not is_there and is_there_b:
+                        is_there = True
+                        hits = b_hits_b
+                    elif hits and b_hits_b:
+                        hits = hits + b_hits_b
+                avp.word_hits["exclusion"] = hits
+                if is_there:
+                    self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
+                    self.append_to_channel(avp, hits, "exclusion_videos")
+                    return False
         return True
 
     def append_to_channel(self, avp, hits, node):

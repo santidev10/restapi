@@ -11,6 +11,7 @@ from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api.urls.urls import urlpatterns as aw_reporting_urls
 from brand_safety.api import urls as brand_safety_api_urls
 from channel.api import urls as channel_api_urls
+from dashboard.api.urls import urls as dashboard_urls
 from email_reports import urls as email_reports_api_urls
 from healthcheck.api.urls import urls as healthcheck_api_urls
 from keywords.api import urls as keyword_api_urls
@@ -61,6 +62,8 @@ urlpatterns = [
     url(r"^api/v2/", include((segment_v2_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V2)),
 
     url(r"^api/v3/", include((segment_v3_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V3)),
+
+    url(r"^api/v2/", include((dashboard_urls, APP_NAME), namespace=Namespace.DASHBOARD)),
 
     url(r"^api/healthcheck/", include((healthcheck_api_urls, APP_NAME), namespace=Namespace.HEALTHCHECK)),
     url(r"^docs/", include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION)),

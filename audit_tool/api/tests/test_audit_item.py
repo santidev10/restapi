@@ -110,7 +110,6 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         )
         channel.populate_general_data(
             top_lang_code="en",
-            top_language="English",
         )
         self.channel_manager.upsert([channel])
         payload = dict(
@@ -148,7 +147,6 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         )
         video.populate_general_data(
             lang_code="es",
-            language="Spanish",
         )
         self.video_manager.upsert([video])
         payload = dict(

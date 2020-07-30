@@ -156,7 +156,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel = Channel(next(int_iterator))
         channel.populate_general_data(
             title="Test channel title",
-            country="Test country",
+            country_code="RU",
             top_lang_code="ru",
             iab_categories=["Top category",],
             emails=["example1@mail.com", "example2@email.com"],
@@ -193,7 +193,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         expected_values = [
             channel.general_data.title,
             f"https://www.youtube.com/channel/{channel.main.id}",
-            channel.general_data.country,
+            "RU",
             "Russian",
             ",".join(channel.general_data.iab_categories),
             channel.stats.subscribers,

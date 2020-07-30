@@ -1,0 +1,7 @@
+from utils.utils import unique_constant_tree
+
+
+@unique_constant_tree
+class DashboardPathName:
+    DASHBOARD_LIST = "dashboard_list"
+    DASHBOARD_PACING_ALERTS = "dashboard_pacing_alerts"

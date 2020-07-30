@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from aw_creation.api.serializers.common.utils import get_currency_code
 from aw_creation.models import AccountCreation
 from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
@@ -60,4 +61,5 @@ class DashboardPerformanceChartItemsApiView(APIView):
             show_aw_costs=show_aw_costs,
             **filters)
         data = chart.get_items()
+        data["currency_code"] = get_currency_code(item)
         return Response(data=data)

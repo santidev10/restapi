@@ -4,8 +4,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from saas import celery_app
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
 from segment.tasks.generate_segment import generate_segment
@@ -28,16 +26,12 @@ def generate_vetted_segment(segment_id, recipient=None):
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         segment.is_vetting = True
-        if segment.segment_type == 0:
-            segment.serializer = CustomSegmentVideoVettedExportSerializer
-        else:
-            segment.serializer = CustomSegmentChannelVettedExportSerializer
         query = segment.get_vetted_items_query()
         # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
         # may rapidly change
         s3_key_suffix = str(timezone.now()) if recipient else None
         s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
-        results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key)
+        results = generate_segment(segment, query, segment.config.LIST_SIZE, add_uuid=False, s3_key=s3_key)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:

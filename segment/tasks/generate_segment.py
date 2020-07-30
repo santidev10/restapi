@@ -5,18 +5,17 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from es_components.constants import Sections
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
-from segment.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.utils.utils import get_content_disposition
 from es_components.query_builder import QueryBuilder
 from elasticsearch_dsl import Q
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
 SOURCE_SIZE_GET_LIMIT = 10000
-MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param s3_key: Optional s3 key for file upload
     :return:
     """
-    generate_utils = GenerateSegmentUtils()
+    generate_utils = GenerateSegmentUtils(segment)
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    context = generate_utils.get_default_serialization_context()
+    context = generate_utils.default_serialization_context
     source_list = None
     source_type = None
     # pylint: disable=broad-except
@@ -50,24 +49,24 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         logger.exception("Error trying to retrieve source list for "
                          "segment: %s, segment_type: %s", segment.title, segment.segment_type)
     try:
-        sort = sort or [segment.SORT_KEY]
+        sort = sort or [segment.config.SORT_KEY]
         seen = 0
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
-        default_search_config = generate_utils.get_default_search_config(segment.segment_type)
+        default_search_config = generate_utils.default_search_config
         # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
         # a batch may be empty since we check set membership for the current bulk_search batch in the source list
         write_header = True
         if options is None:
             options = default_search_config["options"]
         try:
+            # Use query by ids along with filters to avoid requesting entire database with bulk_search
             if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
                 ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
                 full_query = Q(query) + ids_query
                 es_generator = segment.es_manager.search(query=full_query.to_dict())
                 es_generator = [es_generator.execute().hits]
-                # es_generator = [segment.es_manager.get(source_list, skip_none=True)]
             else:
                 bulk_search_kwargs = dict(
                     options=options, batch_size=5000, include_cursor_exclusions=True
@@ -80,6 +79,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
+                # Get the current batch's Postgres vetting data context for serialization
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
                 generate_utils.write_to_file(batch, filename, segment, context, aggregations,
@@ -101,8 +101,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         }
         s3_key = segment.get_s3_key() if s3_key is None else s3_key
         content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
-        segment.s3_exporter.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
-        download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+        download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
             "download_url": download_url,
@@ -135,14 +135,6 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
             else:
                 batch = [item for item in batch if item.main.id not in source_list]
         yield batch
-
-
-def get_content_disposition(segment, is_vetting=False, ext="csv"):
-    title = segment.title
-    if is_vetting is True:
-        title += " Vetted"
-    content_disposition = f"attachment;filename={title}.{ext}"
-    return content_disposition
 
 
 class MaxItemsException(Exception):

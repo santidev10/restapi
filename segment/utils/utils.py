@@ -137,6 +137,14 @@ def with_all(all_options=None, choice=None):
     return data
 
 
+def get_content_disposition(segment, is_vetting=False, ext="csv"):
+    title = segment.title
+    if is_vetting is True:
+        title += " Vetted"
+    content_disposition = f"attachment;filename={title}.{ext}"
+    return content_disposition
+
+
 class CustomSegmentOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         try:

@@ -13,7 +13,6 @@ from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from es_components.constants import Sections
 
 
 class AuditVetBaseSerializer(Serializer):
@@ -21,13 +20,11 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
+    REVIEW_SCORE_THRESHOLD = 80
     data_type = None
     document_model = None
-    general_data_language_field = None
     general_data_lang_code_field = None
-
-    SECTIONS = (
-    Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
+    es_manager = None
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
@@ -40,6 +37,7 @@ class AuditVetBaseSerializer(Serializer):
     YT_id = CharField(source="main.id", default=None)
     title = CharField(source="general_data.title", default=None)
     brand_safety = SerializerMethodField()
+    brand_safety_overall_score = IntegerField(source="brand_safety.overall_score", default=None)
     language = SerializerMethodField()
 
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -49,12 +47,8 @@ class AuditVetBaseSerializer(Serializer):
     language_code = CharField(required=False)  # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
-        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
-        try:
-            self.segment = kwargs.pop("segment", None)
-        except KeyError:
-            pass
         super().__init__(*args, **kwargs)
+        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
 
     def get_iab_categories(self, obj):
         """ Remove None values """
@@ -120,7 +114,7 @@ class AuditVetBaseSerializer(Serializer):
         Get segment title if available
         :return: None | str
         """
-        title = getattr(self.segment, "title", None)
+        title = getattr(self.context.get("segment", {}), "title", None)
         return title
 
     def validate_language_code(self, value):
@@ -215,6 +209,7 @@ class AuditVetBaseSerializer(Serializer):
     def save_brand_safety(self, item_id):
         """
         Save brand safety categories in BlacklistItem table
+        Will rescore the video if there is a change in brand safety
         :param item_id: str -> channel or video id
         :return: list -> Brand safety category ids
         """
@@ -239,7 +234,7 @@ class AuditVetBaseSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories, es_manager):
+    def save_elasticsearch(self, item_id, blacklist_categories):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -247,10 +242,35 @@ class AuditVetBaseSerializer(Serializer):
         :param es_manager: BaseManager
         :return: None
         """
+        try:
+            item_overall_score = self.es_manager.get([item_id])[0].brand_safety.overall_score
+        except (IndexError, AttributeError):
+            item_overall_score = None
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
         }
+        brand_safety_category_overall_scores = self._get_brand_safety(blacklist_categories)
+        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        general_data = self._get_general_data(task_us_data)
+        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
+        brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score)
+
+        # Update Elasticsearch document
+        doc = self.document_model(item_id)
+        doc.populate_monetization(**self.validated_data["monetization"])
+        doc.populate_task_us_data(**task_us_data)
+        doc.populate_brand_safety(categories=brand_safety_category_overall_scores, **brand_safety_limbo)
+        doc.populate_general_data(**general_data)
+        self.es_manager.upsert([doc], refresh=False)
+
+    def _get_brand_safety(self, blacklist_categories):
+        """
+        Get updated brand safety categories based on blacklist_categories
+        If category is in blacklist_category, will have a score of 0. Else will have a score of 100
+        :param blacklist_categories: list
+        :return:
+        """
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
         reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
             [int(category) for category in blacklist_categories])
@@ -260,12 +280,17 @@ class AuditVetBaseSerializer(Serializer):
             }
             for category_id in self.all_brand_safety_category_ids
         }
-        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        return brand_safety_category_overall_scores
+
+    def _get_general_data(self, task_us_data):
+        """
+        Get updated general data based on vetted task us data
+        :param task_us_data: dict
+        :return:
+        """
         general_data = {}
         lang_code = task_us_data.get("lang_code")
         if lang_code and LANGUAGES.get(lang_code):
-            language = LANGUAGES[lang_code]
-            general_data[self.general_data_language_field] = language
             general_data[self.general_data_lang_code_field] = lang_code
         # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
         # https://github.com/elastic/elasticsearch-dsl-py/issues/460
@@ -273,12 +298,48 @@ class AuditVetBaseSerializer(Serializer):
             general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
         else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
-        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
-        # Update Elasticsearch document
-        doc = self.document_model(item_id)
-        doc.populate_monetization(**self.validated_data["monetization"])
-        doc.populate_task_us_data(**task_us_data)
-        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
-        doc.populate_general_data(**general_data)
-        es_manager.upsert_sections = self.SECTIONS
-        es_manager.upsert([doc])
+        return general_data
+
+    def _get_brand_safety_limbo(self, task_us_data, overall_score):
+        """
+        Determine if the vetting item should be reviewed.
+        If task_us_data contains brand_safety data, then vetter has determined not safe by saving brand_safety
+        categories.
+
+        If the vetter is a vetting admin, accept vetting result as final
+        :return:
+        """
+        limbo_data = {}
+        try:
+            # If vetting admin, accept vetting result as final
+            if self.context["user"].has_perm("user_profile.vet_audit_admin"):
+                limbo_data["limbo_status"] = False
+                return limbo_data
+        except (KeyError, AttributeError):
+            pass
+        # brand safety may be saved as [None]
+        safe = all(item is None for item in task_us_data.get("brand_safety"))
+        try:
+            if overall_score < self.REVIEW_SCORE_THRESHOLD:
+                # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
+                if safe:
+                    limbo_data = {
+                        "limbo_status": True,
+                        "pre_limbo_score": overall_score,
+                    }
+                else:
+                    # Vetting agrees with system unsafe result
+                    limbo_data["limbo_status"] = False
+            else:
+                # System scored as safe but vet marks as not safe
+                if not safe:
+                    limbo_data = {
+                        "limbo_status": True,
+                        "pre_limbo_score": overall_score,
+                    }
+                else:
+                    # Vetting agrees with system safe result
+                    limbo_data["limbo_status"] = False
+        except TypeError:
+            pass
+        return limbo_data

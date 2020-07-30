@@ -19,7 +19,7 @@ def generate_custom_segment(segment_id, results=None, tries=0):
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
         if results is None:
-            results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=False)
+            results = generate_segment(segment, export.query["body"], segment.config.LIST_SIZE, add_uuid=False)
         segment.statistics = results["statistics"]
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
