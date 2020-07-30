@@ -345,6 +345,8 @@ class AuditExportApiView(APIView):
                 title_bad_hit_words = v_word_hits.get('exclusion_title')
                 if title_bad_hit_words:
                     title_bad_hit_words = ",".join(title_bad_hit_words)
+                else:
+                    title_bad_hit_words = ""
             else:
                 all_bad_hit_words = ""
                 unique_bad_hit_words = ""
