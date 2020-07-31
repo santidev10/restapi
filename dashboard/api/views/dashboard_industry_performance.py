@@ -32,6 +32,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
     ALLOWED_VIDEO_SORTS = ["stats.last_30day_views", "ads_stats.video_view_rate", "ads_stats.ctr_v"]
     ALLOWED_CATEGORY_SORTS = ["stats.last_30day_subscribers", "stats.last_30day_views", "ads_stats.video_view_rate",
                               "ads_stats.ctr_v"]
+    TOP_HITS_COUNT = 10
 
     def get(self, request, *args, **kwargs):
         params = str(request.query_params)
@@ -123,8 +124,9 @@ class DashboardIndustryPerformanceAPIView(APIView):
         ]
 
         channel_hits = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting,
-                                              limit=10).execute().hits
-        video_hits = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10).execute().hits
+                                              limit=self.TOP_HITS_COUNT).execute().hits
+        video_hits = video_manager.search(filters=video_forced_filters, sort=video_sorting,
+                                          limit=self.TOP_HITS_COUNT).execute().hits
 
         top_channels = []
         for hit in channel_hits:
@@ -155,7 +157,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
         for key, value in category_aggregations.items():
             value["key"] = key
             top_categories.append(value)
-        top_categories = sorted(top_categories, key=lambda category: -category[category_sort]["value"])[:10]
+        top_categories = sorted(top_categories,
+                                key=lambda category: -category[category_sort]["value"])[:self.TOP_HITS_COUNT]
 
         data = {
             "top_channels": list(top_channels),
