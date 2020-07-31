@@ -2,6 +2,7 @@ from datetime import timedelta
 import mock
 
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from cache.models import CacheItem
 from dashboard.api.urls.names import DashboardPathName
@@ -11,6 +12,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
+from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
@@ -22,8 +25,9 @@ class DashboardPacingAlertTestCase(APITestCase):
 
     def test_success(self):
         """ Test returns user watched opportunities sorted by name """
-        user = self.create_admin_user()
-
+        Permissions.sync_groups()
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.TOOLS)
         op1 = Opportunity.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100)
         pl1 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name="p", opportunity=op1)
         Campaign.objects.create(name="c", salesforce_placement=pl1)
@@ -67,3 +71,9 @@ class DashboardPacingAlertTestCase(APITestCase):
 
             cache.refresh_from_db()
             self.assertEqual(cache.value, data)
+
+    def test_permissions_fail(self):
+        """ Test user must have Tools group permissions """
+        self.create_test_user()
+        response = self.client.get(self._url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
