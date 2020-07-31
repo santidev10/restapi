@@ -71,7 +71,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
                             "field": "stats.last_30day_views"
                         }
                     },
-                    "ads_stats.video_view_rates": {
+                    "ads_stats.video_view_rate": {
                         "avg": {
                             "field": "ads_stats.video_view_rate"
                         }
