@@ -2,6 +2,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
 from utils.api.mutate_query_params import mutate_query_params
+from utils.datetime import now_in_default_tz
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
@@ -36,3 +37,7 @@ class VideoListExportApiView(ESDataS3ExportApiView, APIView):
     @staticmethod
     def get_filename(name):
         return f"Videos export report {name}.csv"
+
+    @staticmethod
+    def get_report_prefix():
+        return f'research_videos_export_{now_in_default_tz().date().strftime("%Y_%m_%d")}'
