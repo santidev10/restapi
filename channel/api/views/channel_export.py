@@ -2,6 +2,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
 from channel.tasks.export_data import export_channels_data
+from utils.datetime import now_in_default_tz
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
@@ -32,3 +33,7 @@ class ChannelListExportApiView(ESDataS3ExportApiView, APIView):
     @staticmethod
     def get_filename(name):
         return f"Channels export report {name}.csv"
+
+    @staticmethod
+    def get_report_prefix():
+        return f'research_channels_export_{now_in_default_tz().date().strftime("%Y_%m_%d")}'
