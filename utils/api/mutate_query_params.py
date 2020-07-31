@@ -23,7 +23,9 @@ class MutateQueryParamIfValidYoutubeIdMixin:
         """
         search_values = [self.request.query_params.get(field, None) for field in self.match_phrase_filter]
         search_values = list(set(filter(None, search_values)))
-        if len(search_values) == 1 and self.YOUTUBE_ID_FIELD in self.terms_filter and manager.get(ids=search_values):
+        if len(search_values) == 1 \
+                and self.YOUTUBE_ID_FIELD in self.terms_filter \
+                and list(filter(None, manager.get(ids=search_values))):
             with mutate_query_params(self.request.query_params):
                 self.request.query_params[self.YOUTUBE_ID_FIELD] = search_values[0]
                 for field in self.match_phrase_filter:
