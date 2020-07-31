@@ -38,7 +38,7 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
                         "stats.subscribers:min", "stats.views_per_video:max", "stats.views_per_video:min",
                         "task_us_data.age_group", "task_us_data.content_type", "task_us_data.content_quality",
                         "task_us_data.gender", "task_us_data:exists", "task_us_data:missing",
-                        "brand_safety.limbo_status:exists",]
+                        "brand_safety.limbo_status",]
         manager.upsert([manager.model("test_channel")], refresh="wait_for")
         params = dict(
             aggregations=",".join(aggregations)

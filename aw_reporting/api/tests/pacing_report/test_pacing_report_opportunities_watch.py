@@ -1,6 +1,7 @@
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity
@@ -34,6 +35,12 @@ class PacingReportWatchOpportunitiesTestCase(APITestCase):
         self.assertEqual(OpportunityWatch.objects.filter(user=user).count(), 1)
         self.assertEqual(OpportunityWatch.objects.filter(user=user).first().opportunity.id, op.id)
         self.assertFalse(CacheItem.objects.filter(key=dashboard_pacing_alert_cache_key).exists())
+
+    def test_permissions_fail(self):
+        """ Test user must have Tools group permissions """
+        self.create_test_user()
+        response = self.client.get(self._get_url(0))
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_max_watch_opportunity(self):
         """ Test user can not watch more than max allowed """

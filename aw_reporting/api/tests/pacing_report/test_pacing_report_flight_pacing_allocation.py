@@ -22,7 +22,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_start_date(self):
         """ Test that start date of first date range must be start date of flight """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -40,13 +40,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         border = flight.start + timedelta(days=1)
         payload = [
             dict(
-                start=str((flight.start - timedelta(days=1)).date()),
-                end=str(border.date()),
+                start=str((flight.start - timedelta(days=1))),
+                end=str(border),
                 allocation=50
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=1))),
+                end=str(flight_end),
                 allocation=50
             )
         ]
@@ -57,7 +57,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_end_date(self):
         """ Test that end date of last date range must be end date of flight """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -76,13 +76,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         border = today
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=50
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str((flight_end - timedelta(days=1)).date()),
+                start=str((border + timedelta(days=1))),
+                end=str((flight_end - timedelta(days=1))),
                 allocation=50
             )
         ]
@@ -94,7 +94,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_total_allocation_must_equal_100(self):
         """ Test that sum of allocations must be 100 """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         flight_end = today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
@@ -113,13 +113,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         border = flight.start + timedelta(days=1)
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=90
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=1))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
@@ -131,7 +131,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_cannot_modify_past_allocation(self):
         """ Test that modifying an allocation in a date range that is in the past is not allowed """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         border = flight_start
         flight_end = flight_start + timedelta(days=5)
@@ -154,13 +154,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         payload = [
             dict(
                 # Disallow changing allocation for date range in past
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=80
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=1))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
@@ -172,7 +172,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_invalid_overlapping_dates(self):
         """ Test that dates must not overlap between date ranges """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         border = today
         flight_end = today + timedelta(days=2)
@@ -192,13 +192,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         FlightPacingAllocation.get_allocations(flight.id)
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=80
             ),
             dict(
-                start=str((border - timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border - timedelta(days=1))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
@@ -211,7 +211,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_first_allocation_modification_includes_today_date(self):
         """ Test that modifying allocations for the first time must include today's date """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today - timedelta(days=3)
         border = today - timedelta(days=1)
         flight_end = border + timedelta(days=2)
@@ -231,13 +231,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         FlightPacingAllocation.get_allocations(flight.id)
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=80
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=1))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
@@ -248,7 +248,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
 
     def test_success(self):
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today + timedelta(days=3)
         border = flight_start
         flight_end = border + timedelta(days=2)
@@ -270,13 +270,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         FlightPacingAllocation.objects.filter(id=list(allocations.values())[0].id).update(allocation=10)
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=80
             ),
             dict(
-                start=str((border + timedelta(days=1)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=1))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
@@ -287,7 +287,7 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
     def test_reject_date_ranges_must_consecutive(self):
         """ Test date ranges must be consecutive """
         self.create_admin_user()
-        today = now_in_default_tz()
+        today = now_in_default_tz().date()
         flight_start = today + timedelta(days=3)
         border = flight_start
         flight_end = border + timedelta(days=2)
@@ -309,13 +309,13 @@ class PacingReportFlightAllocationTestCase(ExtendedAPITestCase):
         FlightPacingAllocation.objects.filter(id=list(allocations.values())[0].id).update(allocation=10)
         payload = [
             dict(
-                start=str(flight.start.date()),
-                end=str(border.date()),
+                start=str(flight.start),
+                end=str(border),
                 allocation=80
             ),
             dict(
-                start=str((border + timedelta(days=2)).date()),
-                end=str(flight_end.date()),
+                start=str((border + timedelta(days=2))),
+                end=str(flight_end),
                 allocation=20
             )
         ]
