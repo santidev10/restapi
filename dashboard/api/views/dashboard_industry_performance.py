@@ -36,7 +36,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
         params = str(request.query_params) + str(kwargs)
         cache_key = get_cache_key(params, prefix=DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX)
         try:
-            cache = CacheItem.objects.get(key=cache_key).value
+            cache = CacheItem.objects.get(key=cache_key)
             if cache.updated_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
                 cache.value = self._get_data(request)
                 cache.save()
@@ -121,9 +121,32 @@ class DashboardIndustryPerformanceAPIView(APIView):
             }
         ]
 
-        top_channels = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting,
+        channel_hits = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting,
                                               limit=10).execute().hits
-        top_videos = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10).execute().hits
+        video_hits = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10).execute().hits
+
+        top_channels = []
+        for hit in channel_hits:
+            channel = {
+                "key": hit.main.id,
+                "title": hit.general_data.title,
+                "stats.last_30day_subscribers": hit.stats.last_30day_subscribers,
+                "stats.last_30day_views": hit.stats.last_30day_views,
+                "ads_stats.video_view_rate": hit.ads_stats.video_view_rate,
+                "ads_stats.ctr_v": hit.ads_stats.ctr_v
+            }
+            top_channels.append(channel)
+
+        top_videos = []
+        for hit in video_hits:
+            video = {
+                "key": hit.main.id,
+                "title": hit.general_data.title,
+                "stats.last_30day_views": hit.stats.last_30day_views,
+                "ads_stats.video_view_rate": hit.ads_stats.video_view_rate,
+                "ads_stats.ctr_v": hit.ads_stats.ctr_v
+            }
+            top_videos.append(video)
 
         t1_categories = [category.title() for category in TOP_LEVEL_CATEGORIES]
         category_aggregations = self.get_category_widget_aggregations(manager=channel_manager, categories=t1_categories)
@@ -134,8 +157,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
         top_categories = sorted(top_categories, key=lambda category: -category[category_sort]["value"])[:10]
 
         data = {
-            "top_channels": top_channels,
-            "top_videos": top_videos,
+            "top_channels": list(top_channels),
+            "top_videos": list(top_videos),
             "top_categories": top_categories
         }
         return data
