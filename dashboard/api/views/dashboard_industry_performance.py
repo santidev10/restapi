@@ -21,6 +21,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
+            user_has_permission("userprofile.settings_my_yt_channels"),
             IsAdminUser
         ),
     )
@@ -33,7 +34,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
                               "ads_stats.ctr_v"]
 
     def get(self, request, *args, **kwargs):
-        params = str(request.query_params) + str(kwargs)
+        params = str(request.query_params)
         cache_key = get_cache_key(params, prefix=DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX)
         try:
             cache = CacheItem.objects.get(key=cache_key)
