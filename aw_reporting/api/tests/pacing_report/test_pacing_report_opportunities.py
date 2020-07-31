@@ -118,6 +118,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "impressions",
                 "is_completed",
                 "is_upcoming",
+                "is_watched",
                 "margin",
                 "margin_cap_required",
                 "margin_direction",
