@@ -320,7 +320,7 @@ class AuditVetBaseSerializer(Serializer):
         # brand safety may be saved as [None]
         safe = all(item is None for item in task_us_data.get("brand_safety"))
         try:
-            if overall_score < self.REVIEW_SCORE_THRESHOLD:
+            if overall_score <= self.REVIEW_SCORE_THRESHOLD:
                 # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
                 if safe:
                     limbo_data = {
