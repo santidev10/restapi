@@ -46,6 +46,51 @@ class DashboardIndustryPerformanceAPIView(APIView):
             CacheItem.objects.create(key=cache_key, value=json.dumps(data))
         return Response(data=data)
 
+    def get_category_widget_aggregations(self, manager, categories, size=0):
+        search = manager._search()
+        aggregation = {}
+        for category in categories:
+            aggregation[f"{category}"] = {
+                "filter": {
+                    "bool": {
+                        "must": {
+                            "term": {
+                                "general_data.iab_categories": category
+                            }
+                        }
+                    }
+                },
+                "aggs": {
+                    "stats.last_30day_subscribers": {
+                        "sum": {
+                            "field": "stats.last_30day_subscribers"
+                        }
+                    },
+                    "stats.last_30day_views": {
+                        "sum": {
+                            "field": "stats.last_30day_views"
+                        }
+                    },
+                    "ads_stats.video_view_rates": {
+                        "avg": {
+                            "field": "ads_stats.video_view_rate"
+                        }
+                    },
+                    "ads_stats.ctr_v": {
+                        "avg": {
+                            "field": "ads_stats.ctr_v"
+                        }
+                    }
+                }
+            }
+        search.update_from_dict({
+            "size": size,
+            "aggs": aggregation
+        })
+
+        aggregations_result = search.execute().aggregations.to_dict()
+        return aggregations_result
+
     def _get_data(self, request):
         channel_sort = request.query_params.get("channel_sort") \
             if request.query_params.get("channel_sort") in self.ALLOWED_CHANNEL_SORTS \
@@ -61,7 +106,6 @@ class DashboardIndustryPerformanceAPIView(APIView):
                                      upsert_sections=())
         channel_forced_filters = channel_manager.forced_filters(include_deleted=False)
         video_forced_filters = video_manager.forced_filters(include_deleted=False)
-        category_forced_filters = channel_manager.forced_filters(include_deleted=False)
 
         channel_sorting = [
             {
@@ -81,19 +125,19 @@ class DashboardIndustryPerformanceAPIView(APIView):
 
         t1_categories = [category.title() for category in TOP_LEVEL_CATEGORIES]
 
-
-
-        category_sorting = {
-            category_sort: {
-                "order": "desc"
-            }
-        }
+        category_aggregations = self.get_category_widget_aggregations(manager=channel_manager, categories=t1_categories)
+        top_categories = []
+        for key, value in category_aggregations.items():
+            value["key"] = key
+            top_categories.append(value)
+        top_categories = sorted(top_categories, key=lambda category: -category[category_sort]["value"])[:10]
 
         top_channels = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting, limit=10).execute().hits
         top_videos = video_manager.search(filters=video_forced_filters, sort=video_sorting, limit=10).execute().hits
 
         data = {
             "top_channels": top_channels,
-            "top_videos": top_videos
+            "top_videos": top_videos,
+            "top_categories": top_categories
         }
         return data
