@@ -40,7 +40,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
             if cache.updated_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
                 cache.value = self._get_data(request)
                 cache.save()
-            data = cache.value
+            data = json.loads(cache.value)
         except CacheItem.DoesNotExist:
             data = self._get_data(request)
             CacheItem.objects.create(key=cache_key, value=json.dumps(data))
