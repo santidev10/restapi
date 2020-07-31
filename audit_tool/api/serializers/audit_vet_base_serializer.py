@@ -312,7 +312,7 @@ class AuditVetBaseSerializer(Serializer):
         limbo_data = {}
         try:
             # If vetting admin, accept vetting result as final
-            if self.context["user"].has_perm("user_profile.vet_audit_admin"):
+            if self.context["user"].has_perm("userprofile.vet_audit_admin"):
                 limbo_data["limbo_status"] = False
                 return limbo_data
         except (KeyError, AttributeError):
