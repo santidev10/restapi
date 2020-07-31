@@ -128,7 +128,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
         top_channels = []
         for hit in channel_hits:
             channel = {
-                "key": hit.main.id,
+                "id": hit.main.id,
                 "title": hit.general_data.title,
                 "stats.last_30day_subscribers": hit.stats.last_30day_subscribers,
                 "stats.last_30day_views": hit.stats.last_30day_views,
@@ -140,7 +140,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
         top_videos = []
         for hit in video_hits:
             video = {
-                "key": hit.main.id,
+                "id": hit.main.id,
                 "title": hit.general_data.title,
                 "stats.last_30day_views": hit.stats.last_30day_views,
                 "ads_stats.video_view_rate": hit.ads_stats.video_view_rate,
