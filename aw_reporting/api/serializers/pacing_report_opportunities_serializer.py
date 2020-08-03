@@ -70,7 +70,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
 
     def get_is_watched(self, obj):
         is_watched = False
-        if obj["id"] in self.context.get("watched_opportunities"):
+        if obj["id"] in self.context.get("watched_opportunities", []):
             is_watched = True
         return is_watched
 
