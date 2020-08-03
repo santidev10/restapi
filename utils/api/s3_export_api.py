@@ -68,11 +68,13 @@ class S3ExportApiView(APIViewMixin):
     def _get_url_to_export(self, export_name):
         return self.s3_exporter.generate_temporary_url(export_name)
 
-    @staticmethod
-    def generate_report_hash(filters, user_pk):
+    def generate_report_hash(self, filters, user_pk):
         _filters = filters.copy()
         _filters["current_datetime"] = now_in_default_tz().date().strftime("%Y-%m-%d")
         _filters["user_id"] = user_pk
-        serialzed_filters = json.dumps(_filters, sort_keys=True)
-        _hash = hashlib.md5(serialzed_filters.encode()).hexdigest()
+        serialized_filters = json.dumps(_filters, sort_keys=True)
+        _hash = hashlib.md5(serialized_filters.encode()).hexdigest()
+        get_report_prefix = getattr(self, 'get_report_prefix', None)
+        if callable(get_report_prefix):
+            return f'{get_report_prefix()}_{_hash}'
         return _hash

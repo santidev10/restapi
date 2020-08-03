@@ -45,6 +45,12 @@ class PacingReportOpportunitiesApiView(ListAPIView, PacingReportHelper):
                 ))
         return opportunities
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        watched_opportunities = set(self.request.user.watch.values_list("opportunity_id", flat=True))
+        context["watched_opportunities"] = watched_opportunities
+        return context
+
     def finalize_response(self, request, response, *args, **kwargs):
         if response.status_code == HTTP_200_OK:
             try:

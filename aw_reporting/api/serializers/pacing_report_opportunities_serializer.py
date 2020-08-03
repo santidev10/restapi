@@ -36,6 +36,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     impressions = IntegerField()
     is_completed = BooleanField()
     is_upcoming = BooleanField()
+    is_watched = SerializerMethodField()
     margin = PercentField()
     margin_direction = IntegerField()
     margin_quality = IntegerField()
@@ -66,6 +67,12 @@ class PacingReportOpportunitiesSerializer(Serializer):
 
     def update(self, instance, validated_data):
         raise NotImplementedError
+
+    def get_is_watched(self, obj):
+        is_watched = False
+        if obj["id"] in self.context.get("watched_opportunities", []):
+            is_watched = True
+        return is_watched
 
     def get_region(self, obj):
         territory = obj["territory"]

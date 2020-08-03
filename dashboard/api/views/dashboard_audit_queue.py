@@ -16,8 +16,8 @@ class DashboardAuditQueueAPIView(APIView):
     def get(self, request, *args, **kwargs):
         data = {}
         data['active_machine_count'] = AuditMachine.objects.filter(last_seen__gte=timezone.now()-timedelta(minutes=5)).count()
-        data['active_audit_count'] = AuditProcessor.objects.filter(started__isnull=False, completed__isnull=True).count()
-        data['pending_audit_count'] = AuditProcessor.objects.filter(started__isnull=True).count()
+        data['active_audit_count'] = AuditProcessor.objects.filter(source=0, temp_stop=False, started__isnull=False, completed__isnull=True).count()
+        data['pending_audit_count'] = AuditProcessor.objects.filter(source=0, temp_stop=False, started__isnull=True).count()
         data['active_audits'] = self.get_active_audits()
         return Response(data=data)
 

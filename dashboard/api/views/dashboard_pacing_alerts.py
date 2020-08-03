@@ -11,9 +11,17 @@ from cache.models import CacheItem
 from dashboard.api.views.constants import DASHBOARD_PACING_ALERTS_CACHE_PREFIX
 from dashboard.utils import get_cache_key
 from utils.datetime import now_in_default_tz
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class DashboardPacingAlertsAPIView(APIView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.view_pricing_tool"),
+            user_has_permission("userprofile.view_chf_trends"),
+        ),
+    )
     CACHE_TTL = 1800
 
     def get(self, request, *args, **kwargs):
