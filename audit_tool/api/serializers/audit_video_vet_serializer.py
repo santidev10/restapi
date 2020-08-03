@@ -64,12 +64,11 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
                              "during instantiation.")
         video_id = self.instance.video.video_id
         self._save_vetting_item()
-        blacklist_categories = self.save_brand_safety(video_id)
         try:
             channel_id = self.instance.video.channel.channel_id
         except (AttributeError, AuditChannel.DoesNotExist):
             channel_id = None
-        self.save_elasticsearch(video_id, blacklist_categories)
+        self.save_elasticsearch(video_id)
         if channel_id:
             self._update_channel(channel_id)
 
