@@ -16,7 +16,7 @@ def channel_discovery_scheduler():
     channel_manager = ChannelManager()
     query = channel_manager.forced_filters() \
         & QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}").get()
-    query.should += [
+    query.should = [
         QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get(),
         QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
     ]
