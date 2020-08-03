@@ -223,11 +223,6 @@ class QueryGenerator:
             if value and isinstance(value, str):
                 if field == "general_data.title":
                     field = "general_data.title^2"
-                # prioritise comma-separated main.id terms filter, if set
-                if field == "main.id" \
-                    and field in self.terms_filter \
-                    and len(value.split(",")) > 1:
-                    continue
                 search_phrase = value
             fields.append(field)
         query = Q(

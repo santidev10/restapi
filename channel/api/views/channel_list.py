@@ -19,6 +19,7 @@ from es_components.managers.channel import ChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import mutate_query_params
+from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -70,7 +71,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(APIViewMixin, ListAPIView):
+class ChannelListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
@@ -169,6 +170,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                     del self.request.query_params["monetization.is_monetizable"]
                 except KeyError:
                     pass
+
+        self.mutate_query_params_if_valid_youtube_id(manager=ChannelManager())
 
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
         return result
