@@ -49,8 +49,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
         es_manager, serializer = self._get_config(doc_id, sections=[Sections.TASK_US_DATA])
         serializer = serializer(data=data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
-        brand_safety = serializer.save_brand_safety(doc_id)
-        serializer.save_elasticsearch(doc_id, brand_safety)
+        serializer.save_elasticsearch(doc_id)
         return Response()
 
     def _get_config(self, doc_id, sections=None):

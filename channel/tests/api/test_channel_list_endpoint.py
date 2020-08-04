@@ -284,3 +284,50 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             data = self.client.get(url).data
         self.assertEqual(data["items_count"], 1)
         self.assertEqual(data["items"][0]["main"]["id"], docs[0].main.id)
+
+    def test_channel_id_query_param_mutation(self):
+        """
+        Test that a search on a channel id correctly mutates the
+        query params to return that channel only, even where
+        the search term exists in a field that is specified in
+        the initial search
+        """
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+
+        channel_ids = [str(next(int_iterator)) for i in range(3)]
+        channel_one = Channel(**{
+            "meta": {"id": channel_ids[0]},
+            "main": {'id': channel_ids[0]},
+            "general_data": {
+                "title": "channel with id we're searching for",
+                "description": f"some description."
+            }
+        })
+        channel_two = Channel(**{
+            "meta": {"id": channel_ids[1]},
+            "main": {'id': channel_ids[1]},
+            "general_data": {
+                "title": "the fox is quick",
+                "description": f"some description. {channel_ids[0]}"
+            }
+        })
+        channel_three = Channel(**{
+            "meta": {"id": channel_ids[2]},
+            "main": {'id': channel_ids[2]},
+            "general_data": {
+                "title": "the fox is quick and brown",
+                "description": f"some description. {channel_ids[0]}"
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.MAIN, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([channel_one, channel_two, channel_three])
+
+        search_term = channel_ids[0]
+        url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
+        })
+        response = self.client.get(url)
+        items = response.data['items']
+        self.assertEqual(items[0]['main']['id'], channel_ids[0])

@@ -15,6 +15,7 @@ from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import mutate_query_params
+from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
@@ -33,7 +34,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(APIViewMixin, ListAPIView):
+class VideoListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.video_list"),
@@ -138,5 +139,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
             if "brand_safety" in self.request.query_params:
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
+
+        self.mutate_query_params_if_valid_youtube_id(manager=VideoManager())
 
         return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)

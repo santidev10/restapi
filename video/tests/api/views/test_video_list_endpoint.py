@@ -133,3 +133,50 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             asc_items[-1]["general_data"]["title"],
             most_relevant_video_title
         )
+
+    def test_video_id_query_param_mutation(self):
+        """
+        Test that a search on a video id correctly mutates the
+        query params to return that video only, even where
+        the search term exists in a field that is specified in
+        the initial search
+        """
+        user = self.create_test_user()
+        user.add_custom_user_permission("video_list")
+
+        video_ids = [str(next(int_iterator)) for i in range(3)]
+        video_one = Video(**{
+            "meta": {"id": video_ids[0]},
+            "main": {'id': video_ids[0]},
+            "general_data": {
+                "title": "video whose id we're searching for",
+                "description": f"some description."
+            }
+        })
+        video_two = Video(**{
+            "meta": {"id": video_ids[1]},
+            "main": {'id': video_ids[1]},
+            "general_data": {
+                "title": "the fox is quick",
+                "description": f"some description. {video_ids[0]}"
+            }
+        })
+        video_three = Video(**{
+            "meta": {"id": video_ids[2]},
+            "main": {'id': video_ids[2]},
+            "general_data": {
+                "title": "the fox is quick and brown",
+                "description": f"some description. {video_ids[0]}"
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.MAIN]
+        VideoManager(sections=sections).upsert([video_one, video_two, video_three])
+
+        search_term = video_ids[0]
+        url = self.get_url() + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
+        })
+        response = self.client.get(url)
+        items = response.data['items']
+        self.assertEqual(items[0]['main']['id'], video_ids[0])
