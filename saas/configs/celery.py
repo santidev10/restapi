@@ -208,6 +208,7 @@ class TaskExpiration:
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -223,3 +224,4 @@ class TaskTimeout:
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
+    INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
