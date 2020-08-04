@@ -48,9 +48,12 @@ class DashboardIndustryPerformanceAPIView(APIView):
             else "stats.last_30day_subscribers"
 
         # Generate Cache Keys for Each Sorting Parameter
-        channels_cache_key = get_cache_key(params, prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}channels_")
-        videos_cache_key = get_cache_key(params, prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}videos_")
-        categories_cache_key = get_cache_key(params, prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}categories_")
+        channels_cache_key = get_cache_key(channel_sort,
+                                           prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}channels_")
+        videos_cache_key = get_cache_key(video_sort,
+                                         prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}videos_")
+        categories_cache_key = get_cache_key(category_sort,
+                                             prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}categories_")
 
         # Get Channels Data
         channels_data = self.retrieve_from_cache(request, channels_cache_key)
