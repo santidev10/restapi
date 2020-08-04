@@ -20,7 +20,7 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
-    REVIEW_SCORE_THRESHOLD = 80
+    REVIEW_SCORE_THRESHOLD = 79
     data_type = None
     document_model = None
     general_data_lang_code_field = None
@@ -234,7 +234,7 @@ class AuditVetBaseSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories):
+    def save_elasticsearch(self, item_id):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -243,9 +243,14 @@ class AuditVetBaseSerializer(Serializer):
         :return: None
         """
         try:
-            item_overall_score = self.es_manager.get([item_id])[0].brand_safety.overall_score
+            bs_data = self.es_manager.get([item_id])[0].brand_safety
+            item_overall_score = bs_data.overall_score
+            pre_limbo_score = bs_data.pre_limbo_score
         except (IndexError, AttributeError):
             item_overall_score = None
+            pre_limbo_score = None
+
+        blacklist_categories = self.save_brand_safety(item_id)
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
@@ -254,7 +259,7 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = self._get_general_data(task_us_data)
         task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
-        brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score)
+        brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score, pre_limbo_score)
 
         # Update Elasticsearch document
         doc = self.document_model(item_id)
@@ -300,13 +305,14 @@ class AuditVetBaseSerializer(Serializer):
             general_data["iab_categories"] = task_us_data["iab_categories"]
         return general_data
 
-    def _get_brand_safety_limbo(self, task_us_data, overall_score):
+    def _get_brand_safety_limbo(self, task_us_data, overall_score, pre_limbo_score):
         """
         Determine if the vetting item should be reviewed.
         If task_us_data contains brand_safety data, then vetter has determined not safe by saving brand_safety
         categories.
 
         If the vetter is a vetting admin, accept vetting result as final
+        :param brand_safety_data: BrandSafety document section data
         :return:
         """
         limbo_data = {}
@@ -319,27 +325,16 @@ class AuditVetBaseSerializer(Serializer):
             pass
         # brand safety may be saved as [None]
         safe = all(item is None for item in task_us_data.get("brand_safety"))
-        try:
-            if overall_score <= self.REVIEW_SCORE_THRESHOLD:
-                # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
-                if safe:
-                    limbo_data = {
-                        "limbo_status": True,
-                        "pre_limbo_score": overall_score,
-                    }
-                else:
-                    # Vetting agrees with system unsafe result
-                    limbo_data["limbo_status"] = False
-            else:
-                # System scored as safe but vet marks as not safe
-                if not safe:
-                    limbo_data = {
-                        "limbo_status": True,
-                        "pre_limbo_score": overall_score,
-                    }
-                else:
-                    # Vetting agrees with system safe result
-                    limbo_data["limbo_status"] = False
-        except TypeError:
-            pass
+
+        # If vetting agrees with pre_limbo_score, limbo_status is resolved
+        if pre_limbo_score is not None:
+            if (safe and pre_limbo_score > self.REVIEW_SCORE_THRESHOLD) or (not safe and pre_limbo_score < self.REVIEW_SCORE_THRESHOLD):
+                limbo_data["limbo_status"] = False
+        # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
+        elif overall_score is not None:
+            if overall_score <= self.REVIEW_SCORE_THRESHOLD and safe:
+                limbo_data = {
+                    "limbo_status": True,
+                    "pre_limbo_score": overall_score,
+                }
         return limbo_data
