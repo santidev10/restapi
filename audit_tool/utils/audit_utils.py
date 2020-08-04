@@ -250,14 +250,16 @@ class AuditUtils(object):
         data = vetting_model.objects \
             .filter(audit_id=audit_id, **id_query) \
             .annotate(item_id=F(related_item_id_field)) \
-            .values("skipped", "clean", "item_id")
+            .values("skipped", "clean", "item_id", "processed_by_user_id")
         user_emails = {
             user.id: user.email
-            for user in get_user_model().objects.filter(id__in=set(item.processed_by_user_id for item in data))
+            for user in get_user_model().objects.filter(id__in=set(item["processed_by_user_id"] for item in data))
         }
         vetting_data = {}
         for item in data:
-            item_id = item.pop("item_id")
-            item.user_email = user_emails.get(item.processed_by_user_id)
+            item_id = item.pop("item_id", None)
+            if not item_id:
+                continue
+            item["user_email"] = user_emails.get(item["processed_by_user_id"])
             vetting_data[item_id] = item
         return vetting_data
