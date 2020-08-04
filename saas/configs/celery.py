@@ -123,6 +123,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_forecast_tool_filters.cache_forecast_tool_filters",
         "schedule": crontab(minute=0, hour="*/6"),
     },
+    "cache_industry_performance": {
+        "task": "cache.tasks.cache_industry_performance.cache_industry_performance",
+        "schedule": crontab(hour="*", minute="*/30"),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
