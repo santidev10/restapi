@@ -238,7 +238,7 @@ class AuditSaveApiView(APIView):
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
     def load_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode("utf-32")
+        file = uploaded_file.read().decode("utf-32", errors="backslashreplace")
         keywords = []
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=";", quotechar="|")
@@ -254,7 +254,7 @@ class AuditSaveApiView(APIView):
         return keywords
 
     def load_exclusion_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode("utf-32")
+        file = uploaded_file.read().decode("utf-32", errors="backslashreplace")
         exclusion_data = []
         categories = []
         io_string = StringIO(file)
