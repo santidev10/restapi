@@ -7,6 +7,7 @@ from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.video_discovery import video_update
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
