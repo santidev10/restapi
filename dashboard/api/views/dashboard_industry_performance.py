@@ -56,7 +56,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
                                              prefix=f"{DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX}categories_")
 
         # Get Channels Data
-        channels_data = self.retrieve_from_cache(request, channels_cache_key)
+        channels_data = self.retrieve_from_cache(channels_cache_key)
         if channels_data is None:
             channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                              upsert_sections=())
@@ -81,12 +81,14 @@ class DashboardIndustryPerformanceAPIView(APIView):
                     "ads_stats.ctr_v": hit.ads_stats.ctr_v
                 }
                 top_channels.append(channel)
-            CacheItem.objects.create(key=channels_cache_key, value=json.dumps({"top_channels": list(top_channels)}))
+            channels_cache, _ = CacheItem.objects.get_or_create(key=channels_cache_key)
+            channels_cache.value = json.dumps({"top_channels": list(top_channels)})
+            channels_cache.save()
         else:
             top_channels = channels_data["top_channels"]
 
         # Get Videos Data
-        videos_data = self.retrieve_from_cache(request, videos_cache_key)
+        videos_data = self.retrieve_from_cache(videos_cache_key)
         if videos_data is None:
             video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                          upsert_sections=())
@@ -110,12 +112,14 @@ class DashboardIndustryPerformanceAPIView(APIView):
                     "ads_stats.ctr_v": hit.ads_stats.ctr_v
                 }
                 top_videos.append(video)
-            CacheItem.objects.create(key=videos_cache_key, value=json.dumps({"top_videos": list(top_videos)}))
+            videos_cache, _ = CacheItem.objects.get_or_create(key=videos_cache_key)
+            videos_cache.value = json.dumps({"top_videos": list(top_videos)})
+            videos_cache.save()
         else:
             top_videos = videos_data["top_videos"]
 
         # Get Categories Data
-        categories_data = self.retrieve_from_cache(request, categories_cache_key)
+        categories_data = self.retrieve_from_cache(categories_cache_key)
         if categories_data is None:
             category_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                               upsert_sections=())
@@ -129,8 +133,9 @@ class DashboardIndustryPerformanceAPIView(APIView):
             top_categories = sorted(top_categories,
                                     key=lambda category: category[category_sort].get("value") or 0,
                                     reverse=True)[:self.TOP_HITS_COUNT]
-            CacheItem.objects.create(key=categories_cache_key,
-                                     value=json.dumps({"top_categories": list(top_categories)}))
+            categories_cache, _ = CacheItem.objects.get_or_create(key=categories_cache_key)
+            categories_cache.value = json.dumps({"top_categories": list(top_categories)})
+            categories_cache.save()
         else:
             top_categories = categories_data["top_categories"]
 
@@ -142,12 +147,11 @@ class DashboardIndustryPerformanceAPIView(APIView):
         }
         return Response(data=data)
 
-    def retrieve_from_cache(self, request, cache_key):
+    def retrieve_from_cache(self, cache_key):
         try:
             cache = CacheItem.objects.get(key=cache_key)
             if cache.updated_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
-                cache.value = self._get_data(request)
-                cache.save()
+                return None
             data = json.loads(cache.value)
             return data
         except CacheItem.DoesNotExist:
