@@ -133,6 +133,9 @@ class DashboardIndustryPerformanceAPIView(APIView):
             top_categories = sorted(top_categories,
                                     key=lambda category: category[category_sort].get("value") or 0,
                                     reverse=True)[:self.TOP_HITS_COUNT]
+            top_categories = [{key: value.get("value") if type(value) is dict else value
+                               for key, value in top_category.items()}
+                              for top_category in top_categories]
             categories_cache, _ = CacheItem.objects.get_or_create(key=categories_cache_key)
             categories_cache.value = json.dumps({"top_categories": list(top_categories)})
             categories_cache.save()
