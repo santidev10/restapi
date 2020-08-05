@@ -26,12 +26,15 @@ class DashboardPacingAlertsAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         cache_key = self.get_cache_key(request.user.id)
+        now = now_in_default_tz()
         try:
             cache = CacheItem.objects.get(key=cache_key)
-            if cache.created_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
-                cache.value = self._get_data(request.user)
+            data = json.loads(cache.value)
+            if cache.created_at < now - timedelta(seconds=self.CACHE_TTL):
+                data = self._get_data(request.user)
+                cache.value = json.dumps(data)
+                cache.created_at = now
                 cache.save()
-            data = cache.value
         except CacheItem.DoesNotExist:
             data = self._get_data(request.user)
             CacheItem.objects.create(key=cache_key, value=json.dumps(data))
