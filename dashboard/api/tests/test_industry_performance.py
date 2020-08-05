@@ -1,9 +1,5 @@
-import mock
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
-
-from elasticsearch_dsl import Q
 
 from dashboard.api.urls.names import DashboardPathName
 from es_components.constants import Sections
@@ -23,23 +19,24 @@ from utils.unittests.reverse import reverse
 class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
     _url = reverse(DashboardPathName.DASHBOARD_INDUSTRY_PERFORMANCE, [Namespace.DASHBOARD])
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS,
                                                    Sections.ADS_STATS))
         video_manager = VideoManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS))
-        self.channel_id_1 = str(next(int_iterator))
-        self.channel_id_2 = str(next(int_iterator))
-        self.channel_id_3 = str(next(int_iterator))
-        self.channel_id_4 = str(next(int_iterator))
-        self.video_id_1 = str(next(int_iterator))
-        self.video_id_2 = str(next(int_iterator))
-        self.video_id_3 = str(next(int_iterator))
-        self.video_id_4 = str(next(int_iterator))
+        channel_id_1 = 1
+        channel_id_2 = 2
+        channel_id_3 = 3
+        channel_id_4 = 4
+        video_id_1 = 5
+        video_id_2 = 6
+        video_id_3 = 7
+        video_id_4 = 8
 
         # Create Test Channels
-        self.channel_1 = Channel(**{
+        channel_1 = Channel(**{
             "main": {
-                "id": self.channel_id_1
+                "id": channel_id_1
             },
             "general_data": {
                 "iab_categories": ["Automotive"]
@@ -54,9 +51,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 0.6
             }
         })
-        self.channel_2 = Channel(**{
+        channel_2 = Channel(**{
             "main": {
-                "id": self.channel_id_2
+                "id": channel_id_2
             },
             "general_data": {
                 "iab_categories": ["Automotive"]
@@ -72,9 +69,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
             }
         })
 
-        self.channel_3 = Channel(**{
+        channel_3 = Channel(**{
             "main": {
-                "id": self.channel_id_3
+                "id": channel_id_3
             },
             "general_data": {
                 "iab_categories": ["Social"]
@@ -90,9 +87,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
             }
         })
 
-        self.channel_4 = Channel(**{
+        channel_4 = Channel(**{
             "main": {
-                "id": self.channel_id_4
+                "id": channel_id_4
             },
             "general_data": {
                 "iab_categories": ["Video Gaming"]
@@ -107,13 +104,13 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 0.4
             }
         })
-        channels = [self.channel_1, self.channel_2, self.channel_3, self.channel_4]
+        channels = [channel_1, channel_2, channel_3, channel_4]
         channel_manager.upsert(channels)
 
         # Create Test Videos
-        self.video_1 = Video(**{
+        video_1 = Video(**{
             "main": {
-                "id": self.video_id_1
+                "id": video_id_1
             },
             "general_data": {
                 "iab_categories": ["Automotive"]
@@ -126,9 +123,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 0.6
             }
         })
-        self.video_2 = Video(**{
+        video_2 = Video(**{
             "main": {
-                "id": self.video_id_2
+                "id": video_id_2
             },
             "general_data": {
                 "iab_categories": ["Automotive"]
@@ -141,9 +138,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 1
             }
         })
-        self.video_3 = Video(**{
+        video_3 = Video(**{
             "main": {
-                "id": self.video_id_3
+                "id": video_id_3
             },
             "general_data": {
                 "iab_categories": ["Social"]
@@ -156,9 +153,9 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 0.8
             }
         })
-        self.video_4 = Video(**{
+        video_4 = Video(**{
             "main": {
-                "id": self.video_id_4
+                "id": video_id_4
             },
             "general_data": {
                 "iab_categories": ["Video Gaming"]
@@ -171,8 +168,18 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
                 "ctr_v": 0.4
             }
         })
-        videos = [self.video_1, self.video_2, self.video_3, self.video_4]
+        videos = [video_1, video_2, video_3, video_4]
         video_manager.upsert(videos)
+
+    def setUp(self):
+        self.channel_id_1 = 1
+        self.channel_id_2 = 2
+        self.channel_id_3 = 3
+        self.channel_id_4 = 4
+        self.video_id_1 = 5
+        self.video_id_2 = 6
+        self.video_id_3 = 7
+        self.video_id_4 = 8
 
     def test_success(self):
         Permissions.sync_groups()
