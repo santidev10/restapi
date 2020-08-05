@@ -11,7 +11,8 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "ads_stats.ctr", "ads_stats.video_view_rate", "ads_stats.video_quartile_100_rate", "analytics.age13_17",
                 "analytics.age18_24", "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
-                "stats.last_day_views", "brand_safety.overall_score")
+                "stats.last_day_views", "brand_safety.overall_score", "analytics.gender_female",
+                "analytics.gender_male",)
 
 EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data",
                  "monetization.is_monetizable")

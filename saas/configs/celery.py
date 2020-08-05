@@ -123,6 +123,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_forecast_tool_filters.cache_forecast_tool_filters",
         "schedule": crontab(minute=0, hour="*/6"),
     },
+    "cache_industry_performance": {
+        "task": "cache.tasks.cache_industry_performance.cache_industry_performance",
+        "schedule": crontab(hour="*", minute="*/30"),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
@@ -208,6 +212,7 @@ class TaskExpiration:
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -223,3 +228,4 @@ class TaskTimeout:
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
+    INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
