@@ -9,7 +9,7 @@ from cache.models import CacheItem
 from dashboard.api.views.constants import DASHBOARD_INDUSTRY_PERFORMANCE_CACHE_PREFIX
 from dashboard.utils import get_cache_key
 from es_components.constants import Sections
-from es_components.iab_categories import TOP_LEVEL_CATEGORIES
+from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.datetime import now_in_default_tz
@@ -119,7 +119,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
         if categories_data is None:
             category_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                               upsert_sections=())
-            t1_categories = [category.title() for category in TOP_LEVEL_CATEGORIES]
+            t1_categories = [category.title() for category in IAB_TIER1_CATEGORIES]
             category_aggregations = self.get_category_widget_aggregations(manager=category_manager,
                                                                           categories=t1_categories)
             top_categories = []
