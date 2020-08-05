@@ -20,7 +20,7 @@ class AuditVetBaseSerializer(Serializer):
     Base serializer for vetting models
     """
     # None values defined on child classes
-    REVIEW_SCORE_THRESHOLD = 80
+    REVIEW_SCORE_THRESHOLD = 79
     data_type = None
     document_model = None
     general_data_lang_code_field = None
