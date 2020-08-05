@@ -191,7 +191,7 @@ class AuditUtils(object):
         Read in csv file for keywords
         :return: Compiled regular expression
         """
-        with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
+        with open(csv_path, mode='r', encoding='utf-32') as csv_file:
             csv_reader = csv.reader(csv_file)
             keywords = list(csv_reader)
 

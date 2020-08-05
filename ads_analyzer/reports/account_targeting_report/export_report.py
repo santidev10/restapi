@@ -36,7 +36,7 @@ def account_targeting_export(options):
         for item in targeting_data
     ]
     s3_exporter = AccountTargetingReportS3Exporter()
-    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8-sig", delete=False, suffix=".csv",
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-32", delete=False, suffix=".csv",
                                      dir=settings.TEMPDIR) as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=EXPORT_FIELDS)
         csv_writer.writeheader()

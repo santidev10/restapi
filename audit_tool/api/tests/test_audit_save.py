@@ -34,7 +34,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.tmp_file = mkstemp(suffix=".csv")
         self.tmp_name = self.tmp_file[1]
         self.body = {}
-        with open(self.tmp_name, 'w+', encoding='utf-8-sig') as f:
+        with open(self.tmp_name, 'w+', encoding='utf-32') as f:
             f.write("testing")
             self.body['source_file'] = f
             self.response = self.client.post(self.url + "?name=test&audit_type=0&language=en/", self.body)
