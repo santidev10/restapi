@@ -9,7 +9,7 @@ class DashboardListAPIView(APIView):
     DASHBOARD_PERMISSIONS = {
         PermissionGroupNames.RESEARCH: Dashboards.INDUSTRY_TOP_PERFORMERS,
         PermissionGroupNames.TOOLS: Dashboards.PACING_ALERTS,
-        PermissionGroupNames.MEDIA_PLANNING_AUDIT: Dashboards.AUDIT_TOOL,
+        PermissionGroupNames.AUDIT_VIEW: Dashboards.AUDIT_TOOL,
         PermissionGroupNames.MANAGED_SERVICE: Dashboards.PERFORMANCE,
     }
 
