@@ -9,6 +9,7 @@ from rest_framework.serializers import SerializerMethodField
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.models import UserProfile
@@ -40,6 +41,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     is_featured = BooleanField(read_only=True)
     is_regenerating = BooleanField(read_only=True)
     thumbnail_image_url = SerializerMethodField(read_only=True)
+    source_name = SerializerMethodField(read_only=True)
 
     class Meta:
         model = CustomSegment
@@ -58,6 +60,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
             "is_featured",
             "is_regenerating",
             "thumbnail_image_url",
+            "source_name",
         )
 
     def create(self, validated_data):
@@ -133,6 +136,14 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         }
         to_id = config[item_type][value]
         return to_id
+
+    def get_source_name(self, obj):
+        """ Get name of uploaded source file """
+        try:
+            name = obj.source.name
+        except CustomSegmentSourceFileUpload.DoesNotExist:
+            name = None
+        return name
 
 
 class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
