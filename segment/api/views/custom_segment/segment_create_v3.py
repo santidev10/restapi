@@ -203,7 +203,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             segment=segment,
             source_type=source_type,
             filename=key,
-            name=source.name,
+            name=source.get("name", None),
         )
         return source_upload
 
