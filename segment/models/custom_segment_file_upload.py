@@ -100,7 +100,7 @@ class CustomSegmentSourceFileUpload(Model):
     source_type = IntegerField(choices=SOURCE_TYPE_CHOICES)
     segment = OneToOneField(CustomSegment, related_name="source", on_delete=CASCADE)
     filename = TextField(null=True) # UUID of filename uploaded to S3
-    name = TextField(null=True) # name of file uploaded as source
+    name = TextField(null=True, default=True) # name of file uploaded as source
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):
