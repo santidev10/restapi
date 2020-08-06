@@ -367,7 +367,7 @@ class AuditFileS3Exporter(S3Exporter):
         body = cls.get_s3_export_content(name)
         r = body.read()
         try:
-            res = r.decode("utf-8-sig").split()
+            res = r.decode("utf-8-sig")
         except Exception:
-            res = r.decode("utf-32").split()
-        return res
+            res = r.decode("utf-32")
+        return res.split()
