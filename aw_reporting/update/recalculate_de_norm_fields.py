@@ -277,7 +277,6 @@ FLIGHTS_DELIVERY_ANNOTATE = dict(
             ),
         ),
     ),
-    video_views_100_quartile=Sum("placement__adwords_campaigns__statistics__video_views_100_quartile"),
 )
 
 

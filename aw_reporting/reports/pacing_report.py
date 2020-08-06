@@ -156,6 +156,8 @@ class PacingReport:
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
             annotate = FLIGHTS_DELIVERY_ANNOTATE
+            annotate["video_views_100_quartile"] = \
+                Sum("placement__adwords_campaigns__statistics__video_views_100_quartile")
             group_by = ("id", campaign_id_key)
 
         raw_data = queryset.values(
