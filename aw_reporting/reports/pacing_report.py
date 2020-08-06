@@ -611,6 +611,10 @@ class PacingReport:
         if start and end:
             queryset = queryset.filter(start__lte=end, end__gte=start)
 
+        ids = get.get("ids")
+        if ids:
+            queryset = queryset.filter(id__in=ids)
+
         watch = get.get("watch", False)
         if strtobool(str(watch)):
             queryset = queryset.filter(id__in=user.watch.values_list("opportunity_id", flat=True))
