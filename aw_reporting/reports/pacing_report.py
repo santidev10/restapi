@@ -139,7 +139,7 @@ class PacingReport:
         return raw_data
 
     # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
-    def get_flights_data(self, with_campaigns=False, **filters):
+    def get_flights_data(self, with_campaigns=False, managed_service_data=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
@@ -150,15 +150,16 @@ class PacingReport:
 
         annotate = self.get_flights_delivery_annotate()
 
-        if with_campaigns:
+        if with_campaigns or managed_service_data:
             queryset = queryset.filter(
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
             annotate = FLIGHTS_DELIVERY_ANNOTATE
+            group_by = ("id", campaign_id_key)
+        if managed_service_data:
             annotate["video_views_100_quartile"] = \
                 Sum("placement__adwords_campaigns__statistics__video_views_100_quartile")
-            group_by = ("id", campaign_id_key)
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -465,7 +466,7 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None, with_campaigns=False):
+    def get_opportunities(self, get, user=None, aw_cid=None, managed_service_data=False):
         queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
         # get raw opportunity data
@@ -507,7 +508,7 @@ class PacingReport:
         flight_opp_key = "placement__opportunity_id"
         placement_opp_key = "opportunity_id"
         flights_data = self.get_flights_data(
-            with_campaigns=with_campaigns,
+            managed_service_data=managed_service_data,
             placement__opportunity_id__in=opportunity_ids)
         placements_data = self.get_placements_data(
             opportunity_id__in=opportunity_ids)

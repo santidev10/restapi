@@ -26,7 +26,7 @@ class DashboardManagedServiceAPIView(APIView):
         visible_account_ids = aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS, [])
         opportunities = PacingReport().get_opportunities(get={}, user=request.user,
                                                          aw_cid=visible_account_ids,
-                                                         with_campaigns=True)
+                                                         managed_service_data=True)
         serializer_class = self.get_serializer_class()
         data = {
             'averages': serializer_class(self.get_averages(opportunities)).data,
