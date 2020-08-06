@@ -328,6 +328,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         file = BytesIO()
+        file.name = payload["title"]
         form = dict(
             file=file,
             data=json.dumps(payload)
@@ -336,6 +337,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data[0]["id"]).source
+        self.assertEqual(file.name, source.name)
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
