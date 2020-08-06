@@ -89,7 +89,8 @@ FLIGHT_FIELDS = (
 
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
-                   "video_clicks", "clicks", "delivery", "video_cost")
+                   "video_clicks", "clicks", "delivery", "video_cost",
+                   "video_views_100_quartile")
 
 ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
@@ -288,7 +289,7 @@ class PacingReport:
 
     @staticmethod
     def get_delivery_stats_from_flights(flights, campaign_id=None):
-        impressions = video_views = cost = clicks = 0
+        impressions = video_views = cost = clicks = video_views_100_quartile = 0
         video_impressions = video_clicks = video_cost = 0
         aw_update_time = None
         goal_type_ids = set()
@@ -302,6 +303,7 @@ class PacingReport:
             video_impressions += stats["video_impressions"] or 0
             video_clicks += stats["video_clicks"] or 0
             video_views += stats["video_views"] or 0
+            video_views_100_quartile += stats['video_views_100_quartile'] or 0
             video_cost += stats["video_cost"] or 0
             clicks += stats["clicks"] or 0
             cost += stats["sum_cost"] or 0
@@ -321,6 +323,9 @@ class PacingReport:
             else:
                 goal_type_id = SalesForceGoalType.CPM
 
+        # convert from views (calculated) back to rate (api value)
+        video_quartile_100_rate = video_views_100_quartile / impressions if impressions > 0 else 0
+
         stats = dict(
             impressions=impressions, video_views=video_views,
             cpv=get_average_cpv(video_cost, video_views),
@@ -330,6 +335,7 @@ class PacingReport:
                                                 video_impressions),
             goal_type=SalesForceGoalTypes[goal_type_id],
             aw_update_time=aw_update_time,
+            video_quartile_100_rate=video_quartile_100_rate,
         )
         return stats
 
@@ -457,7 +463,7 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None):
+    def get_opportunities(self, get, user=None, aw_cid=None, with_campaigns=False):
         queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
         # get raw opportunity data
@@ -499,6 +505,7 @@ class PacingReport:
         flight_opp_key = "placement__opportunity_id"
         placement_opp_key = "opportunity_id"
         flights_data = self.get_flights_data(
+            with_campaigns=with_campaigns,
             placement__opportunity_id__in=opportunity_ids)
         placements_data = self.get_placements_data(
             opportunity_id__in=opportunity_ids)
