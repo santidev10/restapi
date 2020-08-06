@@ -155,7 +155,7 @@ class PacingReport:
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
-            annotate = FLIGHTS_DELIVERY_ANNOTATE
+            annotate = FLIGHTS_DELIVERY_ANNOTATE.copy()
             group_by = ("id", campaign_id_key)
         if managed_service_data:
             annotate["video_views_100_quartile"] = \
