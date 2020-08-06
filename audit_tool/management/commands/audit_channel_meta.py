@@ -331,7 +331,12 @@ class Command(BaseCommand):
         if channels_res.status_code != 200:
             self.handle_bad_response_code(channels_res, channels_json, acp)
             return
-        channel_json = channels_json['items'][0]
+        items = channels_json.get('items', [])
+        if not len(items):
+            logger.info("could not get channel playlists for channel with id %s", acp.channel.channel_id)
+            self.handle_bad_response_code(channels_res, channels_json, acp)
+            return
+        channel_json = items[0]
         uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
         # page through uploads playlist and collect video ids
         count = 0

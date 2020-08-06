@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db.models import F
 from django.utils import timezone
 
@@ -249,8 +250,16 @@ class AuditUtils(object):
         data = vetting_model.objects \
             .filter(audit_id=audit_id, **id_query) \
             .annotate(item_id=F(related_item_id_field)) \
-            .values("skipped", "clean", "item_id")
-        vetting_data = {
-            item.pop("item_id"): item for item in data
+            .values("skipped", "clean", "item_id", "processed_by_user_id")
+        user_emails = {
+            user.id: user.email
+            for user in get_user_model().objects.filter(id__in=set(item["processed_by_user_id"] for item in data))
         }
+        vetting_data = {}
+        for item in data:
+            item_id = item.pop("item_id", None)
+            if not item_id:
+                continue
+            item["user_email"] = user_emails.get(item["processed_by_user_id"])
+            vetting_data[item_id] = item
         return vetting_data
