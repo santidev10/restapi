@@ -27,11 +27,14 @@ def update_opportunity_performance_task():
         perform_obj, _ = OpportunityPerformance.objects.get_or_create(opportunity_id=op["id"])
         history = perform_obj.history
         # If saving performance for first time or today's performance has not been saved, add to history
-        if not history or (history and today_str != history[0].get("date")):
+        if not history or (history and today_str != history[-1].get("date")):
             today_data = {
                 "date": today_str,
                 **{key: op.get(key) for key in PERFORMANCE_KEYS},
             }
-            data = [today_data] + history[:MAX_HISTORY - 1]
+            history.append(today_data)
+            # If max length, truncate by 1
+            from_index = 0 if len(history) <= MAX_HISTORY else 1
+            data = history[from_index:MAX_HISTORY] + [today_data]
             perform_obj.performance = json.dumps(data)
             perform_obj.save()

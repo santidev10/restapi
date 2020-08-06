@@ -8,7 +8,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0096_opportunity_currency_code'),
         ('dashboard', '0001_initial'),
     ]
 

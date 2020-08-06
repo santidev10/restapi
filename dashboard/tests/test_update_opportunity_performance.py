@@ -41,4 +41,4 @@ class TestUpdateOpportunityPerformance(TransactionTestCase):
                 update_opportunity_performance_task()
         performance = op.performance.history
         self.assertEqual(len(performance), MAX_HISTORY)
-        self.assertEqual(performance[0]["date"], str(dates[-1].date()))
+        self.assertEqual(performance[-1]["date"], str(dates[-1].date()))
