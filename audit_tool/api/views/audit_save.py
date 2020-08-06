@@ -365,4 +365,9 @@ class AuditFileS3Exporter(S3Exporter):
     @classmethod
     def get_s3_export_csv(cls, name):
         body = cls.get_s3_export_content(name)
-        return body.read().decode("utf-32").split()
+        r = body.read()
+        try:
+            res = r.decode("utf-8-sig").split()
+        except Exception:
+            res = r.decode("utf-32").split()
+        return res
