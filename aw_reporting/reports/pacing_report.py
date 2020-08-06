@@ -89,7 +89,9 @@ FLIGHT_FIELDS = (
 
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
-                   "video_clicks", "clicks", "delivery", "video_cost")
+                   "video_clicks", "clicks", "delivery", "video_cost",)
+
+MANAGED_SERVICE_FIELDS = ("video_views_100_quartile",)
 
 ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
@@ -138,7 +140,7 @@ class PacingReport:
         return raw_data
 
     # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
-    def get_flights_data(self, with_campaigns=False, **filters):
+    def get_flights_data(self, with_campaigns=False, managed_service_data=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
@@ -149,13 +151,16 @@ class PacingReport:
 
         annotate = self.get_flights_delivery_annotate()
 
-        if with_campaigns:
+        if with_campaigns or managed_service_data:
             queryset = queryset.filter(
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
-            annotate = FLIGHTS_DELIVERY_ANNOTATE
+            annotate = FLIGHTS_DELIVERY_ANNOTATE.copy()
             group_by = ("id", campaign_id_key)
+        if managed_service_data:
+            annotate["video_views_100_quartile"] = \
+                Sum("placement__adwords_campaigns__statistics__video_views_100_quartile")
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -176,6 +181,10 @@ class PacingReport:
 
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
+
+        delivery_fields = list(DELIVERY_FIELDS)
+        if managed_service_data:
+            delivery_fields.extend(MANAGED_SERVICE_FIELDS)
         for row in raw_data:
             fl_data = data[row["id"]]
             if with_campaigns:
@@ -183,10 +192,10 @@ class PacingReport:
 
                 fl_data["campaigns"][row[campaign_id_key]] = {
                     k: row.get(k) or 0
-                    for k in DELIVERY_FIELDS
+                    for k in delivery_fields
                 }
 
-            for f in DELIVERY_FIELDS:
+            for f in delivery_fields:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
 
         data = sorted(data.values(), key=lambda el: (el["start"], el["name"]))
@@ -287,8 +296,8 @@ class PacingReport:
     # pylint: enable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
 
     @staticmethod
-    def get_delivery_stats_from_flights(flights, campaign_id=None):
-        impressions = video_views = cost = clicks = 0
+    def get_delivery_stats_from_flights(flights, campaign_id=None, managed_service_data=False):
+        impressions = video_views = cost = clicks = video_views_100_quartile = 0
         video_impressions = video_clicks = video_cost = 0
         aw_update_time = None
         goal_type_ids = set()
@@ -302,6 +311,7 @@ class PacingReport:
             video_impressions += stats["video_impressions"] or 0
             video_clicks += stats["video_clicks"] or 0
             video_views += stats["video_views"] or 0
+            video_views_100_quartile += stats.get('video_views_100_quartile', 0)
             video_cost += stats["video_cost"] or 0
             clicks += stats["clicks"] or 0
             cost += stats["sum_cost"] or 0
@@ -331,6 +341,10 @@ class PacingReport:
             goal_type=SalesForceGoalTypes[goal_type_id],
             aw_update_time=aw_update_time,
         )
+        if managed_service_data:
+            # convert from views (calculated) back to rate (api value)
+            video_quartile_100_rate = video_views_100_quartile / impressions if impressions > 0 else 0
+            stats['video_quartile_100_rate'] = video_quartile_100_rate
         return stats
 
     def get_plan_stats_from_flights(self, flights, allocation_ko=1,
@@ -457,7 +471,7 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None):
+    def get_opportunities(self, get, user=None, aw_cid=None, managed_service_data=False):
         queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
         # get raw opportunity data
@@ -499,6 +513,7 @@ class PacingReport:
         flight_opp_key = "placement__opportunity_id"
         placement_opp_key = "opportunity_id"
         flights_data = self.get_flights_data(
+            managed_service_data=managed_service_data,
             placement__opportunity_id__in=opportunity_ids)
         placements_data = self.get_placements_data(
             opportunity_id__in=opportunity_ids)
@@ -532,7 +547,7 @@ class PacingReport:
             ))
             o["goal_type_ids"] = goal_type_ids
 
-            delivery_stats = self.get_delivery_stats_from_flights(flights)
+            delivery_stats = self.get_delivery_stats_from_flights(flights, managed_service_data=managed_service_data)
             o.update(delivery_stats)
 
             plan_stats = self.get_plan_stats_from_flights(flights)
