@@ -7,7 +7,9 @@ from rest_framework.views import APIView
 
 from aw_reporting.reports.pacing_report import PacingReport
 from cache.models import CacheItem
-from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceOpportunityAdminSerialzer
+from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceAveragesAdminSerializer
+from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceAveragesSerializer
+from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceOpportunityAdminSerializer
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceOpportunitySerializer
 from dashboard.api.views.constants import DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX
 from dashboard.utils import get_cache_key
@@ -50,17 +52,19 @@ class DashboardManagedServiceAPIView(APIView):
         opportunities = PacingReport().get_opportunities(get={}, user=self.request.user,
                                                          aw_cid=visible_account_ids,
                                                          managed_service_data=True)
-        serializer_class = self.get_serializer_class()
+        averages_serializer_class, opportunity_serializer_class = self.get_serializer_classes()
         return {
-            'averages': serializer_class(self.get_averages(opportunities)).data,
-            'items': serializer_class(opportunities, many=True).data,
+            'averages': averages_serializer_class(self.get_averages(opportunities)).data,
+            'items': opportunity_serializer_class(opportunities, many=True).data,
         }
 
-    def get_serializer_class(self):
+    def get_serializer_classes(self):
         """return different serializer depending on user perms"""
         if self.request.user.is_staff:
-            return DashboardManagedServiceOpportunityAdminSerialzer
-        return DashboardManagedServiceOpportunitySerializer
+            return DashboardManagedServiceAveragesAdminSerializer, \
+                   DashboardManagedServiceOpportunityAdminSerializer
+        return DashboardManagedServiceAveragesSerializer, \
+               DashboardManagedServiceOpportunitySerializer
 
     def get_averages(self, opportunities):
         """
