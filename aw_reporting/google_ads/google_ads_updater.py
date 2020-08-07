@@ -12,7 +12,6 @@ from suds import WebFault
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
-from aw_reporting.google_ads.updaters.account_performance_updater import AccountPerformanceUpdater
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_group_criteria import AdGroupCriteriaUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
@@ -124,11 +123,6 @@ class GoogleAdsUpdater:
         recalculate_de_norm_fields_for_account(self.account.id)
         self.account.update_time = timezone.now()
         self.account.save()
-
-    def update_account_performance(self):
-        """ Update cid account through Account Performance Report """
-        updater = AccountPerformanceUpdater(self.account)
-        self.execute_with_any_permission(updater)
 
     @staticmethod
     def get_accounts_to_update(hourly_update=True, end_date_from_days=AD_WORDS_STABILITY_STATS_DAYS_COUNT,

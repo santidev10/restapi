@@ -22,7 +22,6 @@ from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
-from aw_reporting.update.adwords_utils import quart_views
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -112,13 +111,13 @@ class CampaignUpdater(UpdateMixin):
                 "status": status,
                 "placement_code": placement_code,
                 "bidding_strategy_type": get_bidding_strategy_type(row_obj.BiddingStrategyType),
-                **quart_views(row_obj),
             }
 
             statistic_data = {
                 "date": row_obj.Date,
                 "campaign_id": campaign_id,
                 "device_id": get_device_id_by_name(row_obj.Device),
+                "active_view_viewability": float(row_obj.ActiveViewViewability.strip("%"))
             }
             statistic_data.update(get_base_stats(row_obj, quartiles=True))
             update_stats_with_click_type_data(

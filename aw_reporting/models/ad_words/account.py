@@ -28,7 +28,6 @@ class Account(models.Model):
     hourly_updated_at = models.DateTimeField(null=True)
     settings_updated_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(null=False, default=True, db_index=True)
-    active_view_viewability = models.FloatField(null=True, default=True) # Percentage form from api e.g. 90.1
 
     ad_count = models.BigIntegerField(default=0, null=False, db_index=True)
     channel_count = models.BigIntegerField(default=0, null=False, db_index=True)

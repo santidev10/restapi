@@ -18,7 +18,8 @@ COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate", "VideoQuartile
 
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "CampaignName", "ServingStatus", "CampaignStatus", "StartDate",
                                       "EndDate", "Amount", "TotalAmount", "AdvertisingChannelType",
-                                      "BiddingStrategyType") + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+                                      "BiddingStrategyType", "ActiveViewViewability") \
+                                     + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 AD_GROUP_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "AdGroupId", "AdGroupName", "AdGroupStatus", "AdGroupType", "Date",
                                       "Device", "AdNetworkType1", "AveragePosition", "ActiveViewImpressions",
                                       "Engagements", "ContentBidCriterionTypeGroup", "CpvBid", "CpmBid", "CpcBid",
