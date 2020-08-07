@@ -154,6 +154,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
+                ActiveViewViewability="0%",
             )
             for dt, cost, impressions, views, clicks in statistic
         ]
