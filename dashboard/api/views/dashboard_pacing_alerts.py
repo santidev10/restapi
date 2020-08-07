@@ -49,7 +49,7 @@ class DashboardPacingAlertsAPIView(APIView):
         opportunities = PacingReportOpportunitiesSerializer(report, many=True)\
             .data[:PACING_REPORT_OPPORTUNITIES_MAX_WATCH]
         # Sort by name then by alerts length
-        data = sorted(opportunities, key=lambda op: (op["name"], len(op.get("alerts", []))))
+        data = sorted(opportunities, key=lambda op: (len(op.get("alerts", [])), op["name"]))
         return data
 
     @staticmethod
