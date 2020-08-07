@@ -33,7 +33,6 @@ def update_opportunity_performance_task():
                 **{key: op.get(key) for key in PERFORMANCE_KEYS},
             }
             history += [today_data]
-            if len(history) > MAX_HISTORY:
-                history.pop(0)
+            history = history[-MAX_HISTORY:]
             perform_obj.performance = json.dumps(history)
             perform_obj.save()
