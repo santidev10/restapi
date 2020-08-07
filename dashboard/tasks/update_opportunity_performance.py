@@ -32,7 +32,6 @@ def update_opportunity_performance_task():
                 "date": today_str,
                 **{key: op.get(key) for key in PERFORMANCE_KEYS},
             }
-            history.append(today_data)
             # If max length, truncate by 1
             from_index = 0 if len(history) <= MAX_HISTORY else 1
             data = history[from_index:MAX_HISTORY] + [today_data]

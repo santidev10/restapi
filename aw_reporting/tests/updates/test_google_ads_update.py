@@ -397,7 +397,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
-                BiddingStrategyType="cpv"
+                BiddingStrategyType="cpv",
+                ActiveViewViewability="0%",
             )
         ]
 
@@ -1056,6 +1057,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
                 BiddingStrategyType="cpv",
+                ActiveViewViewability="0%",
             )
         ]
         statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
@@ -1105,7 +1107,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
-                BiddingStrategyType="cpm"
+                BiddingStrategyType="cpm",
+                ActiveViewViewability="0%",
             )
         ]
         statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
