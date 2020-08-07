@@ -77,3 +77,13 @@ class DashboardPacingAlertTestCase(APITestCase):
         self.create_test_user()
         response = self.client.get(self._url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_default_none_watch(self):
+        """ Test existing opportunities are returned in none are watched """
+        self.create_admin_user()
+        op = Opportunity.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100)
+        pl = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name="p", opportunity=op)
+        Campaign.objects.create(name="c", salesforce_placement=pl)
+        response = self.client.get(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], op.id)
