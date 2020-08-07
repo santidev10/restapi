@@ -300,7 +300,8 @@ class QueryGenerator:
         filters_range = self.__get_filter_range()
         filters_match_phrase = self.__get_filters_match_phrase()
         filters_exists = self.__get_filters_exists()
-        forced_filter = [self.es_manager.forced_filters(include_deleted=True)]
+        forced_filter = [self.es_manager.forced_filters(include_deleted=True)] if filters_match_phrase \
+            else [self.es_manager.forced_filters()]
         ids_filter = self.__get_filters_by_ids()
 
         filters = filters_term + filters_range + filters_match_phrase + \

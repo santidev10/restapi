@@ -65,7 +65,7 @@ def cache_research_videos_defaults():
         queryset_adapter = ESQuerysetAdapter(manager, cached_aggregations=cached_aggregations)
         queryset_adapter.aggregations = []
         queryset_adapter.fields_to_load = fields_to_load
-        queryset_adapter.filter_query = [manager.forced_filters(include_deleted=True)]
+        queryset_adapter.filter_query = [manager.forced_filters()]
         queryset_adapter.percentiles = []
         queryset_adapter.sort = sort
         obj = queryset_adapter

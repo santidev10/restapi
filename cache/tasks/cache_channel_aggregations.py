@@ -35,7 +35,7 @@ def cache_channel_aggregations():
 
         logger.info("Collecting channel aggregations.")
         aggregations = manager.get_aggregation(
-            search=manager.search(filters=manager.forced_filters(include_deleted=True)),
+            search=manager.search(filters=manager.forced_filters()),
             properties=aggregation_params
         )
         logger.info("Saving channel aggregations.")
