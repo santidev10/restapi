@@ -1,7 +1,11 @@
-from django.db import models
+import json
+
 from django.conf import settings
+from django.contrib.postgres.fields import JSONField
+from django.db import models
 
 from aw_reporting.models import Opportunity
+from utils.models import Timestampable
 
 
 class OpportunityWatch(models.Model):
@@ -11,3 +15,13 @@ class OpportunityWatch(models.Model):
 
     class Meta:
         unique_together = (("opportunity", "user"),)
+
+
+class OpportunityPerformance(Timestampable):
+    opportunity = models.OneToOneField(Opportunity, related_name="performance", on_delete=models.CASCADE)
+    performance = JSONField(default=list)
+
+    @property
+    def history(self):
+        data = json.loads(self.performance or "[]")
+        return data

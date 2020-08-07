@@ -117,6 +117,7 @@ class CampaignUpdater(UpdateMixin):
                 "date": row_obj.Date,
                 "campaign_id": campaign_id,
                 "device_id": get_device_id_by_name(row_obj.Device),
+                "active_view_viewability": float(row_obj.ActiveViewViewability.strip("%"))
             }
             statistic_data.update(get_base_stats(row_obj, quartiles=True))
             update_stats_with_click_type_data(

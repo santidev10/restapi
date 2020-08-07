@@ -1,6 +1,10 @@
 from django.db import models
+from django.db.models import Avg
+from django.db.models import F
+from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Q
+from django.db.models import ExpressionWrapper
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
@@ -63,3 +67,19 @@ class Account(models.Model):
         if None not in dates and dates:
             return max(dates)
         return None
+
+    @property
+    def completion_rate(self):
+        completion_rates = self.campaigns\
+            .annotate(
+                completion_25_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
+                completion_50_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
+                completion_75_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
+                completion_100_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
+            ).aggregate(
+                completion_25_avg=Avg("completion_25_rate"),
+                completion_50_avg=Avg("completion_50_rate"),
+                completion_75_avg=Avg("completion_75_rate"),
+                completion_100_avg=Avg("completion_100_rate"),
+            )
+        return completion_rates
