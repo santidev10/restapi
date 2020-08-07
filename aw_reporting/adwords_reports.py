@@ -134,6 +134,15 @@ def _output_to_rows(output, fields):
     return rows
 
 
+def account_performance(client, predicates=None, fields=None):
+    fields = fields or ("ActiveViewViewability", "ExternalCustomerId",)
+    predicates = predicates or []
+    selector = {"fields": fields, "predicates": predicates, }
+
+    result = _get_report(client, "ACCOUNT_PERFORMANCE_REPORT", selector)
+    return _output_to_rows(result, fields)
+
+
 def placement_performance_report(client, dates=None, fields=None, predicates=None):
     """
     Used for getting channels and managed videos

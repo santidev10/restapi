@@ -99,7 +99,9 @@ def cid_campaign_update(cid_id):
     """
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
-    GoogleAdsUpdater(cid_account).update_campaigns()
+    updater = GoogleAdsUpdater(cid_account)
+    updater.update_account_performance()
+    updater.update_campaigns()
     logger.debug("CID CAMPAIGNS UPDATE COMPLETE FOR CID: %s. Took: %s", cid_id, time.time() - start)
 
 
