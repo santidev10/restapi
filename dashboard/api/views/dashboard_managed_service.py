@@ -1,5 +1,4 @@
 from datetime import timedelta
-import json
 
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -35,15 +34,18 @@ class DashboardManagedServiceAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         cache_key = self.get_cache_key(request.user.id)
+        now = now_in_default_tz()
         try:
             cache = CacheItem.objects.get(key=cache_key)
-            if cache.created_at < now_in_default_tz() - timedelta(seconds=self.CACHE_TTL):
-                cache.value = self._get_data()
+            data = cache.value
+            if cache.created_at < now - timedelta(seconds=self.CACHE_TTL):
+                data = self._get_data()
+                cache.value = data
+                cache.created_at = now
                 cache.save()
-            data = json.loads(cache.value)
         except CacheItem.DoesNotExist:
             data = self._get_data()
-            CacheItem.objects.create(key=cache_key, value=json.dumps(data))
+            CacheItem.objects.create(key=cache_key, value=data)
         return Response(data=data)
 
     def _get_data(self):
