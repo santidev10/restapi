@@ -18,7 +18,7 @@ class DashboardAuditQueueAPIView(APIView):
         data['active_machine_count'] = AuditMachine.objects.filter(last_seen__gte=timezone.now()-timedelta(minutes=5)).count()
         data['active_audit_count'] = AuditProcessor.objects.filter(source=0, temp_stop=False, started__isnull=False, completed__isnull=True).count()
         data['pending_audit_count'] = AuditProcessor.objects.filter(source=0, temp_stop=False, started__isnull=True).count()
-        if data['active_audit_count'] >0 or data['pending_audit_count'] > 0:
+        if data['active_audit_count'] > 0 or data['pending_audit_count'] > 0:
             data['active_audits'] = self.get_active_audits()
         else:
             data['active_audits'] = []
