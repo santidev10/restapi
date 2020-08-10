@@ -46,10 +46,13 @@ class DashboardPacingAlertsAPIView(APIView):
         pacing_filters = {"watch": True} if OpportunityWatch.objects.filter(user=user).exists() else \
             {"period": "this_month", "status": "active"}
         report = PacingReport().get_opportunities(pacing_filters, user)
-        opportunities = PacingReportOpportunitiesSerializer(report, many=True)\
-            .data[:PACING_REPORT_OPPORTUNITIES_MAX_WATCH]
-        # Sort by name then by alerts length
-        data = sorted(opportunities, key=lambda op: (len(op.get("alerts", [])), op["name"]))
+        opportunities = PacingReportOpportunitiesSerializer(report, many=True).data
+        if "watch" in pacing_filters:
+            # Sort by alerts length then name
+            key = lambda op: (len(op.get("alerts", [])), op.get("name", "").lower())
+        else:
+            key = lambda op: op.get("name", "").lower()
+        data = sorted(opportunities, key=key, reverse=True)[:PACING_REPORT_OPPORTUNITIES_MAX_WATCH]
         return data
 
     @staticmethod
