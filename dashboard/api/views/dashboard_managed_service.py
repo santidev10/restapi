@@ -1,4 +1,5 @@
 from datetime import timedelta
+from numbers import Number
 
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -83,8 +84,9 @@ class DashboardManagedServiceAPIView(APIView):
         averages = {}
         for field_name in fields:
             field_values = values.get(field_name, [])
-            averages[field_name] = sum(field_values) / len(field_values) \
-                if len(field_values) and sum(field_values) \
+            filtered = [value for value in field_values if isinstance(value, Number)]
+            averages[field_name] = sum(filtered) / len(field_values) \
+                if len(field_values) and sum(filtered) \
                 else None
         return averages
 
