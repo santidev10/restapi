@@ -603,6 +603,11 @@ class PacingReport:
                         create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
                     )
+                if is_opp_under_margin(margin, today, o["end"]):
+                    alerts.append(
+                        create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
+                                                              f" Please adjust IMMEDIATELY.")
+                    )
             except TypeError:
                 pass
             o["alerts"] = alerts
@@ -1750,3 +1755,20 @@ def get_daily_margin(client_rate, daily_delivered, daily_cost, goal_type):
     except (TypeError, ZeroDivisionError):
         margin = 0
     return margin
+
+
+def is_opp_under_margin(margin, today, end):
+    """
+    Determine if Opportunity is under margin
+    :param margin: float
+    :param today: date
+    :param end: date
+    :return: bool
+    """
+    is_under_margin = False
+    try:
+        if margin and today <= end - timedelta(days=7) and margin < 0.1:
+            is_under_margin = True
+    except TypeError:
+        pass
+    return is_under_margin
