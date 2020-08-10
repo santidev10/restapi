@@ -1,10 +1,6 @@
 from django.db import models
-from django.db.models import Avg
-from django.db.models import F
-from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Q
-from django.db.models import ExpressionWrapper
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
@@ -70,16 +66,28 @@ class Account(models.Model):
 
     @property
     def completion_rate(self):
-        completion_rates = self.campaigns\
-            .annotate(
-                completion_25_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_50_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_75_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_100_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-            ).aggregate(
-                completion_25_avg=Avg("completion_25_rate"),
-                completion_50_avg=Avg("completion_50_rate"),
-                completion_75_avg=Avg("completion_75_rate"),
-                completion_100_avg=Avg("completion_100_rate"),
-            )
-        return completion_rates
+        """
+        Calculate average completion rates from campaigns
+        :return:
+        """
+        account_completion_rates = {
+            f"completion_{rate}": 0 for rate in ["25", "50", "75", "100"]
+        }
+        campaign_completion_rates = [c.completion_rate for c in self.campaigns.all()]
+        for key in account_completion_rates.keys():
+            sum_rate = sum(c_rate[key] for c_rate in campaign_completion_rates)
+            account_completion_rates[key] = sum_rate / len(campaign_completion_rates)
+        return account_completion_rates
+
+    @property
+    def active_view_viewability(self):
+        """
+        Calculate active view viewability average froom campaigns
+        :return:
+        """
+        campaign_viewability = list(filter(lambda v: v not in {None, 0}, [c.viewability for c in self.campaigns.all()]))
+        try:
+            viewability_avg = sum(campaign_viewability) / len(campaign_viewability)
+        except ZeroDivisionError:
+            viewability_avg = 0
+        return viewability_avg

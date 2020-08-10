@@ -1,4 +1,7 @@
 from django.db import models
+from django.db.models import Avg
+from django.db.models import F
+from django.db.models import FloatField
 
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.models.ad_words.constants import BudgetType
@@ -66,3 +69,26 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
 
     def __str__(self):
         return "%s" % self.name
+
+    @property
+    def completion_rate(self):
+        rates = ["25", "50", "75", "100"]
+        completion_annotations = {
+            f"completion_{rate}_agg": models.ExpressionWrapper(F(f"video_views_{rate}_quartile") / F("impressions"),
+                                                               output_field=FloatField())
+            for rate in rates
+        }
+        completion_aggregations = {
+            f"completion_{rate}": Avg(f"completion_{rate}_agg")
+            for rate in rates
+        }
+        completion_rates = self.statistics.filter(impressions__gt=0)\
+            .annotate(**completion_annotations)\
+            .aggregate(**completion_aggregations)
+        return completion_rates
+
+    @property
+    def viewability(self):
+        active_view_viewability = self.statistics.filter(active_view_viewability__gt=0).aggregate(
+            Avg("active_view_viewability"))["active_view_viewability__avg"]
+        return active_view_viewability

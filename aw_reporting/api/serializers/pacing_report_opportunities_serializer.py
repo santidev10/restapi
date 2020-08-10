@@ -13,6 +13,7 @@ from utils.serializers.fields import SimpleField
 
 
 class PacingReportOpportunitiesSerializer(Serializer):
+    active_view_viewability = FloatField()
     ad_ops = SimpleField()
     alerts = SimpleField()
     am = SimpleField()
@@ -20,6 +21,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     billing_server = CharField(max_length=30)
     cannot_roll_over = BooleanField()
     category = DictField()
+    completion_rates = SimpleField()
     cost = FloatField()
     cpm = FloatField()
     cpv = FloatField()

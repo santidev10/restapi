@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import timedelta
 from distutils.util import strtobool
 from math import ceil
+import statistics
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
@@ -605,6 +606,20 @@ class PacingReport:
             except TypeError:
                 pass
             o["alerts"] = alerts
+
+            # Get account performance with Opportunity.aw_cid
+            accounts = Account.objects.filter(id__in=o["aw_cid"].split(","))
+            o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
+            account_completions = [a.completion_rate for a in accounts]
+            try:
+                completion_avg = {
+                    key: sum(comp[key] for comp in account_completions) / len(account_completions)
+                    for key in account_completions[0].keys()
+                }
+                o["completion_rates"] = completion_avg
+            except IndexError:
+                o["completion_rates"] = {}
+
         return opportunities
 
     # pylint: enable=too-many-statements
