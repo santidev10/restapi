@@ -94,6 +94,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "active_view_viewability",
                 "ad_ops",
                 "alerts",
                 "am",
@@ -102,6 +103,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "billing_server",
                 "cannot_roll_over",
                 "category",
+                "completion_rates",
                 "cost",
                 "cpm",
                 "cpv",
