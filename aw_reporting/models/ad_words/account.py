@@ -75,7 +75,7 @@ class Account(models.Model):
         }
         campaign_completion_rates = [c.completion_rate for c in self.campaigns.all()]
         for key in account_completion_rates.keys():
-            sum_rate = sum(c_rate[key] for c_rate in campaign_completion_rates)
+            sum_rate = sum(c_rate[key] for c_rate in campaign_completion_rates if c_rate[key])
             account_completion_rates[key] = sum_rate / len(campaign_completion_rates)
         return account_completion_rates
 

@@ -606,10 +606,13 @@ class PacingReport:
             except TypeError:
                 pass
             o["alerts"] = alerts
-
             # Get account performance with Opportunity.aw_cid
-            accounts = Account.objects.filter(id__in=o["aw_cid"].split(","))
-            o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
+            aw_ids = o["aw_cid"].split(",") if o["aw_cid"] else []
+            accounts = Account.objects.filter(id__in=aw_ids)
+            try:
+                o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
+            except statistics.StatisticsError:
+                o["active_view_viewability"] = None
             account_completions = [a.completion_rate for a in accounts]
             try:
                 completion_avg = {
