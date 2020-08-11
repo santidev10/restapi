@@ -1,6 +1,11 @@
 from django.db import models
+from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
+from django.db.models import F
 from django.db.models import Min
 from django.db.models import Q
+from django.db.models import When
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
@@ -64,20 +69,26 @@ class Account(models.Model):
             return max(dates)
         return None
 
-    @property
-    def completion_rate(self):
+    def get_video_completion_rate(self, rate: str):
         """
         Calculate average completion rates from campaigns
         :return:
         """
-        account_completion_rates = {
-            f"completion_{rate}": 0 for rate in ["25", "50", "75", "100"]
-        }
-        campaign_completion_rates = [c.completion_rate for c in self.campaigns.all()]
-        for key in account_completion_rates.keys():
-            sum_rate = sum(c_rate[key] for c_rate in campaign_completion_rates if c_rate[key])
-            account_completion_rates[key] = sum_rate / len(campaign_completion_rates)
-        return account_completion_rates
+        rate = str(rate)
+        rates = ["25", "50", "75", "100"]
+        if rate not in rates:
+            raise ValueError(f"Valid rates: {','.join(rates)}")
+        completion_rate = self.campaigns\
+            .filter(**{f"video_views_{rate}_quartile__gt": 0})\
+            .annotate(
+                completion_rate=Case(
+                    When(impressions=0, then=0),
+                    default=ExpressionWrapper(F(f"video_views_{rate}_quartile") / F("impressions") * 100,
+                                              output_field=models.FloatField())
+                )
+            )\
+            .aggregate(Avg("completion_rate"))["completion_rate__avg"]
+        return completion_rate
 
     @property
     def active_view_viewability(self):
@@ -85,9 +96,7 @@ class Account(models.Model):
         Calculate active view viewability average froom campaigns
         :return:
         """
-        campaign_viewability = list(filter(lambda v: v not in {None, 0}, [c.viewability for c in self.campaigns.all()]))
-        try:
-            viewability_avg = sum(campaign_viewability) / len(campaign_viewability)
-        except ZeroDivisionError:
-            viewability_avg = 0
-        return viewability_avg
+        viewability = self.campaigns\
+            .filter(active_view_viewability__gt=0)\
+            .aggregate(Avg("active_view_viewability"))["active_view_viewability__avg"]
+        return viewability

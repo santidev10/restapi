@@ -10,7 +10,8 @@ from utils.datetime import now_in_default_tz
 
 END_DATE_THRESHOLD = 15
 MAX_HISTORY = 30
-PERFORMANCE_KEYS = ["margin", "video_view_rate", "active_view_viewability", "ctr", "completion_rates", "pacing", "cpv"]
+PERFORMANCE_KEYS = ["margin", "video_view_rate", "active_view_viewability", "ctr", "video_completion_rates",
+                    "pacing", "cpv"]
 
 
 @celery_app.task()

@@ -616,17 +616,16 @@ class PacingReport:
             accounts = Account.objects.filter(id__in=aw_ids)
             try:
                 o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
-            except statistics.StatisticsError:
+            except (statistics.StatisticsError, TypeError):
                 o["active_view_viewability"] = None
-            account_completions = [a.completion_rate for a in accounts]
+
             try:
-                completion_avg = {
-                    key: sum(comp[key] for comp in account_completions) / len(account_completions)
-                    for key in account_completions[0].keys()
+                o["video_completion_rates"] = {
+                    f"completion_{rate}": statistics.mean(a.get_video_completion_rate(rate) for a in accounts)
+                    for rate in {25, 50, 75, 100}
                 }
-                o["completion_rates"] = completion_avg
-            except IndexError:
-                o["completion_rates"] = {}
+            except (statistics.StatisticsError, TypeError, IndexError):
+                o["video_completion_rates"] = {}
 
         return opportunities
 
