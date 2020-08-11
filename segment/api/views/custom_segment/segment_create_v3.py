@@ -202,7 +202,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
         source_upload = CustomSegmentSourceFileUpload.objects.create(
             segment=segment,
             source_type=source_type,
-            filename=key
+            filename=key,
+            name=getattr(source, "name", None),
         )
         return source_upload
 

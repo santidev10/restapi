@@ -18,7 +18,8 @@ COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate", "VideoQuartile
 
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "CampaignName", "ServingStatus", "CampaignStatus", "StartDate",
                                       "EndDate", "Amount", "TotalAmount", "AdvertisingChannelType",
-                                      "BiddingStrategyType") + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+                                      "BiddingStrategyType", "ActiveViewViewability") \
+                                     + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 AD_GROUP_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "AdGroupId", "AdGroupName", "AdGroupStatus", "AdGroupType", "Date",
                                       "Device", "AdNetworkType1", "AveragePosition", "ActiveViewImpressions",
                                       "Engagements", "ContentBidCriterionTypeGroup", "CpvBid", "CpmBid", "CpcBid",
@@ -132,6 +133,15 @@ def _output_to_rows(output, fields):
     for line in reader:
         rows.append(row(*line))
     return rows
+
+
+def account_performance(client, predicates=None, fields=None):
+    fields = fields or ("ActiveViewViewability", "ExternalCustomerId",)
+    predicates = predicates or []
+    selector = {"fields": fields, "predicates": predicates, }
+
+    result = _get_report(client, "ACCOUNT_PERFORMANCE_REPORT", selector)
+    return _output_to_rows(result, fields)
 
 
 def placement_performance_report(client, dates=None, fields=None, predicates=None):

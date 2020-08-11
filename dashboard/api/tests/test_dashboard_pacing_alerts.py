@@ -77,3 +77,37 @@ class DashboardPacingAlertTestCase(APITestCase):
         self.create_test_user()
         response = self.client.get(self._url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_default_none_watch(self):
+        """ Test existing opportunities are returned in none are watched """
+        self.create_admin_user()
+        op = Opportunity.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100)
+        pl = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name="p", opportunity=op)
+        Campaign.objects.create(name="c", salesforce_placement=pl)
+        response = self.client.get(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], op.id)
+
+    def test_watch_sort(self):
+        """ Test watched opportunities with alerts should be sorted first """
+        user = self.create_admin_user()
+        op1 = Opportunity.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100)
+        pl1 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name="p", opportunity=op1)
+        Campaign.objects.create(name="c", salesforce_placement=pl1)
+
+        op2 = Opportunity.objects.create(name="second", id=f"id_{next(int_iterator)}", probability=100)
+        pl2 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name="p", opportunity=op2)
+        Campaign.objects.create(name="c", salesforce_placement=pl2)
+
+        OpportunityWatch.objects.create(user=user, opportunity=op1)
+        OpportunityWatch.objects.create(user=user, opportunity=op2)
+
+        with mock.patch("aw_reporting.reports.pacing_report.is_opp_under_margin") as mock_under_margin:
+            mock_under_margin.side_effect = [False, True]
+            response = self.client.get(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]["id"], op2.id)
+        self.assertEqual(response.data[1]["id"], op1.id)
+        self.assertTrue(response.data[0]["alerts"])
+        self.assertFalse(response.data[1]["alerts"])

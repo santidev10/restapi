@@ -13,6 +13,7 @@ from utils.serializers.fields import SimpleField
 
 
 class PacingReportOpportunitiesSerializer(Serializer):
+    active_view_viewability = FloatField()
     ad_ops = SimpleField()
     alerts = SimpleField()
     am = SimpleField()
@@ -55,6 +56,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     start = DateField()
     status = CharField(max_length=10)
     thumbnail = CharField(max_length=200)
+    video_completion_rates = SimpleField()
     video_view_rate = PercentField()
     video_view_rate_quality = IntegerField()
     video_views = IntegerField()

@@ -6,9 +6,11 @@ from rest_framework.views import APIView
 
 from aw_reporting.api.serializers.pacing_report_opportunities_serializer import \
     PacingReportOpportunitiesSerializer
+from aw_reporting.api.views.pacing_report.constants import PACING_REPORT_OPPORTUNITIES_MAX_WATCH
 from aw_reporting.reports.pacing_report import PacingReport
 from cache.models import CacheItem
 from dashboard.api.views.constants import DASHBOARD_PACING_ALERTS_CACHE_PREFIX
+from dashboard.models import OpportunityWatch
 from dashboard.utils import get_cache_key
 from utils.datetime import now_in_default_tz
 from utils.permissions import or_permission_classes
@@ -41,10 +43,16 @@ class DashboardPacingAlertsAPIView(APIView):
         return Response(data=data)
 
     def _get_data(self, user):
-        report = PacingReport().get_opportunities({"watch": True}, user)
+        pacing_filters = {"watch": True} if OpportunityWatch.objects.filter(user=user).exists() else \
+            {"period": "this_month", "status": "active"}
+        report = PacingReport().get_opportunities(pacing_filters, user)
         opportunities = PacingReportOpportunitiesSerializer(report, many=True).data
-        # Sort by name then by alerts length
-        data = sorted(opportunities, key=lambda op: (op["name"], len(op.get("alerts", []))))
+        if "watch" in pacing_filters:
+            # Sort by alerts length then name
+            key = lambda op: (len(op.get("alerts", [])), op.get("name", "").lower())
+        else:
+            key = lambda op: op.get("name", "").lower()
+        data = sorted(opportunities, key=key, reverse=True)[:PACING_REPORT_OPPORTUNITIES_MAX_WATCH]
         return data
 
     @staticmethod

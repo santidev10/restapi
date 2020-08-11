@@ -94,6 +94,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "active_view_viewability",
                 "ad_ops",
                 "alerts",
                 "am",
@@ -139,6 +140,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "status",
                 "thumbnail",
                 "timezone",
+                "video_completion_rates",
                 "video_view_rate",
                 "video_view_rate_quality",
                 "video_views",

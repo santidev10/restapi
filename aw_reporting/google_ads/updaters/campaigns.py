@@ -112,11 +112,15 @@ class CampaignUpdater(UpdateMixin):
                 "placement_code": placement_code,
                 "bidding_strategy_type": get_bidding_strategy_type(row_obj.BiddingStrategyType),
             }
-
+            try:
+                active_view_viewability = float(row_obj.ActiveViewViewability.strip("%"))
+            except (ValueError, TypeError):
+                active_view_viewability = 0
             statistic_data = {
                 "date": row_obj.Date,
                 "campaign_id": campaign_id,
                 "device_id": get_device_id_by_name(row_obj.Device),
+                "active_view_viewability": active_view_viewability
             }
             statistic_data.update(get_base_stats(row_obj, quartiles=True))
             update_stats_with_click_type_data(

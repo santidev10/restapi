@@ -35,6 +35,7 @@ class BaseStatisticModel(BaseModel):
     video_views_50_quartile = models.FloatField(default=0)
     video_views_75_quartile = models.FloatField(default=0)
     video_views_100_quartile = models.FloatField(default=0)
+    active_view_viewability = models.FloatField(default=0, db_index=True)
 
     class Meta:
         abstract = True
