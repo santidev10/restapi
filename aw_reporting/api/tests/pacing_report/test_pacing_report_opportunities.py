@@ -103,7 +103,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "billing_server",
                 "cannot_roll_over",
                 "category",
-                "completion_rates",
                 "cost",
                 "cpm",
                 "cpv",
