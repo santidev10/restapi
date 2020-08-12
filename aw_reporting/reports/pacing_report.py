@@ -923,8 +923,11 @@ class PacingReport:
                 flight["pacing_allocations"] = []
 
             flight["budget"] = f["budget"]
-
-            f["projected_budget"] = flight["projected_budget"]
+            f.update(**{
+                "projected_budget": flight["projected_budget"],
+                "cpv": flight["cpv"],
+                "cpm": flight["cpm"],
+            })
             pacing_goal_charts = get_flight_historical_pacing_chart(f)
             flight.update(pacing_goal_charts)
 
@@ -1546,6 +1549,7 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
 
+
 def get_flight_historical_pacing_chart(flight_data):
     """
     Calculate historical unit and spend actual / goal charts
@@ -1587,6 +1591,7 @@ def get_flight_historical_pacing_chart(flight_data):
     goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
     allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
     delivery_mapping = get_delivery_mapping(flight_data["daily_delivery"])
+    # Use min with today as we don't need to generate charts for dates >= today
     end = min(flight_data["end"], today)
     plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
     projected_budget = flight_data["projected_budget"]
@@ -1599,39 +1604,47 @@ def get_flight_historical_pacing_chart(flight_data):
     curr_spend = 0
 
     for date in get_dates_range(flight_data["start"], end):
-        units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
+        goal_type = flight_data["placement__goal_type_id"]
+        units_key = "impressions" if goal_type is SalesForceGoalType.CPM else "video_views"
         try:
             # Get today's delivery
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            goal_type = flight_data["placement__goal_type_id"]
             margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend, goal_type)
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
 
         goal_obj = goal_mapping[date]
+        # If days_remaining is None, then current iteration is at the beginning of a new date range
         if days_remaining is None:
             days_remaining = allocation_count[goal_obj.allocation]
 
         # Divide by 100 to convert allocation percentage to decimal
         goal_units = round((plan_units * goal_obj.allocation / 100 - curr_delivery) / days_remaining) if days_remaining > 0 else None
-        goal_spend = round((projected_budget * goal_obj.allocation / 100 - curr_spend) / days_remaining) if days_remaining > 0 else None
+        # The amount that is needed to deliver goal_units
+        try:
+            if goal_type == SalesForceGoalType.CPM:
+                goal_spend = round(goal_units * flight_data["cpm"] / 1000)
+            else:
+                goal_spend = round(goal_units * flight_data["cpv"])
+        except TypeError:
+            goal_spend = 0
 
-        # Get the amount of units we should have delivered by today's date
+        # Sum the amount of units we should have delivered by today's date
         expected_delivery += (plan_units * goal_obj.allocation / 100 / allocation_count[goal_obj.allocation])
 
         curr_delivery += actual_units
         curr_spend += actual_spend
-        # If is end, we reached the end of a date range allocation e.g. day 1 - 5, 80. Reset days_remaining to None
-        # so value is set in next iteration
+        # If is end, we reached the end of a date range allocation e.g. On day 5 of day 1 - 5, 80%. Reset days_remaining
+        # to None so value is set in next iteration
         if goal_obj.is_end is True:
             days_remaining = None
         else:
             days_remaining -= 1
 
         if date == today:
-            # Do not add today's recommendations to chart, provide separate keys for today's values1
+            # Do not add today's recommendations to chart, provide separate keys for today's values
             today_goal_units = goal_units
             today_goal_spend = goal_spend
             break
