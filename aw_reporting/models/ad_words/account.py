@@ -1,10 +1,11 @@
 from django.db import models
 from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
 from django.db.models import F
-from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Q
-from django.db.models import ExpressionWrapper
+from django.db.models import When
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
@@ -68,18 +69,34 @@ class Account(models.Model):
             return max(dates)
         return None
 
-    @property
-    def completion_rate(self):
-        completion_rates = self.campaigns\
+    def get_video_completion_rate(self, rate: str):
+        """
+        Calculate average completion rates from campaigns
+        :return:
+        """
+        rate = str(rate)
+        rates = ["25", "50", "75", "100"]
+        if rate not in rates:
+            raise ValueError(f"Valid rates: {','.join(rates)}")
+        completion_rate = self.campaigns\
+            .filter(**{f"video_views_{rate}_quartile__gt": 0})\
             .annotate(
-                completion_25_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_50_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_75_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-                completion_100_rate=ExpressionWrapper(F("video_views_25_quartile") / F("impressions"), output_field=FloatField()),
-            ).aggregate(
-                completion_25_avg=Avg("completion_25_rate"),
-                completion_50_avg=Avg("completion_50_rate"),
-                completion_75_avg=Avg("completion_75_rate"),
-                completion_100_avg=Avg("completion_100_rate"),
-            )
-        return completion_rates
+                completion_rate=Case(
+                    When(impressions=0, then=0),
+                    default=ExpressionWrapper(F(f"video_views_{rate}_quartile") / F("impressions") * 100,
+                                              output_field=models.FloatField())
+                )
+            )\
+            .aggregate(Avg("completion_rate"))["completion_rate__avg"]
+        return completion_rate
+
+    @property
+    def active_view_viewability(self):
+        """
+        Calculate active view viewability average froom campaigns
+        :return:
+        """
+        viewability = self.campaigns\
+            .filter(active_view_viewability__gt=0)\
+            .aggregate(Avg("active_view_viewability"))["active_view_viewability__avg"]
+        return viewability

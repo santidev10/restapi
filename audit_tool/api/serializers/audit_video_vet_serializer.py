@@ -83,7 +83,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             "clean": self.validated_data["suitable"],
             "checked_out_at": None,
             "processed": timezone.now(),
-            "processed_by_user_id": self.validated_data["processed_by_user_id"],
+            "processed_by_user_id": self.context["user"].id,
         }
         for key, value in data.items():
             setattr(self.instance, key, value)

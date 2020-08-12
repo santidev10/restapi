@@ -691,7 +691,7 @@ class BlacklistItem(models.Model):
 
 
 class AuditVet(models.Model):
-    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    audit = models.ForeignKey(AuditProcessor, null=True, db_index=True, on_delete=models.CASCADE)
     clean = models.NullBooleanField(default=None, db_index=True)  # determined if suitable by user
     created_at = models.DateTimeField(auto_now_add=True)
     checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)

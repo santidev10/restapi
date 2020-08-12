@@ -4,6 +4,7 @@ from functools import reduce
 
 from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import Avg
 from django.db.models import Case
 from django.db.models import Count
 from django.db.models import F
@@ -76,6 +77,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             max_date=Max("statistics__date"),
         )
         sum_statistic_map = _get_sum_statistic_map(items)
+        avg_statistic_map = _get_avg_statistic_map(items)
         device_data = items.annotate(**_device_annotation())
         gender_data = items.annotate(**_gender_annotation(ag_link))
         age_data = items.annotate(**_age_annotation(ag_link))
@@ -123,6 +125,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
                 max_stat_date=i["max_date"],
 
                 **sum_statistic_map.get(uid, {}),
+                **avg_statistic_map.get(uid, {}),
                 **stats_by_id[uid],
                 **aggregated_data.get(uid, {}),
             )
@@ -200,6 +203,10 @@ def _get_sum_fields(model):
         "cost",
         "impressions",
         "video_views",
+        "video_views_25_quartile",
+        "video_views_50_quartile",
+        "video_views_75_quartile",
+        "video_views_100_quartile",
     )
     if model is AdGroup:
         fields = fields + ("engagements", "active_view_impressions")
@@ -220,6 +227,29 @@ def _get_sum_statistic_map(queryset):
         for stats in sum_statistic
     }
     return sum_statistic_map
+
+
+def _get_avg_fields():
+    fields = (
+        "active_view_viewability",
+    )
+    return fields
+
+
+def _get_avg_statistic_map(queryset):
+    avg_fields = _get_avg_fields()
+    annotations = {}
+    for field in avg_fields:
+        filters = {}
+        if field == "active_view_viewability":
+            filters = Q(**{f"statistics__{field}__gt": 0})
+        annotations[field] = Coalesce(Avg("statistics__" + field, filter=filters), 0)
+    avg_statistics = queryset.annotate(**annotations)
+    avg_stats_map = {
+        stats["id"]: pick_dict(stats, avg_fields)
+        for stats in avg_statistics
+    }
+    return avg_stats_map
 
 
 FLIGHTS_DELIVERY_ANNOTATE = dict(

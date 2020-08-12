@@ -6,6 +6,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.api.urls.names import AuditPathName
+from audit_tool.models import AuditVideoVet
+from audit_tool.models import AuditChannelVet
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -97,7 +99,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_channel(self):
-        self.create_admin_user()
+        user = self.create_admin_user()
         channel = self.channel_manager.model(f"test_youtube_channel_{next(int_iterator)}")
         channel.populate_monetization(is_monetizable=True)
         channel.populate_task_us_data(
@@ -117,6 +119,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             language="ru",
             age_group="1",
             content_type="1",
+            content_quality="1",
             gender="1",
             is_monetizable=False,
             brand_safety=[],
@@ -132,9 +135,11 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated.task_us_data.gender, payload["gender"])
         self.assertEqual(updated.monetization.is_monetizable, payload["is_monetizable"])
         self.assertTrue(updated.task_us_data.last_vetted_at > channel.task_us_data.last_vetted_at)
+        vet_obj = AuditChannelVet.objects.get(audit=None, channel__channel_id=channel.main.id)
+        self.assertEqual(vet_obj.processed_by_user_id, user.id)
 
     def test_patch_video(self):
-        self.create_admin_user()
+        user = self.create_admin_user()
         video = self.video_manager.model(f"video_{next(int_iterator)}")
         video.populate_monetization(is_monetizable=True)
         video.populate_task_us_data(
@@ -154,6 +159,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             language="af",
             age_group="1",
             content_type="1",
+            content_quality="1",
             gender="1",
             is_monetizable=True,
             brand_safety=[],
@@ -169,3 +175,5 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated.task_us_data.gender, payload["gender"])
         self.assertEqual(updated.monetization.is_monetizable, payload["is_monetizable"])
         self.assertTrue(updated.task_us_data.last_vetted_at > video.task_us_data.last_vetted_at)
+        vet_obj = AuditVideoVet.objects.get(audit=None, video__video_id=video.main.id)
+        self.assertEqual(vet_obj.processed_by_user_id, user.id)

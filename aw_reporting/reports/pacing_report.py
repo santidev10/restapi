@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import timedelta
 from distutils.util import strtobool
 from math import ceil
+import statistics
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
@@ -602,9 +603,30 @@ class PacingReport:
                         create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
                     )
+                if is_opp_under_margin(margin, today, o["end"]):
+                    alerts.append(
+                        create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
+                                                              f" Please adjust IMMEDIATELY.")
+                    )
             except TypeError:
                 pass
             o["alerts"] = alerts
+            # Get account performance with Opportunity.aw_cid
+            aw_ids = o["aw_cid"].split(",") if o["aw_cid"] else []
+            accounts = Account.objects.filter(id__in=aw_ids)
+            try:
+                o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
+            except (statistics.StatisticsError, TypeError):
+                o["active_view_viewability"] = None
+
+            try:
+                o["video_completion_rates"] = {
+                    f"completion_{rate}": statistics.mean(a.get_video_completion_rate(rate) for a in accounts)
+                    for rate in {25, 50, 75, 100}
+                }
+            except (statistics.StatisticsError, TypeError, IndexError):
+                o["video_completion_rates"] = {}
+
         return opportunities
 
     # pylint: enable=too-many-statements
@@ -1732,3 +1754,20 @@ def get_daily_margin(client_rate, daily_delivered, daily_cost, goal_type):
     except (TypeError, ZeroDivisionError):
         margin = 0
     return margin
+
+
+def is_opp_under_margin(margin, today, end):
+    """
+    Determine if Opportunity is under margin
+    :param margin: float
+    :param today: date
+    :param end: date
+    :return: bool
+    """
+    is_under_margin = False
+    try:
+        if margin and today <= end - timedelta(days=7) and margin < 0.1:
+            is_under_margin = True
+    except TypeError:
+        pass
+    return is_under_margin
