@@ -19,9 +19,9 @@ def video_discovery_scheduler():
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
     query = video_manager.forced_filters() \
             & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get()
-    should_query = QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get() \
-        | QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
-    query.bool &= should_query
+    query &= QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get() \
+             | QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(
+        True).get()
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
     limit = Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size
 
