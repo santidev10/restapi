@@ -400,8 +400,8 @@ class AuditExportApiView(APIView):
                 v.made_for_kids if v else "",
                 "Y" if v and v.age_restricted else "",
                 sentiment,
-                "Y" if v.live_broadcast else "",
-                v.aspect_ratio if v.aspect_ratio else "",
+                "Y" if v and v.live_broadcast else "",
+                v.aspect_ratio if v and v.aspect_ratio else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
