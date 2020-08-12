@@ -8,6 +8,10 @@ from rest_framework.views import APIView
 
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoVet
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditChannelVet
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -33,7 +37,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
         Retrieve item to audit
         """
         doc_id = kwargs["pk"]
-        es_manager, serializer = self._get_config(doc_id, sections=self.ES_SECTIONS)
+        es_manager, serializer, _, _ = self._get_config(doc_id, sections=self.ES_SECTIONS)
         try:
             doc = es_manager.get([doc_id], skip_none=True)[0]
         except IndexError:
@@ -46,10 +50,11 @@ class AuditItemRetrieveUpdateAPIView(APIView):
         data = request.data
         validate_fields(self.REQUIRED_FIELDS, list(data.keys()))
         data["lang_code"] = data["language"]
-        es_manager, serializer = self._get_config(doc_id, sections=[Sections.TASK_US_DATA])
-        serializer = serializer(data=data, context={"user": request.user})
+        es_manager, serializer, vetting_model, audit_model = self._get_config(doc_id, sections=[Sections.TASK_US_DATA])
+        vet_obj = self._create_vet(audit_model, vetting_model, doc_id)
+        serializer = serializer(vet_obj, data=data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
-        serializer.save_elasticsearch(doc_id)
+        serializer.save()
         return Response()
 
     def _get_config(self, doc_id, sections=None):
@@ -57,7 +62,23 @@ class AuditItemRetrieveUpdateAPIView(APIView):
         if len(doc_id) < 20:
             es_manager = VideoManager(sections=sections)
             serializer = AuditVideoVetSerializer
+            vetting_model = AuditVideoVet
+            audit_model = AuditVideo
         else:
             es_manager = ChannelManager(sections=sections)
             serializer = AuditChannelVetSerializer
-        return es_manager, serializer
+            vetting_model = AuditChannelVet
+            audit_model = AuditChannel
+        return es_manager, serializer, vetting_model, audit_model
+
+    def _create_vet(self, audit_model, vetting_model, item_id):
+        if "video" in audit_model.__name__.lower():
+            item_type = "video"
+        else:
+            item_type = "channel"
+        audit_obj, _ = audit_model.objects.get_or_create(**{f"{item_type}_id": item_id})
+        vet_obj = vetting_model.objects.create(**{
+            item_type: audit_obj,
+            "audit_id": None,
+        })
+        return vet_obj
