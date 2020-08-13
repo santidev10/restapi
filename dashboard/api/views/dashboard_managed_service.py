@@ -7,7 +7,6 @@ from django.db.models import When
 
 from rest_framework.permissions import IsAdminUser
 
-from aw_creation.api.views.analytics.account_creation_list import OptimizationAccountListPaginator
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Campaign
@@ -31,7 +30,7 @@ class DashboardManagedServicePaginator(CustomPageNumberPaginator):
 
 class DashboardManagedServiceAPIView(ListAPIView):
     serializer_class = DashboardManagedServiceSerializer
-    pagination_class = OptimizationAccountListPaginator
+    pagination_class = DashboardManagedServicePaginator
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_dashboard"),
@@ -55,6 +54,8 @@ class DashboardManagedServiceAPIView(ListAPIView):
                     & visibility_filter)
         return queryset.order_by("-is_demo", "is_ended", "-created_at")
 
+    # def filter_queryset(self, queryset):
+    #     return queryset
 
     # def get(self, request, *args, **kwargs):
     #     return self.list(request, *args, **kwargs)

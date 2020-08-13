@@ -25,6 +25,7 @@ from aw_reporting.models.ad_words.campaign import Campaign
 class DashboardManagedServiceSerializer(DashboardAccountCreationListSerializer):
     completion_rate = SerializerMethodField()
     viewability = SerializerMethodField()
+    aw_cid = SerializerMethodField()
 
     class Meta:
         model = AccountCreation
@@ -32,6 +33,7 @@ class DashboardManagedServiceSerializer(DashboardAccountCreationListSerializer):
             "ctr",
             "ctr_v",
             "id",
+            "aw_cid", # account id
             "name",
             "thumbnail",
             "viewability",
@@ -131,3 +133,9 @@ class DashboardManagedServiceSerializer(DashboardAccountCreationListSerializer):
     def get_viewability(self, instance):
         value = self.stats.get(instance.id, {}).get('viewability', None)
         return value
+
+    def get_aw_cid(self, instance):
+        """
+        an aw_cid refers to an Account, or AccountCreation.account
+        """
+        return instance.account_id
