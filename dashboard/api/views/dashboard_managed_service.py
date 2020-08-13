@@ -39,35 +39,42 @@ class DashboardManagedServiceAPIView(ListAPIView):
         ),
     )
 
-    # CACHE_TTL = 60 * 30
-
     def get_queryset(self, **filters):
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
             if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         queryset = AccountCreation.objects \
-            .annotate(is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
-                                   default=False,
-                                   output_field=BooleanField(), ), ) \
-            .filter((Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS) | Q(is_demo=True)) & Q(**filters)
-                    & Q(is_deleted=False)
-                    & visibility_filter)
+            .annotate(
+                is_demo=Case(
+                    When(account_id=DEMO_ACCOUNT_ID, then=True),
+                    default=False,
+                    output_field=BooleanField(),
+                ),
+            ) \
+            .filter(
+                (Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS) | Q(is_demo=True))
+                & Q(**filters)
+                & Q(is_deleted=False)
+                & visibility_filter
+            ) \
+            .distinct()
         return queryset.order_by("-is_demo", "is_ended", "-created_at")
 
     def get(self, request, *args, **kwargs):
+        """
+        override to modify response when account_id is passed
+        """
         account_id = request.query_params.get('account_id', None)
         if account_id:
             data = self._get_extra_data(account_id)
             return Response(data=data)
         return self.list(request, *args, **kwargs)
 
-    # @staticmethod
-    # def get_cache_key(user_id):
-    #     cache_key = get_cache_key(user_id, prefix=DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX)
-    #     return cache_key
-
     def _get_extra_data(self, account_id):
+        """
+        takes an account_id to get pacing, margin, cpv for just that account
+        """
         account = Account.objects.get(id=account_id)
         report = PacingReport()
         today = now_in_default_tz().date()
