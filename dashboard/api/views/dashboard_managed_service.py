@@ -20,6 +20,8 @@ from aw_creation.api.views.analytics.account_creation_list import OptimizationAc
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.reports.pacing_report import get_pacing_from_flights
+from aw_reporting.models import Campaign
 from cache.models import CacheItem
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceAveragesAdminSerializer
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceAveragesSerializer
@@ -141,3 +143,24 @@ class DashboardManagedServiceAPIView(ListAPIView):
     def get_cache_key(user_id):
         cache_key = get_cache_key(user_id, prefix=DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX)
         return cache_key
+
+    def _get_extra_data(self, request):
+        account_id = request.query_params["account_id"]
+        account = Account.objects.get(id=account_id)
+        report = PacingReport()
+        today = now_in_default_tz().date()
+
+        flights = report.get_flights_data(placement__opportunity__aw_cid__contains=account.id)
+        plan_cost = sum(f["total_cost"] for f in flights if f["start"] <= today)
+        actual_cost = Campaign.objects.filter(account=account).aggregate(Sum("cost"))["cost__sum"]
+        delivery_stats = report.get_delivery_stats_from_flights(flights)
+
+        pacing = get_pacing_from_flights(flights)
+        margin = report.get_margin_from_flights(flights, actual_cost, plan_cost)
+        cpv = delivery_stats["cpv"]
+        extra_data = {
+            "pacing": pacing,
+            "margin": margin,
+            "cpv": cpv
+        }
+        return extra_data
