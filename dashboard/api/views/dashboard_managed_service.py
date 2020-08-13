@@ -6,6 +6,7 @@ from django.db.models import Sum
 from django.db.models import When
 
 from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
@@ -38,7 +39,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         ),
     )
 
-    CACHE_TTL = 60 * 30
+    # CACHE_TTL = 60 * 30
 
     def get_queryset(self, **filters):
         user_settings = self.request.user.get_aw_settings()
@@ -54,35 +55,19 @@ class DashboardManagedServiceAPIView(ListAPIView):
                     & visibility_filter)
         return queryset.order_by("-is_demo", "is_ended", "-created_at")
 
-    # def filter_queryset(self, queryset):
-    #     return queryset
+    def get(self, request, *args, **kwargs):
+        account_id = request.query_params.get('account_id', None)
+        if account_id:
+            data = self._get_extra_data(account_id)
+            return Response(data=data)
+        return self.list(request, *args, **kwargs)
 
-    # def get(self, request, *args, **kwargs):
-    #     return self.list(request, *args, **kwargs)
+    # @staticmethod
+    # def get_cache_key(user_id):
+    #     cache_key = get_cache_key(user_id, prefix=DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX)
+    #     return cache_key
 
-    # def get(self, request, *args, **kwargs):
-    #     cache_key = self.get_cache_key(request.user.id)
-    #     now = now_in_default_tz()
-    #     try:
-    #         cache = CacheItem.objects.get(key=cache_key)
-    #         data = cache.value
-    #         if cache.created_at < now - timedelta(seconds=self.CACHE_TTL):
-    #             data = self.list(request, *args, **kwargs)
-    #             cache.value = data
-    #             cache.created_at = now
-    #             cache.save()
-    #     except CacheItem.DoesNotExist:
-    #         data = self.list(request, *args, **kwargs)
-    #         CacheItem.objects.create(key=cache_key, value=data)
-    #     return data
-
-    @staticmethod
-    def get_cache_key(user_id):
-        cache_key = get_cache_key(user_id, prefix=DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX)
-        return cache_key
-
-    def _get_extra_data(self, request):
-        account_id = request.query_params["account_id"]
+    def _get_extra_data(self, account_id):
         account = Account.objects.get(id=account_id)
         report = PacingReport()
         today = now_in_default_tz().date()
