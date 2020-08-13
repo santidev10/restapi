@@ -40,6 +40,10 @@ class DashboardManagedServiceAPIView(ListAPIView):
     )
 
     def get_queryset(self, **filters):
+        """
+        only Accounts that are visible to the user. If `visible all accounts` is
+        set, show 'everything'.
+        """
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
             if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
