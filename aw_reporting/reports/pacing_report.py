@@ -472,8 +472,8 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None, managed_service_data=False):
-        queryset = self.get_opportunities_queryset(get, user, aw_cid)
+    def get_opportunities(self, get, user=None, aw_cid=None, managed_service_data=False, sort=None, limit=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid, sort)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -490,6 +490,8 @@ class PacingReport:
             "cpm_buffer", "cpv_buffer",
             "budget"
         )
+        if limit:
+            opportunities = opportunities[:limit]
 
         # collect ids
         ad_ops_emails = set()
@@ -631,7 +633,7 @@ class PacingReport:
 
     # pylint: enable=too-many-statements
 
-    def get_opportunities_queryset(self, get, user, aw_cid):
+    def get_opportunities_queryset(self, get, user, aw_cid, sort):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -702,7 +704,10 @@ class PacingReport:
             .annotate(campaigns=Count("placements__adwords_campaigns")) \
             .exclude(campaigns__lte=0)
 
-        return queryset.order_by("name", "id").distinct()
+        default_sort = ["-name"]
+        sort = [*sort, *default_sort] if sort else default_sort
+        queryset = queryset.order_by(*sort).distinct()
+        return queryset
 
     # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
     def get_period_dates(self, period, custom_start, custom_end):
