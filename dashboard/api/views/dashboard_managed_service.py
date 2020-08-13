@@ -4,6 +4,7 @@ from django.db.models import Case
 from django.db.models import Q
 from django.db.models import Sum
 from django.db.models import When
+from django.http import HttpResponseForbidden
 
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -70,7 +71,9 @@ class DashboardManagedServiceAPIView(ListAPIView):
         override to modify response when account_id is passed
         """
         account_id = request.query_params.get('account_id', None)
-        if account_id:
+        if account_id and not request.user.is_staff:
+            return HttpResponseForbidden()
+        elif account_id:
             data = self._get_extra_data(account_id)
             return Response(data=data)
         return self.list(request, *args, **kwargs)
