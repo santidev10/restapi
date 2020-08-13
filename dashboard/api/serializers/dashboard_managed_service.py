@@ -47,7 +47,8 @@ class DashboardManagedServiceSerializer(DashboardAccountCreationListSerializer):
         creations = AccountCreation.objects.filter(id__in=account_creation_ids) \
             .annotate(
                 completion_rate=ExpressionWrapper(
-                    Sum("account__campaigns__statistics__video_views_100_quartile") / Sum("account__campaigns__statistics__impressions"),
+                    Sum("account__campaigns__statistics__video_views_100_quartile") /
+                    Sum("account__campaigns__statistics__impressions"),
                     output_field=FloatField(),
                 ),
                 viewability=Avg(
@@ -115,14 +116,6 @@ class DashboardManagedServiceSerializer(DashboardAccountCreationListSerializer):
     def _get_daily_chart(self, account_creation_ids):
         """override parent"""
         pass
-
-    @staticmethod
-    def add_to_creation_stats(stats, creation_id, key, value):
-        creation = stats.get(creation_id, {})
-        values = creation.get(key, [])
-        values.append(value)
-        stats[creation_id][key] = values
-        return stats
 
     def get_completion_rate(self, instance):
         value = self.stats.get(instance.id, {}).get('completion_rate', None)
