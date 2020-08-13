@@ -50,21 +50,14 @@ class DashboardManagedServiceAPIView(ListAPIView):
             if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         queryset = AccountCreation.objects \
-            .annotate(
-                is_demo=Case(
-                    When(account_id=DEMO_ACCOUNT_ID, then=True),
-                    default=False,
-                    output_field=BooleanField(),
-                ),
-            ) \
             .filter(
-                (Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS) | Q(is_demo=True))
-                & Q(**filters)
+                Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS)
                 & Q(is_deleted=False)
+                & Q(**filters)
                 & visibility_filter
             ) \
             .distinct()
-        return queryset.order_by("-is_demo", "is_ended", "-created_at")
+        return queryset.order_by("is_ended", "-created_at")
 
     def get(self, request, *args, **kwargs):
         """
