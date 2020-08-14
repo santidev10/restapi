@@ -1,1 +1,0 @@
-from .update_opportunities import update_opportunities_task
