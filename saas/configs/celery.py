@@ -163,6 +163,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "dashboard.tasks.update_opportunity_performance.update_opportunity_performance_task",
         "schedule": crontab(minute="0", hour="23"),
     },
+    "update_opportunities_stats": {
+        "task": "aw_reporting.update.update_opportunities.update_opportunities_task",
+        "schedule": crontab(minute="0", hour="*"),
+    },
 }
 
 
