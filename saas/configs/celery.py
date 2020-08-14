@@ -164,7 +164,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="0", hour="23"),
     },
     "update_opportunities_stats": {
-        "task": "aw_reporting.tasks.update_opportunities.update_opportunities_task",
+        "task": "aw_reporting.update.update_opportunities.update_opportunities_task",
         "schedule": crontab(minute="0", hour="*"),
     },
 }
