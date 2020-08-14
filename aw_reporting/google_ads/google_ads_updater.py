@@ -13,6 +13,7 @@ from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
+from aw_reporting.google_ads.updaters.mcc_accounts import MccAccountUpdater
 from aw_reporting.google_ads.updaters.ad_group_criteria import AdGroupCriteriaUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
@@ -88,6 +89,10 @@ class GoogleAdsUpdater:
         self.account.update_time = timezone.now()
         self.account.save()
 
+    def update_accounts(self, account_ids):
+        updater = AccountUpdater(account_ids)
+        self.execute_with_any_permission(updater)
+
     def update_campaigns(self):
         """
         Update / Save campaigns for account
@@ -104,7 +109,7 @@ class GoogleAdsUpdater:
         """ Update /Save accounts managed by MCC """
         if mcc_account:
             self.account = mcc_account
-        account_updater = AccountUpdater(self.account)
+        account_updater = MccAccountUpdater(self.account)
         self.execute_with_any_permission(account_updater, mcc_account=self.account)
 
     def full_update(self, mcc_account=None):
@@ -253,7 +258,7 @@ class GoogleAdsUpdater:
                 return
 
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
-        if updater.__class__ == AccountUpdater and mcc_account:
+        if updater.__class__ == MccAccountUpdater and mcc_account:
             Account.objects.filter(id=mcc_account.id).update(is_active=False)
             logger.info("Account access revoked for MCC: %s", mcc_account.id)
 

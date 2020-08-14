@@ -1,49 +1,40 @@
-import logging
-
-from django.utils import timezone
-
-from aw_reporting.adwords_api import get_all_customers
-from aw_reporting.google_ads.update_mixin import UpdateMixin
+""" Update individual Google Ads CID accounts """
+from aw_reporting.adwords_reports import account_performance
 from aw_reporting.models import Account
 
-logger = logging.getLogger(__name__)
 
+class AccountUpdater:
+    def __init__(self, account_ids):
+        self.account_ids = [account_ids] if not isinstance(account_ids, list) else account_ids
+        self.fields_mapping = {
+            "ExternalCustomerId": ("id", None),
+            "Clicks": ("clicks", int),
+            "VideoViews": ("video_views", int),
+            "Impressions": ("impressions", int),
+            "Cost": ("cost", float),
+            "ActiveViewViewability": ("active_view_viewability", float),
+        }
 
-class AccountUpdater(UpdateMixin):
-    def __init__(self, mcc_account):
-        self.mcc_account = mcc_account
-        self.existing_accounts = set()
-        # Ignore accounts that do not have valid Google Ads account ids
-        for account in Account.objects.all():
-            try:
-                int(account.id)
-            except ValueError:
-                continue
-            except AttributeError:
-                # Account name is None
-                pass
-            self.existing_accounts.add(account.id)
+    def update(self, client, start=None, end=None):
+        try:
+            predicates = [
+                {"field": "ExternalCustomerId", "operator": "IN", "values": self.account_ids},
+            ]
+            report = account_performance(client, predicates=predicates)
+            accounts = self._get_stats(report)
+            Account.objects.bulk_update(accounts, fields=[field[0] for field in self.fields_mapping.keys()])
+        except IndexError:
+            pass
 
-    def update(self, client):
-        accounts_to_update = []
-        created_accounts = []
-        accounts = get_all_customers(client)
-        for e in accounts:
-            account_id = int(e["customerId"])
-            account_obj = Account(
-                id=account_id,
-                name=e["name"],
-                currency_code=e["currencyCode"],
-                timezone=e["dateTimeZone"],
-                can_manage_clients=e["canManageClients"],
-            )
-            if account_id in self.existing_accounts:
-                accounts_to_update.append(account_obj)
-            else:
-                account_obj.save()
-                created_accounts.append(account_obj)
-        Account.objects.bulk_update(accounts_to_update, ["name", "currency_code", "timezone", "can_manage_clients"])
-        all_managed_accounts = [cid.id for cid in accounts_to_update] + [cid.id for cid in created_accounts]
-        self.mcc_account.managers.add(*Account.objects.filter(id__in=all_managed_accounts))
-        self.mcc_account.update_time = timezone.now()
-        self.mcc_account.save()
+    def _get_stats(self, report):
+        for row in report:
+            stats = {}
+            for field in self.fields_mapping.keys():
+                value = getattr(row, field)
+                if field == "ActiveViewViewability":
+                    value = value.strip("%")
+                model_field, converter = self.fields_mapping[field]
+                if converter:
+                    value = converter(value)
+                stats[model_field] = value
+            yield Account(**stats)

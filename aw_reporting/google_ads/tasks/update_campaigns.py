@@ -74,7 +74,7 @@ def setup_cid_update_tasks():
     campaign_update_tasks = group_chorded(task_signatures).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         campaign_update_tasks,
-        finalize_campaigns_update.si(),
+        finalize_campaigns_update.si(cid_account_ids),
         unlock.si(lock_name=LOCK_NAME, fail_silently=True).set(queue=Queue.HOURLY_STATISTIC),
     )
     return job()
@@ -104,11 +104,12 @@ def cid_campaign_update(cid_id):
 
 
 @celery_app.task
-def finalize_campaigns_update():
+def finalize_campaigns_update(cid_account_ids):
     """
     Call finalize methods
     Sets up the next batch of update tasks
     :return:
     """
+    GoogleAdsUpdater(None).update_accounts(cid_account_ids)
     add_relation_between_report_and_creation_campaigns()
     logger.debug("Google Ads account and campaign update complete")
