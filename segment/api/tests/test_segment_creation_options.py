@@ -15,7 +15,7 @@ from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-@patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+@patch("segment.utils.query_builder.SegmentQueryBuilder.execute")
 class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATION_OPTIONS)
@@ -45,16 +45,6 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
-
-    def test_reject_invalid_params(self, es_mock):
-        self.create_test_user()
-        payload = {
-            "country": "us"
-        }
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_that_content_categories_are_iab_categories(self, es_mock):
         self.create_test_user()
