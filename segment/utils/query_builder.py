@@ -196,8 +196,14 @@ class SegmentQueryBuilder:
                 .term().field(f"{Sections.TASK_US_DATA}.content_quality").value(self._params["content_quality"]).get()
             must_queries.append(content_quality_query)
 
-        self._set_range_queries(self.AD_STATS_RANGE_FIELDS, Sections.ADS_STATS, must_queries)
-        self._set_range_queries(self.STATS_RANGE_FIELDS, Sections.STATS, must_queries)
+        ads_stats_queries = self._get_ads_stats_queries()
+        must_queries.append(ads_stats_queries)
+
+        if self._params.get("last_30day_views"):
+            query = self._get_range_queries(["last_30day_views"], Sections.STATS)
+            if self._params.get("ads_stats_include_na") is True:
+                query |= QueryBuilder().build().must_not().exists().field(f"{Sections.STATS}.last_30day_views").get()
+            must_queries.append(query)
 
         query = Q("bool", must=must_queries)
 
@@ -228,38 +234,27 @@ class SegmentQueryBuilder:
             .gte(self._params.get(attr_name)).get()
         return queries
 
-    def _map_score_threshold(self, score_threshold: int):
-        """
-        Map blacklist severity from client to score
-        :param score_threshold: int
-        :return: int
-        """
-        if score_threshold == 1:
-            threshold = 0
-        elif score_threshold == 2:
-            threshold = 70
-        elif score_threshold == 3:
-            threshold = 80
-        elif score_threshold == 4:
-            threshold = 90
-        else:
-            threshold = None
-        return threshold
+    def _get_ads_stats_queries(self):
+        queries = self._get_range_queries(self.AD_STATS_RANGE_FIELDS, Sections.ADS_STATS)
+        if self._params.get("ads_stats_include_na") is True:
+            for field in self.AD_STATS_RANGE_FIELDS:
+                queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.STATS}.{field}").get()
+        return queries
 
-    def _set_range_queries(self, fields, section, main_query):
+    def _get_range_queries(self, fields, section):
+        query = Q("bool")
         for key in fields:
             field = f"{section}.{key}"
             try:
                 params = str(self._params[key])
                 lower_bound, upper_bound = params.split(",")
-                query = Q("bool")
                 if lower_bound:
                     query &= QueryBuilder().build().must().range().field(field).gte(lower_bound).get()
                 if upper_bound:
                     query &= QueryBuilder().build().must().range().field(field).lte(upper_bound).get()
-                main_query.append(query)
             except (KeyError, AttributeError, ValueError):
                 pass
+        return query
 
     @staticmethod
     def map_content_categories(content_category_ids: list):
@@ -275,6 +270,24 @@ class SegmentQueryBuilder:
         elif sentiment == 3:
             threshold = 70
         elif sentiment == 4:
+            threshold = 90
+        else:
+            threshold = None
+        return threshold
+
+    def _map_score_threshold(self, score_threshold: int):
+        """
+        Map blacklist severity from client to score
+        :param score_threshold: int
+        :return: int
+        """
+        if score_threshold == 1:
+            threshold = 0
+        elif score_threshold == 2:
+            threshold = 70
+        elif score_threshold == 3:
+            threshold = 80
+        elif score_threshold == 4:
             threshold = 90
         else:
             threshold = None
