@@ -16,7 +16,7 @@ class AccountManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "id"
 
 
-class Account(models.Model):
+class Account(BaseStatisticModel):
     objects = AccountManager()
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255, null=True, db_index=True)

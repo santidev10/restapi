@@ -15,7 +15,7 @@ class AccountUpdater:
             "ActiveViewViewability": ("active_view_viewability", float),
         }
 
-    def update(self, client, start=None, end=None):
+    def update(self, client):
         try:
             predicates = [
                 {"field": "ExternalCustomerId", "operator": "IN", "values": self.account_ids},
