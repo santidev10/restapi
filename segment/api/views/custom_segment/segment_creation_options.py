@@ -10,7 +10,6 @@ from audit_tool.models import AuditContentType
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from brand_safety.utils import BrandSafetyQueryBuilder
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
@@ -18,6 +17,7 @@ from es_components.countries import COUNTRIES
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.utils.utils import with_all
+from segment.utils.query_builder import SegmentQueryBuilder
 
 
 class SegmentCreationOptionsApiView(APIView):
@@ -26,7 +26,8 @@ class SegmentCreationOptionsApiView(APIView):
                        "content_categories", "age_groups", "gender", "minimum_videos", "is_vetted",
                        "age_groups_include_na", "minimum_views_include_na", "minimum_subscribers_include_na",
                        "minimum_videos_include_na", "vetted_after", "mismatched_language", "countries_include_na",
-                       "content_type", "content_quality"]
+                       "content_type", "content_quality", "video_view_rate", "average_cpv", "average_cpm", "ctr", "ctr_v",
+                           "video_quartile_100_rate", "last_30day_views"]
 
     def post(self, request, *args, **kwargs):
         """
@@ -44,11 +45,11 @@ class SegmentCreationOptionsApiView(APIView):
                 for int_type in range(options["segment_type"]):
                     str_type = CustomSegment.segment_id_to_type[int_type]
                     options["segment_type"] = int_type
-                    query_builder = BrandSafetyQueryBuilder(options)
+                    query_builder = SegmentQueryBuilder(options)
                     result = query_builder.execute()
                     res_data[f"{str_type}_items"] = result.hits.total.value or 0
             else:
-                query_builder = BrandSafetyQueryBuilder(options)
+                query_builder = SegmentQueryBuilder(options)
                 result = query_builder.execute()
                 str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
                 res_data[f"{str_type}_items"] = result.hits.total.value or 0

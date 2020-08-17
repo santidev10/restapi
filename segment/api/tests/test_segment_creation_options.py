@@ -129,6 +129,13 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "content_categories": None,
             "last_upload_date": None,
             "vetted_after": None,
+            "video_view_rate": None,
+            "average_cpv": None,
+            "average_cpm": None,
+            "ctr_i": None,
+            "ctr_v": None,
+            "video_completion_100": None,
+            "video_views_30_days": None
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
