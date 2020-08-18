@@ -98,7 +98,8 @@ class DashboardAccountCreationListApiView(ListAPIView):
                                    output_field=BooleanField(), ), ) \
             .filter((Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS) | Q(is_demo=True)) & Q(**filters)
                     & Q(is_deleted=False)
-                    & visibility_filter)
+                    & visibility_filter) \
+            .distinct()
 
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

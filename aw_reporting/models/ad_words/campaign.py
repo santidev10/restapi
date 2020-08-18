@@ -66,3 +66,14 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
 
     def __str__(self):
         return "%s" % self.name
+
+    def get_video_completion_rate(self, rate: str):
+        rate = str(rate)
+        rates = ["25", "50", "75", "100"]
+        if rate not in rates:
+            raise ValueError(f"Valid rates: {','.join(rates)}")
+        try:
+            completion_rate = getattr(self, f"video_views_{rate}_quartile") / self.impressions * 100
+        except ZeroDivisionError:
+            completion_rate = None
+        return completion_rate

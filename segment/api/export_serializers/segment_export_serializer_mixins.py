@@ -8,7 +8,7 @@ from utils.brand_safety import map_brand_safety_score
 
 
 class SegmentExportSerializerMixin:
-
+    """ Context provided by context kwarg in serializer instantiation """
     def get_category(self, obj):
         categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join([category for category in categories if isinstance(category, str)])
@@ -93,6 +93,13 @@ class SegmentExportSerializerMixin:
     def get_country(self, obj):
         """ actually returns a country code... """
         return getattr(obj.general_data, "country_code", "")
+
+    def get_vetted_by(self, obj):
+        """ Get user email that vetted item """
+        item_id = obj.main.id
+        vetting_data = self.context.get("vetting", {}).get(item_id, {})
+        user_email = vetting_data.get("user_email", None)
+        return user_email
 
 
 class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):

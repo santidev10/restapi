@@ -7,6 +7,7 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import get_hash_name
 from brand_safety.tasks.channel_update import channel_update
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.query_builder import QueryBuilder
@@ -17,7 +18,6 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
     data_type = "channel"
-    general_data_language_field = "top_language"
     general_data_lang_code_field = "top_lang_code"
     document_model = Channel
 
@@ -29,6 +29,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     def __init__(self, *args, **kwargs):
         super(AuditChannelVetSerializer, self).__init__(*args, **kwargs)
         self.has_vetting_history = None
+        self.es_manager = ChannelManager((Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION,
+                                          Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
 
     def get_url(self, doc):
         url = f"https://www.youtube.com/channel/{doc.main.id}/"
@@ -72,8 +74,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         except AuditChannelMeta.DoesNotExist:
             channel_meta = None
         self._save_vetting_item(channel_meta, channel_id)
-        blacklist_categories = self.save_brand_safety(channel_id)
-        self.save_elasticsearch(channel_id, blacklist_categories, self.segment.es_manager)
+        self.save_elasticsearch(channel_id)
         self._update_videos(channel_id)
 
     def _save_vetting_item(self, channel_meta, channel_id):
@@ -83,10 +84,10 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         :return: None
         """
         data = {
-            "clean": self.validated_data["suitable"],
+            "clean": self.validated_data.get("suitable"),
             "checked_out_at": None,
             "processed": timezone.now(),
-            "processed_by_user_id": self.validated_data["processed_by_user_id"],
+            "processed_by_user_id": self.context["user"].id,
         }
         for key, value in data.items():
             setattr(self.instance, key, value)

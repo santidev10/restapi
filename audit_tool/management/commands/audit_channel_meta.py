@@ -43,6 +43,7 @@ class Command(BaseCommand):
     max_pages = 200
     MAX_SOURCE_CHANNELS = 100000
     MAX_SOURCE_CHANNELS_CAP = 300000
+    MAX_EMPTY_PLAYLIST_PAGES = 3
     audit = None
     num_clones = 0
     original_audit_name = None
@@ -330,10 +331,16 @@ class Command(BaseCommand):
         if channels_res.status_code != 200:
             self.handle_bad_response_code(channels_res, channels_json, acp)
             return
-        channel_json = channels_json['items'][0]
+        items = channels_json.get('items', [])
+        if not len(items):
+            logger.info("could not get channel playlists for channel with id %s", acp.channel.channel_id)
+            self.handle_bad_response_code(channels_res, channels_json, acp)
+            return
+        channel_json = items[0]
         uploads_playlist_id = channel_json['contentDetails']['relatedPlaylists']['uploads']
         # page through uploads playlist and collect video ids
         count = 0
+        previous_page_counts = []
         next_page_token = None
         while True:
             playlist_url_params = {
@@ -353,6 +360,11 @@ class Command(BaseCommand):
             for item in playlist_json['items']:
                 self.update_or_create_video(item['snippet']['resourceId']['videoId'], acp)
                 count += 1
+            # prevent unnecessary quota usage if res is 200, but no items returned
+            previous_page_counts.append(len(playlist_json['items']))
+            if len(previous_page_counts) >= self.MAX_EMPTY_PLAYLIST_PAGES \
+                and not sum(previous_page_counts[-self.MAX_EMPTY_PLAYLIST_PAGES:]):
+                break
             if count >= num_videos:
                 break
             next_page_token = playlist_json.get('nextPageToken', None)

@@ -109,6 +109,22 @@ def multiply_percent(fn):
     return wrapper
 
 
+DASHBOARD_MANAGED_SERVICE_CALCULATED_STATS = {
+    "video_view_rate": {
+        "args": ("video_views", "video_impressions"),
+        "receipt": multiply_percent(get_video_view_rate),
+    },
+    "ctr": {
+        "args": ("clicks", "impressions"),
+        "receipt": multiply_percent(get_ctr),
+    },
+    "ctr_v": {
+        "args": ("video_clicks", "video_views"),
+        "receipt": multiply_percent(get_ctr_v),
+    },
+}
+
+
 CALCULATED_STATS = {
     "video_view_rate": {
         "args": ("video_views", "video_impressions"),
@@ -133,8 +149,8 @@ CALCULATED_STATS = {
 }
 
 
-def dict_add_calculated_stats(data):
-    for n, i in CALCULATED_STATS.items():
+def dict_add_calculated_stats(data, calculated_stats=CALCULATED_STATS):
+    for n, i in calculated_stats.items():
         args_names = i.get("args", tuple())
         args = [data.get(d) for d in args_names]
 
@@ -192,6 +208,33 @@ def base_stats_aggregator(prefix=None):
         sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"),
         sum_cost=Sum("cost")
+    )
+
+
+def dashboard_managed_service_aggregator(prefix=None):
+    prefix = prefix or ""
+    return dict(
+        sum_impressions=Sum("impressions"),
+        video_impressions=Sum(
+            Case(
+                When(**{
+                    "{}video_views__gt".format(prefix): 0,
+                    "then": "impressions",
+                }),
+                output_field=IntegerField()
+            )
+        ),
+        video_clicks=Sum(
+            Case(
+                When(**{
+                    "{}video_views__gt".format(prefix): 0,
+                    "then": "clicks",
+                }),
+                output_field=IntegerField()
+            )
+        ),
+        sum_video_views=Sum("video_views"),
+        sum_clicks=Sum("clicks"),
     )
 
 

@@ -55,6 +55,7 @@ PROJECT_APPS = (
     "brand_safety",
     "cache",
     "channel",
+    "dashboard",
     "email_reports",
     "healthcheck",
     "keyword_tool",

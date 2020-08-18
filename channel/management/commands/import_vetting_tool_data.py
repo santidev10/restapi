@@ -79,15 +79,11 @@ class Command(BaseCommand):
 
                 # language
                 channel_lang_code = None
-                channel_language = None
                 channel_lang_code = self.get_channel_lang_code(row)
                 if channel_lang_code:
                     task_us_data["lang_code"] = channel_lang_code
                     general_data["lang_codes"] = [channel_lang_code]
                     general_data["top_lang_code"] = channel_lang_code
-                    # set language field
-                    channel_language = self.get_channel_language(channel_lang_code)
-                    general_data["top_language"] = channel_language
 
                 # category
                 channel_category = None

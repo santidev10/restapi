@@ -16,6 +16,7 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
+from aw_reporting.api.views.pacing_report.constants import PACING_REPORT_OPPORTUNITIES_MAX_WATCH
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -85,6 +86,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         response = self.client.get("{}?period=this_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("watching", response.data)
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
@@ -92,6 +94,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
+                "active_view_viewability",
                 "ad_ops",
                 "alerts",
                 "am",
@@ -116,6 +119,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "impressions",
                 "is_completed",
                 "is_upcoming",
+                "is_watched",
                 "margin",
                 "margin_cap_required",
                 "margin_direction",
@@ -136,6 +140,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "status",
                 "thumbnail",
                 "timezone",
+                "video_completion_rates",
                 "video_view_rate",
                 "video_view_rate_quality",
                 "video_views",
@@ -422,9 +427,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
         pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=second)
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items"][0]["id"], first.id)
 
         response = self.client.get("{}?sort_by=-account".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -737,7 +739,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             "items": [],
             "current_page": 1,
             "items_count": 0,
-            "max_page": 1
+            "max_page": 1,
+            "watching": 0,
+            "max_watch": PACING_REPORT_OPPORTUNITIES_MAX_WATCH,
         })
 
     def test_get_opportunities_filter_category_with_coma(self):

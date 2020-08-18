@@ -50,6 +50,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         "cost_method",
         "ctr",
         "ctr_v",
+        "currency_code",
         "details",
         "end",
         "id",

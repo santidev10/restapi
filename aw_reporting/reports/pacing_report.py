@@ -2,8 +2,9 @@
 from collections import Counter
 from collections import defaultdict
 from datetime import timedelta
-from itertools import groupby
+from distutils.util import strtobool
 from math import ceil
+import statistics
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
@@ -89,7 +90,7 @@ FLIGHT_FIELDS = (
 
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
-                   "video_clicks", "clicks", "delivery", "video_cost")
+                   "video_clicks", "clicks", "delivery", "video_cost",)
 
 ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
@@ -154,7 +155,7 @@ class PacingReport:
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
-            annotate = FLIGHTS_DELIVERY_ANNOTATE
+            annotate = FLIGHTS_DELIVERY_ANNOTATE.copy()
             group_by = ("id", campaign_id_key)
 
         raw_data = queryset.values(
@@ -176,6 +177,8 @@ class PacingReport:
 
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
+
+        delivery_fields = list(DELIVERY_FIELDS)
         for row in raw_data:
             fl_data = data[row["id"]]
             if with_campaigns:
@@ -183,10 +186,10 @@ class PacingReport:
 
                 fl_data["campaigns"][row[campaign_id_key]] = {
                     k: row.get(k) or 0
-                    for k in DELIVERY_FIELDS
+                    for k in delivery_fields
                 }
 
-            for f in DELIVERY_FIELDS:
+            for f in delivery_fields:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
 
         data = sorted(data.values(), key=lambda el: (el["start"], el["name"]))
@@ -457,8 +460,8 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None):
-        queryset = self.get_opportunities_queryset(get, user, aw_cid)
+    def get_opportunities(self, get, user=None, aw_cid=None, sort=None, limit=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid, sort)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -475,6 +478,8 @@ class PacingReport:
             "cpm_buffer", "cpv_buffer",
             "budget"
         )
+        if limit:
+            opportunities = opportunities[:limit]
 
         # collect ids
         ad_ops_emails = set()
@@ -587,14 +592,35 @@ class PacingReport:
                         create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
                     )
+                if is_opp_under_margin(margin, today, o["end"]):
+                    alerts.append(
+                        create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
+                                                              f" Please adjust IMMEDIATELY.")
+                    )
             except TypeError:
                 pass
             o["alerts"] = alerts
+            # Get account performance with Opportunity.aw_cid
+            aw_ids = o["aw_cid"].split(",") if o["aw_cid"] else []
+            accounts = Account.objects.filter(id__in=aw_ids)
+            try:
+                o["active_view_viewability"] = statistics.mean(a.active_view_viewability for a in accounts)
+            except (statistics.StatisticsError, TypeError):
+                o["active_view_viewability"] = None
+
+            try:
+                o["video_completion_rates"] = {
+                    f"completion_{rate}": statistics.mean(a.get_video_completion_rate(rate) for a in accounts)
+                    for rate in {25, 50, 75, 100}
+                }
+            except (statistics.StatisticsError, TypeError, IndexError):
+                o["video_completion_rates"] = {}
+
         return opportunities
 
     # pylint: enable=too-many-statements
 
-    def get_opportunities_queryset(self, get, user, aw_cid):
+    def get_opportunities_queryset(self, get, user, aw_cid, sort):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -610,6 +636,14 @@ class PacingReport:
                                            get.get("end"))
         if start and end:
             queryset = queryset.filter(start__lte=end, end__gte=start)
+
+        ids = get.get("ids")
+        if ids:
+            queryset = queryset.filter(id__in=ids)
+
+        watch = get.get("watch", False)
+        if strtobool(str(watch)):
+            queryset = queryset.filter(id__in=user.watch.values_list("opportunity_id", flat=True))
 
         search = get.get("search")
         if search:
@@ -657,7 +691,10 @@ class PacingReport:
             .annotate(campaigns=Count("placements__adwords_campaigns")) \
             .exclude(campaigns__lte=0)
 
-        return queryset.order_by("name", "id").distinct()
+        default_sort = ["-name"]
+        sort = [*sort, *default_sort] if sort else default_sort
+        queryset = queryset.order_by(*sort).distinct()
+        return queryset
 
     # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
     def get_period_dates(self, period, custom_start, custom_end):
@@ -1558,10 +1595,8 @@ def get_flight_historical_pacing_chart(flight_data):
         try:
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            try:
-                margin = 1 - goal_spend / actual_spend
-            except ZeroDivisionError:
-                margin = 0
+            goal_type = flight_data["placement__goal_type_id"]
+            margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend, goal_type)
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
@@ -1637,15 +1672,23 @@ def get_flight_pacing_allocation_ranges(flight_id):
 
     # Get start and end date ranges grouped by allocation value
     pacing_allocation_ranges = []
-    for allocation, group in groupby(pacing_allocations, key=lambda x: x.allocation):
-        sorted_dates = sorted(group, key=lambda x: x.date)
-        start = sorted_dates[0].date
-        end = sorted_dates[-1].date
-        pacing_allocation_ranges.append(dict(
-            start=start,
-            end=end,
-            allocation=allocation
-        ))
+    curr = 0
+    start = pacing_allocations[curr]
+    # Find the start and end of each date range allocation
+    while curr < len(pacing_allocations):
+        step = pacing_allocations[curr]
+        if step.is_end or curr == len(pacing_allocations) - 1:
+            pacing_allocation_ranges.append({
+                "start": start.date,
+                "end": step.date,
+                "allocation": step.allocation,
+            })
+            try:
+                # Reached end of allocations
+                start = pacing_allocations[curr + 1]
+            except IndexError:
+                break
+        curr += 1
     return pacing_allocation_mapping, pacing_allocation_ranges
 
 
@@ -1682,3 +1725,41 @@ def create_alert(short, detail):
         "detail": detail,
     }
     return alert
+
+
+def get_daily_margin(client_rate, daily_delivered, daily_cost, goal_type):
+    """
+    Calculate daily margin
+    :param client_rate: Placement CPM or CPV rate
+    :param daily_delivered: Units delivered for the day
+    :param daily_cost: Total cost of delivery for the day
+    :param goal_type: CPM or CPV goal type ID
+    :return:
+    """
+    try:
+        if goal_type == SalesForceGoalType.CPM:
+            client_cost = client_rate * daily_delivered / 1000
+        else:
+            # CPV
+            client_cost = client_rate * daily_delivered
+        margin = (client_cost - daily_cost) / client_cost * 100
+    except (TypeError, ZeroDivisionError):
+        margin = 0
+    return margin
+
+
+def is_opp_under_margin(margin, today, end):
+    """
+    Determine if Opportunity is under margin
+    :param margin: float
+    :param today: date
+    :param end: date
+    :return: bool
+    """
+    is_under_margin = False
+    try:
+        if margin and today <= end - timedelta(days=7) and margin < 0.1:
+            is_under_margin = True
+    except TypeError:
+        pass
+    return is_under_margin

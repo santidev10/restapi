@@ -1,18 +1,18 @@
-TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_data.language",
-                "general_data.lang_code", "general_data.category",
-                "analytics.verified", "channel.id", "channel.title",
-                "monetization.is_monetizable", "monetization.channel_preferred",
+TERMS_FILTER = ("general_data.country_code", "general_data.lang_code", "general_data.category", "analytics.verified",
+                "channel.id", "channel.title", "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",
-                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender", "stats.flags")
+                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender", "stats.flags",
+                "task_us_data.content_quality", "brand_safety.limbo_status")
 
-MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description", "main.id")
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
 RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.average_cpm", "ads_stats.ctr_v",
                 "ads_stats.ctr", "ads_stats.video_view_rate", "ads_stats.video_quartile_100_rate", "analytics.age13_17",
                 "analytics.age18_24", "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
-                "stats.last_day_views", "brand_safety.overall_score")
+                "stats.last_day_views", "brand_safety.overall_score", "analytics.gender_female",
+                "analytics.gender_male",)
 
 EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data",
                  "monetization.is_monetizable")

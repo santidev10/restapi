@@ -238,7 +238,7 @@ class AuditSaveApiView(APIView):
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
     def load_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode("utf-8-sig")
+        file = uploaded_file.read().decode("utf-8-sig", errors="ignore")
         keywords = []
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=";", quotechar="|")
@@ -254,7 +254,7 @@ class AuditSaveApiView(APIView):
         return keywords
 
     def load_exclusion_keywords(self, uploaded_file):
-        file = uploaded_file.read().decode("utf-8-sig")
+        file = uploaded_file.read().decode("utf-8-sig", errors="ignore")
         exclusion_data = []
         categories = []
         io_string = StringIO(file)
@@ -321,13 +321,13 @@ class AuditSaveApiView(APIView):
         if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:
             raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
-            "audit_type": segment.audit_type,
+            "audit_type": segment.config.AUDIT_TYPE,
             "source": 1,
         })
         if created:
             segment.audit_id = audit.id
             segment.save()
-            generate_audit_items.delay(segment.id, data_field=segment.data_field)
+            generate_audit_items.delay(segment.id, data_field=segment.config.DATA_FIELD)
             if not audit.completed:
                 audit.completed = timezone.now()
                 audit.save(update_fields=["completed"])
@@ -365,4 +365,9 @@ class AuditFileS3Exporter(S3Exporter):
     @classmethod
     def get_s3_export_csv(cls, name):
         body = cls.get_s3_export_content(name)
-        return body.read().decode("utf-8-sig").split()
+        r = body.read()
+        try:
+            res = r.decode("utf-8-sig")
+        except Exception:
+            res = r.decode("utf-32")
+        return res.split()

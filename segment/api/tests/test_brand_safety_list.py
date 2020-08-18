@@ -16,7 +16,8 @@ from utils.unittests.test_case import ExtendedAPITestCase
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
 STATISTICS_FIELDS_CHANNEL = ("subscribers", "likes", "dislikes", "views", "audited_videos", "items_count",
                              "monthly_views", "monthly_subscribers", "average_brand_safety_score")
-STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly_views", "average_brand_safety_score")
+STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly_views", "average_brand_safety_score",
+                           "sentiment")
 
 
 class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
@@ -40,6 +41,34 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         self.assertTrue(response.data.get("master_blacklist"))
         self.assertTrue(response.data.get("master_whitelist"))
+
+    def test_master_list_prioritizes_completed(self):
+        self.create_admin_user()
+
+        details = {'subscribers': 117, 'likes': 117}
+        PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(), is_master=True,
+            category=PersistentSegmentCategory.WHITELIST,
+            details=details,
+        )
+        PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(), is_master=True,
+            category=PersistentSegmentCategory.BLACKLIST,
+            details=details,
+        )
+        PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(), is_master=True,
+            category=PersistentSegmentCategory.WHITELIST
+        )
+        PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(), is_master=True,
+            category=PersistentSegmentCategory.BLACKLIST
+        )
+        response = self.client.get(self._get_url("channel"))
+        self.assertTrue(response.data.get("master_blacklist"))
+        self.assertGreater(len(response.data.get('master_blacklist', {}).get('statistics', {})), 0)
+        self.assertTrue(response.data.get("master_whitelist"))
+        self.assertGreater(len(response.data.get('master_whitelist', {}).get('statistics', {})), 0)
 
     def test_ignore_non_master_lists_less_than_threshold(self):
         self.create_admin_user()

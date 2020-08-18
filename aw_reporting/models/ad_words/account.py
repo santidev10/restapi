@@ -1,6 +1,11 @@
 from django.db import models
+from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
+from django.db.models import F
 from django.db.models import Min
 from django.db.models import Q
+from django.db.models import When
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
@@ -63,3 +68,35 @@ class Account(models.Model):
         if None not in dates and dates:
             return max(dates)
         return None
+
+    def get_video_completion_rate(self, rate: str):
+        """
+        Calculate average completion rates from campaigns
+        :return:
+        """
+        rate = str(rate)
+        rates = ["25", "50", "75", "100"]
+        if rate not in rates:
+            raise ValueError(f"Valid rates: {','.join(rates)}")
+        completion_rate = self.campaigns\
+            .filter(**{f"video_views_{rate}_quartile__gt": 0})\
+            .annotate(
+                completion_rate=Case(
+                    When(impressions=0, then=0),
+                    default=ExpressionWrapper(F(f"video_views_{rate}_quartile") / F("impressions") * 100,
+                                              output_field=models.FloatField())
+                )
+            )\
+            .aggregate(Avg("completion_rate"))["completion_rate__avg"]
+        return completion_rate
+
+    @property
+    def active_view_viewability(self):
+        """
+        Calculate active view viewability average froom campaigns
+        :return:
+        """
+        viewability = self.campaigns\
+            .filter(active_view_viewability__gt=0)\
+            .aggregate(Avg("active_view_viewability"))["active_view_viewability__avg"]
+        return viewability
