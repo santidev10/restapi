@@ -2,7 +2,6 @@ from aw_creation.constants import TargetingType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 DEMO_ACCOUNT_ID = 9000000
-DEMO_NAME = "Demo"
 DEMO_DATA_PERIOD_DAYS = 19
 DAYS_LEFT = 11
 DEMO_AD_GROUPS = (
@@ -11,6 +10,13 @@ DEMO_AD_GROUPS = (
 DEMO_BRAND = "Acme CO"
 DEMO_COST_METHOD = ["CPM", "CPV"]
 DEMO_DATA_HOURLY_LIMIT = 13
+
+CAMPAIGN_NAME_REPLACEMENTS = dict((
+    ("DSK - YT_TrV_PT PL018076 Female Creative #2", "DSK - YT_TrV_PT PL0 Neutral Creative"),
+    ("DSK - YT_TrV_PT PL018076 Male Creative #2", "DSK - YT_TrV_PT PL0 Neutral Creative"),
+    ("MOB - YT_TrV_PT PL018076 Female Creative #2", "MOB - YT_TrV_PT PL0 Neutral Creative"),
+    ("MOB - YT_TrV_PT PL018076 Male Creative #2", "MOB - YT_TrV_PT PL0 Neutral Creative"),
+))
 
 
 class Stats:

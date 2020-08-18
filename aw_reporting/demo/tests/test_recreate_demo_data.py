@@ -4,6 +4,7 @@ from traceback import format_exception
 from django.test import TransactionTestCase
 from django.test import override_settings
 
+from aw_reporting.demo.data import CAMPAIGN_NAME_REPLACEMENTS
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_BRAND
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
@@ -14,6 +15,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SFAccount
+from utils.unittests.generic_test import generic_test
 from utils.unittests.str_iterator import str_iterator
 
 
@@ -26,8 +28,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
                                                name=f"Placement {pl_number}")
         account = Account.objects.create()
         default_campaign_data = dict(salesforce_placement=placement, account=account, name=f"Campaign {pl_number}")
-        Campaign.objects.create(**{**campaign_data, **default_campaign_data})
-        print({**default_campaign_data, **campaign_data})
+        Campaign.objects.create(**{**default_campaign_data, **campaign_data})
 
         return opportunity, account
 
@@ -40,15 +41,43 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
         self.assertEqual(opportunity.brand, DEMO_BRAND)
 
-    def test_campaign_name(self):
-        _, account = self._create_source_root(campaign_data=dict(name="Source Campaign 123"))
+    def test_campaign_name_copy(self):
+        origin_name = "Source Campaign 123"
+        _, account = self._create_source_root(campaign_data=dict(name=origin_name))
 
         with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
             recreate_demo_data()
 
         demo_campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
 
-        self.assertEqual(demo_campaign.name, "Campaign #demo1")
+        self.assertEqual(demo_campaign.name, origin_name)
+
+    def test_campaign_name_copy_with_replace_code(self):
+        origin_name_template = "Source Campaign {} some suffix"
+        origin_name = origin_name_template.format("PL012345")
+        _, account = self._create_source_root(campaign_data=dict(name=origin_name))
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
+            recreate_demo_data()
+
+        demo_campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
+        new_number = demo_campaign.salesforce_placement.number
+        expected_name = origin_name_template.format(new_number)
+        self.assertEqual(demo_campaign.name, expected_name)
+
+    @generic_test([
+        (None, args, dict())
+        for args in CAMPAIGN_NAME_REPLACEMENTS.items()
+    ])
+    def test_campaign_name_replace_particular(self, origin_name, expected_pattern):
+        _, account = self._create_source_root(campaign_data=dict(name=origin_name))
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
+            recreate_demo_data()
+
+        demo_campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
+        expected_name = re.sub(r"PL\d+", demo_campaign.salesforce_placement.number, expected_pattern)
+        self.assertEqual(demo_campaign.name, expected_name)
 
     def test_agency(self):
         source_sf_account_name = "Source SF Account"
