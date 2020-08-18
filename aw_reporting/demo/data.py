@@ -8,7 +8,7 @@ DAYS_LEFT = 11
 DEMO_AD_GROUPS = (
     "Topics", "Interests", "Keywords", "Channels", "Videos"
 )
-DEMO_BRAND = "Demo Brand"
+DEMO_BRAND = "Acme CO"
 DEMO_COST_METHOD = ["CPM", "CPV"]
 DEMO_SF_ACCOUNT = "Initiative LA"
 DEMO_DATA_HOURLY_LIMIT = 13
