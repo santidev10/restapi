@@ -19,9 +19,12 @@ from utils.unittests.str_iterator import str_iterator
 class RecreateDemoDataTestCase(TransactionTestCase):
     def _create_source_root(self, opp_data=None, campaign_data=None):
         opportunity = Opportunity.objects.create(id=next(str_iterator), **(opp_data or dict()))
-        placement = OpPlacement.objects.create(id=next(str_iterator), opportunity=opportunity)
+        pl_number = "PL000001"
+        placement = OpPlacement.objects.create(id=next(str_iterator), opportunity=opportunity, number=pl_number,
+                                               name=f"Placement {pl_number}")
         account = Account.objects.create()
-        Campaign.objects.create(salesforce_placement=placement, account=account, **(campaign_data or dict()))
+        Campaign.objects.create(salesforce_placement=placement, account=account, name=f"Campaign {pl_number}",
+                                **(campaign_data or dict()))
 
         return opportunity, account
 
@@ -78,3 +81,16 @@ class RecreateDemoDataTestCase(TransactionTestCase):
             except Exception as ex:
                 tb = "".join(format_exception(etype=type(ex), value=ex, tb=ex.__traceback__))
                 self.fail(f"Failed with {type(ex)} \n {tb}")
+
+    def test_generates_new_placement_number(self):
+        _, account = self._create_source_root()
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
+            recreate_demo_data()
+
+        placements = OpPlacement.objects.all()
+        placements_numbers = {placement.number for placement in placements}
+        self.assertEqual(placements.count(), len(placements_numbers))
+        for placement in placements:
+            self.assertIn(placement.number, placement.name)
+            self.assertIn(placement.number, placement.adwords_campaigns.first().name)
