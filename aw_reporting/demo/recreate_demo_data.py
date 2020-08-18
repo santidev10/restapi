@@ -13,7 +13,6 @@ from aw_reporting.models import Opportunity
 from saas import celery_app
 from .data import DEMO_ACCOUNT_ID
 from .data import DEMO_BRAND
-from .data import DEMO_SF_ACCOUNT
 from ..models import AdGroupStatistic
 from ..models import AdStatistic
 from ..models import AgeRangeStatistic
@@ -56,10 +55,8 @@ def create_data():
 def clone_opportunity():
     source_opportunity = Opportunity.objects \
         .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID)
-    sf_account = SFAccount.objects.create(name=DEMO_SF_ACCOUNT)
     opportunities = clone_model_multiple(source_opportunity,
                                          data=dict(id=DEMO_ACCOUNT_ID,
-                                                   account_id=sf_account.id,
                                                    brand=DEMO_BRAND))
     return opportunities
 

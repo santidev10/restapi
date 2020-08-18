@@ -5,7 +5,6 @@ from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_BRAND
-from aw_reporting.demo.data import DEMO_SF_ACCOUNT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -13,6 +12,7 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from utils.unittests.str_iterator import str_iterator
 
 
@@ -48,13 +48,15 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         self.assertEqual(demo_campaign.name, "Campaign #demo1")
 
     def test_agency(self):
-        _, account = self._create_source_root()
+        source_sf_account_name = "Source SF Account"
+        source_sf_account = SFAccount.objects.create(name=source_sf_account_name)
+        source_opportunity, account = self._create_source_root(opp_data=dict(account_id=source_sf_account.id))
 
         with override_settings(DEMO_SOURCE_ACCOUNT_ID=account.id):
             recreate_demo_data()
 
         opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
-        self.assertEqual(opportunity.account.name, DEMO_SF_ACCOUNT)
+        self.assertEqual(opportunity.account.name, source_sf_account_name)
 
     def test_ad_group_name(self):
         _, account = self._create_source_root()
