@@ -1,4 +1,5 @@
 import itertools
+import re
 
 from django.conf import settings
 from django.db import transaction
@@ -10,9 +11,9 @@ from aw_creation.models import TargetingItem
 from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from saas import celery_app
+from .data import CAMPAIGN_NAME_REPLACEMENTS
 from .data import DEMO_ACCOUNT_ID
 from .data import DEMO_BRAND
-from .data import DEMO_SF_ACCOUNT
 from ..models import AdGroupStatistic
 from ..models import AdStatistic
 from ..models import AgeRangeStatistic
@@ -22,6 +23,7 @@ from ..models import CampaignStatistic
 from ..models import CityStatistic
 from ..models import GenderStatistic
 from ..models import KeywordStatistic
+from ..models import OpPlacement
 from ..models import SFAccount
 from ..models import TopicStatistic
 from ..models import VideoCreativeStatistic
@@ -47,24 +49,26 @@ def remove_data():
 
 
 def create_data():
-    clone_opportunity()
-    clone_account()
+    opportunity = clone_opportunity()
+    clone_account(opportunity=opportunity[0])
 
 
 def clone_opportunity():
+    opportunity_number = next(opportunity_number_generator)
+    opportunity_name = f"Acme Instant Coffee Q2-Q3’20 {opportunity_number}"
     source_opportunity = Opportunity.objects \
         .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID)
-    sf_account = SFAccount.objects.create(name=DEMO_SF_ACCOUNT)
     opportunities = clone_model_multiple(source_opportunity,
                                          data=dict(id=DEMO_ACCOUNT_ID,
-                                                   account_id=sf_account.id,
+                                                   number=opportunity_number,
+                                                   name=opportunity_name,
                                                    brand=DEMO_BRAND))
     return opportunities
 
 
-def clone_account():
+def clone_account(opportunity):
     source_account = Account.objects.get(pk=settings.DEMO_SOURCE_ACCOUNT_ID)
-    account = clone_model(source_account, data=dict(id=DEMO_ACCOUNT_ID, name="Demo",
+    account = clone_model(source_account, data=dict(id=DEMO_ACCOUNT_ID, name=opportunity.name,
                                                     skip_creating_account_creation=True))
     clone_model(source_account.account_creation, data=dict(id=DEMO_ACCOUNT_ID, account_id=account.id))
     for index, campaign in enumerate(source_account.campaigns.all()):
@@ -74,7 +78,11 @@ def clone_account():
 
 def clone_campaign(source_campaign, target_account, index):
     op_placement = clone_salesforce_placement(source_campaign.salesforce_placement)
-    campaign = clone_model(source_campaign, data=dict(account_id=target_account.id, name=f"Campaign #demo{index + 1}",
+    placement_number = op_placement.number
+    replacement_name = CAMPAIGN_NAME_REPLACEMENTS.get(source_campaign.name, source_campaign.name)
+    campaign_name = re.sub(r"PL\d+", placement_number, replacement_name)
+    campaign = clone_model(source_campaign, data=dict(account_id=target_account.id,
+                                                      name=campaign_name,
                                                       salesforce_placement_id=op_placement.id))
     clone_model_multiple(source_campaign.campaign_creation.all(), campaign, target_account.account_creation)
     for ag_index, ad_group in enumerate(source_campaign.ad_groups.all()):
@@ -84,11 +92,34 @@ def clone_campaign(source_campaign, target_account, index):
 
 
 def clone_salesforce_placement(source_placement):
+    placement_number = next(placement_number_generator)
+    placement_name = re.sub(r"PL\d+", placement_number, source_placement.name)
     op_placement = clone_model(source_placement, data=dict(id=f"demo_{next(str_iterator)}",
-                                                           opportunity_id=DEMO_ACCOUNT_ID))
+                                                           opportunity_id=DEMO_ACCOUNT_ID,
+                                                           number=placement_number,
+                                                           name=placement_name))
     for flight in source_placement.flights.all():
         clone_model(flight, dict(id=f"demo_{next(str_iterator)}", placement_id=op_placement.id))
     return op_placement
+
+
+def generate_salesforce_codes(prefix, Model):
+    int_generator = itertools.count(1, 1)
+    number_len = 6
+    re_pattern = re.compile(f"^{prefix}0+$")
+    while True:
+        next_number = "{prefix}{code}".format(prefix=prefix,
+                                              code=("0" * number_len + str(next(int_generator)))[-number_len:]
+                                              )
+        if re.search(re_pattern, next_number):
+            number_len += 1
+            continue
+        if not Model.objects.filter(number=next_number).exists():
+            yield next_number
+
+
+placement_number_generator = generate_salesforce_codes("PL", OpPlacement)
+opportunity_number_generator = generate_salesforce_codes("OP", Opportunity)
 
 
 def clone_campaign_creation(source_campaign_creation, campaign, account_creation):
