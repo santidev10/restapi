@@ -28,7 +28,6 @@ class YTTranscriptsScraper(object):
     NUM_RETRIES = 3
     NUM_THREADS = settings.TRANSCRIPTS_NUM_THREADS
     TIMEOUT = settings.TRANSCRIPTS_TIMEOUT
-    PROXY_OFFSET = settings.PROXY_OFFSET
     PROXY_SERVICE = "backconnect"
     PROXY_MEMBERSHIP = "QBrL"
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
@@ -45,8 +44,8 @@ class YTTranscriptsScraper(object):
         self.successful_vids = {}
         self.num_failed_vids = None
         self.failure_reasons = None
-        self.host = "5.79.66.2"
-        self.port = "13010"
+        self.host = settings.PROXY_HOST
+        self.port = settings.PROXY_PORT
         self.ua = 'Mozilla/5.0 (compatible; Google2SRT/0.7.8)'
         self.create_yt_vids()
 
