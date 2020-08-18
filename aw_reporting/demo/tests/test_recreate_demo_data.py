@@ -1,3 +1,4 @@
+import re
 from traceback import format_exception
 
 from django.test import TransactionTestCase
@@ -18,13 +19,15 @@ from utils.unittests.str_iterator import str_iterator
 
 class RecreateDemoDataTestCase(TransactionTestCase):
     def _create_source_root(self, opp_data=None, campaign_data=None):
+        campaign_data = campaign_data or dict()
         opportunity = Opportunity.objects.create(id=next(str_iterator), **(opp_data or dict()))
         pl_number = "PL000001"
         placement = OpPlacement.objects.create(id=next(str_iterator), opportunity=opportunity, number=pl_number,
                                                name=f"Placement {pl_number}")
         account = Account.objects.create()
-        Campaign.objects.create(salesforce_placement=placement, account=account, name=f"Campaign {pl_number}",
-                                **(campaign_data or dict()))
+        default_campaign_data = dict(salesforce_placement=placement, account=account, name=f"Campaign {pl_number}")
+        Campaign.objects.create(**{**campaign_data, **default_campaign_data})
+        print({**default_campaign_data, **campaign_data})
 
         return opportunity, account
 
@@ -96,3 +99,27 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         for placement in placements:
             self.assertIn(placement.number, placement.name)
             self.assertIn(placement.number, placement.adwords_campaigns.first().name)
+
+    def test_generates_new_opportunity_number(self):
+        _, source_account = self._create_source_root()
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=source_account.id):
+            recreate_demo_data()
+
+        opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
+        account = Account.objects.get(id=DEMO_ACCOUNT_ID)
+        self.assertEqual(1, Opportunity.objects.filter(number=opportunity.number).count())
+        self.assertIn(opportunity.number, opportunity.name)
+        self.assertIn(opportunity.number, account.name)
+
+    def test_opportunity_name(self):
+        _, source_account = self._create_source_root()
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=source_account.id):
+            recreate_demo_data()
+
+        expected_name_pattern = r"Acme Instant Coffee Q2-Q3’20 OP\d+"
+        opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
+        account = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
+        self.assertTrue(re.search(expected_name_pattern, opportunity.name))
+        self.assertTrue(re.search(expected_name_pattern, account.name))

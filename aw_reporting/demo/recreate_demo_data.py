@@ -53,10 +53,14 @@ def create_data():
 
 
 def clone_opportunity():
+    opportunity_number = next(opportunity_number_generator)
+    opportunity_name = f"Acme Instant Coffee Q2-Q3’20 {opportunity_number}"
     source_opportunity = Opportunity.objects \
         .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID)
     opportunities = clone_model_multiple(source_opportunity,
                                          data=dict(id=DEMO_ACCOUNT_ID,
+                                                   number=opportunity_number,
+                                                   name=opportunity_name,
                                                    brand=DEMO_BRAND))
     return opportunities
 
@@ -96,22 +100,23 @@ def clone_salesforce_placement(source_placement):
     return op_placement
 
 
-def generate_salesforce_codes(prefix):
+def generate_salesforce_codes(prefix, Model):
     int_generator = itertools.count(1, 1)
     number_len = 6
     re_pattern = re.compile(f"^{prefix}0+$")
     while True:
-        next_placement_number = "{prefix}{code}".format(prefix=prefix,
-                                                        code=("0" * number_len + str(next(int_generator)))[-number_len:]
-                                                        )
-        if re.search(re_pattern, next_placement_number):
+        next_number = "{prefix}{code}".format(prefix=prefix,
+                                              code=("0" * number_len + str(next(int_generator)))[-number_len:]
+                                              )
+        if re.search(re_pattern, next_number):
             number_len += 1
             continue
-        if not OpPlacement.objects.filter(number=next_placement_number).exists():
-            yield next_placement_number
+        if not Model.objects.filter(number=next_number).exists():
+            yield next_number
 
 
-placement_number_generator = generate_salesforce_codes("PL")
+placement_number_generator = generate_salesforce_codes("PL", OpPlacement)
+opportunity_number_generator = generate_salesforce_codes("OP", Opportunity)
 
 
 def clone_campaign_creation(source_campaign_creation, campaign, account_creation):
