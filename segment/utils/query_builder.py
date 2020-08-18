@@ -247,13 +247,16 @@ class SegmentQueryBuilder:
             field = f"{section}.{key}"
             try:
                 params = str(self._params[key])
-                lower_bound, upper_bound = params.split(",")
+                lower_bound, upper_bound = params.replace(" ", "").split(",")
+            except (KeyError, AttributeError, ValueError):
+                pass
+            else:
+                if lower_bound and upper_bound and float(lower_bound) > float(upper_bound):
+                    raise ValueError(f"Lower bound must be less than upper bound. {key}: {params}")
                 if lower_bound:
                     query &= QueryBuilder().build().must().range().field(field).gte(lower_bound).get()
                 if upper_bound:
                     query &= QueryBuilder().build().must().range().field(field).lte(upper_bound).get()
-            except (KeyError, AttributeError, ValueError):
-                pass
         return query
 
     @staticmethod

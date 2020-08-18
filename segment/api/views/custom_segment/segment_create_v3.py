@@ -83,7 +83,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         if err:
             raise ValidationError(f"Exception trying to create segments: {err}")
         for options, segment in created:
-            query_builder = SegmentQueryBuilder(options)
+            try:
+                query_builder = SegmentQueryBuilder(options)
+            except Exception as err:
+                CustomSegment.objects.filter(id__in=[item[1].id for item in created]).delete()
+                raise ValidationError(f"Exception trying to create segments: {err}")
             # Use query_builder.query_params to get mapped values used in Elasticsearch query
             query = {
                 "params": query_builder.query_params,
