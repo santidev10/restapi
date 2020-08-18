@@ -46,7 +46,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
 
     def test_extra_fields(self):
         self.create_admin_user()
-        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data")
+        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data", "task_us_data",)
         video = Video(next(int_iterator))
         VideoManager([Sections.GENERAL_DATA]).upsert([video])
 
