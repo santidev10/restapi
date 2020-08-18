@@ -13,7 +13,7 @@ from segment.utils.query_builder import SegmentQueryBuilder
 
 class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
     def setUp(self):
-        sections = [Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS]
+        sections = [Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS, Sections.GENERAL_DATA]
         self.channel_manager = ChannelManager(sections=sections, upsert_sections=sections)
         self.video_manager = VideoManager(sections=sections, upsert_sections=sections)
 
@@ -120,3 +120,30 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         response = query_builder.execute()
         self.assertEqual(len(response), 2)
         self.assertEqual({doc.main.id for doc in response}, {doc1.main.id, doc2.main.id})
+
+    def test_content_exclusions(self):
+        doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        doc3 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        doc4 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        doc1.populate_general_data(
+            iab_categories=["Car Culture", "Motorcycles"]
+        )
+        doc2.populate_general_data(
+            iab_categories=["Motorcycles"]
+        )
+        doc3.populate_general_data(
+            iab_categories=["Car Culture", "Auto Technology"]
+        )
+        doc4.populate_general_data(
+            iab_categories=["Motorcycles", "Auto Safety"]
+        )
+        self.channel_manager.upsert([doc1, doc2, doc3])
+        params = dict(
+            content_categories=["Car Culture", "Auto Technology"],
+            exclude_content_categories=["Motorcycles"],
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response[0].main.id, doc3.main.id)

@@ -138,9 +138,10 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
         # validate content categories
-        opts["content_categories"] = opts.get("content_categories", [])
-        if opts["content_categories"]:
-            unique_content_categories = set(opts.get("content_categories"))
+        opts["content_categories"] = opts.get("content_categories", []) or []
+        opts["exclude_content_categories"] = opts.get("exclude_content_categories", []) or []
+        if opts["content_categories"] or opts["exclude_content_categories"]:
+            unique_content_categories = set(opts.get("content_categories", []) + opts["exclude_content_categories"])
             bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
             if bad_content_categories:
                 comma_separated = ", ".join(str(item) for item in bad_content_categories)
@@ -161,7 +162,6 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
-
         opts["content_type"] = with_all(choice=opts.get("content_type", None))
         opts["content_quality"] = with_all(choice=opts.get("content_quality", None))
         return opts
