@@ -237,8 +237,7 @@ class SegmentQueryBuilder:
     def _get_ads_stats_queries(self):
         queries = self._get_range_queries(self.AD_STATS_RANGE_FIELDS, Sections.ADS_STATS)
         if self._params.get("ads_stats_include_na") is True:
-            for field in self.AD_STATS_RANGE_FIELDS:
-                queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.STATS}.{field}").get()
+            queries |= QueryBuilder().build().must_not().exists().field(Sections.ADS_STATS).get()
         return queries
 
     def _get_range_queries(self, fields, section):
