@@ -56,16 +56,32 @@ class SegmentCreationOptionsApiView(APIView):
 
         :return: dict
         """
+        ads_stats_keys = ("ctr", "ctr_v", "average_cpm", "average_cpv", "video_view_rate",
+                          "video_quartile_100_rate")
+        stats_keys = ("last_30day_views",)
+        def get_agg_min_max_filter_values(cache, keys, field):
+            values = {}
+            for key in keys:
+                field_key = f"{field}.{key}"
+                min_val = cache.get(field_key + ":min", {}).get("value", 0)
+                max_val = cache.get(field_key + ":max", {}).get("value", 0)
+                values[key] = {
+                    "id": key,
+                    "min": min_val,
+                    "max": max_val,
+                }
+            return values
+
         try:
-            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
+            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY).value
             countries = [
                 {
                     "id": item["key"],
                     "common": COUNTRIES[item["key"]][0]
                 }
-                for item in agg_cache.value["general_data.country_code"]["buckets"]
+                for item in agg_cache["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value["general_data.top_lang_code"]["buckets"]]
+            lang_codes = [item["key"] for item in agg_cache["general_data.top_lang_code"]["buckets"]]
 
             languages = []
             for code in lang_codes:
@@ -77,12 +93,22 @@ class SegmentCreationOptionsApiView(APIView):
             for code, lang in LANGUAGES.items():
                 if code not in lang_codes:
                     languages.append({"id": code, "title": lang})
+
+            ads_stats = {
+                **get_agg_min_max_filter_values(agg_cache, ads_stats_keys, "ads_stats"),
+                **get_agg_min_max_filter_values(agg_cache, stats_keys, "stats"),
+            }
+
         except (CacheItem.DoesNotExist, KeyError):
             countries = CountryListApiView().get().data
             languages = [
                 {"id": code, "title": lang}
                 for code, lang in LANGUAGES.items()
             ]
+            ads_stats = {
+                **get_agg_min_max_filter_values({}, ads_stats_keys, "ads_stats"),
+                **get_agg_min_max_filter_values({}, stats_keys, "stats"),
+            }
         options = {
             "age_groups": [
                 {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
@@ -103,7 +129,8 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": None, "name": "Include All"}
             ],
             "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
-            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES)
+            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
+            "ads_stats": ads_stats,
         }
         return options
 
@@ -126,4 +153,3 @@ class SegmentCreationOptionsApiView(APIView):
         except ValueError as err:
             raise ValidationError(f"Invalid value: {err}")
         return options
-
