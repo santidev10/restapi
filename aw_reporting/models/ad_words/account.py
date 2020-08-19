@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.db.models import When
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.models.statistic import BaseStatisticModel
+from aw_reporting.models.ad_words.statistic import BaseStatisticModel
 from userprofile.managers import UserRelatedManagerMixin
 
 
