@@ -18,6 +18,7 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_BRAND
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -58,7 +59,6 @@ from .data import CITIES
 from .data import DAYS_LEFT
 from .data import DEFAULT_CTA_STATS
 from .data import DEMO_AD_GROUPS
-from .data import DEMO_BRAND
 from .data import DEMO_DATA_HOURLY_LIMIT
 from .data import DEMO_DATA_PERIOD_DAYS
 from .data import DEMO_SF_ACCOUNT
