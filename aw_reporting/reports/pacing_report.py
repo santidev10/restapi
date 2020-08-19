@@ -1613,10 +1613,7 @@ def get_flight_historical_pacing_chart(flight_data):
         goal_obj = goal_mapping[date]
         # If days_remaining is None, then current iteration is at the beginning of a new date range
         if days_remaining is None:
-            try:
-                days_remaining = allocation_count[date]
-            except KeyError:
-                days_remaining = 0
+            days_remaining = allocation_count[date]
 
         # Divide by 100 to convert allocation percentage to decimal
         if days_remaining > 0:
@@ -1852,9 +1849,9 @@ def get_goal_allocation_counts(goal_mapping):
     """
     counts = {}
     curr_dates = []
-    for date, goal in goal_mapping.items():
+    for i, (date, goal) in enumerate(goal_mapping.items()):
         curr_dates.append(date)
-        if goal.is_end:
+        if goal.is_end or i == len(goal_mapping) - 1:
             for _date in curr_dates:
                 counts[_date] = len(curr_dates)
             curr_dates.clear()
