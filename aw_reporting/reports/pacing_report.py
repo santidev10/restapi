@@ -1581,7 +1581,7 @@ def get_flight_historical_pacing_chart(flight_data):
         data=[],
     )
     goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
-    allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
+    allocation_count = get_goal_allocation_counts(goal_mapping)
     delivery_mapping = get_delivery_mapping(flight_data["daily_delivery"])
     # Use min with today as we don't need to generate charts for dates >= today
     end = min(flight_data["end"], today)
@@ -1591,9 +1591,12 @@ def get_flight_historical_pacing_chart(flight_data):
     today_goal_spend = None
     # Days remaining in the current date range allocation e.g. On day 3 of 5 for 80% allocation, 3 days remaining
     days_remaining = None
-    expected_delivery = 0
-    curr_delivery = 0
-    curr_spend = 0
+    overall_expected_delivery = 0
+
+    overall_delivered = 0
+    overall_spend = 0
+    # curr_delivered is how much delivered current date range allocation in date loop
+    curr_delivered = 0
 
     for date in get_dates_range(flight_data["start"], end):
         goal_type = flight_data["placement__goal_type_id"]
@@ -1610,10 +1613,14 @@ def get_flight_historical_pacing_chart(flight_data):
         goal_obj = goal_mapping[date]
         # If days_remaining is None, then current iteration is at the beginning of a new date range
         if days_remaining is None:
-            days_remaining = allocation_count[goal_obj.allocation]
+            days_remaining = allocation_count[date]
 
         # Divide by 100 to convert allocation percentage to decimal
-        goal_units = round((plan_units * goal_obj.allocation / 100 - curr_delivery) / days_remaining) if days_remaining > 0 else None
+        if days_remaining > 0:
+            goal_units = round((plan_units * goal_obj.allocation / 100 - curr_delivered) / days_remaining)
+            goal_units = goal_units if goal_units > 0 else 0
+        else:
+            goal_units = None
         # The amount that is needed to deliver goal_units
         try:
             if goal_type == SalesForceGoalType.CPM:
@@ -1624,14 +1631,16 @@ def get_flight_historical_pacing_chart(flight_data):
             goal_spend = 0
 
         # Sum the amount of units we should have delivered by today's date
-        expected_delivery += (plan_units * goal_obj.allocation / 100 / allocation_count[goal_obj.allocation])
+        overall_expected_delivery += (plan_units * goal_obj.allocation / 100 / allocation_count[date])
 
-        curr_delivery += actual_units
-        curr_spend += actual_spend
+        curr_delivered += actual_units
+        overall_delivered += actual_units
+        overall_spend += actual_spend
         # If is end, we reached the end of a date range allocation e.g. On day 5 of day 1 - 5, 80%. Reset days_remaining
         # to None so value is set in next iteration
         if goal_obj.is_end is True:
             days_remaining = None
+            curr_delivered = 0
         else:
             days_remaining -= 1
 
@@ -1667,7 +1676,7 @@ def get_flight_historical_pacing_chart(flight_data):
         today_goal_units_percent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
         today_goal_spend_percent=today_goal_spend_percent,
-        expected_delivery=expected_delivery,
+        expected_delivery=overall_expected_delivery,
     )
     return data
 
@@ -1814,3 +1823,36 @@ def is_opp_under_margin(margin, today, end):
     except TypeError:
         pass
     return is_under_margin
+
+
+def get_goal_allocation_counts(goal_mapping):
+    """
+    Creates a mapping of dates to the number of days in its allocation
+        For example, a flight has 6 days. Days 1-3 allocate 40%, days 4-8 allocate 50%, and days 9-10 allocation 10%
+        counts = {
+            1: 3,
+            2: 3,
+            3: 3,
+            4: 5,
+            5: 5,
+            6: 5,
+            7: 5,
+            8: 5,
+            9: 2,
+            10: 2
+        }
+        Days 1 - 3 have 3 days in its allocation
+        Days 4 - 8 have 4 days
+        Days 9 - 10 have 2 days
+    :param goal_mapping: FlightPacingAllocation.get_allocations result
+    :return:
+    """
+    counts = {}
+    curr_dates = []
+    for i, (date, goal) in enumerate(goal_mapping.items()):
+        curr_dates.append(date)
+        if goal.is_end or i == len(goal_mapping) - 1:
+            for _date in curr_dates:
+                counts[_date] = len(curr_dates)
+            curr_dates.clear()
+    return counts
