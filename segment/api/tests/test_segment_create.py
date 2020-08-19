@@ -132,12 +132,21 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "segment_type": 0,
             "content_type": 0,
             "content_quality": 0,
+            "video_quartile_100_rate": 0,
+            "average_cpm": 0,
+            "last_30day_views": 0,
+            "average_cpv": 0,
+            "video_view_rate": 0,
+            "ctr_v": 0,
+            "ctr": 0,
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         data = response.data[0]
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(set(data.keys()), set(SegmentCreateApiViewV3.response_fields + ("statistics",)))
+        self.assertEqual(set(data.keys()),
+                         set(SegmentCreateApiViewV3.response_fields + ("statistics", "owner_id",
+                                                                       "list_type", "title_hash")))
         self.assertTrue(data["pending"])
 
     def test_success_create_export_query(self, mock_generate):
@@ -159,6 +168,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         segment = CustomSegment.objects.get(id=data["id"])
         params = segment.export.query["params"]
+        payload.pop("score_threshold")
         payload.pop("title")
         payload.pop("segment_type")
         self.assertEqual(payload, {key: params[key] for key in payload.keys()})
@@ -177,7 +187,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         form = dict(data=json.dumps(payload))
-        with patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
+        with patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
             response = self.client.post(self._get_url(), form)
         data = response.data[0]
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
@@ -286,7 +296,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         )
         with patch("segment.api.views.custom_segment.segment_create_v3.SegmentCreateApiViewV3._create") as \
             mock_create, \
-            patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
+            patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
             mock_create_success = MagicMock()
             mock_create_success.id = segment.id
             mock_create.side_effect = [mock_create_success, Exception]
