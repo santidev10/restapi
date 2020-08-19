@@ -331,12 +331,22 @@ class ESDictSerializer(Serializer):
 # pylint: enable=abstract-method
 
 
-class TaskUsDataSerializerMixin:
-    def get_task_us_data(self, instance):
+class VettedStatusSerializerMixin:
+    def get_vetted_status(self, instance):
+        """
+        Infers whether or not a Channel/Video has been vetted, and whether or
+        not it was vetted safe or risky based on the presence of the
+        `task_us_data.brand_safety` field, and whether or not it is empty
+        """
         task_us_data = getattr(instance, Sections.TASK_US_DATA, None)
         if task_us_data is None:
             return None
-        return task_us_data.to_dict()
+        brand_safety = task_us_data.to_dict().get('brand_safety', None)
+        if brand_safety is None:
+            return "Unvetted"
+        if not len([cat_id for cat_id in brand_safety if cat_id]):
+            return "Vetted Safe"
+        return "Vetted Risky"
 
 
 class ESQuerysetAdapter:

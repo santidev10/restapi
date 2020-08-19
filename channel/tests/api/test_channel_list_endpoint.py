@@ -131,14 +131,21 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_extra_fields(self):
         self.create_admin_user()
         extra_fields = ("brand_safety_data", "chart_data", "blacklist_data", "task_us_data",)
+        extra_fields_map = {
+            "task_us_data": "vetted_status"
+        }
         channel = Channel(str(next(int_iterator)))
         ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH]).upsert([channel])
 
         response = self.client.get(self.url)
 
+        first_item = response.data['items'][0]
         for field in extra_fields:
             with self.subTest(field):
-                self.assertIn(field, response.data["items"][0])
+                if field in extra_fields_map.keys():
+                    self.assertIn(extra_fields_map.get(field), first_item)
+                else:
+                    self.assertIn(field, first_item)
 
     def test_filter_by_ids(self):
         self.create_admin_user()
