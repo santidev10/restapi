@@ -106,6 +106,10 @@ def create_account():
         name=DEMO_NAME,
         skip_creating_account_creation=True,
         timezone="UTC",
+        impressions=Stats.IMPRESSIONS,
+        clicks=Stats.CLICKS,
+        video_views=Stats.VIDEO_VIEWS,
+        cost=Stats.COST,
     )
     account.save()
     return account
