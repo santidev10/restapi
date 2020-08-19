@@ -123,6 +123,11 @@ class SegmentQueryBuilder:
                     category).get()
             must_queries.append(content_queries)
 
+        if self._params.get("exclude_content_categories"):
+            content_exclusion_queries = self._get_terms_query(self._params["exclude_content_categories"],
+                                                              "general_data.iab_categories", "must_not")
+            must_queries.append(content_exclusion_queries)
+
         if self._params.get("countries"):
             country_queries = Q("bool")
             if self._params.get("countries_include_na"):
@@ -257,6 +262,10 @@ class SegmentQueryBuilder:
                 if upper_bound:
                     query &= QueryBuilder().build().must().range().field(field).lte(upper_bound).get()
         return query
+
+    def _get_terms_query(self, terms, field, operator="must"):
+        terms_query = getattr(QueryBuilder().build(), operator)().terms().field(field).value(terms).get()
+        return terms_query
 
     @staticmethod
     def map_content_categories(content_category_ids: list):
