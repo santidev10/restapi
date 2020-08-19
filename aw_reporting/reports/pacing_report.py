@@ -1613,7 +1613,10 @@ def get_flight_historical_pacing_chart(flight_data):
         goal_obj = goal_mapping[date]
         # If days_remaining is None, then current iteration is at the beginning of a new date range
         if days_remaining is None:
-            days_remaining = allocation_count[date]
+            try:
+                days_remaining = allocation_count[date]
+            except KeyError:
+                days_remaining = 0
 
         # Divide by 100 to convert allocation percentage to decimal
         if days_remaining > 0:
