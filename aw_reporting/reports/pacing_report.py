@@ -1676,7 +1676,7 @@ def get_flight_historical_pacing_chart(flight_data):
         today_goal_units_percent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
         today_goal_spend_percent=today_goal_spend_percent,
-        overall_expected_delivery=overall_expected_delivery,
+        expected_delivery=overall_expected_delivery,
     )
     return data
 
