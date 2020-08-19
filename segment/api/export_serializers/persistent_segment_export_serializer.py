@@ -20,7 +20,8 @@ __all__ = [
 class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes", "Sentiment",
                "Views", "Monthly_Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
-               "Gender", "Content_Type")
+               "Gender", "Content_Type", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v",
+               "Video_100_Completion_Rate", "Views_30_Days")
 
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default="")
@@ -37,6 +38,13 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Video_View_Rate = FloatField(source="ads_stats.video_view_rate")
+    Avg_CPV = FloatField(source="ads_stats.average_cpv")
+    Avg_CPM = FloatField(source="ads_stats.average_cpm")
+    Avg_CTR = FloatField(source="ads_stats.ctr")
+    Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
+    Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
+    Views_30_Days = FloatField(source="stats.last_30day_views")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/video/{obj.main.id}"
@@ -51,7 +59,8 @@ class PersistentSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, 
 class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",
                "Dislikes", "Sentiment", "Views", "Monthly_Views", "Audited_Videos", "Overall_Score", "Vetted",
-               "Brand_Safety", "Age_Group", "Gender", "Content_Type")
+               "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Video_View_Rate", "Avg_CPV", "Avg_CPM",
+               "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days")
 
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
@@ -71,6 +80,13 @@ class PersistentSegmentChannelExportSerializer(SegmentChannelExportSerializerMix
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Video_View_Rate = FloatField(source="ads_stats.video_view_rate")
+    Avg_CPV = FloatField(source="ads_stats.average_cpv")
+    Avg_CPM = FloatField(source="ads_stats.average_cpm")
+    Avg_CTR = FloatField(source="ads_stats.ctr")
+    Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
+    Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
+    Views_30_Days = FloatField(source="stats.last_30day_views")
 
     def update(self, instance, validated_data):
         raise NotImplementedError

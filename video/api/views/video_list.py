@@ -114,7 +114,7 @@ class VideoListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, List
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                    Sections.CUSTOM_CAPTIONS)
+                    Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
 
