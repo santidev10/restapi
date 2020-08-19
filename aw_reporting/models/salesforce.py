@@ -232,6 +232,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     currency_code = models.CharField(max_length=5, null=True, db_index=True)
 
     default_thumbnail = None
+    has_alerts = models.BooleanField(default=False, db_index=True)
 
     @property
     def thumbnail(self):
