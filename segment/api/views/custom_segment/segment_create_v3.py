@@ -1,5 +1,4 @@
 import json
-from uuid import uuid4
 
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from django.db import transaction
@@ -34,7 +33,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
         "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
         "countries_include_na", "content_type", "content_quality", "video_view_rate", "average_cpv", "average_cpm",
-        "ctr", "ctr_v", "video_quartile_100_rate", "last_30day_views", "ads_stats_include_na",
+        "ctr", "ctr_v", "video_quartile_100_rate", "last_30day_views", "ads_stats_include_na", "exclude_content_categories"
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
