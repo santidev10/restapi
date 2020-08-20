@@ -80,7 +80,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
         :return: None
         """
         data = {
-            "clean": self.validated_data["suitable"],
+            "clean": self.validated_data.get("suitable"),
             "checked_out_at": None,
             "processed": timezone.now(),
             "processed_by_user_id": self.context["user"].id,
