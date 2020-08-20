@@ -137,15 +137,15 @@ CELERY_BEAT_SCHEDULE = {
     },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "brand_safety_channel_outdated": {
         "task": "brand_safety.tasks.channel_outdated.channel_outdated_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "brand_safety_video_discovery": {
         "task": "brand_safety.tasks.video_discovery.video_discovery_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "userprofile_clean_device_auth_tokens": {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
