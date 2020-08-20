@@ -20,4 +20,7 @@ def channel_discovery_scheduler():
         QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get(),
         QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
     ]
-    channel_update_helper(Schedulers.ChannelDiscovery, query, Queue.BRAND_SAFETY_CHANNEL_PRIORITY)
+    channel_update_helper(
+        Schedulers.ChannelDiscovery, query, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
+        sort=("-brand_safety.rescore", "-stats.subscribers")
+    )

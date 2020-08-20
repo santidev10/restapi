@@ -20,14 +20,15 @@ def video_discovery_scheduler():
     query = video_manager.forced_filters() \
             & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get()
     query &= QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get() \
-             | QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(
-        True).get()
+             | QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
     limit = Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size
 
     task_signatures = []
     for _ in range(limit):
-        videos = video_manager.search(query, limit=Schedulers.VideoDiscovery.TASK_BATCH_SIZE).execute()
+        videos = video_manager.search(
+            query, limit=Schedulers.VideoDiscovery.TASK_BATCH_SIZE, sort=("-brand_safety.rescore",)
+        ).execute()
         ids = [item.main.id for item in videos]
         task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
     group(task_signatures).apply_async()
