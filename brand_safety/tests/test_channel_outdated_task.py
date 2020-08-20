@@ -40,7 +40,7 @@ class ChannelOutdatedTestCase(ExtendedAPITestCase, ESTestCase):
             self.channel_manager.upsert([doc_has_task_us_data, doc_outdated_bs_has_task_us_data])
             self.channel_manager.upsert_sections = [Sections.MAIN, Sections.BRAND_SAFETY]
             self.channel_manager.upsert([doc_outdated_bs_no_task_us_data])
-            channel_outdated_scheduler()
+            channel_outdated_scheduler.run()
             query = helper_mock.call_args.args[1]
             channels = self.channel_manager.search(query).execute()
         response_ids = [c.main.id for c in channels]
