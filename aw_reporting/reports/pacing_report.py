@@ -92,8 +92,6 @@ DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
                    "video_clicks", "clicks", "delivery", "video_cost",)
 
-MANAGED_SERVICE_FIELDS = ("video_views_100_quartile",)
-
 ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
 
@@ -141,7 +139,7 @@ class PacingReport:
         return raw_data
 
     # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
-    def get_flights_data(self, with_campaigns=False, managed_service_data=False, **filters):
+    def get_flights_data(self, with_campaigns=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
@@ -152,16 +150,13 @@ class PacingReport:
 
         annotate = self.get_flights_delivery_annotate()
 
-        if with_campaigns or managed_service_data:
+        if with_campaigns:
             queryset = queryset.filter(
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
             annotate = FLIGHTS_DELIVERY_ANNOTATE.copy()
             group_by = ("id", campaign_id_key)
-        if managed_service_data:
-            annotate["video_views_100_quartile"] = \
-                Sum("placement__adwords_campaigns__statistics__video_views_100_quartile")
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -184,8 +179,6 @@ class PacingReport:
                     for f in relevant_flights)
 
         delivery_fields = list(DELIVERY_FIELDS)
-        if managed_service_data:
-            delivery_fields.extend(MANAGED_SERVICE_FIELDS)
         for row in raw_data:
             fl_data = data[row["id"]]
             if with_campaigns:
@@ -297,8 +290,8 @@ class PacingReport:
     # pylint: enable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
 
     @staticmethod
-    def get_delivery_stats_from_flights(flights, campaign_id=None, managed_service_data=False):
-        impressions = video_views = cost = clicks = video_views_100_quartile = 0
+    def get_delivery_stats_from_flights(flights, campaign_id=None):
+        impressions = video_views = cost = clicks = 0
         video_impressions = video_clicks = video_cost = 0
         aw_update_time = None
         goal_type_ids = set()
@@ -312,7 +305,6 @@ class PacingReport:
             video_impressions += stats["video_impressions"] or 0
             video_clicks += stats["video_clicks"] or 0
             video_views += stats["video_views"] or 0
-            video_views_100_quartile += stats.get('video_views_100_quartile', 0)
             video_cost += stats["video_cost"] or 0
             clicks += stats["clicks"] or 0
             cost += stats["sum_cost"] or 0
@@ -342,10 +334,6 @@ class PacingReport:
             goal_type=SalesForceGoalTypes[goal_type_id],
             aw_update_time=aw_update_time,
         )
-        if managed_service_data:
-            # convert from views (calculated) back to rate (api value)
-            video_quartile_100_rate = video_views_100_quartile / impressions if impressions > 0 else 0
-            stats['video_quartile_100_rate'] = video_quartile_100_rate
         return stats
 
     def get_plan_stats_from_flights(self, flights, allocation_ko=1,
@@ -472,8 +460,8 @@ class PacingReport:
         )
 
     # pylint: disable=too-many-statements
-    def get_opportunities(self, get, user=None, aw_cid=None, managed_service_data=False):
-        queryset = self.get_opportunities_queryset(get, user, aw_cid)
+    def get_opportunities(self, get, user=None, aw_cid=None, sort=None, limit=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid, sort)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -490,6 +478,8 @@ class PacingReport:
             "cpm_buffer", "cpv_buffer",
             "budget"
         )
+        if limit:
+            opportunities = opportunities[:limit]
 
         # collect ids
         ad_ops_emails = set()
@@ -514,7 +504,6 @@ class PacingReport:
         flight_opp_key = "placement__opportunity_id"
         placement_opp_key = "opportunity_id"
         flights_data = self.get_flights_data(
-            managed_service_data=managed_service_data,
             placement__opportunity_id__in=opportunity_ids)
         placements_data = self.get_placements_data(
             opportunity_id__in=opportunity_ids)
@@ -548,7 +537,7 @@ class PacingReport:
             ))
             o["goal_type_ids"] = goal_type_ids
 
-            delivery_stats = self.get_delivery_stats_from_flights(flights, managed_service_data=managed_service_data)
+            delivery_stats = self.get_delivery_stats_from_flights(flights)
             o.update(delivery_stats)
 
             plan_stats = self.get_plan_stats_from_flights(flights)
@@ -631,7 +620,7 @@ class PacingReport:
 
     # pylint: enable=too-many-statements
 
-    def get_opportunities_queryset(self, get, user, aw_cid):
+    def get_opportunities_queryset(self, get, user, aw_cid, sort):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -702,7 +691,10 @@ class PacingReport:
             .annotate(campaigns=Count("placements__adwords_campaigns")) \
             .exclude(campaigns__lte=0)
 
-        return queryset.order_by("name", "id").distinct()
+        default_sort = ["-name"]
+        sort = [*sort, *default_sort] if sort else default_sort
+        queryset = queryset.order_by(*sort).distinct()
+        return queryset
 
     # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
     def get_period_dates(self, period, custom_start, custom_end):
@@ -923,8 +915,11 @@ class PacingReport:
                 flight["pacing_allocations"] = []
 
             flight["budget"] = f["budget"]
-
-            f["projected_budget"] = flight["projected_budget"]
+            f.update(**{
+                "projected_budget": flight["projected_budget"],
+                "cpv": flight["cpv"],
+                "cpm": flight["cpm"],
+            })
             pacing_goal_charts = get_flight_historical_pacing_chart(f)
             flight.update(pacing_goal_charts)
 
@@ -1552,19 +1547,29 @@ def get_flight_historical_pacing_chart(flight_data):
     Calculate historical unit and spend actual / goal charts
     To calculate historical recommendations, first get how much was actually delivered for each day, the pacing
     allocations for each date, and how many days are in an allocation range
-    Then for each date, get the allocation amount by multiplying today's allocation by the total amount and divide by
-    how many days are in the allocation range
+    Then for each date, get the allocation amount by multiplying today's allocation by the total amount,
+    subtracting how much was delivered so far, and finally divide by how many days remain in the allocation range
 
-    For example for a flight of 1000 units from 01-01-2000 to 01-10-2000, 01-01-2000 - 01-03-2000 may have an allocation
-    of 30% and 01-04-2000 - 01-10-2000 may have an allocation of 70%.
-    The allocation range 01-01-2000 - 01-03-2000 consists of 3 days with 30% allocated to it (300 units). The goal for
-    each day within this range would be 300 units / 3 days, so a daily goal of 100 units
-    01-04-2000 - 01-10-2000 consists of 7 days with 70% allocated to this range (700 units), so the daily goal for this
-    range would bee 700 units / 7 days = 100 units / day
-    :param flight_data:
+    For example for a flight of 1000 units from 01-01-2000 to 01-05-2000, 01-01-2000 - 01-03-2000 may have an allocation
+    of 30% and 01-04-2000 - 01-05-2000 may have an allocation of 70%.
+
+    The allocation range 01-01-2000 - 01-03-2000 consists of 3 days with 30% allocated to it (300 units)
+    On day 1 of this range, we should deliver 300 units / 3 days, so we suggest 100 units. For the sake of the example,
+    70 units was actually delivered on day 1
+    On day 2 of this range, 2 days remain, and there are 300 - 70 = 220 unit left to deliver. We suggest 220 units / 2
+    days = 110 units to deliver today. Let's say 90 units were actually delivered.
+    On day 3 of this range, 1 day remains, and there are 220 - 90 = 130 units left to deliver. We suggest 130 units 1
+    day = 130 units to deliver today. This ends this date range allocation.
+
+    01-04-2000 - 01-05-2000 consists of 2 days with 70% allocated to this range (700 units)
+    On day 1 of this range, we should deliver 700 units / 2 days = 350 units, so we suggest 350 units. For this example,
+    lets say 250 units were actually delivered.
+    On day 2 of this range, we should deliver 700 - 250 = 450 units, so we suggest 450 units. This concludes this
+    allocation range
+    :param flight_data: dict
     :return:
     """
-    today = timezone.now().date()
+    today = now_in_default_tz().date()
     historical_units_chart = dict(
         id="historical_units",
         title="Historical Units",
@@ -1575,61 +1580,93 @@ def get_flight_historical_pacing_chart(flight_data):
         title="Historical Spend",
         data=[],
     )
-    today_goal_units = None
-    today_goal_spend = None
     goal_mapping = FlightPacingAllocation.get_allocations(flight_data["id"])
-    allocation_count = Counter([goal.allocation for goal in goal_mapping.values()])
-    delivery_mapping = {}
-    for delivery in flight_data["daily_delivery"]:
-        # Sum the daily delivery of all campaigns
-        try:
-            data = delivery_mapping[delivery["date"]]
-            data["impressions"] += delivery["impressions"] or 0
-            data["cost"] += delivery["cost"] or 0
-            data["video_views"] += delivery["video_views"] or 0
-        except KeyError:
-            delivery_mapping[delivery["date"]] = delivery
-
+    allocation_count = get_goal_allocation_counts(goal_mapping)
+    delivery_mapping = get_delivery_mapping(flight_data["daily_delivery"])
+    # Use min with today as we don't need to generate charts for dates >= today
     end = min(flight_data["end"], today)
     plan_units = flight_data["plan_units"] if flight_data["plan_units"] else 0
     projected_budget = flight_data["projected_budget"]
+    today_goal_units = None
+    today_goal_spend = None
+    # Days remaining in the current date range allocation e.g. On day 3 of 5 for 80% allocation, 3 days remaining
+    days_remaining = None
+    overall_expected_delivery = 0
+
+    overall_delivered = 0
+    overall_spend = 0
+    # curr_delivered is how much delivered current date range allocation in date loop
+    curr_delivered = 0
+
     for date in get_dates_range(flight_data["start"], end):
-        goal_obj = goal_mapping[date]
-        # Get the count of allocation amounts to divide total plan units by
-        allocation_date_range_count = allocation_count[goal_obj.allocation]
-        goal_units = round(plan_units * goal_obj.allocation / allocation_date_range_count / 100)
-        goal_spend = round(projected_budget * goal_obj.allocation / allocation_date_range_count / 100)
-        units_key = "impressions" if flight_data["placement__goal_type_id"] is SalesForceGoalType.CPM else "video_views"
+        goal_type = flight_data["placement__goal_type_id"]
+        units_key = "impressions" if goal_type is SalesForceGoalType.CPM else "video_views"
         try:
+            # Get today's delivery
             actual_units = delivery_mapping[date][units_key]
             actual_spend = delivery_mapping[date]["cost"]
-            goal_type = flight_data["placement__goal_type_id"]
             margin = get_daily_margin(flight_data["placement__ordered_rate"], actual_units, actual_spend, goal_type)
         except KeyError:
             # If KeyError, Flight did not delivery for the current date being processed
             actual_units = actual_spend = margin = 0
+
+        goal_obj = goal_mapping[date]
+        # If days_remaining is None, then current iteration is at the beginning of a new date range
+        if days_remaining is None:
+            days_remaining = allocation_count[date]
+
+        # Divide by 100 to convert allocation percentage to decimal
+        if days_remaining > 0:
+            goal_units = round((plan_units * goal_obj.allocation / 100 - curr_delivered) / days_remaining)
+            goal_units = goal_units if goal_units > 0 else 0
+        else:
+            goal_units = None
+        # The amount that is needed to deliver goal_units
+        try:
+            if goal_type == SalesForceGoalType.CPM:
+                goal_spend = round(goal_units * flight_data["cpm"] / 1000)
+            else:
+                goal_spend = round(goal_units * flight_data["cpv"])
+        except TypeError:
+            goal_spend = 0
+
+        # Sum the amount of units we should have delivered by today's date
+        overall_expected_delivery += (plan_units * goal_obj.allocation / 100 / allocation_count[date])
+
+        curr_delivered += actual_units
+        overall_delivered += actual_units
+        overall_spend += actual_spend
+        # If is end, we reached the end of a date range allocation e.g. On day 5 of day 1 - 5, 80%. Reset days_remaining
+        # to None so value is set in next iteration
+        if goal_obj.is_end is True:
+            days_remaining = None
+            curr_delivered = 0
+        else:
+            days_remaining -= 1
+
         if date == today:
             # Do not add today's recommendations to chart, provide separate keys for today's values
             today_goal_units = goal_units
             today_goal_spend = goal_spend
             break
-        historical_units_chart["data"].append(dict(
-            label=date,
-            goal=goal_units,
-            actual=actual_units,
-        ))
-        historical_spend_chart["data"].append(dict(
-            label=date,
-            goal=goal_spend,
-            actual=actual_spend,
-            margin=margin,
-        ))
+        else:
+            historical_units_chart["data"].append(dict(
+                label=date,
+                goal=goal_units,
+                actual=actual_units,
+            ))
+            historical_spend_chart["data"].append(dict(
+                label=date,
+                goal=goal_spend,
+                actual=actual_spend,
+                margin=margin,
+            ))
     try:
-        today_goal_units_percent = plan_units / today_goal_units * 100
+        today_goal_units_percent = today_goal_units / plan_units * 100
     except (TypeError, ZeroDivisionError):
         today_goal_units_percent = None
     try:
-        today_goal_spend_percent = projected_budget / today_goal_spend * 100
+        today_goal_spend_percent = today_goal_spend / projected_budget * 100
     except (TypeError, ZeroDivisionError):
         today_goal_spend_percent = None
     data = dict(
@@ -1639,6 +1676,7 @@ def get_flight_historical_pacing_chart(flight_data):
         today_goal_units_percent=today_goal_units_percent,
         today_goal_spend=today_goal_spend,
         today_goal_spend_percent=today_goal_spend_percent,
+        expected_delivery=overall_expected_delivery,
     )
     return data
 
@@ -1666,6 +1704,20 @@ def set_campaign_allocations(campaign_queryset):
         except ZeroDivisionError:
             pass
     return campaigns
+
+
+def get_delivery_mapping(daily_delivery):
+    delivery_mapping = {}
+    for delivery in daily_delivery:
+        # Sum the daily delivery of all campaigns
+        try:
+            data = delivery_mapping[delivery["date"]]
+            data["impressions"] += delivery["impressions"] or 0
+            data["cost"] += delivery["cost"] or 0
+            data["video_views"] += delivery["video_views"] or 0
+        except KeyError:
+            delivery_mapping[delivery["date"]] = delivery
+    return delivery_mapping
 
 
 def get_flight_pacing_allocation_ranges(flight_id):
@@ -1714,7 +1766,7 @@ def get_flight_daily_budget(flight):
     pacing_allocations, allocation_ranges = get_flight_pacing_allocation_ranges(flight.id)
     today_allocation = pacing_allocations[timezone.now().date()]
     allocation_range_mapping = {
-        item["allocation"]: (item["end"] - item["start"]).days for item in allocation_ranges
+        item["allocation"]: (item["end"] - item["start"]).days + 1 for item in allocation_ranges
     }
     days_count = allocation_range_mapping[today_allocation.allocation]
 
@@ -1771,3 +1823,36 @@ def is_opp_under_margin(margin, today, end):
     except TypeError:
         pass
     return is_under_margin
+
+
+def get_goal_allocation_counts(goal_mapping):
+    """
+    Creates a mapping of dates to the number of days in its allocation
+        For example, a flight has 6 days. Days 1-3 allocate 40%, days 4-8 allocate 50%, and days 9-10 allocation 10%
+        counts = {
+            1: 3,
+            2: 3,
+            3: 3,
+            4: 5,
+            5: 5,
+            6: 5,
+            7: 5,
+            8: 5,
+            9: 2,
+            10: 2
+        }
+        Days 1 - 3 have 3 days in its allocation
+        Days 4 - 8 have 4 days
+        Days 9 - 10 have 2 days
+    :param goal_mapping: FlightPacingAllocation.get_allocations result
+    :return:
+    """
+    counts = {}
+    curr_dates = []
+    for i, (date, goal) in enumerate(goal_mapping.items()):
+        curr_dates.append(date)
+        if goal.is_end or i == len(goal_mapping) - 1:
+            for _date in curr_dates:
+                counts[_date] = len(curr_dates)
+            curr_dates.clear()
+    return counts

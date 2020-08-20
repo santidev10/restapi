@@ -127,6 +127,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_industry_performance.cache_industry_performance",
         "schedule": crontab(hour="*", minute="*/30"),
     },
+    "cache_pacing_report_filters": {
+        "task": "cache:tasks.cache_pacing_report_filters",
+        "schedule": crontab(minute=0, hour="*/2"),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
@@ -162,6 +166,10 @@ CELERY_BEAT_SCHEDULE = {
     "update_opportunity_performance": {
         "task": "dashboard.tasks.update_opportunity_performance.update_opportunity_performance_task",
         "schedule": crontab(minute="0", hour="23"),
+    },
+    "update_opportunities_stats": {
+        "task": "aw_reporting.update.update_opportunities.update_opportunities_task",
+        "schedule": crontab(minute="0", hour="*"),
     },
 }
 
@@ -217,6 +225,7 @@ class TaskExpiration:
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
+    PACING_REPORT_FILTERS = timedelta(hours=2).total_seconds()
 
 
 class TaskTimeout:
@@ -233,3 +242,4 @@ class TaskTimeout:
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
+    PACING_REPORT_FILTERS = timedelta(minutes=2).total_seconds()

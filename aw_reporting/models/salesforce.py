@@ -232,6 +232,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     currency_code = models.CharField(max_length=5, null=True, db_index=True)
 
     default_thumbnail = None
+    has_alerts = models.BooleanField(default=False, db_index=True)
 
     @property
     def thumbnail(self):
@@ -647,7 +648,11 @@ class FlightPacingAllocation(models.Model):
             for goal in to_create.values():
                 goal.save()
         goal_mapping.update(to_create)
-        return goal_mapping
+        curr_goal_mapping = {
+            plan.date: plan for plan in FlightPacingAllocation.objects.filter(
+                flight_id=flight_id, date__gte=flight.start, date__lte=flight.end).order_by("date")
+        }
+        return curr_goal_mapping
 
 
 class Alert(models.Model):

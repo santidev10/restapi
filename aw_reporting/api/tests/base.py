@@ -18,7 +18,7 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
         now = datetime.now(tz=pytz.utc)
         account = Account.objects.create(
             id=int("{}123{}".format(prefix, user.id)[-15:]),
-            name="Test account", update_time=now)
+            name="Test account", update_time=now, impressions=1)
         if manager is None:
             manager = Account.objects.create(
                 id=int("{}456{}".format(prefix, user.id)[-15:]), name="")

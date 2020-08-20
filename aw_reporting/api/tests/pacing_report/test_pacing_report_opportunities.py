@@ -427,9 +427,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
         pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=second)
         Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items"][0]["id"], first.id)
 
         response = self.client.get("{}?sort_by=-account".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)

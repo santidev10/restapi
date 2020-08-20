@@ -29,7 +29,9 @@ class CustomSegmentListApiView(APIView):
         Should replicate the output of PersistentSegmentListApiView's GET list view.
         """
         persistent_segment_model = get_persistent_segment_model_by_type(segment_type)
-        master_lists = persistent_segment_model.objects.filter(is_master=True)
+        master_lists = persistent_segment_model.objects \
+            .filter(is_master=True) \
+            .order_by('-details', '-created_at',)
         featured_segments = CustomSegment.objects.filter(
             is_featured=True,
             segment_type=self.get_segment_type_id(segment_type)
@@ -84,6 +86,11 @@ class CustomSegmentListApiView(APIView):
         for segment in master_lists:
             serializer = PersistentSegmentSerializer(instance=segment)
             if PersistentSegmentCategory.WHITELIST in segment.category:
-                self.data['master_whitelist'] = serializer.data
+                key = 'master_whitelist'
             elif PersistentSegmentCategory.BLACKLIST in segment.category:
-                self.data['master_blacklist'] = serializer.data
+                key = 'master_blacklist'
+            else:
+                continue
+            if self.data.get(key, None):
+                continue
+            self.data[key] = serializer.data

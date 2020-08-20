@@ -25,6 +25,7 @@ class DashboardPacingAlertsAPIView(APIView):
         ),
     )
     CACHE_TTL = 1800
+    MAX_SIZE = PACING_REPORT_OPPORTUNITIES_MAX_WATCH
 
     def get(self, request, *args, **kwargs):
         cache_key = self.get_cache_key(request.user.id)
@@ -45,15 +46,9 @@ class DashboardPacingAlertsAPIView(APIView):
     def _get_data(self, user):
         pacing_filters = {"watch": True} if OpportunityWatch.objects.filter(user=user).exists() else \
             {"period": "this_month", "status": "active"}
-        report = PacingReport().get_opportunities(pacing_filters, user)
+        report = PacingReport().get_opportunities(pacing_filters, user, sort=["-has_alerts"], limit=self.MAX_SIZE)
         opportunities = PacingReportOpportunitiesSerializer(report, many=True).data
-        if "watch" in pacing_filters:
-            # Sort by alerts length then name
-            key = lambda op: (len(op.get("alerts", [])), op.get("name", "").lower())
-        else:
-            key = lambda op: op.get("name", "").lower()
-        data = sorted(opportunities, key=key, reverse=True)[:PACING_REPORT_OPPORTUNITIES_MAX_WATCH]
-        return data
+        return opportunities
 
     @staticmethod
     def get_cache_key(user_id):
