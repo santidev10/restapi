@@ -20,6 +20,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views",
+        "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
     )
 
     URL = SerializerMethodField("get_url")
@@ -40,6 +41,13 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Country = SerializerMethodField("get_country")
     Monthly_Views = IntegerField(source="stats.last_30day_views")
     Sentiment = FloatField(source="stats.sentiment")
+    Video_View_Rate = FloatField(source="ads_stats.video_view_rate")
+    Avg_CPV = FloatField(source="ads_stats.average_cpv")
+    Avg_CPM = FloatField(source="ads_stats.average_cpm")
+    Avg_CTR = FloatField(source="ads_stats.ctr")
+    Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
+    Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
+    Views_30_Days = FloatField(source="stats.last_30day_views")
 
     def update(self, instance, validated_data):
         raise NotImplementedError
@@ -53,7 +61,8 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
         "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
-        "Country", "Sentiment", "Monthly_Views",
+        "Country", "Sentiment", "Monthly_Views", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v",
+        "Video_100_Completion_Rate", "Views_30_Days",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
@@ -73,6 +82,7 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
         "URL", "Title", "Language", "Category", "Views", "Monthly_Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Mismatched_Language", "Last_Vetted", "Country", "Sentiment",
+        "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
     )
 
     URL = SerializerMethodField("get_url")
@@ -92,6 +102,13 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
     Country = SerializerMethodField("get_country")
     Sentiment = FloatField(source="stats.sentiment")
+    Video_View_Rate = FloatField(source="ads_stats.video_view_rate")
+    Avg_CPV = FloatField(source="ads_stats.average_cpv")
+    Avg_CPM = FloatField(source="ads_stats.average_cpm")
+    Avg_CTR = FloatField(source="ads_stats.ctr")
+    Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
+    Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
+    Views_30_Days = FloatField(source="stats.last_30day_views")
 
     def update(self, instance, validated_data):
         raise NotImplementedError

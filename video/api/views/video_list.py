@@ -15,6 +15,7 @@ from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import mutate_query_params
+from utils.api.mutate_query_params import MutateMappedFieldsMixin
 from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -34,7 +35,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class VideoListApiView(MutateMappedFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.video_list"),
@@ -114,7 +115,7 @@ class VideoListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, List
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                    Sections.CUSTOM_CAPTIONS)
+                    Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
 
@@ -141,5 +142,7 @@ class VideoListApiView(MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, List
                     self.request.query_params["brand_safety"] = None
 
         self.mutate_query_params_if_valid_youtube_id(manager=VideoManager())
+
+        self.mutate_mapped_fields()
 
         return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)

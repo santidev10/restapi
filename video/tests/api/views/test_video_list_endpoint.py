@@ -46,16 +46,23 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
 
     def test_extra_fields(self):
         self.create_admin_user()
-        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data")
+        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data", "task_us_data",)
+        extra_fields_map = {
+            "task_us_data": "vetted_status"
+        }
         video = Video(next(int_iterator))
         VideoManager([Sections.GENERAL_DATA]).upsert([video])
 
         url = self.get_url()
         response = self.client.get(url)
 
+        first_item = response.data['items'][0]
         for field in extra_fields:
             with self.subTest(field):
-                self.assertIn(field, response.data["items"][0])
+                if field in extra_fields_map.keys():
+                    self.assertIn(extra_fields_map.get(field), first_item)
+                else:
+                    self.assertIn(field, first_item)
 
     def test_filter_by_ids(self):
         self.create_admin_user()
