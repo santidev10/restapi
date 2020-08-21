@@ -15,7 +15,7 @@ from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import mutate_query_params
-from utils.api.mutate_query_params import MutateMappedFieldsMixin
+from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -35,7 +35,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(MutateMappedFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class VideoListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.video_list"),
@@ -143,6 +143,6 @@ class VideoListApiView(MutateMappedFieldsMixin, MutateQueryParamIfValidYoutubeId
 
         self.mutate_query_params_if_valid_youtube_id(manager=VideoManager())
 
-        self.mutate_mapped_fields()
+        self.add_fields()
 
         return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)
