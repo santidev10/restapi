@@ -19,7 +19,7 @@ from es_components.managers.channel import ChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import mutate_query_params
-from utils.api.mutate_query_params import MutateMappedFieldsMixin
+from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
@@ -72,7 +72,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(MutateMappedFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class ChannelListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
@@ -174,7 +174,7 @@ class ChannelListApiView(MutateMappedFieldsMixin, MutateQueryParamIfValidYoutube
 
         self.mutate_query_params_if_valid_youtube_id(manager=ChannelManager())
 
-        self.mutate_mapped_fields()
+        self.add_fields()
 
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
         return result

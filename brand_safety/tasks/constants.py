@@ -11,7 +11,7 @@ class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=2)
     TASK_BATCH_SIZE = 5
-    MAX_QUEUE_SIZE = 10
+    MAX_QUEUE_SIZE = 5
 
     @classmethod
     def get_expiration(cls):
@@ -38,4 +38,4 @@ class Schedulers:
 
     class VideoDiscovery(BaseScheduler):
         NAME = "brand_safety_video_discovery"
-        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 10000))
+        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 2000))
