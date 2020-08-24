@@ -202,14 +202,13 @@ class SegmentQueryBuilder:
             must_queries.append(content_quality_query)
 
         ads_stats_queries = self._get_ads_stats_queries()
-        must_queries.append(ads_stats_queries)
-
         if self._params.get("last_30day_views"):
             query = self._get_range_queries(["last_30day_views"], Sections.STATS)
             if self._params.get("ads_stats_include_na") is True:
                 query |= QueryBuilder().build().must_not().exists().field(f"{Sections.STATS}.last_30day_views").get()
-            must_queries.append(query)
-
+            ads_stats_queries |= query
+        must_queries.append(ads_stats_queries)
+        
         query = Q("bool", must=must_queries)
 
         if self.with_forced_filters is True:
