@@ -12,6 +12,7 @@ from es_components.constants import Sections
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
+from es_components.query_builder import QueryBuilder
 from utils.datetime import now_in_default_tz
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -33,6 +34,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
     ALLOWED_CATEGORY_SORTS = ["stats.last_30day_subscribers", "stats.last_30day_views", "ads_stats.video_view_rate",
                               "ads_stats.ctr_v"]
     TOP_HITS_COUNT = 10
+    MIN_CHANNEL_SUBS = 10000
+    MIN_VIDEO_VIEWS = 100000
 
     def get(self, request, *args, **kwargs):
         params = request.query_params
@@ -61,6 +64,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
             channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                              upsert_sections=())
             channel_forced_filters = channel_manager.forced_filters(include_deleted=False)
+            channel_forced_filters &= QueryBuilder().build().must().range().field("stats.subscribers") \
+                .gte(self.MIN_CHANNEL_SUBS).get()
             channel_sorting = [
                 {
                     channel_sort: {
@@ -68,6 +73,9 @@ class DashboardIndustryPerformanceAPIView(APIView):
                     }
                 }
             ]
+            if channel_sort == "ads_stats.video_view_rate" or channel_sort == "ads_stats.ctr_v":
+                channel_forced_filters &= QueryBuilder().build().must().range().field(f"{channel_sort}") \
+                            .lt(100).get()
             channel_hits = channel_manager.search(filters=channel_forced_filters, sort=channel_sorting,
                                                   limit=self.TOP_HITS_COUNT).execute().hits
             top_channels = []
@@ -93,6 +101,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
             video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                          upsert_sections=())
             video_forced_filters = video_manager.forced_filters(include_deleted=False)
+            video_forced_filters &= QueryBuilder().build().must().range().field("stats.views") \
+                .gte(self.MIN_VIDEO_VIEWS).get()
             video_sorting = [
                 {
                     video_sort: {
@@ -100,6 +110,9 @@ class DashboardIndustryPerformanceAPIView(APIView):
                     }
                 }
             ]
+            if video_sort == "ads_stats.video_view_rate" or video_sort == "ads_stats.ctr_v":
+                video_forced_filters &= QueryBuilder().build().must().range().field(f"{video_sort}") \
+                            .lt(100).get()
             video_hits = video_manager.search(filters=video_forced_filters, sort=video_sorting,
                                               limit=self.TOP_HITS_COUNT).execute().hits
             top_videos = []
