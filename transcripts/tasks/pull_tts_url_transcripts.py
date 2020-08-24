@@ -111,20 +111,13 @@ def pull_tts_url_transcripts():
                         vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
                         updated_videos.append(vid_obj)
                         continue
-                vid_transcripts = [subtitle.captions for subtitle in
-                                   transcripts_scraper.successful_vids[vid_id].subtitles]
-                vid_lang_codes = [subtitle.lang_code for subtitle in
-                                  transcripts_scraper.successful_vids[vid_id].subtitles]
-                asr_lang = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles
-                            if subtitle.is_asr]
-                asr_lang = asr_lang[0] if asr_lang else None
-                for i, item in enumerate(vid_transcripts):
-                    if item:
-                        AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_codes[i],
-                                                           transcript=item)
-                populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
-                                               asr_lang=asr_lang)
+                vid_transcript = transcripts_scraper.successful_vids[vid_id].captions
+                vid_lang_code = transcripts_scraper.successful_vids[vid_id].captions_language
+                AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code, transcript=vid_transcript)
+                populate_video_custom_captions(vid_obj, [vid_transcript], [vid_lang_code], source="tts_url",
+                                               asr_lang=vid_lang_code)
                 updated_videos.append(vid_obj)
+                logger.info(f"Populated transcript for {vid_id}.")
                 if "task_us_data" not in vid_obj:
                     vid_ids_to_rescore.append(vid_id)
             update_end = time.perf_counter()
