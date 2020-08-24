@@ -1,4 +1,5 @@
 from datetime import timedelta
+import os
 
 CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
                   "brand_safety.updated_at")
@@ -9,8 +10,8 @@ VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "ge
 class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=2)
-    TASK_BATCH_SIZE = 100
-    MAX_QUEUE_SIZE = 50
+    TASK_BATCH_SIZE = 5
+    MAX_QUEUE_SIZE = 5
 
     @classmethod
     def get_expiration(cls):
@@ -28,11 +29,13 @@ class BaseScheduler:
 class Schedulers:
     class ChannelDiscovery(BaseScheduler):
         NAME = "brand_safety_channel_discovery"
+        MAX_QUEUE_SIZE = int(os.getenv("BRAND_SAFETY_CHANNEL_PRIORITY_QUEUE_SIZE", BaseScheduler.MAX_QUEUE_SIZE))
 
     class ChannelOutdated(BaseScheduler):
         NAME = "brand_safety_channel_outdated"
         UPDATE_TIME_THRESHOLD = "now-7d/d"
+        MAX_QUEUE_SIZE = int(os.getenv("BRAND_SAFETY_CHANNEL_LIGHT_QUEUE_SIZE", BaseScheduler.MAX_QUEUE_SIZE))
 
     class VideoDiscovery(BaseScheduler):
-        TASK_BATCH_SIZE = 5000
         NAME = "brand_safety_video_discovery"
+        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 2000))

@@ -1,5 +1,4 @@
 import json
-from uuid import uuid4
 
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from django.db import transaction
@@ -10,10 +9,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 
-from audit_tool.models import AuditContentQuality
-from audit_tool.models import AuditContentType
 from audit_tool.models import get_hash_name
-from brand_safety.utils import BrandSafetyQueryBuilder
 from es_components.iab_categories import IAB_TIER2_SET
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.constants import SourceListType
@@ -27,6 +23,7 @@ from segment.utils.utils import validate_numeric
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from segment.utils.utils import with_all
+from segment.utils.query_builder import SegmentQueryBuilder
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
@@ -35,7 +32,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
         "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
-        "countries_include_na", "content_type", "content_quality",
+        "countries_include_na", "content_type", "content_quality", "video_view_rate", "average_cpv", "average_cpm",
+        "ctr", "ctr_v", "video_quartile_100_rate", "last_30day_views", "ads_stats_include_na", "exclude_content_categories"
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
@@ -84,7 +82,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         if err:
             raise ValidationError(f"Exception trying to create segments: {err}")
         for options, segment in created:
-            query_builder = BrandSafetyQueryBuilder(options)
+            try:
+                query_builder = SegmentQueryBuilder(options)
+            except Exception as err:
+                CustomSegment.objects.filter(id__in=[item[1].id for item in created]).delete()
+                raise ValidationError(f"Exception trying to create segments: {err}")
             # Use query_builder.query_params to get mapped values used in Elasticsearch query
             query = {
                 "params": query_builder.query_params,
@@ -135,9 +137,10 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
         # validate content categories
-        opts["content_categories"] = opts.get("content_categories", [])
-        if opts["content_categories"]:
-            unique_content_categories = set(opts.get("content_categories"))
+        opts["content_categories"] = opts.get("content_categories", []) or []
+        opts["exclude_content_categories"] = opts.get("exclude_content_categories", []) or []
+        if opts["content_categories"] or opts["exclude_content_categories"]:
+            unique_content_categories = set(opts.get("content_categories", []) + opts["exclude_content_categories"])
             bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
             if bad_content_categories:
                 comma_separated = ", ".join(str(item) for item in bad_content_categories)
@@ -149,7 +152,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["age_groups"] = [validate_numeric(value) for value in opts.get("age_groups", [])]
         # validate boolean fields
         for field_name in ["minimum_views_include_na", "minimum_videos_include_na", "minimum_subscribers_include_na",
-                           "age_groups_include_na", "is_vetted", "mismatched_language", "countries_include_na",]:
+                           "age_groups_include_na", "is_vetted", "mismatched_language", "countries_include_na",
+                           "ads_stats_include_na"]:
             value = opts.get(field_name, None)
             opts[field_name] = validate_boolean(value) if value is not None else None
         # validate all numeric fields
@@ -157,7 +161,6 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
-
         opts["content_type"] = with_all(choice=opts.get("content_type", None))
         opts["content_quality"] = with_all(choice=opts.get("content_quality", None))
         return opts

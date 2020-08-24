@@ -102,7 +102,6 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data.pop("title_hash", None)
-        data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         data["pending"] = not bool(data["statistics"])
         if not data["statistics"]:
             data["statistics"] = {
@@ -117,6 +116,8 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
             data.update(instance.export.query.get("params", {}))
         except CustomSegmentFileUpload.DoesNotExist:
             data["download_url"] = None
+        # overwrites segment_type from the data.update above
+        data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         return data
 
     @staticmethod

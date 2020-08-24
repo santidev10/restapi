@@ -10,7 +10,6 @@ from audit_tool.models import AuditContentType
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from brand_safety.utils import BrandSafetyQueryBuilder
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
@@ -18,15 +17,10 @@ from es_components.countries import COUNTRIES
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.utils.utils import with_all
+from segment.utils.query_builder import SegmentQueryBuilder
 
 
 class SegmentCreationOptionsApiView(APIView):
-    OPTIONAL_FIELDS = ["countries", "languages", "list_type", "severity_filters", "last_upload_date",
-                       "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold",
-                       "content_categories", "age_groups", "gender", "minimum_videos", "is_vetted",
-                       "age_groups_include_na", "minimum_views_include_na", "minimum_subscribers_include_na",
-                       "minimum_videos_include_na", "vetted_after", "mismatched_language", "countries_include_na",
-                       "content_type", "content_quality"]
 
     def post(self, request, *args, **kwargs):
         """
@@ -44,11 +38,11 @@ class SegmentCreationOptionsApiView(APIView):
                 for int_type in range(options["segment_type"]):
                     str_type = CustomSegment.segment_id_to_type[int_type]
                     options["segment_type"] = int_type
-                    query_builder = BrandSafetyQueryBuilder(options)
+                    query_builder = SegmentQueryBuilder(options)
                     result = query_builder.execute()
                     res_data[f"{str_type}_items"] = result.hits.total.value or 0
             else:
-                query_builder = BrandSafetyQueryBuilder(options)
+                query_builder = SegmentQueryBuilder(options)
                 result = query_builder.execute()
                 str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
                 res_data[f"{str_type}_items"] = result.hits.total.value or 0
@@ -62,16 +56,32 @@ class SegmentCreationOptionsApiView(APIView):
 
         :return: dict
         """
+        ads_stats_keys = ("ctr", "ctr_v", "average_cpm", "average_cpv", "video_view_rate",
+                          "video_quartile_100_rate")
+        stats_keys = ("last_30day_views",)
+        def get_agg_min_max_filter_values(cache, keys, field):
+            values = {}
+            for key in keys:
+                field_key = f"{field}.{key}"
+                min_val = cache.get(field_key + ":min", {}).get("value", 0)
+                max_val = cache.get(field_key + ":max", {}).get("value", 0)
+                values[key] = {
+                    "id": key,
+                    "min": min_val,
+                    "max": max_val,
+                }
+            return values
+
         try:
-            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
+            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY).value
             countries = [
                 {
                     "id": item["key"],
                     "common": COUNTRIES[item["key"]][0]
                 }
-                for item in agg_cache.value["general_data.country_code"]["buckets"]
+                for item in agg_cache["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value["general_data.top_lang_code"]["buckets"]]
+            lang_codes = [item["key"] for item in agg_cache["general_data.top_lang_code"]["buckets"]]
 
             languages = []
             for code in lang_codes:
@@ -83,12 +93,22 @@ class SegmentCreationOptionsApiView(APIView):
             for code, lang in LANGUAGES.items():
                 if code not in lang_codes:
                     languages.append({"id": code, "title": lang})
+
+            ads_stats = {
+                **get_agg_min_max_filter_values(agg_cache, ads_stats_keys, "ads_stats"),
+                **get_agg_min_max_filter_values(agg_cache, stats_keys, "stats"),
+            }
+
         except (CacheItem.DoesNotExist, KeyError):
             countries = CountryListApiView().get().data
             languages = [
                 {"id": code, "title": lang}
                 for code, lang in LANGUAGES.items()
             ]
+            ads_stats = {
+                **get_agg_min_max_filter_values({}, ads_stats_keys, "ads_stats"),
+                **get_agg_min_max_filter_values({}, stats_keys, "stats"),
+            }
         options = {
             "age_groups": [
                 {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
@@ -109,7 +129,8 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": None, "name": "Include All"}
             ],
             "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
-            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES)
+            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
+            "ads_stats": ads_stats,
         }
         return options
 
@@ -120,13 +141,7 @@ class SegmentCreationOptionsApiView(APIView):
         :param data: dict
         :return: dict
         """
-        expected = self.OPTIONAL_FIELDS
-        received = data.keys()
         try:
-            unexpected = any(key not in expected for key in received)
-            if unexpected:
-                raise ValueError("Unexpected fields: {}".format(", ".join(set(received) - set(expected))))
-
             if data.get("segment_type") is not None:
                 segment_type = SegmentCreateApiViewV3.validate_segment_type(int(data["segment_type"]))
             else:
@@ -138,4 +153,3 @@ class SegmentCreationOptionsApiView(APIView):
         except ValueError as err:
             raise ValidationError(f"Invalid value: {err}")
         return options
-

@@ -8,6 +8,7 @@ from django.db.models import Q
 from django.db.models import When
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.models.ad_words.statistic import BaseStatisticModel
 from userprofile.managers import UserRelatedManagerMixin
 
 
@@ -15,7 +16,7 @@ class AccountManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "id"
 
 
-class Account(models.Model):
+class Account(BaseStatisticModel):
     objects = AccountManager()
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255, null=True, db_index=True)

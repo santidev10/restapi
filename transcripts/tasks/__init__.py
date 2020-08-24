@@ -1,3 +1,2 @@
 from .pull_custom_transcripts import pull_custom_transcripts
-from .rescore_brand_safety import rescore_brand_safety_videos
 from .pull_tts_url_transcripts import pull_tts_url_transcripts

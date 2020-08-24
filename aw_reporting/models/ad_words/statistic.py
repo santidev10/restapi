@@ -27,7 +27,7 @@ class BaseStatisticModel(BaseModel):
     impressions = models.IntegerField(default=0, db_index=True)
     video_views = models.IntegerField(default=0, db_index=True)
     clicks = models.IntegerField(default=0, db_index=True)
-    cost = models.FloatField(default=0)
+    cost = models.FloatField(default=0, db_index=True)
     conversions = models.FloatField(default=0, db_index=True)
     all_conversions = models.FloatField(default=0, db_index=True)
     view_through = models.IntegerField(default=0, db_index=True)
