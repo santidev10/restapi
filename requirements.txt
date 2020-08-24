@@ -16,7 +16,6 @@ drf-yasg==1.17.1
 elastic-apm==5.8.1
 elasticsearch==7.1.0
 emoji==0.5.4
-fake-useragent==0.1.11
 fasttext==0.9.1
 flashtext==2.7
 google-ads==3.2.0
