@@ -282,11 +282,11 @@ class SegmentQueryBuilder:
         if sentiment == 1:
             threshold = 0
         elif sentiment == 2:
-            threshold = 50
+            threshold = 79
         elif sentiment == 3:
-            threshold = 70
-        elif sentiment == 4:
             threshold = 90
+        elif sentiment == 4:
+            threshold = 100
         else:
             threshold = None
         return threshold
