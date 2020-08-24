@@ -40,7 +40,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     """
     export_content_type = "application/CSV"
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS,
-                Sections.TASK_US_DATA)
+                Sections.TASK_US_DATA, Sections.ADS_STATS)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
     is_vetting = False
