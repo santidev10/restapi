@@ -14,13 +14,16 @@ from utils.celery.tasks import celery_lock
 def channel_discovery_scheduler():
     """ Queue channels with rescore = True or have no brand safety overall score """
     channel_manager = ChannelManager()
-    query = channel_manager.forced_filters() \
-        & QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}").get()
-    query.should = [
-        QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get(),
-        QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
-    ]
+    base_query = channel_manager.forced_filters()
+
+    query_with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
     channel_update_helper(
-        Schedulers.ChannelDiscovery, query, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
-        sort=("-brand_safety.rescore", "-stats.subscribers")
+        Schedulers.ChannelDiscovery, query_with_rescore, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
+        sort=("-stats.subscribers",), ignore_vetted_channels=False
+    )
+
+    query_with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
+    channel_update_helper(
+        Schedulers.ChannelDiscovery, query_with_no_score, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
+        sort=("-stats.subscribers",)
     )

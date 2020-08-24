@@ -10,6 +10,22 @@ def mutate_query_params(query_params):
     # pylint: enable=protected-access
 
 
+class AddFieldsMixin:
+    ADDITIONAL_FIELDS = [
+        "task_us_data.brand_safety",
+    ]
+
+    def add_fields(self):
+        fields_str = self.request.query_params.get('fields', None)
+        if fields_str:
+            fields = fields_str.split(',')
+            for add in self.ADDITIONAL_FIELDS:
+                fields.append(add)
+
+            with mutate_query_params(self.request.query_params):
+                self.request.query_params['fields'] = ','.join(list(set(fields)))
+
+
 class MutateMappedFieldsMixin:
     """
     mutates items in the `fields` query param list. Adds a list of fields
