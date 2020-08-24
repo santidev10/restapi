@@ -117,7 +117,6 @@ def pull_tts_url_transcripts():
                 populate_video_custom_captions(vid_obj, [vid_transcript], [vid_lang_code], source="tts_url",
                                                asr_lang=vid_lang_code)
                 updated_videos.append(vid_obj)
-                logger.info(f"Populated transcript for {vid_id}.")
                 if "task_us_data" not in vid_obj:
                     vid_ids_to_rescore.append(vid_id)
             update_end = time.perf_counter()
