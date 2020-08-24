@@ -24,10 +24,12 @@ class SegmentQueryBuilder:
         :param video_ids: str -> Youtube ID (Query videos with channel_id=related_to)
         """
         self.with_forced_filters = with_forced_filters
+        # When returning _get_query_params, ui expects the score threshold that was originally passed in
+        self._original_score_threshold = data.get("score_threshold")
         self._params = self._map_params(data)
 
-        self.es_manager = VideoManager(sections=self.SECTIONS) if data.get("segment_type") in {0, "video" } else ChannelManager(
-            sections=self.SECTIONS)
+        self.es_manager = VideoManager(sections=self.SECTIONS) if data.get("segment_type") in {0, "video"} \
+            else ChannelManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
         self.query_params = self._get_query_params()
 
@@ -53,7 +55,11 @@ class SegmentQueryBuilder:
 
     def _get_query_params(self):
         """ Get params used to construct query """
-        return self._params
+        query_params = self._params.copy()
+        query_params.update({
+            "score_threshold": self._original_score_threshold
+        })
+        return query_params
 
     # pylint: disable=too-many-branches,too-many-statements
     def _construct_query(self):
@@ -276,11 +282,11 @@ class SegmentQueryBuilder:
         if sentiment == 1:
             threshold = 0
         elif sentiment == 2:
-            threshold = 50
+            threshold = 79
         elif sentiment == 3:
-            threshold = 70
-        elif sentiment == 4:
             threshold = 90
+        elif sentiment == 4:
+            threshold = 100
         else:
             threshold = None
         return threshold

@@ -18,7 +18,6 @@ from es_components.models.video import Video
 from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
-from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from utils.lang import replace_apostrophes
@@ -93,7 +92,6 @@ def pull_and_update_transcripts(unparsed_vids):
     elapsed = time.perf_counter() - start
     total_elapsed += elapsed
     logger.info("Upserted %s videos in %s seconds.", len(all_videos), elapsed)
-    rescore_brand_safety_videos.delay(vid_ids=list(vid_ids))
 
 
 def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):

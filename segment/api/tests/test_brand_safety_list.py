@@ -27,49 +27,6 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
 
-    def test_get_channel_master_list_no_items(self):
-        self.create_admin_user()
-
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.WHITELIST
-        )
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.BLACKLIST
-        )
-        response = self.client.get(self._get_url("channel"))
-        self.assertTrue(response.data.get("master_blacklist"))
-        self.assertTrue(response.data.get("master_whitelist"))
-
-    def test_master_list_prioritizes_completed(self):
-        self.create_admin_user()
-
-        details = {'subscribers': 117, 'likes': 117}
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.WHITELIST,
-            details=details,
-        )
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.BLACKLIST,
-            details=details,
-        )
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.WHITELIST
-        )
-        PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=True,
-            category=PersistentSegmentCategory.BLACKLIST
-        )
-        response = self.client.get(self._get_url("channel"))
-        self.assertTrue(response.data.get("master_blacklist"))
-        self.assertGreater(len(response.data.get('master_blacklist', {}).get('statistics', {})), 0)
-        self.assertTrue(response.data.get("master_whitelist"))
-        self.assertGreater(len(response.data.get('master_whitelist', {}).get('statistics', {})), 0)
-
     def test_ignore_non_master_lists_less_than_threshold(self):
         self.create_admin_user()
 

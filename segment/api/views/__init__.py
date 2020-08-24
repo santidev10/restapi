@@ -1,6 +1,5 @@
 from .brand_safety.brand_safety_export import PersistentSegmentExportApiView
 from .brand_safety.brand_safety_list import CustomSegmentListApiView
-from .brand_safety.brand_safety_master_list import PersistentMasterSegmentsListApiView
 from .brand_safety.brand_safety_preview import PersistentSegmentPreviewAPIView
 from .brand_safety.brand_safety_retrieve import PersistentSegmentRetrieveApiView
 from .custom_segment.segment_create_v3 import SegmentCreateApiViewV3
