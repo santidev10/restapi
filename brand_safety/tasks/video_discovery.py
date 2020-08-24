@@ -11,26 +11,28 @@ from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
 from utils.celery.tasks import celery_lock
 from utils.celery.utils import get_queue_size
+from utils.utils import chunks_generator
 
 
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
 def video_discovery_scheduler():
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
-    query = video_manager.forced_filters() \
-            & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get()
-    query &= QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get() \
-             | QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(
-        True).get()
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
-    limit = Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size
+    items_limit = Schedulers.VideoDiscovery.get_items_limit(queue_size)
 
-    task_signatures = []
-    for _ in range(limit):
-        videos = video_manager.search(query, limit=Schedulers.VideoDiscovery.TASK_BATCH_SIZE).execute()
-        ids = [item.main.id for item in videos]
-        task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
-    group(task_signatures).apply_async()
+    if items_limit >= 1:
+        base_query = video_manager.forced_filters()
+        task_signatures = []
+
+        rescore_ids = get_rescore_ids(video_manager, base_query)
+        task_signatures.append(video_update.si(rescore_ids, ignore_vetted_videos=False).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+
+        with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
+        no_score_ids = video_manager.search(with_no_score).execute()
+        for batch in chunks_generator(no_score_ids[:items_limit], Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
+            task_signatures.append(video_update.si(list(batch)).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+        group(task_signatures).apply_async()
 
 
 @celery_app.task
@@ -45,3 +47,8 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
 
+
+def get_rescore_ids(manager, base_query):
+    with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
+    ids = [v.main.id for v in manager.search(with_rescore).execute()]
+    return ids

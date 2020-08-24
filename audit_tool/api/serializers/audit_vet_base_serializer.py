@@ -213,6 +213,7 @@ class AuditVetBaseSerializer(Serializer):
         :param item_id: str -> channel or video id
         :return: list -> Brand safety category ids
         """
+        should_rescore = False
         blacklist_categories = set(self.validated_data["task_us_data"].get("brand_safety", []))
         new_blacklist_scores = {
             str(item): 100
@@ -230,9 +231,9 @@ class AuditVetBaseSerializer(Serializer):
             created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
             blacklist_item.blacklist_category = new_blacklist_scores
             blacklist_item.save()
-            self.update_brand_safety(item_id)
+            should_rescore = True
         data = list(blacklist_item.blacklist_category.keys())
-        return data
+        return data, should_rescore
 
     def save_elasticsearch(self, item_id):
         """
@@ -250,7 +251,7 @@ class AuditVetBaseSerializer(Serializer):
             item_overall_score = None
             pre_limbo_score = None
 
-        blacklist_categories = self.save_brand_safety(item_id)
+        blacklist_categories, should_rescore = self.save_brand_safety(item_id)
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
@@ -265,7 +266,11 @@ class AuditVetBaseSerializer(Serializer):
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
-        doc.populate_brand_safety(categories=brand_safety_category_overall_scores, **brand_safety_limbo)
+        doc.populate_brand_safety(
+            rescore=should_rescore,
+            categories=brand_safety_category_overall_scores,
+            **brand_safety_limbo
+        )
         doc.populate_general_data(**general_data)
         self.es_manager.upsert([doc], refresh=False)
 

@@ -3,11 +3,13 @@ from rest_framework.fields import SerializerMethodField
 from utils.brand_safety import get_brand_safety_data
 from utils.datetime import date_to_chart_data_str
 from utils.es_components_api_utils import ESDictSerializer
+from utils.es_components_api_utils import VettedStatusSerializerMixin
 
 
-class ChannelSerializer(ESDictSerializer):
+class ChannelSerializer(VettedStatusSerializerMixin, ESDictSerializer):
     chart_data = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
+    vetted_status = SerializerMethodField()
 
     def update(self, instance, validated_data):
         raise NotImplementedError

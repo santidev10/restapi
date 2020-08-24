@@ -93,6 +93,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "delivery",
                 "dynamic_placement",
                 "end",
+                "expected_delivery",
                 "budget",
                 "goal",
                 "goal_type",

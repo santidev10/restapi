@@ -9,7 +9,7 @@ from elasticsearch_dsl import Q
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
 
-import brand_safety.constants as brand_safety_constants
+from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
@@ -18,6 +18,7 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
 from utils.utils import slice_generator
+import brand_safety.constants as brand_safety_constants
 import video.constants as video_constants
 
 DEFAULT_PAGE_SIZE = 50
@@ -328,6 +329,24 @@ class ESDictSerializer(Serializer):
             **extra_data,
         }
 # pylint: enable=abstract-method
+
+
+class VettedStatusSerializerMixin:
+    def get_vetted_status(self, instance):
+        """
+        Infers whether or not a Channel/Video has been vetted, and whether or
+        not it was vetted safe or risky based on the presence of the
+        `task_us_data.brand_safety` field, and whether or not it is empty
+        """
+        task_us_data = getattr(instance, Sections.TASK_US_DATA, None)
+        if task_us_data is None:
+            return None
+        brand_safety = task_us_data.to_dict().get('brand_safety', None)
+        if brand_safety is None:
+            return "Unvetted"
+        if not len([cat_id for cat_id in brand_safety if cat_id]):
+            return "Vetted Safe"
+        return "Vetted Risky"
 
 
 class ESQuerysetAdapter:

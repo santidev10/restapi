@@ -127,21 +127,25 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_industry_performance.cache_industry_performance",
         "schedule": crontab(hour="*", minute="*/30"),
     },
+    "cache_pacing_report_filters": {
+        "task": "cache:tasks.cache_pacing_report_filters",
+        "schedule": crontab(minute=0, hour="*/2"),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
     },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "brand_safety_channel_outdated": {
         "task": "brand_safety.tasks.channel_outdated.channel_outdated_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "brand_safety_video_discovery": {
         "task": "brand_safety.tasks.video_discovery.video_discovery_scheduler",
-        "schedule": 60 * 5,
+        "schedule": 60 * 2,
     },
     "userprofile_clean_device_auth_tokens": {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
@@ -221,6 +225,7 @@ class TaskExpiration:
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
+    PACING_REPORT_FILTERS = timedelta(hours=2).total_seconds()
 
 
 class TaskTimeout:
@@ -237,3 +242,4 @@ class TaskTimeout:
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
+    PACING_REPORT_FILTERS = timedelta(minutes=2).total_seconds()

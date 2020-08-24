@@ -10,6 +10,57 @@ def mutate_query_params(query_params):
     # pylint: enable=protected-access
 
 
+class AddFieldsMixin:
+    ADDITIONAL_FIELDS = [
+        "task_us_data.brand_safety",
+    ]
+
+    def add_fields(self):
+        fields_str = self.request.query_params.get('fields', None)
+        if fields_str:
+            fields = fields_str.split(',')
+            for add in self.ADDITIONAL_FIELDS:
+                fields.append(add)
+
+            with mutate_query_params(self.request.query_params):
+                self.request.query_params['fields'] = ','.join(list(set(fields)))
+
+
+class MutateMappedFieldsMixin:
+    """
+    mutates items in the `fields` query param list. Adds a list of fields
+    if a key is detected in the fields list.
+    Optionally removes the keyed field.
+    """
+
+    MUTATE_FIELDS_REMOVE_KEY = 'remove'
+    MUTATE_FIELDS_ADD_KEY = 'add'
+    MUTATE_FIELDS_MAP = {
+        'vetted_status': {
+            MUTATE_FIELDS_REMOVE_KEY: ['vetted_status',],
+            MUTATE_FIELDS_ADD_KEY: ['task_us_data.brand_safety',],
+        }
+    }
+
+    def mutate_mapped_fields(self):
+        fields_str = self.request.query_params.get('fields', None)
+        if fields_str:
+            fields = fields_str.split(',')
+            for field in fields:
+                if field in self.MUTATE_FIELDS_MAP.keys():
+                    field_data = self.MUTATE_FIELDS_MAP.get(field, {})
+                    fields_to_remove = field_data.get(self.MUTATE_FIELDS_REMOVE_KEY, [])
+                    if fields_to_remove:
+                        for field_to_remove in fields_to_remove:
+                            fields.remove(field_to_remove)
+                    fields_to_add = field_data.get(self.MUTATE_FIELDS_ADD_KEY, [])
+                    for field_to_add in fields_to_add:
+                        fields.append(field_to_add)
+
+            with mutate_query_params(self.request.query_params):
+                self.request.query_params['fields'] = ','.join(fields)
+
+
 class MutateQueryParamIfValidYoutubeIdMixin:
 
     YOUTUBE_ID_FIELD = "main.id"

@@ -6,6 +6,8 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditProcessor
+from brand_safety.constants import CHANNEL
+from brand_safety.constants import VIDEO
 from saas.urls.namespaces import Namespace
 from segment.api.tests.test_brand_safety_list import GOOGLE_ADS_STATISTICS
 from segment.api.tests.test_brand_safety_list import STATISTICS_FIELDS_CHANNEL
@@ -242,6 +244,45 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO))
+
+    def test_channel_fields(self):
+        """
+        test that certain channel fields are present
+        """
+        user = self.create_test_user()
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=1,
+            list_type=0, title="channel", owner=user,
+            statistics={}
+        )
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        response = self.client.get(self._get_url("channel"))
+        data = response.data["items"][0]
+        assert_equal_map = {
+            'segment_type': CHANNEL,
+        }
+        with self.subTest():
+            for key, value in assert_equal_map.items():
+                self.assertEqual(data[key], value)
+
+    def test_video_fields(self):
+        """
+        test that certain video fields are present
+        """
+        user = self.create_test_user()
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=0,
+            list_type=0, title="video", owner=user,
+        )
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        response = self.client.get(self._get_url("video"))
+        data = response.data["items"][0]
+        assert_equal_map = {
+            'segment_type': VIDEO,
+        }
+        with self.subTest():
+            for key, value in assert_equal_map.items():
+                self.assertEqual(data[key], value)
 
     def test_content_category_filters(self):
         user = self.create_test_user()
