@@ -6,7 +6,6 @@ from django.conf.urls import url
 from segment.api.urls.names import Name
 from segment.api.views import CustomSegmentListApiView
 from segment.api.views import CustomSegmentUpdateApiView
-from segment.api.views import PersistentMasterSegmentsListApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.api.views import SegmentCreateApiViewV3
@@ -30,8 +29,6 @@ urlpatterns = [
     url(r"^persistent_segments_export/(?P<segment_type>{})/(?P<pk>\d+)/$".format(segment_types),
         PersistentSegmentExportApiView.as_view(),
         name=Name.PERSISTENT_SEGMENT_EXPORT),
-    url(r"^persistent_master_segments/$", PersistentMasterSegmentsListApiView.as_view(),
-        name=Name.PERSISTENT_MASTER_SEGMENTS_LIST),
     url(r"^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/preview/$".format(segment_types),
         SegmentPreviewAPIView.as_view(),
         name=Name.PERSISTENT_SEGMENT_PREVIEW),

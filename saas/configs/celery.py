@@ -131,10 +131,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache:tasks.cache_pacing_report_filters",
         "schedule": crontab(minute=0, hour="*/2"),
     },
-    "generate_persistent_segments": {
-        "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(minute="*/10"),
-    },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
         "schedule": 60 * 2,
