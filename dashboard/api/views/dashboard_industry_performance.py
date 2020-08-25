@@ -142,7 +142,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
             top_categories = []
             for key, value in category_aggregations.items():
                 value["key"] = key
-                top_categories.append(value)
+                if value.get("ads_stats.ctr_v", 100) < 100 and value.get("ads_stats.video_view_rate", 100) < 100:
+                    top_categories.append(value)
             top_categories = sorted(top_categories,
                                     key=lambda category: category[category_sort].get("value") or 0,
                                     reverse=True)[:self.TOP_HITS_COUNT]
