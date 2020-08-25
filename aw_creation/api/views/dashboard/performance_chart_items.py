@@ -9,7 +9,9 @@ from aw_creation.api.serializers.common.utils import get_currency_code
 from aw_creation.models import AccountCreation
 from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import MANAGED_SERVICE_DELIVERY_DATA
 from userprofile.constants import UserSettingsKey
+from userprofile.permissions import PermissionGroupNames
 from utils.permissions import UserHasDashboardPermission
 
 
@@ -62,4 +64,15 @@ class DashboardPerformanceChartItemsApiView(APIView):
             **filters)
         data = chart.get_items()
         data["currency_code"] = get_currency_code(item)
+        managed_service_hide_delivery_data = request.user.has_custom_user_group(
+            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
+        )
+        if managed_service_hide_delivery_data:
+            # These fields cannot be removed in base classes, because
+            # the fields are used to calc extra params CPM, CTR, *rates, etc.
+            for item in data['items']:
+                for field in MANAGED_SERVICE_DELIVERY_DATA:
+                    item[field] = None
+            for field in MANAGED_SERVICE_DELIVERY_DATA:
+                data['summary'][field] = None
         return Response(data=data)
