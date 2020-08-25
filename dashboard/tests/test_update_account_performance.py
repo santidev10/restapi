@@ -5,6 +5,8 @@ from django.test import TransactionTestCase
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from dashboard.tasks import update_account_performance_task
 from dashboard.tasks.update_opportunity_performance import MAX_HISTORY
 from utils.unittests.int_iterator import int_iterator
@@ -13,9 +15,11 @@ from utils.datetime import now_in_default_tz
 
 class TestUpdateAccountPerformance(TransactionTestCase):
     def _create_data(self):
-        end = now_in_default_tz() + timedelta(days=10)
-        account = Account.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100, end=end)
-        Campaign.objects.create(name="c", account=account)
+        end = now_in_default_tz() + timedelta(days=100)
+        account = Account.objects.create(name="first", id=next(int_iterator))
+        op = Opportunity.objects.create()
+        pl = OpPlacement.objects.create(opportunity=op, end=end)
+        Campaign.objects.create(name="c", account=account, salesforce_placement=pl)
         return account
 
     def test_same_date_ignore(self):
@@ -32,7 +36,7 @@ class TestUpdateAccountPerformance(TransactionTestCase):
         today = now_in_default_tz()
         dates = [today + timedelta(days=i) for i in range(MAX_HISTORY + 5)]
 
-        with patch("dashboard.tasks.update_opportunity_performance.now_in_default_tz") \
+        with patch("dashboard.tasks.update_account_performance.now_in_default_tz") \
                 as mock_today:
             mock_today.side_effect = dates
             for _ in range(len(dates)):

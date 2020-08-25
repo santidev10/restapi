@@ -111,7 +111,7 @@ def finalize_campaigns_update(cid_account_ids):
     :return:
     """
 
-    # Just use first account to access refresh token
+    # Just use first account to access refresh tokens
     cid = Account.objects.filter(id__in=cid_account_ids).first()
     if cid:
         GoogleAdsUpdater(cid).update_accounts(cid_account_ids)
