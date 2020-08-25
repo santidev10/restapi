@@ -110,6 +110,10 @@ def finalize_campaigns_update(cid_account_ids):
     Sets up the next batch of update tasks
     :return:
     """
-    GoogleAdsUpdater(None).update_accounts(cid_account_ids)
+
+    # Just use first account to access refresh token
+    cid = Account.objects.filter(id__in=cid_account_ids).first()
+    if cid:
+        GoogleAdsUpdater(cid).update_accounts(cid_account_ids)
     add_relation_between_report_and_creation_campaigns()
     logger.debug("Google Ads account and campaign update complete")

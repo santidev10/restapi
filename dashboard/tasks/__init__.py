@@ -1,1 +1,2 @@
 from .update_opportunity_performance import update_opportunity_performance_task
+from .update_account_performance import update_account_performance_task

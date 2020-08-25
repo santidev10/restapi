@@ -90,6 +90,8 @@ class GoogleAdsUpdater:
         self.account.save()
 
     def update_accounts(self, account_ids):
+        if isinstance(account_ids, str):
+            account_ids = [account_ids]
         updater = AccountUpdater(account_ids)
         self.execute_with_any_permission(updater)
 
