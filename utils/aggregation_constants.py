@@ -56,6 +56,8 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "task_us_data.gender",
     "task_us_data:exists",
     "task_us_data:missing",
+    "task_us_data.brand_safety:exists",
+    "task_us_data.brand_safety:missing",
 )
 
 ALLOWED_VIDEO_AGGREGATIONS = (
@@ -99,6 +101,8 @@ ALLOWED_VIDEO_AGGREGATIONS = (
     "task_us_data.gender",
     "task_us_data:exists",
     "task_us_data:missing",
+    "task_us_data.brand_safety:exists",
+    "task_us_data.brand_safety:missing",
     "transcripts:exists",
     "transcripts:missing",
     "flags",

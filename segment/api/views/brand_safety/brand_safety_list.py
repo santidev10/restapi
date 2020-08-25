@@ -5,10 +5,7 @@ from rest_framework.views import APIView
 
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.serializers.custom_segment_serializer import CustomSegmentWithoutDownloadUrlSerializer
-from segment.api.serializers.persistent_segment_serializer import PersistentSegmentSerializer
 from segment.models import CustomSegment
-from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.utils.utils import get_persistent_segment_model_by_type
 from utils.permissions import user_has_permission
 
 MINIMUM_ITEMS_COUNT = 100
@@ -28,15 +25,10 @@ class CustomSegmentListApiView(APIView):
         """
         Should replicate the output of PersistentSegmentListApiView's GET list view.
         """
-        persistent_segment_model = get_persistent_segment_model_by_type(segment_type)
-        master_lists = persistent_segment_model.objects \
-            .filter(is_master=True) \
-            .order_by('-details', '-created_at',)
         featured_segments = CustomSegment.objects.filter(
             is_featured=True,
             segment_type=self.get_segment_type_id(segment_type)
         )
-        self.add_master_list_nodes(master_lists)
         featured_segments = self.sort_featured_segments(featured_segments)
         self.add_featured_segments_node(featured_segments)
         return Response(data=self.data, status=200)
@@ -78,19 +70,3 @@ class CustomSegmentListApiView(APIView):
         maps string segment_type to segment id eg: 'channel' to 1
         """
         return self.segment_type_map[segment_type]
-
-    def add_master_list_nodes(self, master_lists):
-        """
-        adds master list node to the response data
-        """
-        for segment in master_lists:
-            serializer = PersistentSegmentSerializer(instance=segment)
-            if PersistentSegmentCategory.WHITELIST in segment.category:
-                key = 'master_whitelist'
-            elif PersistentSegmentCategory.BLACKLIST in segment.category:
-                key = 'master_blacklist'
-            else:
-                continue
-            if self.data.get(key, None):
-                continue
-            self.data[key] = serializer.data
