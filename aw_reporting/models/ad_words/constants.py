@@ -15,6 +15,10 @@ CLICKS_STATS = (
 )
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
 
+MANAGED_SERVICE_DELIVERY_DATA = (
+    "clicks", "cost", "impressions", "video_views"
+)
+
 SUM_STATS = BASE_STATS + CONVERSIONS
 
 QUARTILE_RATES = ("quartile_25_rate", "quartile_50_rate",
