@@ -4,6 +4,7 @@ from unittest.mock import patch
 from mock import patch
 
 from django.contrib.auth.models import Group
+from django.utils import timezone
 from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
@@ -338,3 +339,79 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         response = self.client.get(url)
         items = response.data['items']
         self.assertEqual(items[0]['main']['id'], channel_ids[0])
+
+    def test_vetted_status_field(self):
+        self.create_admin_user()
+        channel_ids = []
+        for i in range(4):
+            channel_ids.append(str(next(int_iterator)))
+
+        channels = []
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[0]},
+            "main": {'id': channel_ids[0]},
+            "general_data": {
+                "title": f"channel: {channel_ids[0]}",
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[1]},
+            "main": {'id': channel_ids[1]},
+            "general_data": {
+                "title": f"channel: {channel_ids[1]}",
+                "description": f"this channel is vetted risky. Channel id: {channel_ids[1]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [1, 2, 3, 4],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[2]},
+            "main": {'id': channel_ids[2]},
+            "general_data": {
+                "title": f"channel: {channel_ids[2]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[2]}"
+            },
+            "task_us_data": {},
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[3]},
+            "main": {'id': channel_ids[3]},
+            "general_data": {
+                "title": f"channel: {channel_ids[3]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[3]}"
+            },
+        }))
+
+        for channel in channels:
+            ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert([channel])
+
+        response = self.client.get(self.url)
+        items = response.data['items']
+
+        vetted_statuses = []
+        for item in items:
+            status = item.get('vetted_status', None)
+            vetted_statuses.append(status)
+        unvetted = [status for status in vetted_statuses if status == "Unvetted"]
+        safe = [status for status in vetted_statuses if status == "Vetted Safe"]
+        risky = [status for status in vetted_statuses if status == "Vetted Risky"]
+        self.assertEqual(len(unvetted), 2)
+        self.assertEqual(len(safe), 1)
+        self.assertEqual(len(risky), 1)
+
+        unvetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=false")
+        unvetted_items = unvetted_response.data['items']
+        unvetted_channel_ids = channel_ids[2:]
+        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_channel_ids)
+
+        vetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=true")
+        vetted_items = vetted_response.data['items']
+        vetted_channel_ids = channel_ids[:2]
+        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_channel_ids)
