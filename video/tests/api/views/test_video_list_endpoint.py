@@ -2,6 +2,7 @@ import urllib
 from unittest.mock import PropertyMock
 from unittest.mock import patch
 
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from es_components.constants import Sections
@@ -187,3 +188,85 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         response = self.client.get(url)
         items = response.data['items']
         self.assertEqual(items[0]['main']['id'], video_ids[0])
+
+    def test_vetted_status_field(self):
+        self.create_admin_user()
+        video_ids = []
+        for i in range(4):
+            video_ids.append(str(next(int_iterator)))
+
+        videos = []
+        videos.append(Video(**{
+            "meta": {"id": video_ids[0]},
+            "main": {'id': video_ids[0]},
+            "general_data": {
+                "title": f"video: {video_ids[0]}",
+                "description": f"this video is vetted safe. Video id: {video_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[1]},
+            "main": {'id': video_ids[1]},
+            "general_data": {
+                "title": f"video: {video_ids[1]}",
+                "description": f"this video is vetted risky. Video id: {video_ids[1]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [1, 2, 3, 4],
+            },
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[2]},
+            "main": {'id': video_ids[2]},
+            "general_data": {
+                "title": f"video: {video_ids[2]}",
+                "description": f"this video is not vetted. Video id: {video_ids[2]}"
+            },
+            "task_us_data": {},
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[3]},
+            "main": {'id': video_ids[3]},
+            "general_data": {
+                "title": f"video: {video_ids[3]}",
+                "description": f"this video is not vetted. Video id: {video_ids[3]}"
+            },
+        }))
+
+        for video in videos:
+            VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert([video])
+
+        response = self.client.get(self.get_url())
+        items = response.data['items']
+
+        vetted_statuses = []
+        for item in items:
+            status = item.get('vetted_status', None)
+            vetted_statuses.append(status)
+        unvetted = [status for status in vetted_statuses if status == "Unvetted"]
+        safe = [status for status in vetted_statuses if status == "Vetted Safe"]
+        risky = [status for status in vetted_statuses if status == "Vetted Risky"]
+        self.assertEqual(len(unvetted), 2)
+        self.assertEqual(len(safe), 1)
+        self.assertEqual(len(risky), 1)
+
+        unvetted_url = self.get_url() + urllib.parse.urlencode({
+            "task_us_data.last_vetted_at": False,
+        })
+        unvetted_response = self.client.get(unvetted_url)
+        unvetted_items = unvetted_response.data['items']
+        unvetted_video_ids = video_ids[2:]
+        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_video_ids)
+
+        vetted_url = self.get_url() + urllib.parse.urlencode({
+            "task_us_data.last_vetted_at": True,
+        })
+        vetted_response = self.client.get(vetted_url)
+        vetted_items = vetted_response.data['items']
+        vetted_video_ids = video_ids[:2]
+        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_video_ids)
