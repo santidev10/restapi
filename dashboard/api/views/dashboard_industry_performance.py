@@ -34,8 +34,8 @@ class DashboardIndustryPerformanceAPIView(APIView):
     ALLOWED_CATEGORY_SORTS = ["stats.last_30day_subscribers", "stats.last_30day_views", "ads_stats.video_view_rate",
                               "ads_stats.ctr_v"]
     TOP_HITS_COUNT = 10
-    MIN_CHANNEL_SUBS = 10000
-    MIN_VIDEO_VIEWS = 100000
+    MIN_CHANNEL_SUBS = 25000
+    MIN_VIDEO_VIEWS = 50000
 
     def get(self, request, *args, **kwargs):
         params = request.query_params
@@ -64,7 +64,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
             channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                              upsert_sections=())
             channel_forced_filters = channel_manager.forced_filters(include_deleted=False)
-            channel_forced_filters &= QueryBuilder().build().must().range().field("stats.subscribers") \
+            channel_forced_filters &= QueryBuilder().build().must().range().field("stats.last_30day_subscribers") \
                 .gte(self.MIN_CHANNEL_SUBS).get()
             channel_sorting = [
                 {
@@ -101,7 +101,7 @@ class DashboardIndustryPerformanceAPIView(APIView):
             video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS),
                                          upsert_sections=())
             video_forced_filters = video_manager.forced_filters(include_deleted=False)
-            video_forced_filters &= QueryBuilder().build().must().range().field("stats.views") \
+            video_forced_filters &= QueryBuilder().build().must().range().field("stats.last_30day_views") \
                 .gte(self.MIN_VIDEO_VIEWS).get()
             video_sorting = [
                 {
