@@ -101,6 +101,10 @@ class SegmentExportSerializerMixin:
         user_email = vetting_data.get("user_email", None)
         return user_email
 
+    def get_sentiment(self, obj):
+        sentiment = getattr(obj.stats, "sentiment", None)
+        return int(sentiment) if sentiment else None
+
 
 class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
 

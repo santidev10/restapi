@@ -37,3 +37,21 @@ def update_opportunity_performance_task():
             history = history[-MAX_HISTORY:]
             perform_obj.performance = json.dumps(history)
             perform_obj.save()
+
+
+def aggregate_account_statistics():
+    from aw_reporting.models import Account
+    from django.db.models import Avg
+    from django.db.models import F
+    aggregated_stats = Account.objects.filter(id__in=[])\
+        .annotate(
+            completion_100=F("video_views_100_quartile") / F("impressions"),
+            view_rate=F("video_views") / F("impressions"),
+        )\
+        .aggregate(
+            video_view_rate=Avg("view_rate"),
+            active_view_viewability=Avg("active_view_viewability"),
+            ctr_v=Avg("ctr_v"),
+            completion_100_rate=Avg("completion_100")
+        )
+    return aggregated_stats

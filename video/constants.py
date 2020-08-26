@@ -14,7 +14,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.last_day_views", "brand_safety.overall_score", "analytics.gender_female",
                 "analytics.gender_male",)
 
-EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data.brand_safety",
+EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data.last_vetted_at",
                  "monetization.is_monetizable")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",

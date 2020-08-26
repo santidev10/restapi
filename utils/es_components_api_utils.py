@@ -338,10 +338,11 @@ class VettedStatusSerializerMixin:
         not it was vetted safe or risky based on the presence of the
         `task_us_data.brand_safety` field, and whether or not it is empty
         """
-        task_us_data = getattr(instance, Sections.TASK_US_DATA, None)
+        d = instance.to_dict()
+        task_us_data = d.get(Sections.TASK_US_DATA, None)
         if task_us_data is None:
-            return None
-        brand_safety = task_us_data.to_dict().get('brand_safety', None)
+            return "Unvetted"
+        brand_safety = task_us_data.get('brand_safety', None)
         if brand_safety is None:
             return "Unvetted"
         if not len([cat_id for cat_id in brand_safety if cat_id]):
