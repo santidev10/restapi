@@ -31,7 +31,8 @@ def video_discovery_scheduler():
         with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
         no_score_ids = video_manager.search(with_no_score).execute()
         for batch in chunks_generator(no_score_ids[:items_limit], Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
-            task_signatures.append(video_update.si(list(batch)).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+            ids = [video.main.id for video in batch]
+            task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
         group(task_signatures).apply_async()
 
 
