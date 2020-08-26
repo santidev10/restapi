@@ -341,19 +341,17 @@ class VettedStatusSerializerMixin:
         """
         Infers whether or not a Channel/Video has been vetted, and whether or
         not it was vetted safe or risky based on the presence of the
-        `task_us_data.brand_safety` field, and whether or not it is empty
+        `task_us_data.brand_safety` and `task_us_data.last_vetted_at` field,
+        and whether or not it is empty
         """
         instance_dict = instance.to_dict()
         task_us_data = instance_dict.get(Sections.TASK_US_DATA, None)
-        if task_us_data is None:
-            return self.UNVETTED
-        last_vetted_at = task_us_data.get('last_vetted_at', None)
-        if last_vetted_at is None:
+        if task_us_data is None \
+                or task_us_data.get('last_vetted_at', None) is None:
             return self.UNVETTED
         brand_safety = task_us_data.get('brand_safety', None)
-        if brand_safety is None:
-            return self.UNVETTED
-        if not len([cat_id for cat_id in brand_safety if cat_id]):
+        if brand_safety is None \
+                or not len([cat_id for cat_id in brand_safety if cat_id]):
             return self.VETTED_SAFE
         return self.VETTED_RISKY
 
