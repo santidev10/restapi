@@ -141,7 +141,7 @@ def get_content_disposition(segment, is_vetting=False, ext="csv"):
     title = segment.title
     if is_vetting is True:
         title += " Vetted"
-    content_disposition = f"attachment;filename={title}.{ext}"
+    content_disposition = 'attachment;filename="{title}.{ext}"'.format(title=title, ext=ext)
     return content_disposition
 
 
