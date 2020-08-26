@@ -55,6 +55,13 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
         )
 
+        list_url = reverse(f"{Namespace.SEGMENT_V2}:{Name.SEGMENT_LIST}", args=['video'])
+        list_response = self.client.get(list_url)
+
+        self.assertEqual(list_response.status_code, HTTP_200_OK)
+        items = list_response.data['items']
+        self.assertEqual(items[0]['title'], payload['title'])
+
     @mock_s3
     def test_featured_image_upload(self):
         user = self.create_admin_user()
