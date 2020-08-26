@@ -332,22 +332,30 @@ class ESDictSerializer(Serializer):
 
 
 class VettedStatusSerializerMixin:
+
+    UNVETTED = "Unvetted"
+    VETTED_SAFE = "Vetted Safe"
+    VETTED_RISKY = "Vetted Risky"
+
     def get_vetted_status(self, instance):
         """
         Infers whether or not a Channel/Video has been vetted, and whether or
         not it was vetted safe or risky based on the presence of the
         `task_us_data.brand_safety` field, and whether or not it is empty
         """
-        d = instance.to_dict()
-        task_us_data = d.get(Sections.TASK_US_DATA, None)
+        instance_dict = instance.to_dict()
+        task_us_data = instance_dict.get(Sections.TASK_US_DATA, None)
         if task_us_data is None:
-            return "Unvetted"
+            return self.UNVETTED
+        last_vetted_at = task_us_data.get('last_vetted_at', None)
+        if last_vetted_at is None:
+            return self.UNVETTED
         brand_safety = task_us_data.get('brand_safety', None)
         if brand_safety is None:
-            return "Unvetted"
+            return self.UNVETTED
         if not len([cat_id for cat_id in brand_safety if cat_id]):
-            return "Vetted Safe"
-        return "Vetted Risky"
+            return self.VETTED_SAFE
+        return self.VETTED_RISKY
 
 
 class ESQuerysetAdapter:
