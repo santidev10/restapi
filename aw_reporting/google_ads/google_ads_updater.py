@@ -206,7 +206,7 @@ class GoogleAdsUpdater:
             formatted = "\n".join(invalid_ids)
             message = f"Invalid Opportunity aw_cids: \n{formatted}"
             subject = "Google Ads Update Errors"
-            send_mail(subject, message, settings.SERVER_EMAIL, getattr(settings, "EMERGENCY_EMAIL_ADDRESSES", []))
+            send_mail(subject, message, settings.SERVER_EMAIL, getattr(settings, "GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES", []))
         return to_update
 
     @staticmethod
