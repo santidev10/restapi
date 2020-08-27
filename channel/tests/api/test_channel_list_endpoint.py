@@ -439,3 +439,58 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         vetted_items = vetted_response.data['items']
         vetted_channel_ids = channel_ids[:3]
         self.assertEqual([item['main']['id'] for item in vetted_items], vetted_channel_ids)
+
+    def test_permissions(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        channel_id = str(next(int_iterator))
+        channel = Channel(**{
+            "meta": {"id": channel_id},
+            "main": {'id': channel_id},
+            "general_data": {
+                "title": f"channel: {channel_id}",
+                "description": f"this channel is vetted safe. Channel id: {channel_id}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        })
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert([channel])
+
+        # normal user
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertNotIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # audit vet admin
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # admin
+        user.is_staff = True
+        user.save()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertIn("blacklist_data", item_fields)

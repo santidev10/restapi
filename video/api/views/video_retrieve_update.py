@@ -13,7 +13,7 @@ from es_components.managers.video import VideoManager
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.utils import prune_iab_categories
-from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
+from video.api.serializers.video import VideoWithBlackListSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):

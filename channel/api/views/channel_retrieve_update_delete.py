@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from channel.api.serializers.channel import ChannelWithBlackListSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
