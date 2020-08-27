@@ -4,11 +4,13 @@ from datetime import date
 from datetime import timedelta
 
 from django.db.models import F
+from django.conf import settings
 from django.utils import timezone
 from google.auth.exceptions import RefreshError
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
+from administration.notifications import send_mail
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
@@ -168,14 +170,18 @@ class GoogleAdsUpdater:
 
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
         active_ids_from_opportunities = []
+        invalid_ids = []
         for opp in active_opportunities:
             try:
+                # Opportunity aw_cid periodically saved with invalid Google CIDs, e.g. WLAAS
                 aw_cid = [int(_id.strip().replace("-", "")) for _id in opp.aw_cid.split(",")]
                 active_ids_from_opportunities.extend([
                     _id
                     for _id in aw_cid
                     if _id and _id not in active_ids_from_placements
                 ])
+            except ValueError:
+                invalid_ids.append(f"{opp.name}, aw_cid={opp.aw_cid}")
             except AttributeError:
                 continue
         active_accounts_from_opportunities = Account.objects \
@@ -195,6 +201,12 @@ class GoogleAdsUpdater:
             to_update.append(account)
         if size:
             to_update = to_update[:size]
+
+        if invalid_ids:
+            formatted = "\n".join(invalid_ids)
+            message = f"Invalid Opportunity aw_cids: \n{formatted}"
+            subject = "Google Ads Update Errors"
+            send_mail(subject, message, settings.SERVER_EMAIL, getattr(settings, "EMERGENCY_EMAIL_ADDRESSES", []))
         return to_update
 
     @staticmethod
