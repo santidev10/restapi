@@ -286,7 +286,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         unvetted_response = self.client.get(unvetted_url)
         unvetted_items = unvetted_response.data['items']
         unvetted_video_ids = video_ids[3:]
-        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_video_ids)
+        self.assertEqual([item['main']['id'] for item in unvetted_items].sort(), unvetted_video_ids.sort())
 
         vetted_url = self.get_url() + urllib.parse.urlencode({
             "task_us_data.last_vetted_at": True,
@@ -294,7 +294,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         vetted_response = self.client.get(vetted_url)
         vetted_items = vetted_response.data['items']
         vetted_video_ids = video_ids[:3]
-        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_video_ids)
+        self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_video_ids.sort())
 
     def test_permissions(self):
         user = self.create_test_user()

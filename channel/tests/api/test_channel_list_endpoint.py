@@ -433,12 +433,12 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         unvetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=false")
         unvetted_items = unvetted_response.data['items']
         unvetted_channel_ids = channel_ids[3:]
-        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_channel_ids)
+        self.assertEqual([item['main']['id'] for item in unvetted_items].sort(), unvetted_channel_ids.sort())
 
         vetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=true")
         vetted_items = vetted_response.data['items']
         vetted_channel_ids = channel_ids[:3]
-        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_channel_ids)
+        self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_channel_ids.sort())
 
     def test_permissions(self):
         user = self.create_test_user()
