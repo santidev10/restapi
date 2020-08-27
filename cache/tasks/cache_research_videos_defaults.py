@@ -45,7 +45,7 @@ def cache_research_videos_defaults():
         admin_sections = default_sections + (Sections.ANALYTICS,)
 
         fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "cms", "captions", "stats",
-                          "brand_safety", "custom_captions"]
+                          "brand_safety", "custom_captions", "task_us_data"]
 
         sort = [
             {"stats.views": {"order": "desc"}},
@@ -93,7 +93,7 @@ def cache_research_videos_defaults():
         admin_queryset_adapter = queryset_adapter
         admin_queryset_adapter.manager = admin_manager
         admin_fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "cms", "captions",
-                                "stats", "brand_safety", "custom_captions"]
+                                "stats", "brand_safety", "custom_captions", "task_us_data"]
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter
         obj.sort = sort

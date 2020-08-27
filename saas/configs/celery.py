@@ -159,8 +159,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "segment.tasks.regenerate_custom_segments.regenerate_custom_segments_with_lock",
         "schedule": crontab(minute="*/10"),
     },
-    "update_opportunity_performance": {
-        "task": "dashboard.tasks.update_opportunity_performance.update_opportunity_performance_task",
+    "update_account_performance": {
+        "task": "dashboard.tasks.update_account_performance.update_account_performance_task",
         "schedule": crontab(minute="0", hour="23"),
     },
     "update_opportunities_stats": {

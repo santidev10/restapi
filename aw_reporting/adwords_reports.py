@@ -136,7 +136,7 @@ def _output_to_rows(output, fields):
 
 
 def account_performance(client, predicates=None, fields=None):
-    fields = fields or ("ActiveViewViewability", "ExternalCustomerId",)
+    fields = fields or MAIN_STATISTICS_FILEDS + ("ActiveViewViewability", "ExternalCustomerId",)
     predicates = predicates or []
     selector = {"fields": fields, "predicates": predicates, }
 
