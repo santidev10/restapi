@@ -169,6 +169,9 @@ class Permissions:
         (PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS, (
             "view_performance_details",
         )),
+        (PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA, (
+            "managed_service_hide_delivery_data",
+        )),
         (PermissionGroupNames.SELF_SERVICE, (
             "view_media_buying",
             "settings_my_aw_accounts",
