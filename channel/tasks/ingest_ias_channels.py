@@ -38,5 +38,6 @@ def ingest_ias_data():
                 row = (byte.decode("utf-8")).split(",")
                 cid = row[0].split("/")[-1]
                 # todo: Store ingested data into Elastic Search models, then move file from s3 bucket into archive
+                # todo: Steps 3-5 on Ticket
     except Exception as e:
         logger.error(e)
