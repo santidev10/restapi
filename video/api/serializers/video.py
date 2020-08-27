@@ -4,6 +4,7 @@ from rest_framework.fields import SerializerMethodField
 
 from audit_tool.models import BlacklistItem
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from es_components.constants import Sections
 from utils.brand_safety import get_brand_safety_data
 from utils.datetime import date_to_chart_data_str
 from utils.es_components_api_utils import ESDictSerializer
@@ -18,6 +19,11 @@ class VideoSerializer(ESDictSerializer):
     chart_data = SerializerMethodField()
     transcript = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop(Sections.TASK_US_DATA, None)
+        return data
 
     def get_chart_data(self, video):
         if not video.stats:
