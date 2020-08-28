@@ -1,6 +1,3 @@
-"""
-Audit Tool api urls module
-"""
 from django.conf.urls import url
 
 from .names import DashboardPathName
