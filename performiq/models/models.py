@@ -18,7 +18,7 @@ class OAuthAccount(OAuthBase):
     name = models.CharField(max_length=255, null=True, db_index=True)
     token = models.CharField(null=True, max_length=150)
     refresh_token = models.CharField(null=True, max_length=150)
-    revoked_access = models.BooleanField(default=False)
+    revoked_access = models.BooleanField(default=False, db_index=True)
 
 
 class Campaign(OAuthBase):
