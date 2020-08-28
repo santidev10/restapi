@@ -117,7 +117,7 @@ class AuditVetBaseSerializer(Serializer):
         title = getattr(self.context.get("segment", {}), "title", None)
         return title
 
-    def validate_language_code(self, value):
+    def validate_language_code(self, value: str) -> str:
         """
         Retrieve language from LANG_CODES. Raises ValidationError if not found
         :param value: str
@@ -129,7 +129,7 @@ class AuditVetBaseSerializer(Serializer):
             raise ValidationError(f"Invalid language: {value}")
         return value
 
-    def validate_iab_categories(self, values: list):
+    def validate_iab_categories(self, values: list) -> list:
         """
         Retrieve AuditCategory iab_category values. Raises ValidationError if not found
         :param values: list
@@ -139,7 +139,7 @@ class AuditVetBaseSerializer(Serializer):
         iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
-    def validate_gender(self, value):
+    def validate_gender(self, value: str) -> str:
         """
         Retrieve AuditGender value. Raises ValidationError if not found
         :param value: str
@@ -149,7 +149,7 @@ class AuditVetBaseSerializer(Serializer):
         gender_id = str(gender.id)
         return gender_id
 
-    def validate_age_group(self, value):
+    def validate_age_group(self, value: str) -> str:
         """
         Retrieve AuditAgeGroup value. Raises ValidationError if not found
         :param value: str
@@ -159,7 +159,7 @@ class AuditVetBaseSerializer(Serializer):
         age_group_id = str(age_group.id)
         return age_group_id
 
-    def validate_content_type(self, value):
+    def validate_content_type(self, value: str) -> str:
         """
         Retrieve AuditContentType value. Raises ValidationError if not found
         :param value: str
@@ -169,7 +169,7 @@ class AuditVetBaseSerializer(Serializer):
         content_type_id = str(content_type.id)
         return content_type_id
 
-    def validate_content_quality(self, value):
+    def validate_content_quality(self, value: str) -> str:
         """
         Retrieve AuditContentQuality value. Raises ValidationError if not found
         :param value: str
@@ -179,7 +179,7 @@ class AuditVetBaseSerializer(Serializer):
         content_quality_id = str(content_quality.id)
         return content_quality_id
 
-    def validate_category(self, value):
+    def validate_category(self, value: str) -> str:
         """
         Retrieve audit_tool AuditCategory. Raises ValidationError if not found
         :param value: str
@@ -189,7 +189,7 @@ class AuditVetBaseSerializer(Serializer):
         category_id = str(category.id)
         return category_id
 
-    def validate_brand_safety(self, values):
+    def validate_brand_safety(self, values: list) -> list:
         categories = []
         if values:
             if type(values[0]) is str:
@@ -206,36 +206,23 @@ class AuditVetBaseSerializer(Serializer):
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
 
-    def save_brand_safety(self, item_id):
+    def save_brand_safety(self, previous_brand_safety: list) -> tuple:
         """
-        Save brand safety categories in BlacklistItem table
-        Will rescore the video if there is a change in brand safety
-        :param item_id: str -> channel or video id
+        Will rescore the document if there is a change in brand safety
+        :param previous_brand_safety: list of brand safety categories before current vetting
         :return: list -> Brand safety category ids
         """
         should_rescore = False
-        blacklist_categories = set(self.validated_data["task_us_data"].get("brand_safety", []))
-        new_blacklist_scores = {
-            str(item): 100
-            for item in blacklist_categories
-        }
-        blacklist_item, created = BlacklistItem.objects.get_or_create(
-            item_id=item_id,
-            item_type=0 if self.data_type == "video" else 1,
-            defaults={
-                "item_id_hash": get_hash_name(item_id),
-                "blacklist_category": new_blacklist_scores,
-            })
-        # Trigger celery brand safety update task if any blacklist categories created or changed
-        if (created is True and new_blacklist_scores) or (
-            created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
-            blacklist_item.blacklist_category = new_blacklist_scores
-            blacklist_item.save()
+        new_vetted_brand_safety = set(
+            str(s) for s in
+            self.validated_data["task_us_data"].get("brand_safety", [])
+        )
+        # Rescore if any blacklist categories changed
+        if new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
             should_rescore = True
-        data = list(blacklist_item.blacklist_category.keys())
-        return data, should_rescore
+        return list(new_vetted_brand_safety), should_rescore
 
-    def save_elasticsearch(self, item_id):
+    def save_elasticsearch(self, item_id: str):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -244,22 +231,25 @@ class AuditVetBaseSerializer(Serializer):
         :return: None
         """
         try:
-            bs_data = self.es_manager.get([item_id])[0].brand_safety
+            doc = self.es_manager.get([item_id])[0]
+            bs_data = doc.brand_safety
             item_overall_score = bs_data.overall_score
             pre_limbo_score = bs_data.pre_limbo_score
+            previous_blacklist_categories = doc.task_us_data.brand_safety or []
         except (IndexError, AttributeError):
+            previous_blacklist_categories = []
             item_overall_score = None
             pre_limbo_score = None
 
-        blacklist_categories, should_rescore = self.save_brand_safety(item_id)
+        new_blacklist_categories, should_rescore = self.save_brand_safety(previous_blacklist_categories)
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
         }
-        brand_safety_category_overall_scores = self._get_brand_safety(blacklist_categories)
+        brand_safety_category_overall_scores = self._get_brand_safety(new_blacklist_categories)
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = self._get_general_data(task_us_data)
-        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
+        task_us_data["brand_safety"] = new_blacklist_categories if new_blacklist_categories else [None]
         brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score, pre_limbo_score)
 
         # Update Elasticsearch document
@@ -273,12 +263,13 @@ class AuditVetBaseSerializer(Serializer):
         )
         doc.populate_general_data(**general_data)
         self.es_manager.upsert([doc], refresh=False)
+        return doc
 
-    def _get_brand_safety(self, blacklist_categories):
+    def _get_brand_safety(self, blacklist_categories: list):
         """
         Get updated brand safety categories based on blacklist_categories
         If category is in blacklist_category, will have a score of 0. Else will have a score of 100
-        :param blacklist_categories: list
+        :param blacklist_categories: list of blacklist categories from vetting
         :return:
         """
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
