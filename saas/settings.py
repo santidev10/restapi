@@ -59,6 +59,7 @@ PROJECT_APPS = (
     "email_reports",
     "healthcheck",
     "keyword_tool",
+    "performiq",
     "related_tool",
     "segment",
     "transcripts",
