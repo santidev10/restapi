@@ -20,7 +20,8 @@ from es_components.managers.channel import ChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
-from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
+from utils.api.mutate_query_params import VettingAdminAggregationsMixin
+from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
@@ -29,6 +30,7 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
+from utils.permissions import IsVettingAdmin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -73,7 +75,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class ChannelListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
@@ -161,7 +163,6 @@ class ChannelListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, 
                 self.request.query_params["main.id"] = channels_ids
 
         if not BrandSafetyDataVisible().has_permission(self.request):
-
             if "brand_safety" in self.request.query_params:
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
@@ -175,7 +176,9 @@ class ChannelListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, 
                 except KeyError:
                     pass
 
-        self.mutate_query_params_if_valid_youtube_id(manager=ChannelManager())
+        self.guard_vetting_admin_aggregations()
+
+        self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
         self.add_fields()
 
