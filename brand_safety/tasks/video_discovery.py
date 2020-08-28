@@ -40,7 +40,7 @@ def video_discovery_scheduler():
 def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=True):
     if isinstance(video_ids, str):
         video_ids = [video_ids]
-    auditor = BrandSafetyAudit(check_rescore=True, ignore_vetted_channels=ignore_vetted_channels,
+    auditor = BrandSafetyAudit(should_check_rescore_channels=True, ignore_vetted_channels=ignore_vetted_channels,
                                ignore_vetted_videos=ignore_vetted_videos)
     auditor.process_videos(video_ids)
     to_rescore = auditor.channels_to_rescore

@@ -352,12 +352,13 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words = ""
                 title_bad_hit_words = ""
             try:
-                video_audit_score = auditor.audit_video({
+                video_audit = auditor.audit_video({
                     "id": vid.video_id,
                     "title": v.name,
                     "description": v.description,
                     "tags": v.keywords,
-                }, full_audit=False)
+                })
+                video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
                 mapped_score = map_brand_safety_score(video_audit_score)
             # pylint: disable=broad-except
             except Exception:
