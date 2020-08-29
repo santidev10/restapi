@@ -30,7 +30,6 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import IsVettingAdmin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 

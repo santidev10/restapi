@@ -110,5 +110,5 @@ class ReadOnly(permissions.BasePermission):
 class IsVettingAdmin(permissions.BasePermission):
     def has_permission(self, request, *_):
         return request.user.is_staff \
-            or request.user.has_perm("vet_audit_admin") \
+            or request.user.has_perm("userprofile.vet_audit_admin") \
             or request.user.has_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
