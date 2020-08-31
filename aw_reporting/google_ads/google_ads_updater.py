@@ -91,10 +91,8 @@ class GoogleAdsUpdater:
         self.account.update_time = timezone.now()
         self.account.save()
 
-    def update_accounts(self, account_ids):
-        if isinstance(account_ids, str):
-            account_ids = [account_ids]
-        updater = AccountUpdater(account_ids)
+    def update_account(self):
+        updater = AccountUpdater(self.account)
         self.execute_with_any_permission(updater)
 
     def update_campaigns(self):
