@@ -26,6 +26,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
+from userprofile.permissions import PermissionGroupNames
 from utils.api.exceptions import BadRequestError
 from utils.api.exceptions import PermissionsError
 from utils.datetime import now_in_default_tz
@@ -132,6 +133,16 @@ class DashboardPerformanceExportApiView(APIView):
         show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
         if not show_conversions:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.ALL_CONVERSIONS]
+        managed_service_hide_delivery_data = user.has_custom_user_group(
+            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
+        )
+        if managed_service_hide_delivery_data:
+            columns_to_hide += [
+                DashboardPerformanceReportColumn.CLICKS,
+                DashboardPerformanceReportColumn.IMPRESSIONS,
+                DashboardPerformanceReportColumn.VIEWS,
+                DashboardPerformanceReportColumn.COST,
+            ]
         return columns_to_hide
 
     def _get_date_segment_format(self):

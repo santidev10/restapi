@@ -2,6 +2,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
 from channel.tasks.export_data import export_channels_data
+from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.datetime import now_in_default_tz
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.permissions import BrandSafetyDataVisible
@@ -9,7 +10,7 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
-class ChannelListExportApiView(ESDataS3ExportApiView, APIView):
+class ChannelListExportApiView(VettingAdminAggregationsMixin, ESDataS3ExportApiView, APIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.research_exports"),
@@ -27,6 +28,8 @@ class ChannelListExportApiView(ESDataS3ExportApiView, APIView):
                 request.query_params["brand_safety"] = None
                 request.query_params._mutable = False
                 # pylint: enable=protected-access
+
+            self.guard_vetting_admin_aggregations()
 
         return super(ChannelListExportApiView, self)._get_query_params(request)
 
