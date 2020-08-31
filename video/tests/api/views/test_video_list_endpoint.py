@@ -3,6 +3,7 @@ from unittest.mock import PropertyMock
 from unittest.mock import patch
 
 from django.utils import timezone
+from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
 from es_components.constants import Sections
@@ -10,6 +11,7 @@ from es_components.managers import VideoManager
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import PermissionGroupNames
 from utils.api.research import ResearchPaginator
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
@@ -192,7 +194,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
     def test_vetted_status_field(self):
         self.create_admin_user()
         video_ids = []
-        for i in range(4):
+        for i in range(6):
             video_ids.append(str(next(int_iterator)))
 
         videos = []
@@ -213,11 +215,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "main": {'id': video_ids[1]},
             "general_data": {
                 "title": f"video: {video_ids[1]}",
-                "description": f"this video is vetted risky. Video id: {video_ids[1]}"
+                "description": f"this video is vetted safe. Video id: {video_ids[1]}"
             },
             "task_us_data": {
                 "last_vetted_at": timezone.now(),
-                "brand_safety": [1, 2, 3, 4],
             },
         }))
         videos.append(Video(**{
@@ -225,16 +226,40 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "main": {'id': video_ids[2]},
             "general_data": {
                 "title": f"video: {video_ids[2]}",
-                "description": f"this video is not vetted. Video id: {video_ids[2]}"
+                "description": f"this video is vetted risky. Video id: {video_ids[2]}"
             },
-            "task_us_data": {},
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [1, 2, 3, 4],
+            },
         }))
+        # unvetted
         videos.append(Video(**{
             "meta": {"id": video_ids[3]},
             "main": {'id': video_ids[3]},
             "general_data": {
                 "title": f"video: {video_ids[3]}",
                 "description": f"this video is not vetted. Video id: {video_ids[3]}"
+            },
+            "task_us_data": {
+                "brand_safety": [1,],
+            },
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[4]},
+            "main": {'id': video_ids[4]},
+            "general_data": {
+                "title": f"video: {video_ids[4]}",
+                "description": f"this video is not vetted. Video id: {video_ids[4]}"
+            },
+            "task_us_data": {},
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[5]},
+            "main": {'id': video_ids[5]},
+            "general_data": {
+                "title": f"video: {video_ids[5]}",
+                "description": f"this video is not vetted. Video id: {video_ids[5]}"
             },
         }))
 
@@ -251,8 +276,8 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         unvetted = [status for status in vetted_statuses if status == "Unvetted"]
         safe = [status for status in vetted_statuses if status == "Vetted Safe"]
         risky = [status for status in vetted_statuses if status == "Vetted Risky"]
-        self.assertEqual(len(unvetted), 2)
-        self.assertEqual(len(safe), 1)
+        self.assertEqual(len(unvetted), 3)
+        self.assertEqual(len(safe), 2)
         self.assertEqual(len(risky), 1)
 
         unvetted_url = self.get_url() + urllib.parse.urlencode({
@@ -260,13 +285,68 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         })
         unvetted_response = self.client.get(unvetted_url)
         unvetted_items = unvetted_response.data['items']
-        unvetted_video_ids = video_ids[2:]
-        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_video_ids)
+        unvetted_video_ids = video_ids[3:]
+        self.assertEqual([item['main']['id'] for item in unvetted_items].sort(), unvetted_video_ids.sort())
 
         vetted_url = self.get_url() + urllib.parse.urlencode({
             "task_us_data.last_vetted_at": True,
         })
         vetted_response = self.client.get(vetted_url)
         vetted_items = vetted_response.data['items']
-        vetted_video_ids = video_ids[:2]
-        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_video_ids)
+        vetted_video_ids = video_ids[:3]
+        self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_video_ids.sort())
+
+    def test_permissions(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("video_list")
+
+        video_id = str(next(int_iterator))
+        video = Video(**{
+            "meta": {"id": video_id},
+            "main": {'id': video_id},
+            "general_data": {
+                "title": f"video: {video_id}",
+                "description": f"this video is vetted safe. Video id: {video_id}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        })
+
+        VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert([video])
+
+        # normal user
+        response = self.client.get(self.get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertNotIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # audit vet admin
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(self.get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # admin
+        user.is_staff = True
+        user.save()
+        response = self.client.get(self.get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertIn("blacklist_data", item_fields)

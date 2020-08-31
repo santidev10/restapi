@@ -57,7 +57,8 @@ def clone_opportunity():
     opportunity_number = next(opportunity_number_generator)
     opportunity_name = f"Acme Instant Coffee Q2-Q3’20 {opportunity_number}"
     source_opportunity = Opportunity.objects \
-        .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID)
+        .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID) \
+        .distinct()
     opportunities = clone_model_multiple(source_opportunity,
                                          data=dict(id=DEMO_ACCOUNT_ID,
                                                    number=opportunity_number,

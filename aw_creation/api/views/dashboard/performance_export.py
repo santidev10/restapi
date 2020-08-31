@@ -62,7 +62,7 @@ class DashboardPerformanceExportApiView(APIView):
     def build_response(self, data_generator, account):
         account_name = self._get_account_name(account)
         title = "Segmented report {account_name} {timestamp}".format(
-            account_name=re.sub(r"\W", account_name, "-"),
+            account_name=re.sub(r"\W", "-", account_name),
             timestamp=now_in_default_tz().strftime("%Y%m%d"),
         )
         user = self.request.user

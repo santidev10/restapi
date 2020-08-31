@@ -45,7 +45,7 @@ def cache_research_channels_defaults():
         admin_sections = default_sections + (Sections.MONETIZATION,)
 
         fields_to_load = ["main", "social", "custom_properties", "ads_stats", "stats", "general_data", "cms",
-                          "brand_safety"]
+                          "brand_safety", "task_us_data"]
 
         sort = [
             {"stats.subscribers": {"order": "desc"}},
@@ -94,7 +94,7 @@ def cache_research_channels_defaults():
         admin_queryset_adapter.manager = admin_manager
 
         admin_fields_to_load = ["main", "social", "custom_properties", "ads_stats", "stats", "general_data", "cms",
-                                "brand_safety", "monetization"]
+                                "brand_safety", "monetization", "task_us_data"]
 
         admin_queryset_adapter.fields_to_load = admin_fields_to_load
         obj = admin_queryset_adapter

@@ -4,11 +4,11 @@ from rest_framework.generics import ListAPIView
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 import brand_safety.constants as constants
-from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from channel.api.serializers.channel import ChannelWithBlackListSerializer
 from es_components.constants import Sections
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import ESQuerysetAdapter
-from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
+from video.api.serializers.video import VideoWithBlackListSerializer
 
 
 class SegmentListAPIViewAdapter(ListAPIView):

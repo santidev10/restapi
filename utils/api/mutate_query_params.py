@@ -13,14 +13,15 @@ def mutate_query_params(query_params):
 class AddFieldsMixin:
     ADDITIONAL_FIELDS = [
         "task_us_data.brand_safety",
+        "task_us_data.last_vetted_at",
     ]
 
     def add_fields(self):
         fields_str = self.request.query_params.get('fields', None)
         if fields_str:
             fields = fields_str.split(',')
-            for add in self.ADDITIONAL_FIELDS:
-                fields.append(add)
+            for additional_field in self.ADDITIONAL_FIELDS:
+                fields.append(additional_field)
 
             with mutate_query_params(self.request.query_params):
                 self.request.query_params['fields'] = ','.join(list(set(fields)))

@@ -343,10 +343,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_vetted_status_field(self):
         self.create_admin_user()
         channel_ids = []
-        for i in range(4):
+        for i in range(6):
             channel_ids.append(str(next(int_iterator)))
 
         channels = []
+        # vetted
         channels.append(Channel(**{
             "meta": {"id": channel_ids[0]},
             "main": {'id': channel_ids[0]},
@@ -364,11 +365,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             "main": {'id': channel_ids[1]},
             "general_data": {
                 "title": f"channel: {channel_ids[1]}",
-                "description": f"this channel is vetted risky. Channel id: {channel_ids[1]}"
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[1]}"
             },
             "task_us_data": {
                 "last_vetted_at": timezone.now(),
-                "brand_safety": [1, 2, 3, 4],
             },
         }))
         channels.append(Channel(**{
@@ -376,16 +376,40 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             "main": {'id': channel_ids[2]},
             "general_data": {
                 "title": f"channel: {channel_ids[2]}",
-                "description": f"this channel is not vetted. Channel id: {channel_ids[2]}"
+                "description": f"this channel is vetted risky. Channel id: {channel_ids[2]}"
             },
-            "task_us_data": {},
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [1, 2, 3, 4],
+            },
         }))
+        # unvetted
         channels.append(Channel(**{
             "meta": {"id": channel_ids[3]},
             "main": {'id': channel_ids[3]},
             "general_data": {
                 "title": f"channel: {channel_ids[3]}",
                 "description": f"this channel is not vetted. Channel id: {channel_ids[3]}"
+            },
+            "task_us_data": {
+                "brand_safety": [1,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[4]},
+            "main": {'id': channel_ids[4]},
+            "general_data": {
+                "title": f"channel: {channel_ids[4]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[4]}"
+            },
+            "task_us_data": {},
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[5]},
+            "main": {'id': channel_ids[5]},
+            "general_data": {
+                "title": f"channel: {channel_ids[5]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[5]}"
             },
         }))
 
@@ -402,16 +426,71 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         unvetted = [status for status in vetted_statuses if status == "Unvetted"]
         safe = [status for status in vetted_statuses if status == "Vetted Safe"]
         risky = [status for status in vetted_statuses if status == "Vetted Risky"]
-        self.assertEqual(len(unvetted), 2)
-        self.assertEqual(len(safe), 1)
+        self.assertEqual(len(unvetted), 3)
+        self.assertEqual(len(safe), 2)
         self.assertEqual(len(risky), 1)
 
         unvetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=false")
         unvetted_items = unvetted_response.data['items']
-        unvetted_channel_ids = channel_ids[2:]
-        self.assertEqual([item['main']['id'] for item in unvetted_items], unvetted_channel_ids)
+        unvetted_channel_ids = channel_ids[3:]
+        self.assertEqual([item['main']['id'] for item in unvetted_items].sort(), unvetted_channel_ids.sort())
 
         vetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=true")
         vetted_items = vetted_response.data['items']
-        vetted_channel_ids = channel_ids[:2]
-        self.assertEqual([item['main']['id'] for item in vetted_items], vetted_channel_ids)
+        vetted_channel_ids = channel_ids[:3]
+        self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_channel_ids.sort())
+
+    def test_permissions(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        channel_id = str(next(int_iterator))
+        channel = Channel(**{
+            "meta": {"id": channel_id},
+            "main": {'id': channel_id},
+            "general_data": {
+                "title": f"channel: {channel_id}",
+                "description": f"this channel is vetted safe. Channel id: {channel_id}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        })
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert([channel])
+
+        # normal user
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertNotIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # audit vet admin
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # admin
+        user.is_staff = True
+        user.save()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertIn("blacklist_data", item_fields)
