@@ -327,13 +327,11 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "alex.peace@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "sean.maguire@channelfactory.com",
 ]
 
 VETTING_EXPORT_EMAIL_RECIPIENTS = [
     "alex.peace@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "sean.maguire@channelfactory.com",
 ]
 
 EMERGENCY_EMAIL_ADDRESSES = [
@@ -346,7 +344,8 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "maria.konareva@sigma.software",
     "oleksandr.demianyshyn@sigma.software",
-    "sean.maguire@channelfactory.com",
+    "megumi.sato@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
@@ -358,19 +357,20 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "george.su@channelfactory.com",
     "kenneth.oh@channelfactory.com",
     "oleksandr.demianyshyn@sigma.software",
-    "sean.maguire@channelfactory.com",
     "sergey.zhiltsov@sigma.software",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
-    "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
 ]
 
 GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
+    "george.su@channelfactory.com",
+    "servando.berna@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
@@ -389,7 +389,6 @@ DAILY_APEX_REPORT_EMAIL_ADDRESSES = []
 
 DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
-    "sean.maguire@channelfactory.com",
     "alex.peace@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
