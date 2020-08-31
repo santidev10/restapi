@@ -15,7 +15,8 @@ from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
-from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
+from utils.api.mutate_query_params import ValidYoutubeIdMixin
+from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -36,7 +37,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class VideoListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin, APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.video_list"),
@@ -144,7 +145,9 @@ class VideoListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, AP
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
 
-        self.mutate_query_params_if_valid_youtube_id(manager=VideoManager())
+        self.guard_vetting_admin_aggregations()
+
+        self.ensure_exact_youtube_id_result(manager=VideoManager())
 
         self.add_fields()
 

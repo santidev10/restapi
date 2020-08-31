@@ -1,4 +1,5 @@
 import urllib
+from urllib.parse import urlencode
 from unittest.mock import PropertyMock
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
+from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.research import ResearchPaginator
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
@@ -263,8 +265,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             },
         }))
 
-        for video in videos:
-            VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert([video])
+        VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert(videos)
 
         response = self.client.get(self.get_url())
         items = response.data['items']
@@ -350,3 +351,74 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         item_fields = list(item.keys())
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
+
+    def test_vetting_admin_guard(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("video_list")
+
+        video_ids = []
+        for i in range(2):
+            video_ids.append(str(next(int_iterator)))
+        videos = []
+        # vetted
+        videos.append(Video(**{
+            "meta": {"id": video_ids[0]},
+            "main": {'id': video_ids[0]},
+            "general_data": {
+                "title": f"video: {video_ids[0]}",
+                "description": f"this video is vetted safe. Video id: {video_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        videos.append(Video(**{
+            "meta": {"id": video_ids[1]},
+            "main": {'id': video_ids[1]},
+            "general_data": {
+                "title": f"video: {video_ids[1]}",
+                "description": f"this video is not vetted. Video id: {video_ids[1]}"
+            },
+        }))
+
+        VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert(videos)
+
+        url = self.get_url() + urlencode({
+            "aggregations": ",".join(ALLOWED_VIDEO_AGGREGATIONS),
+        })
+        vetting_admin_aggregations = ['task_us_data.last_vetted_at:exists', 'task_us_data.last_vetted_at:missing']
+
+        # normal user should not see vetting admin aggs
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertNotIn(aggregation, response_aggregation_keys)
+
+        # admin should see aggs
+        user.is_staff = True
+        user.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)
+
+        # vetting admin should see aggs
+        user.is_staff = False
+        user.save()
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)
