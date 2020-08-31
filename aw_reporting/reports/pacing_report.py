@@ -1774,8 +1774,10 @@ def get_flight_daily_budget(flight):
         flight_projected_budget = flight.ordered_units / 1000 * get_average_cpm(flight.cost, flight.delivered_units)
     else:
         flight_projected_budget = flight.ordered_units * get_average_cpv(flight.cost, flight.delivered_units)
-
-    flight_daily_budget = flight_projected_budget * today_allocation.allocation / 100 / days_count
+    try:
+        flight_daily_budget = flight_projected_budget * today_allocation.allocation / 100 / days_count
+    except ZeroDivisionError:
+        flight_daily_budget = 0
     return flight_daily_budget
 
 
