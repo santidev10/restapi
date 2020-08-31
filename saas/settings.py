@@ -370,6 +370,7 @@ GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
     "servando.berna@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
