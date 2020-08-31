@@ -14,9 +14,9 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.mutate_query_params import mutate_query_params
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
+from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
@@ -27,8 +27,9 @@ from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from video.api.serializers.video import VideoAdminSerializer
 from video.api.serializers.video import VideoSerializer
-from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
+from video.api.serializers.video import VideoWithVettedStatusSerializer
 from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
@@ -109,7 +110,9 @@ class VideoListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, AP
 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
-            return VideoWithBlackListSerializer
+            return VideoAdminSerializer
+        if self.request.user.has_perm("userprofile.vet_audit_admin"):
+            return VideoWithVettedStatusSerializer
         return VideoSerializer
 
     def get_queryset(self):

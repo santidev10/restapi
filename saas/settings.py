@@ -368,6 +368,11 @@ UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "servando.berna@channelfactory.com",
 ]
 
+GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
+    "kenneth.oh@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+]
+
 SALESFORCE_UPDATES_ADDRESSES = []
 SALESFORCE_UPDATE_DELAY_DAYS = 5
 
