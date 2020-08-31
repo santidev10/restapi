@@ -147,7 +147,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         with override_settings(DEMO_SOURCE_ACCOUNT_ID=source_account.id):
             recreate_demo_data()
 
-        expected_name_pattern = r"Acme Instant Coffee Q2-Q3’20 OP\d+"
+        expected_name_pattern = r"Acme-Instant-Coffee-Q2-Q3-20-OP\d+"
         opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
         account = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
         self.assertTrue(re.search(expected_name_pattern, opportunity.name))
