@@ -698,7 +698,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         user = self.create_test_user()
         test_now = datetime(2018, 6, 24)
         user.add_custom_user_permission("view_dashboard")
-        test_account_name = "Test Account"
+        test_account_name = "Test-Account"
         account = Account.objects.create(id=next(int_iterator), name=test_account_name)
         expected_filename = "Segmented report {account_name} {year}{month}{day}.xlsx".format(
             account_name=test_account_name,
