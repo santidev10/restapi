@@ -1,7 +1,12 @@
 import logging
 
 from django.conf import settings
+from django.utils import timezone
 
+from audit_tool.models import AuditChannel
+from audit_tool.models import IASChannel
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from saas import celery_app
 from utils.aws.s3_exporter import S3Exporter
 
@@ -17,6 +22,7 @@ class IASIngestor(S3Exporter):
         key = name
         return key
 
+
     @classmethod
     def list_objects(cls):
         s3 = cls._s3()
@@ -29,15 +35,26 @@ class IASIngestor(S3Exporter):
 def ingest_ias_data():
     ingestor = IASIngestor()
     objects = ingestor.list_objects()
+    channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.IAS_DATA, Sections.CUSTOM_PROPERTIES),
+                                     upsert_sections=(Sections.MAIN, Sections.IAS_DATA, Sections.CUSTOM_PROPERTIES))
     try:
         contents = objects["Contents"]
         file_names = [content["Key"] for content in contents]
         for file_name in file_names:
             ias_content = ingestor._get_s3_object(name=file_name)
+            new_cids = []
             for byte in ias_content["Body"].iter_lines():
                 row = (byte.decode("utf-8")).split(",")
                 cid = row[0].split("/")[-1]
-                # todo: Store ingested data into Elastic Search models, then move file from s3 bucket into archive
-                # todo: Steps 3-5 on Ticket
+                new_cids.append(cid)
+            new_channels = channel_manager.get_or_create(new_cids)
+            for channel in new_channels:
+                channel.custom_properties.is_tracked = True
+                channel.ias_data.ias_verified = timezone.now()
+                IASChannel.get_or_create(channel_id=channel.main.id)
+            source_key = file_name
+            dest_key = f"archive/{file_name}"
+            ingestor.copy_from(source_key, dest_key)
+            ingestor.delete_obj(source_key)
     except Exception as e:
         logger.error(e)
