@@ -41,6 +41,8 @@ def ingest_ias_data():
         contents = objects["Contents"]
         file_names = [content["Key"] for content in contents]
         for file_name in file_names:
+            if file_name == "archive/":
+                continue
             ias_content = ingestor._get_s3_object(name=file_name)
             new_cids = []
             for byte in ias_content["Body"].iter_lines():
@@ -53,9 +55,11 @@ def ingest_ias_data():
             for channel in new_channels:
                 if not channel:
                     continue
+                channel_id = channel.meta.id
                 channel.custom_properties.is_tracked = True
                 channel.ias_data.ias_verified = timezone.now()
-                IASChannel.get_or_create(channel_id=channel.main.id)
+                ias_channel = IASChannel.get_or_create(channel_id=channel_id)
+            channel_manager.upsert(new_channels)
             source_key = file_name
             dest_key = f"archive/{file_name}"
             ingestor.copy_from(source_key, dest_key)
