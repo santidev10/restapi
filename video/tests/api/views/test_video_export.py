@@ -291,7 +291,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        self._request_collect_file(brand_safety=constants.LOW_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -313,7 +313,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        self._request_collect_file(brand_safety=constants.LOW_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -331,16 +331,16 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
         videos = [Video(next(int_iterator)) for _ in range(2)]
 
-        videos[0].populate_brand_safety(overall_score=54)
-        videos[1].populate_brand_safety(overall_score=87)
+        videos[0].populate_brand_safety(overall_score=74)
+        videos[1].populate_brand_safety(overall_score=77)
 
         manager.upsert(videos)
 
-        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        self._request_collect_file(brand_safety=constants.LOW_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[11])
-        self.assertEqual(5, int(rows[0][12]))
-        self.assertEqual(8, int(rows[1][12]))
+        self.assertEqual(7, int(rows[0][12]))
+        self.assertEqual(7, int(rows[1][12]))

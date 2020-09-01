@@ -319,7 +319,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
             channel.populate_stats(total_videos_count=10)
-            channel.populate_brand_safety(overall_score=50)
+            channel.populate_brand_safety(overall_score=70)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
 
@@ -359,9 +359,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_brand_safety_score_mapped(self, *args):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
-        channels[0].populate_brand_safety(overall_score=49)
+        channels[0].populate_brand_safety(overall_score=71)
         channels[0].populate_stats(total_videos_count=100)
-        channels[1].populate_brand_safety(overall_score=62)
+        channels[1].populate_brand_safety(overall_score=78)
         channels[1].populate_stats(total_videos_count=100)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
@@ -371,5 +371,5 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[15])
-        self.assertEqual(4, int(rows[0][15]))
-        self.assertEqual(6, int(rows[1][15]))
+        self.assertEqual(7, int(rows[0][15]))
+        self.assertEqual(7, int(rows[1][15]))
