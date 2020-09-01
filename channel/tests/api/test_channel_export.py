@@ -323,7 +323,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -345,7 +345,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -365,7 +365,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channels[1].populate_stats(total_videos_count=100)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)

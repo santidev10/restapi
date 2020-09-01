@@ -291,7 +291,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -313,7 +313,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -336,7 +336,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         manager.upsert(videos)
 
-        self._request_collect_file(brand_safety=constants.LOW_RISK)
+        self._request_collect_file(brand_safety=constants.RISKY)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
