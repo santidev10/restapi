@@ -46,9 +46,13 @@ def ingest_ias_data():
             for byte in ias_content["Body"].iter_lines():
                 row = (byte.decode("utf-8")).split(",")
                 cid = row[0].split("/")[-1]
+                if len(cid) < 24:
+                    continue
                 new_cids.append(cid)
             new_channels = channel_manager.get_or_create(new_cids)
             for channel in new_channels:
+                if not channel:
+                    continue
                 channel.custom_properties.is_tracked = True
                 channel.ias_data.ias_verified = timezone.now()
                 IASChannel.get_or_create(channel_id=channel.main.id)
