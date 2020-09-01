@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class BrandSafetyParamAdapter:
     scores = {
-        brand_safety_constants.HIGH_RISK: "0,69",
+        # brand_safety_constants.HIGH_RISK: "0,69",
         brand_safety_constants.RISKY: "70,79",
         brand_safety_constants.LOW_RISK: "80,89",
         brand_safety_constants.SAFE: "90,100"
