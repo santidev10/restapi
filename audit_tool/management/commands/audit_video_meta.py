@@ -291,13 +291,17 @@ class Command(BaseCommand):
                 avp.channel = db_video.channel
                 blocklisted = False
                 if not self.audit.params.get("override_blocklist"):
-                    blocklisted = self.check_video_is_blocklisted(db_video.video_id, avp)
+                    blocklisted = self.check_video_is_blocklisted(db_video.video_id, channel_id, avp)
                 if not blocklisted:
                     avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()
 
-    def check_video_is_blocklisted(self, video_id, avp):
+    def check_video_is_blocklisted(self, video_id, channel_id, avp):
+        if BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM):
+            avp.word_hits["exclusion"] = ['blocklist']
+            #self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
+            return True
         if BlacklistItem.get(video_id, BlacklistItem.VIDEO_ITEM):
             avp.word_hits["exclusion"] = ['blocklist']
             self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
