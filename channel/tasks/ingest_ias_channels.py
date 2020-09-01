@@ -59,6 +59,8 @@ def ingest_ias_data():
                 channel.custom_properties.is_tracked = True
                 channel.ias_data.ias_verified = timezone.now()
                 ias_channel = IASChannel.get_or_create(channel_id=channel_id)
+                ias_channel.ias_verified = timezone.now()
+                ias_channel.save(update_fields=["ias_verified"])
             channel_manager.upsert(new_channels)
             source_key = file_name
             dest_key = f"archive/{file_name}"
