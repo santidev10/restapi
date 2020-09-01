@@ -23,6 +23,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import BlacklistItem
 from audit_tool.utils.audit_utils import AuditUtils
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
@@ -288,9 +289,19 @@ class Command(BaseCommand):
                     db_channel_meta.save(
                         update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
                 avp.channel = db_video.channel
-                avp.clean = self.check_video_is_clean(db_video_meta, avp)
+                blocklisted = False
+                if not self.audit.params.get("override_blocklist"):
+                    blocklisted = self.check_video_is_blocklisted(db_video.video_id, avp)
+                if not blocklisted:
+                    avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()
+
+    def check_video_is_blocklisted(self, video_id, avp):
+        if BlacklistItem.get(video_id, BlacklistItem.VIDEO_ITEM):
+            avp.word_hits["exclusion"] = ['blocklist']
+            self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
+            return True
 
     def check_video_is_clean(self, db_video_meta, avp):
         title_string = remove_tags_punctuation("" if not db_video_meta.name else db_video_meta.name)
