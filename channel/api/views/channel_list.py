@@ -5,8 +5,9 @@ from rest_framework.permissions import IsAdminUser
 
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
+from channel.api.serializers.channel import ChannelAdminSerializer
 from channel.api.serializers.channel import ChannelSerializer
-from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from channel.api.serializers.channel import ChannelWithVettedStatusSerializer
 from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
@@ -18,9 +19,9 @@ from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.mutate_query_params import mutate_query_params
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import MutateQueryParamIfValidYoutubeIdMixin
+from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -141,7 +142,9 @@ class ChannelListApiView(AddFieldsMixin, MutateQueryParamIfValidYoutubeIdMixin, 
 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
-            return ChannelWithBlackListSerializer
+            return ChannelAdminSerializer
+        if self.request.user.has_perm("userprofile.vet_audit_admin"):
+            return ChannelWithVettedStatusSerializer
         return ChannelSerializer
 
     def get_queryset(self):

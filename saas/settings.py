@@ -59,6 +59,7 @@ PROJECT_APPS = (
     "email_reports",
     "healthcheck",
     "keyword_tool",
+    "performiq",
     "related_tool",
     "segment",
     "transcripts",
@@ -366,6 +367,11 @@ UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
     "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
+]
+
+GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
+    "kenneth.oh@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
