@@ -287,7 +287,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         videos = [Video(next(int_iterator)) for _ in range(2)]
 
         for video in videos:
-            video.populate_brand_safety(overall_score=50)
+            video.populate_brand_safety(overall_score=70)
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
