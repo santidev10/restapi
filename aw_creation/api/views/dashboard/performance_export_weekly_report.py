@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 from userprofile.constants import UserSettingsKey
+from userprofile.permissions import PermissionGroupNames
 from utils.views import xlsx_response
 
 
@@ -40,7 +41,13 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
 
         filters = self.get_filters()
         show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
-        report = DashboardPerformanceWeeklyReport(item.account, show_conversions, **filters)
+        managed_service_hide_delivery_data = request.user.has_custom_user_group(
+            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
+        )
+        report = DashboardPerformanceWeeklyReport(
+            item.account, show_conversions, managed_service_hide_delivery_data,
+            **filters
+        )
         title = " ".join([f for f in [
             "ViewIQ",
             item.name,
