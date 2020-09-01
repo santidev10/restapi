@@ -8,8 +8,6 @@ from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from audit_tool.models import BlacklistItem
-from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
