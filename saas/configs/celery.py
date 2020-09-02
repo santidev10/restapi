@@ -167,7 +167,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.update.update_opportunities.update_opportunities_task",
         "schedule": crontab(minute="0", hour="*"),
     },
-    "daily_ingest_ias_data": {
+    "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
         "schedule": crontab(hour="0", minute="0"),
     },
