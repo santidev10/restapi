@@ -74,7 +74,7 @@ def setup_cid_update_tasks():
     campaign_update_tasks = group_chorded(task_signatures).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         campaign_update_tasks,
-        finalize_campaigns_update.si(cid_account_ids),
+        finalize_campaigns_update.si(),
         unlock.si(lock_name=LOCK_NAME, fail_silently=True).set(queue=Queue.HOURLY_STATISTIC),
     )
     return job()
@@ -99,21 +99,18 @@ def cid_campaign_update(cid_id):
     """
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
-    GoogleAdsUpdater(cid_account).update_campaigns()
+    updater = GoogleAdsUpdater(cid_account)
+    updater.update_campaigns()
+    updater.update_account()
     logger.debug("CID CAMPAIGNS UPDATE COMPLETE FOR CID: %s. Took: %s", cid_id, time.time() - start)
 
 
 @celery_app.task
-def finalize_campaigns_update(cid_account_ids):
+def finalize_campaigns_update():
     """
     Call finalize methods
     Sets up the next batch of update tasks
     :return:
     """
-
-    # Just use first account to access refresh tokens
-    cid = Account.objects.filter(id__in=cid_account_ids).first()
-    if cid:
-        GoogleAdsUpdater(cid).update_accounts(cid_account_ids)
     add_relation_between_report_and_creation_campaigns()
     logger.debug("Google Ads account and campaign update complete")
