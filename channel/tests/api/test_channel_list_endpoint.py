@@ -1,4 +1,5 @@
 import urllib
+from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
 from mock import patch
@@ -15,6 +16,7 @@ from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
+from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -413,8 +415,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             },
         }))
 
-        for channel in channels:
-            ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert([channel])
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert(channels)
 
         response = self.client.get(self.url)
         items = response.data['items']
@@ -494,3 +495,74 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         item_fields = list(item.keys())
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
+
+    def test_vetting_admin_guard(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        channel_ids = []
+        for i in range(2):
+            channel_ids.append(str(next(int_iterator)))
+        channels = []
+        # vetted
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[0]},
+            "main": {'id': channel_ids[0]},
+            "general_data": {
+                "title": f"channel: {channel_ids[0]}",
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[1]},
+            "main": {'id': channel_ids[1]},
+            "general_data": {
+                "title": f"channel: {channel_ids[1]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[1]}"
+            },
+        }))
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert(channels)
+
+        url = self.url + "?" + urlencode({
+            "aggregations": ",".join(ALLOWED_CHANNEL_AGGREGATIONS),
+        })
+        vetting_admin_aggregations = ['task_us_data.last_vetted_at:exists', 'task_us_data.last_vetted_at:missing']
+
+        # normal user should not see vetting admin aggs
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertNotIn(aggregation, response_aggregation_keys)
+
+        # admin should see aggs
+        user.is_staff = True
+        user.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)
+
+        # vetting admin should see aggs
+        user.is_staff = False
+        user.save()
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)
