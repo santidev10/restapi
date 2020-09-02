@@ -37,12 +37,12 @@ def ingest_ias_data():
     objects = ingestor.list_objects()
     channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.IAS_DATA, Sections.CUSTOM_PROPERTIES),
                                      upsert_sections=(Sections.MAIN, Sections.IAS_DATA, Sections.CUSTOM_PROPERTIES))
-    try:
-        contents = objects["Contents"]
-        file_names = [content["Key"] for content in contents]
-        for file_name in file_names:
-            if file_name == "archive/":
-                continue
+    contents = objects["Contents"]
+    file_names = [content["Key"] for content in contents]
+    for file_name in file_names:
+        if file_name == "archive/":
+            continue
+        try:
             ias_content = ingestor._get_s3_object(name=file_name)
             new_cids = []
             for byte in ias_content["Body"].iter_lines():
@@ -65,6 +65,8 @@ def ingest_ias_data():
             source_key = file_name
             dest_key = f"archive/{file_name}"
             ingestor.copy_from(source_key, dest_key)
-            ingestor.delete_obj(source_key)
-    except Exception as e:
-        logger.error(e)
+            if settings.ARCHIVE_IAS:
+                ingestor.delete_obj(source_key)
+        except Exception as e:
+            logger.error(e)
+            continue
