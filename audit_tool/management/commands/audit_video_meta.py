@@ -294,6 +294,8 @@ class Command(BaseCommand):
                     blocklisted = self.check_video_is_blocklisted(db_video.video_id, channel_id, avp)
                 if not blocklisted:
                     avp.clean = self.check_video_is_clean(db_video_meta, avp)
+                else:
+                    avp.clean = False
                 avp.processed = timezone.now()
                 avp.save()
 
