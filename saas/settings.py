@@ -434,6 +434,7 @@ AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
+AMAZON_S3_IAS_BUCKET_NAME = "cf-ias"
 
 MAX_AVATAR_SIZE_MB = 10.
 
@@ -507,6 +508,9 @@ TRANSCRIPTS_TIMEOUT = 4
 PROXY_API_TOKEN = ""
 PROXY_HOST = ""
 PROXY_PORT = ""
+
+IAS_ARCHIVE_FOLDER = "archive/"
+ARCHIVE_IAS = False
 
 TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
     "george.su@channelfactory.com",
