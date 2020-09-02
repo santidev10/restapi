@@ -45,7 +45,7 @@ def ingest_ias_channels():
         contents = objects["Contents"]
         file_names = [content["Key"] for content in contents]
         for file_name in file_names:
-            if file_name == "archive/":
+            if file_name in ["archive/", "archive-rc/"]:
                 continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
@@ -68,7 +68,7 @@ def ingest_ias_channels():
                     ias_channel.save(update_fields=["ias_verified"])
                 channel_manager.upsert(new_channels)
                 source_key = file_name
-                dest_key = f"archive/{file_name}"
+                dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
                 ingestor.copy_from(source_key, dest_key)
                 if settings.ARCHIVE_IAS:
                     ingestor.delete_obj(source_key)
