@@ -1,6 +1,7 @@
 import re
 
 from rest_framework.serializers import CharField
+from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
@@ -12,6 +13,7 @@ class BrandSafetyChannelSerializer(Serializer):
     id = CharField(source="main.id")
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
+    brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
     is_vetted = SerializerMethodField()
     video_tags = SerializerMethodField()
     updated_at = SerializerMethodField()
@@ -42,6 +44,7 @@ class BrandSafetyVideoSerializer(Serializer):
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
     language = CharField(source="general_data.lang_code", default="")
+    brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
     is_vetted = SerializerMethodField()
     tags = SerializerMethodField()
     transcript = SerializerMethodField()

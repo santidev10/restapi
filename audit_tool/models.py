@@ -11,6 +11,7 @@ from django.db.models import IntegerField
 from django.utils import timezone
 
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
+from utils.models import Timestampable
 
 
 def get_hash_name(s):
@@ -452,7 +453,6 @@ class AuditChannel(models.Model):
         return None
 
 
-
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -827,3 +827,25 @@ class AuditContentQuality(models.Model):
             item_id = value
         quality = AuditContentQuality.objects.get(id=item_id)
         return quality
+
+
+class IASChannel(Timestampable):
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
+    ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
+
+    @staticmethod
+    def get_or_create(channel_id, create=True):
+        audit_channel = AuditChannel.get_or_create(channel_id)
+        res = IASChannel.objects.filter(channel=audit_channel)
+        for r in res:
+            if r.channel == audit_channel:
+                return r
+        if create:
+            try:
+                return IASChannel.objects.create(
+                    channel=audit_channel,
+                    ias_verified=timezone.now()
+                )
+            except IntegrityError:
+                return IASChannel.objects.get(channel=audit_channel)
+        return None

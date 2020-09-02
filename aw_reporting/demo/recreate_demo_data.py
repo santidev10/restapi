@@ -91,6 +91,7 @@ def clone_campaign(source_campaign, target_account, index):
     campaign_name = re.sub(r"PL\d+", placement_number, replacement_name)
     campaign = clone_model(source_campaign, data=dict(account_id=target_account.id,
                                                       name=campaign_name,
+                                                      placement_code=placement_number,
                                                       salesforce_placement_id=op_placement.id))
     clone_model_multiple(source_campaign.campaign_creation.all(), campaign, target_account.account_creation)
     for ag_index, ad_group in enumerate(source_campaign.ad_groups.all()):
