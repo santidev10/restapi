@@ -64,6 +64,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         new_number = demo_campaign.salesforce_placement.number
         expected_name = origin_name_template.format(new_number)
         self.assertEqual(demo_campaign.name, expected_name)
+        self.assertEqual(demo_campaign.placement_code, new_number)
 
     @generic_test([
         (None, args, dict())
