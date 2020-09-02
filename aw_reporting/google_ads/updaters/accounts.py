@@ -1,47 +1,52 @@
 """ Update individual Google Ads CID accounts """
+import logging
+
 from django.db.models import Sum
 
 from aw_reporting.adwords_reports import account_performance
 from aw_reporting.models import Account
 from aw_reporting.update.adwords_utils import get_base_stats
 
+logger = logging.getLogger(__name__)
+
 
 class AccountUpdater:
-    def __init__(self, account_ids):
-        self.account_ids = [account_ids] if not isinstance(account_ids, list) else account_ids
-        self._quartile_rate_fields = [f"video_views_{rate}_quartile" for rate in  ("25", "50", "75", "100")]
+    def __init__(self, account):
+        self._quartile_rate_fields = [f"video_views_{rate}_quartile" for rate in ("25", "50", "75", "100")]
+        self.account = account
 
     def update(self, client):
         try:
             predicates = [
-                {"field": "ExternalCustomerId", "operator": "IN", "values": self.account_ids},
+                {"field": "ExternalCustomerId", "operator": "IN", "values": self.account.id},
             ]
             aggregated_stats_mapping = self._get_aggregated_stats()
             report = account_performance(client, predicates=predicates)
-            accounts = self._get_stats(report, aggregated_stats_mapping)
-            Account.objects.bulk_update(accounts, fields=["clicks", "video_views", "impressions", "cost",
-                                                          "active_view_viewability"] + self._quartile_rate_fields)
-
+            account = self._set_stats(report, aggregated_stats_mapping)
+            account.save()
         except IndexError:
-            pass
+            logger.warning(f"Unable to get stats for cid: {self.account.id}")
 
-    def _get_stats(self, report, aggregated_stats):
-        for row in report:
-            stats = get_base_stats(row)
-            account_id = int(row.ExternalCustomerId)
-            try:
-                active_view_viewability = float(row.ActiveViewViewability.strip("%"))
-            except (ValueError, TypeError):
-                active_view_viewability = 0
-            stats.update({
-                "id": account_id,
-                "active_view_viewability": active_view_viewability,
-                **aggregated_stats.get(account_id, {})
-            })
-            yield Account(**stats)
+    def _set_stats(self, report, aggregated_stats):
+        row = report[0]
+        stats = get_base_stats(row)
+        account_id = int(row.ExternalCustomerId)
+        try:
+            active_view_viewability = float(row.ActiveViewViewability.strip("%"))
+        except (ValueError, TypeError):
+            active_view_viewability = 0
+        stats.update({
+            "id": account_id,
+            "active_view_viewability": active_view_viewability,
+            **aggregated_stats.get(account_id, {})
+        })
+        [
+            setattr(self.account, key, value) for key, value in stats.items()
+        ]
+        return self.account
 
     def _get_aggregated_stats(self):
-        queryset = Account.objects.filter(id__in=self.account_ids).values("id")
+        queryset = Account.objects.filter(id__in=[self.account.id]).values("id")
         self._stats_annotation = {
             **{
                 quartile_field: Sum(f"campaigns__{quartile_field}")
@@ -53,3 +58,4 @@ class AccountUpdater:
             stats.pop("id"): stats for stats in aggregated_stats
         }
         return aggregated_stats_mapping
+

@@ -352,13 +352,17 @@ class DashboardPerformanceWeeklyReport:
 
         return filters
 
-    def __init__(self, account, show_conversions, campaigns=None, ad_groups=None):
+    def __init__(self, account, show_conversions, managed_service_hide_delivery_data,
+                 campaigns=None, ad_groups=None):
         # Obtain visible campaigns
         self.account = account
         self.campaigns = campaigns or []
         self.ad_groups = ad_groups or []
         self.date_delta = now_in_default_tz().date() - timedelta(days=7)
         self.show_conversions = show_conversions
+        self.hide_columns = (1, 2, 4) if managed_service_hide_delivery_data else ()
+        self.hide_columns_ranges = ("C:D", "F:F") \
+            if managed_service_hide_delivery_data else ()
         self.merge_format = None
         self.bold_format = None
         self.annotation_format = None
@@ -391,6 +395,8 @@ class DashboardPerformanceWeeklyReport:
         next_row = self.prepare_topic_section(next_row)
         next_row = self.prepare_keyword_section(next_row)
         self.prepare_device_section(next_row)
+        for hide_range in self.hide_columns_ranges:
+            self.worksheet.set_column(hide_range, None, None, {'hidden': True})
         # Close document, prepare and return file response
         self.workbook.close()
         return self.output.getvalue()
@@ -407,6 +413,8 @@ class DashboardPerformanceWeeklyReport:
         for row in data:
             for column, value in enumerate(row):
                 current_column = self.start_column + column
+                if column in self.hide_columns:
+                    value = ''
                 if default_format is not None:
                     style = default_format
                 else:
