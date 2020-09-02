@@ -1,8 +1,10 @@
 from datetime import timedelta
 from mock import patch
+from mock import MagicMock
 
 from django.utils import timezone
 from elasticsearch_dsl import Q
+import redis
 
 from brand_safety.tasks.channel_outdated import channel_outdated_scheduler
 from es_components.constants import Sections
@@ -36,7 +38,11 @@ class ChannelOutdatedTestCase(ExtendedAPITestCase, ESTestCase):
         )
         with patch.object(ChannelManager, "forced_filters", return_value=Q({"bool": {}})),\
                 patch("es_components.managers.base.datetime_service.now", return_value=outdated),\
-                patch("brand_safety.tasks.channel_outdated.channel_update_helper") as helper_mock:
+                patch("brand_safety.tasks.channel_outdated.channel_update_helper") as helper_mock,\
+                patch("utils.celery.tasks.REDIS_CLIENT") as mock_redis:
+            mock_lock = MagicMock()
+            mock_lock.acquire.return_value = True
+            mock_redis.lock.return_value = mock_lock
             self.channel_manager.upsert([doc_has_task_us_data, doc_outdated_bs_has_task_us_data])
             self.channel_manager.upsert_sections = [Sections.MAIN, Sections.BRAND_SAFETY]
             self.channel_manager.upsert([doc_outdated_bs_no_task_us_data])

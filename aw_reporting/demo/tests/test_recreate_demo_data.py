@@ -64,6 +64,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         new_number = demo_campaign.salesforce_placement.number
         expected_name = origin_name_template.format(new_number)
         self.assertEqual(demo_campaign.name, expected_name)
+        self.assertEqual(demo_campaign.placement_code, new_number)
 
     @generic_test([
         (None, args, dict())
@@ -152,3 +153,11 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         account = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
         self.assertTrue(re.search(expected_name_pattern, opportunity.name))
         self.assertTrue(re.search(expected_name_pattern, account.name))
+
+    def test_second_run(self):
+        sf_account = SFAccount.objects.create()
+        _, source_account = self._create_source_root(opp_data=dict(account_id=sf_account.id))
+
+        with override_settings(DEMO_SOURCE_ACCOUNT_ID=source_account.id):
+            recreate_demo_data()
+            recreate_demo_data()

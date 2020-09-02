@@ -9,3 +9,4 @@ from .audit_save import AuditSaveApiView
 from .audit_stop import AuditStopApiView
 from .audit_vet_retrieve_update import AuditVetRetrieveUpdateAPIView
 from .audit_vetting_options import AuditVettingOptionsAPIView
+from .blocklist.blocklist_list_create import BlocklistListCreateAPIView

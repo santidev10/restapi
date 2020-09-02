@@ -1,5 +1,7 @@
 from contextlib import contextmanager
 
+from utils.permissions import IsVettingAdmin
+
 
 @contextmanager
 def mutate_query_params(query_params):
@@ -13,14 +15,15 @@ def mutate_query_params(query_params):
 class AddFieldsMixin:
     ADDITIONAL_FIELDS = [
         "task_us_data.brand_safety",
+        "task_us_data.last_vetted_at",
     ]
 
     def add_fields(self):
         fields_str = self.request.query_params.get('fields', None)
         if fields_str:
             fields = fields_str.split(',')
-            for add in self.ADDITIONAL_FIELDS:
-                fields.append(add)
+            for additional_field in self.ADDITIONAL_FIELDS:
+                fields.append(additional_field)
 
             with mutate_query_params(self.request.query_params):
                 self.request.query_params['fields'] = ','.join(list(set(fields)))
@@ -61,11 +64,11 @@ class MutateMappedFieldsMixin:
                 self.request.query_params['fields'] = ','.join(fields)
 
 
-class MutateQueryParamIfValidYoutubeIdMixin:
+class ValidYoutubeIdMixin:
 
     YOUTUBE_ID_FIELD = "main.id"
 
-    def mutate_query_params_if_valid_youtube_id(self, manager):
+    def ensure_exact_youtube_id_result(self, manager):
         """
         modifies search if only a single search query for match_phrase_filter
         fields is present and is a valid Channel or Video id. Remove all
@@ -82,3 +85,19 @@ class MutateQueryParamIfValidYoutubeIdMixin:
                 for field in self.match_phrase_filter:
                     if self.request.query_params.get(field, None):
                         del self.request.query_params[field]
+
+class VettingAdminAggregationsMixin:
+    """
+    remove certain aggregations if the user is not an admin
+    or vetting admin
+    """
+    def guard_vetting_admin_aggregations(self):
+        if IsVettingAdmin().has_permission(self.request) \
+                or "aggregations" not in self.request.query_params:
+            return
+
+        aggregations_str = self.request.query_params.get("aggregations")
+        aggregations = aggregations_str.split(',')
+        less_vetting_admin_aggs = [agg for agg in aggregations if "task_us_data.last_vetted_at" not in agg]
+        with mutate_query_params(self.request.query_params):
+            self.request.query_params['aggregations'] = ",".join(less_vetting_admin_aggs)

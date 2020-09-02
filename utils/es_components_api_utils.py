@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class BrandSafetyParamAdapter:
     scores = {
-        brand_safety_constants.HIGH_RISK: "0,69",
+        # brand_safety_constants.HIGH_RISK: "0,69",
         brand_safety_constants.RISKY: "70,79",
         brand_safety_constants.LOW_RISK: "80,89",
         brand_safety_constants.SAFE: "90,100"
@@ -332,21 +332,28 @@ class ESDictSerializer(Serializer):
 
 
 class VettedStatusSerializerMixin:
+
+    UNVETTED = "Unvetted"
+    VETTED_SAFE = "Vetted Safe"
+    VETTED_RISKY = "Vetted Risky"
+
     def get_vetted_status(self, instance):
         """
         Infers whether or not a Channel/Video has been vetted, and whether or
         not it was vetted safe or risky based on the presence of the
-        `task_us_data.brand_safety` field, and whether or not it is empty
+        `task_us_data.brand_safety` and `task_us_data.last_vetted_at` field,
+        and whether or not it is empty
         """
-        task_us_data = getattr(instance, Sections.TASK_US_DATA, None)
-        if task_us_data is None:
-            return None
-        brand_safety = task_us_data.to_dict().get('brand_safety', None)
-        if brand_safety is None:
-            return "Unvetted"
-        if not len([cat_id for cat_id in brand_safety if cat_id]):
-            return "Vetted Safe"
-        return "Vetted Risky"
+        instance_dict = instance.to_dict()
+        task_us_data = instance_dict.get(Sections.TASK_US_DATA, None)
+        if task_us_data is None \
+                or task_us_data.get('last_vetted_at', None) is None:
+            return self.UNVETTED
+        brand_safety = task_us_data.get('brand_safety', None)
+        if brand_safety is None \
+                or not len([cat_id for cat_id in brand_safety if cat_id]):
+            return self.VETTED_SAFE
+        return self.VETTED_RISKY
 
 
 class ESQuerysetAdapter:

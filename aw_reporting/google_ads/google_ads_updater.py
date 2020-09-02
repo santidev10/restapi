@@ -4,15 +4,18 @@ from datetime import date
 from datetime import timedelta
 
 from django.db.models import F
+from django.conf import settings
 from django.utils import timezone
 from google.auth.exceptions import RefreshError
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
+from administration.notifications import send_mail
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
+from aw_reporting.google_ads.updaters.mcc_accounts import MccAccountUpdater
 from aw_reporting.google_ads.updaters.ad_group_criteria import AdGroupCriteriaUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
@@ -88,6 +91,10 @@ class GoogleAdsUpdater:
         self.account.update_time = timezone.now()
         self.account.save()
 
+    def update_account(self):
+        updater = AccountUpdater(self.account)
+        self.execute_with_any_permission(updater)
+
     def update_campaigns(self):
         """
         Update / Save campaigns for account
@@ -104,7 +111,7 @@ class GoogleAdsUpdater:
         """ Update /Save accounts managed by MCC """
         if mcc_account:
             self.account = mcc_account
-        account_updater = AccountUpdater(self.account)
+        account_updater = MccAccountUpdater(self.account)
         self.execute_with_any_permission(account_updater, mcc_account=self.account)
 
     def full_update(self, mcc_account=None):
@@ -161,14 +168,18 @@ class GoogleAdsUpdater:
 
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
         active_ids_from_opportunities = []
+        invalid_ids = []
         for opp in active_opportunities:
             try:
+                # Opportunity aw_cid periodically saved with invalid Google CIDs, e.g. WLAAS
                 aw_cid = [int(_id.strip().replace("-", "")) for _id in opp.aw_cid.split(",")]
                 active_ids_from_opportunities.extend([
                     _id
                     for _id in aw_cid
                     if _id and _id not in active_ids_from_placements
                 ])
+            except ValueError:
+                invalid_ids.append(f"{opp.name}, aw_cid={opp.aw_cid}")
             except AttributeError:
                 continue
         active_accounts_from_opportunities = Account.objects \
@@ -188,6 +199,12 @@ class GoogleAdsUpdater:
             to_update.append(account)
         if size:
             to_update = to_update[:size]
+
+        if invalid_ids:
+            formatted = "\n".join(invalid_ids)
+            message = f"Invalid Opportunity aw_cids: \n{formatted}"
+            subject = "Google Ads Update Errors"
+            send_mail(subject, message, settings.SERVER_EMAIL, getattr(settings, "GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES", []))
         return to_update
 
     @staticmethod
@@ -253,7 +270,7 @@ class GoogleAdsUpdater:
                 return
 
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
-        if updater.__class__ == AccountUpdater and mcc_account:
+        if updater.__class__ == MccAccountUpdater and mcc_account:
             Account.objects.filter(id=mcc_account.id).update(is_active=False)
             logger.info("Account access revoked for MCC: %s", mcc_account.id)
 

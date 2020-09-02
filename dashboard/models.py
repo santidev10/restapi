@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
+from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from utils.models import Timestampable
 
@@ -19,6 +20,16 @@ class OpportunityWatch(models.Model):
 
 class OpportunityPerformance(Timestampable):
     opportunity = models.OneToOneField(Opportunity, related_name="performance", on_delete=models.CASCADE)
+    performance = JSONField(default=list)
+
+    @property
+    def history(self):
+        data = json.loads(self.performance or "[]")
+        return data
+
+
+class AccountPerformance(Timestampable):
+    account = models.OneToOneField(Account, related_name="performance", on_delete=models.CASCADE)
     performance = JSONField(default=list)
 
     @property

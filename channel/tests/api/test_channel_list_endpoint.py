@@ -1,9 +1,11 @@
 import urllib
+from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
 from mock import patch
 
 from django.contrib.auth.models import Group
+from django.utils import timezone
 from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
@@ -14,6 +16,7 @@ from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
+from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -108,21 +111,18 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
-        high_risk_url = self.url + "?brand_safety=Unsuitable"
         risky_url = self.url + "?brand_safety=Low%20Suitability"
         low_risk_url = self.url + "?brand_safety=Medium%20Suitability"
         safe_url = self.url + "?brand_safety=Suitable"
-        high_risk_and_safe_url = high_risk_url + "%2CSuitable"
-        high_risk_response = self.client.get(high_risk_url)
+        low_risk_and_safe_url = low_risk_url + "%2CSuitable"
         risky_response = self.client.get(risky_url)
         low_risk_response = self.client.get(low_risk_url)
         safe_response = self.client.get(safe_url)
-        high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
-        self.assertEqual(len(high_risk_response.data["items"]), 1)
+        low_risk_and_safe = self.client.get(low_risk_and_safe_url)
         self.assertEqual(len(risky_response.data["items"]), 2)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
         self.assertEqual(len(safe_response.data["items"]), 1)
-        self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
+        self.assertEqual(len(low_risk_and_safe.data["items"]), 2)
         self.assertEqual(
             89,
             low_risk_response.data["items"][0]["brand_safety"]["overall_score"]
@@ -338,3 +338,228 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         response = self.client.get(url)
         items = response.data['items']
         self.assertEqual(items[0]['main']['id'], channel_ids[0])
+
+    def test_vetted_status_field(self):
+        self.create_admin_user()
+        channel_ids = []
+        for i in range(6):
+            channel_ids.append(str(next(int_iterator)))
+
+        channels = []
+        # vetted
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[0]},
+            "main": {'id': channel_ids[0]},
+            "general_data": {
+                "title": f"channel: {channel_ids[0]}",
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[1]},
+            "main": {'id': channel_ids[1]},
+            "general_data": {
+                "title": f"channel: {channel_ids[1]}",
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[1]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[2]},
+            "main": {'id': channel_ids[2]},
+            "general_data": {
+                "title": f"channel: {channel_ids[2]}",
+                "description": f"this channel is vetted risky. Channel id: {channel_ids[2]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [1, 2, 3, 4],
+            },
+        }))
+        # unvetted
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[3]},
+            "main": {'id': channel_ids[3]},
+            "general_data": {
+                "title": f"channel: {channel_ids[3]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[3]}"
+            },
+            "task_us_data": {
+                "brand_safety": [1,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[4]},
+            "main": {'id': channel_ids[4]},
+            "general_data": {
+                "title": f"channel: {channel_ids[4]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[4]}"
+            },
+            "task_us_data": {},
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[5]},
+            "main": {'id': channel_ids[5]},
+            "general_data": {
+                "title": f"channel: {channel_ids[5]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[5]}"
+            },
+        }))
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert(channels)
+
+        response = self.client.get(self.url)
+        items = response.data['items']
+
+        vetted_statuses = []
+        for item in items:
+            status = item.get('vetted_status', None)
+            vetted_statuses.append(status)
+        unvetted = [status for status in vetted_statuses if status == "Unvetted"]
+        safe = [status for status in vetted_statuses if status == "Vetted Safe"]
+        risky = [status for status in vetted_statuses if status == "Vetted Risky"]
+        self.assertEqual(len(unvetted), 3)
+        self.assertEqual(len(safe), 2)
+        self.assertEqual(len(risky), 1)
+
+        unvetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=false")
+        unvetted_items = unvetted_response.data['items']
+        unvetted_channel_ids = channel_ids[3:]
+        self.assertEqual([item['main']['id'] for item in unvetted_items].sort(), unvetted_channel_ids.sort())
+
+        vetted_response = self.client.get(self.url + "?task_us_data.last_vetted_at=true")
+        vetted_items = vetted_response.data['items']
+        vetted_channel_ids = channel_ids[:3]
+        self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_channel_ids.sort())
+
+    def test_permissions(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        channel_id = str(next(int_iterator))
+        channel = Channel(**{
+            "meta": {"id": channel_id},
+            "main": {'id': channel_id},
+            "general_data": {
+                "title": f"channel: {channel_id}",
+                "description": f"this channel is vetted safe. Channel id: {channel_id}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        })
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert([channel])
+
+        # normal user
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertNotIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # audit vet admin
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("blacklist_data", item_fields)
+
+        # admin
+        user.is_staff = True
+        user.save()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        item_fields = list(item.keys())
+        self.assertIn("vetted_status", item_fields)
+        self.assertIn("blacklist_data", item_fields)
+
+    def test_vetting_admin_guard(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        channel_ids = []
+        for i in range(2):
+            channel_ids.append(str(next(int_iterator)))
+        channels = []
+        # vetted
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[0]},
+            "main": {'id': channel_ids[0]},
+            "general_data": {
+                "title": f"channel: {channel_ids[0]}",
+                "description": f"this channel is vetted safe. Channel id: {channel_ids[0]}"
+            },
+            "task_us_data": {
+                "last_vetted_at": timezone.now(),
+                "brand_safety": [None,],
+            },
+        }))
+        channels.append(Channel(**{
+            "meta": {"id": channel_ids[1]},
+            "main": {'id': channel_ids[1]},
+            "general_data": {
+                "title": f"channel: {channel_ids[1]}",
+                "description": f"this channel is not vetted. Channel id: {channel_ids[1]}"
+            },
+        }))
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH, Sections.TASK_US_DATA]).upsert(channels)
+
+        url = self.url + "?" + urlencode({
+            "aggregations": ",".join(ALLOWED_CHANNEL_AGGREGATIONS),
+        })
+        vetting_admin_aggregations = ['task_us_data.last_vetted_at:exists', 'task_us_data.last_vetted_at:missing']
+
+        # normal user should not see vetting admin aggs
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertNotIn(aggregation, response_aggregation_keys)
+
+        # admin should see aggs
+        user.is_staff = True
+        user.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)
+
+        # vetting admin should see aggs
+        user.is_staff = False
+        user.save()
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data['aggregations']
+        response_aggregation_keys = list(response_aggregations.keys())
+        for aggregation in vetting_admin_aggregations:
+            with self.subTest(aggregation):
+                self.assertIn(aggregation, response_aggregation_keys)

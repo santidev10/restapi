@@ -99,7 +99,8 @@ class PermissionGroupNames:
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
     MANAGED_SERVICE = "Managed Service"
-    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Hide Managed Service Performance Details"
+    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Hide in Managed Service - Performance Graph Section"
+    MANAGED_SERVICE_HIDE_DELIVERY_DATA = "Hide in Managed Service - Delivery Data"
     SELF_SERVICE = "Self Service"
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
@@ -167,6 +168,9 @@ class Permissions:
         )),
         (PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS, (
             "view_performance_details",
+        )),
+        (PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA, (
+            "managed_service_hide_delivery_data",
         )),
         (PermissionGroupNames.SELF_SERVICE, (
             "view_media_buying",

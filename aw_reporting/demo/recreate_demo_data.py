@@ -43,27 +43,35 @@ def recreate_demo_data():
 
 
 def remove_data():
-    SFAccount.objects.filter(opportunity__id=DEMO_ACCOUNT_ID).delete()
-    Opportunity.objects.filter(id=DEMO_ACCOUNT_ID).delete()
+    SFAccount.demo_items().delete()
+    Opportunity.demo_items().delete()
     Account.objects.filter(id=DEMO_ACCOUNT_ID).delete()
 
 
 def create_data():
-    opportunity = clone_opportunity()
+    opportunity = clone_opportunities()
     clone_account(opportunity=opportunity[0])
 
 
-def clone_opportunity():
+def clone_opportunities():
+    source_opportunities = Opportunity.objects \
+        .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID) \
+        .distinct()
+
+    return [clone_opportunity(opportunity) for opportunity in source_opportunities]
+
+
+def clone_opportunity(source_opportunity):
     opportunity_number = next(opportunity_number_generator)
     opportunity_name = f"Acme Instant Coffee Q2-Q3’20 {opportunity_number}"
-    source_opportunity = Opportunity.objects \
-        .filter(placements__adwords_campaigns__account_id=settings.DEMO_SOURCE_ACCOUNT_ID)
-    opportunities = clone_model_multiple(source_opportunity,
-                                         data=dict(id=DEMO_ACCOUNT_ID,
-                                                   number=opportunity_number,
-                                                   name=opportunity_name,
-                                                   brand=DEMO_BRAND))
-    return opportunities
+    new_account = clone_model(source_opportunity.account, data=dict(id=next(sf_account_id_generator)))
+    new_account_id = new_account.id if new_account is not None else None
+    new_opportunity = clone_model(source_opportunity, data=dict(id=DEMO_ACCOUNT_ID,
+                                                                number=opportunity_number,
+                                                                name=opportunity_name,
+                                                                brand=DEMO_BRAND,
+                                                                account_id=new_account_id))
+    return new_opportunity
 
 
 def clone_account(opportunity):
@@ -83,6 +91,7 @@ def clone_campaign(source_campaign, target_account, index):
     campaign_name = re.sub(r"PL\d+", placement_number, replacement_name)
     campaign = clone_model(source_campaign, data=dict(account_id=target_account.id,
                                                       name=campaign_name,
+                                                      placement_code=placement_number,
                                                       salesforce_placement_id=op_placement.id))
     clone_model_multiple(source_campaign.campaign_creation.all(), campaign, target_account.account_creation)
     for ag_index, ad_group in enumerate(source_campaign.ad_groups.all()):
@@ -120,6 +129,18 @@ def generate_salesforce_codes(prefix, Model):
 
 placement_number_generator = generate_salesforce_codes("PL", OpPlacement)
 opportunity_number_generator = generate_salesforce_codes("OP", Opportunity)
+
+
+def generate_new_sf_account_id():
+    int_generator = itertools.count(1, 1)
+    id_length = 6
+    while True:
+        next_id = "demo_{id}".format(id=("0" * id_length + str(next(int_generator)))[-id_length:])
+        if not SFAccount.objects.filter(id=next_id).exists():
+            yield next_id
+
+
+sf_account_id_generator = generate_new_sf_account_id()
 
 
 def clone_campaign_creation(source_campaign_creation, campaign, account_creation):
@@ -184,6 +205,8 @@ def clone_bulk(model, query_filter, data):
 
 
 def clone_model(source, data=None, fields=None, exclude_fields=("id",), save=True):
+    if source is None:
+        return None
     model = type(source)
     fields = fields or [field.attname for field in model._meta.fields]
     instance_data = {
