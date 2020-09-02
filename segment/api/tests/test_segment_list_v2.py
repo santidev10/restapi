@@ -261,8 +261,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         assert_equal_map = {
             'segment_type': '1',
         }
-        with self.subTest():
-            for key, value in assert_equal_map.items():
+        for key, value in assert_equal_map.items():
+            with self.subTest(key):
                 self.assertEqual(data[key], value)
 
     def test_video_fields(self):
@@ -280,8 +280,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         assert_equal_map = {
             'segment_type': '0',
         }
-        with self.subTest():
-            for key, value in assert_equal_map.items():
+        for key, value in assert_equal_map.items():
+            with self.subTest(key):
                 self.assertEqual(data[key], value)
 
     def test_content_category_filters(self):
@@ -430,12 +430,13 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         user_1 = self.create_test_user()
         user_2 = self._create_user()
         user_2.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
-        _, export = self._create_segment(dict(owner=user_1, segment_type=0, title="test_1", list_type=0), export_params=dict(
-            query={},
-            download_url="test_1_url"
-        ))
+        _, export = self._create_segment(dict(owner=user_1, segment_type=0, title="test_1", list_type=0),
+                                         export_params=dict(
+                                             query={},
+                                             download_url="test_1_url"
+                                         ))
         self._create_segment(dict(owner=user_2, segment_type=0, title="test_2", list_type=0),
-                                         export_params=dict(query={}, download_url="test_2_url"))
+                             export_params=dict(query={}, download_url="test_2_url"))
         # request uses last user created
         response = self.client.get(self._get_url("video"))
         data = response.data
