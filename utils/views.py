@@ -71,6 +71,12 @@ def validate_date(date_str, date_format="%Y-%m-%d", message="Accepted format: YY
     return validated
 
 
+def validate_max_page(max_size, size, page, should_raise=True):
+    max_page = max_size / size
+    if page > max_page and should_raise:
+        raise ValidationError(f"Max page allowed: {max_page}")
+
+
 class CustomAPIException(APIException):
     def __init__(self, status_code, detail):
         super().__init__()
