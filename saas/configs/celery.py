@@ -167,6 +167,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.update.update_opportunities.update_opportunities_task",
         "schedule": crontab(minute="0", hour="*"),
     },
+    "daily_ingest_ias_data": {
+        "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
+        "schedule": crontab(hour="0", minute="0"),
+    },
 }
 
 
@@ -222,6 +226,7 @@ class TaskExpiration:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(hours=2).total_seconds()
+    INGEST_IAS = timedelta(hours=6).total_seconds()
 
 
 class TaskTimeout:
@@ -239,3 +244,4 @@ class TaskTimeout:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(minutes=2).total_seconds()
+    INGEST_IAS = timedelta(hours=6).total_seconds()
