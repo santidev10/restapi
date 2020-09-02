@@ -652,6 +652,10 @@ class BlacklistItem(models.Model):
     item_id = models.CharField(db_index=True, max_length=64)
     item_id_hash = models.BigIntegerField(db_index=True)
     blacklist_category = JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
+    blocked_count = models.IntegerField(default=0, db_index=True)
+    unblocked_count = models.IntegerField(default=0, db_index=True)
 
     class Meta:
         unique_together = ("item_type", "item_id")
