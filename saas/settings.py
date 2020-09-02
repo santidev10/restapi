@@ -509,6 +509,9 @@ PROXY_API_TOKEN = ""
 PROXY_HOST = ""
 PROXY_PORT = ""
 
+IAS_ARCHIVE_FOLDER = "archive/"
+ARCHIVE_IAS = False
+
 TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
     "george.su@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",
