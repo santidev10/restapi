@@ -20,7 +20,7 @@ class BlocklistSerializer(serializers.Serializer):
                            "values in serializer context.")
 
     def get_date_added(self,  obj):
-        added = self._get(obj.main.id, "date_added")
+        added = self._get(obj.main.id, "updated_at")
         return added
 
     def get_added_by_user(self, obj):
