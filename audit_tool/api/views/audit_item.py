@@ -22,8 +22,7 @@ from utils.views import validate_fields
 
 class AuditItemRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
-    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
-                       "is_monetizable", "language")
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories", "language")
 
     permission_classes = (
         or_permission_classes(
