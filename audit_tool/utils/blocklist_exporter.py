@@ -1,7 +1,11 @@
+from django.conf import settings
+
 from utils.aws.s3_exporter import S3Exporter
 
 
 class BlocklistExporter(S3Exporter):
+    bucket_name = settings.AMAZON_S3_BUCKET_NAME
+
     def get_s3_key(*args, **kwargs):
         raise NotImplementedError
 

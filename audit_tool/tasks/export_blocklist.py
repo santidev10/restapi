@@ -6,6 +6,7 @@ import tempfile
 from django.conf import settings
 from uuid import uuid4
 
+from audit_tool.utils.get_blocklist_serializer_context import get_context
 from administration.notifications import send_html_email
 from audit_tool.api.serializers.blocklist_serializer import BlocklistSerializer
 from audit_tool.models import BlacklistItem
@@ -36,9 +37,7 @@ def export_blocklist_task(recipient_email: str, data_type: str):
             writer.writeheader()
             for batch in chunks_generator(_blocklist_generator(data_type), 100):
                 batch = list(batch)
-                blacklist = {obj.item_id: obj for obj in
-                             BlacklistItem.objects.filter(item_id__in=[doc.main.id for doc in batch])}
-                context = {"blacklist_data": blacklist}
+                context = get_context([doc.main.id for doc in batch])
                 serialized = BlocklistSerializer(batch, many=True, context=context).data
                 writer.writerows(serialized)
         download_url = _export(fp)
@@ -69,12 +68,22 @@ def _blocklist_generator(doc_type: str) -> object:
 def _export(filepath):
     exporter = BlocklistExporter()
     today = now_in_default_tz().date()
-    key = f"{uuid4()}_{today}.csv"
+    key = _get_export_key(today)
     with open(filepath, mode="rb") as file:
         exporter.export_object_to_s3(file, key, extra_args={
             "ContentDisposition": f"attachment;filename=Blocklist {today}.csv"})
     download_url = exporter.generate_temporary_url(key)
     return download_url
+
+
+def _get_export_key(today) -> str:
+    """
+    Get blocklist export key
+    Put in function to easily test
+    :return: str
+    """
+    key = f"{uuid4()}_{today}.csv"
+    return key
 
 
 def _send_email(download_url, recipient_email):

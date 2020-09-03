@@ -1,11 +1,11 @@
 from distutils.util import strtobool
 
-from django.contrib.auth import get_user_model
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from .filter_backend import BlocklistESFilterBackend
+from audit_tool.utils.get_blocklist_serializer_context import get_context
 from audit_tool.api.serializers.blocklist_serializer import BlocklistSerializer
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
@@ -51,20 +51,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         blacklist_data is BlacklistItem table data that is retrieved for the current page
         """
         item_ids = [item.main.id for item in self.paginator.page.object_list]
-        blacklist_qs = BlacklistItem.objects.filter(item_id__in=item_ids)
-        email_by_user_id = {
-            user.id: user.email for user
-            in get_user_model().objects.filter(id__in=list(blacklist_qs.values_list("processed_by_user_id", flat=True)))
-        }
-        blacklist_data = {}
-        for item in blacklist_qs:
-            try:
-                setattr(item, "email", email_by_user_id[item.processed_by_user_id])
-            except KeyError:
-                pass
-            finally:
-                blacklist_data[item.item_id] = item
-        context = {"blacklist_data": blacklist_data}
+        context = get_context(item_ids)
         return context
 
     def create(self, request, *args, **kwargs):
@@ -79,7 +66,8 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         item_ids = self._map_urls(request.data.get("item_urls", []), data_type=kwargs["data_type"])
         to_update, to_create = self._prepare_items(item_ids, kwargs["data_type"], counter_key)
         safe_bulk_create(BlacklistItem, to_create)
-        BlacklistItem.objects.bulk_update(to_update, fields=["blocked_count", "unblocked_count"])
+        BlacklistItem.objects.bulk_update(to_update, fields=["blocked_count", "unblocked_count",
+                                                             "updated_at", "processed_by_user_id"])
         if counter_key == "blocked_count":
             self._update_blocklist(item_ids, True)
         else:

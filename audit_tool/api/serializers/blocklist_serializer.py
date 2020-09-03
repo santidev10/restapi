@@ -24,7 +24,7 @@ class BlocklistSerializer(serializers.Serializer):
         return added
 
     def get_added_by_user(self, obj):
-        email = self._get(obj.main.id, "added_by_user")
+        email = self._get(obj.main.id, "email")
         return email
 
     def get_url(self, obj):
