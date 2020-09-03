@@ -756,8 +756,9 @@ class AuditAgeGroup(models.Model):
         (4, "18 - 35 Adults"),
         (5, "36 - 54 Older Adults"),
         (6, "55+ Seniors"),
-        (7, "Group - Kids (not teens)"),  # parent=2
-        (8, "Group - Family Friendly"),  # parent=3
+        # commenting these for now. Removed in task/VIQ2-503
+        # (7, "Group - Kids (not teens)"),  # parent=2
+        # (8, "Group - Family Friendly"),  # parent=3
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
