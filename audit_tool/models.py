@@ -11,6 +11,7 @@ from django.db.models import IntegerField
 from django.utils import timezone
 
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
+from utils.models import Timestampable
 
 
 def get_hash_name(s):
@@ -256,6 +257,7 @@ class AuditProcessor(models.Model):
             "include_unknown_likes": self.params.get("include_unknown_likes"),
             "include_unknown_views": self.params.get("include_unknown_views"),
             "force_data_refresh": self.params.get("force_data_refresh"),
+            "override_blocklist": self.params.get("override_blocklist"),
         }
         d["export_status"] = self.get_export_status()
         d["has_history"] = self.has_history()
@@ -450,7 +452,6 @@ class AuditChannel(models.Model):
             except IntegrityError:
                 return AuditChannel.objects.get(channel_id=channel_id)
         return None
-
 
 
 class AuditChannelMeta(models.Model):
@@ -652,6 +653,10 @@ class BlacklistItem(models.Model):
     item_id = models.CharField(db_index=True, max_length=64)
     item_id_hash = models.BigIntegerField(db_index=True)
     blacklist_category = JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
+    blocked_count = models.IntegerField(default=0, db_index=True)
+    unblocked_count = models.IntegerField(default=0, db_index=True)
 
     class Meta:
         unique_together = ("item_type", "item_id")
@@ -827,3 +832,25 @@ class AuditContentQuality(models.Model):
             item_id = value
         quality = AuditContentQuality.objects.get(id=item_id)
         return quality
+
+
+class IASChannel(Timestampable):
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
+    ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
+
+    @staticmethod
+    def get_or_create(channel_id, create=True):
+        audit_channel = AuditChannel.get_or_create(channel_id)
+        res = IASChannel.objects.filter(channel=audit_channel)
+        for r in res:
+            if r.channel == audit_channel:
+                return r
+        if create:
+            try:
+                return IASChannel.objects.create(
+                    channel=audit_channel,
+                    ias_verified=timezone.now()
+                )
+            except IntegrityError:
+                return IASChannel.objects.get(channel=audit_channel)
+        return None

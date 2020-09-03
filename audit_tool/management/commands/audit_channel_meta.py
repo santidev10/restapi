@@ -18,6 +18,7 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import BlacklistItem
 from audit_tool.utils.audit_utils import AuditUtils
 from utils.utils import remove_tags_punctuation
 
@@ -287,7 +288,13 @@ class Command(BaseCommand):
                 self.get_videos(acp)
             acp.processed = timezone.now()
             if db_channel_meta.name:
-                acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
+                blocklisted = False
+                if not self.audit.params.get("override_blocklist"):
+                    blocklisted = self.check_channel_is_blocklisted(db_channel.channel_id, acp)
+                if not blocklisted:
+                    acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
+                else:
+                    acp.clean = False
             acp.save(update_fields=["clean", "processed", "word_hits"])
             if self.placement_list and not db_channel_meta.monetised:
                 db_channel_meta.monetised = True
@@ -477,6 +484,11 @@ class Command(BaseCommand):
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
+
+    def check_channel_is_blocklisted(self, channel_id, acp):
+        if BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM):
+            acp.word_hits["exclusion"] = ['blocklist']
+            return True
 
     def check_channel_is_clean(self, db_channel_meta, acp):
         full_string = remove_tags_punctuation("{} {} {}".format(
