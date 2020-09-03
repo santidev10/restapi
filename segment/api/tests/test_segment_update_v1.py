@@ -60,7 +60,9 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
 
         self.assertEqual(list_response.status_code, HTTP_200_OK)
         items = list_response.data['items']
-        self.assertEqual(items[0]['title'], payload['title'])
+        for key in list(payload.keys()):
+            with self.subTest(key):
+                self.assertEqual(items[0][key], payload[key])
 
     @mock_s3
     def test_featured_image_upload(self):
