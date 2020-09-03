@@ -4,7 +4,6 @@ import os
 import tempfile
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from uuid import uuid4
 
 from administration.notifications import send_html_email
@@ -15,38 +14,27 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from saas import celery_app
 from utils.utils import chunks_generator
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
 
-def export_blocklist_task(recipient_id: int, blocklist_type: int = 0):
+@celery_app.task
+def export_blocklist_task(recipient_email: str, data_type: str):
     """
-    Export blocklist to csv
-    :param blocklist_type: int -> Enumeration of blocklist type
-        0: channels
-        1: videos
-        2: channels and videos
-    :return:
+    Export blocklist to csv and email recipient
+    :param recipient_email: str -> Email recipient
+    :param data_type: str -> video or channel
     """
-    try:
-        user = get_user_model().objects.get(id=recipient_id)
-    except get_user_model().DoesNotExist():
-        logger.exception(f"Unable to find user id: {recipient_id}")
-        return
-    # Map blocklist_type to {0, 1} for determining which documents should be exported using _blocklist_generators
-    if blocklist_type == 2:
-        blocklist_type = {0, 1}
-    else:
-        blocklist_type = {blocklist_type}
 
     fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         with open(fp, mode="w") as file:
             writer = csv.DictWriter(file, fieldnames=BlocklistSerializer.EXPORT_FIELDS)
             writer.writeheader()
-            for batch in chunks_generator(_blocklist_generators(blocklist_type), 100):
+            for batch in chunks_generator(_blocklist_generator(data_type), 100):
                 batch = list(batch)
                 blacklist = {obj.item_id: obj for obj in
                              BlacklistItem.objects.filter(item_id__in=[doc.main.id for doc in batch])}
@@ -54,32 +42,28 @@ def export_blocklist_task(recipient_id: int, blocklist_type: int = 0):
                 serialized = BlocklistSerializer(batch, many=True, context=context).data
                 writer.writerows(serialized)
         download_url = _export(fp)
-        _send_email(download_url, user.email)
+        _send_email(download_url, recipient_email)
     except Exception as e:
         logger.exception(e)
     finally:
         os.remove(fp)
 
 
-def _blocklist_generators(blocklist_types: set):
+def _blocklist_generator(doc_type: str) -> object:
     """
-    Create Elasticsearch scan generators depending on blocklist_types
-    Set membership in blocklist_types determines if channels, videos, or both are returned for export
-    :param blocklist_types: set members should only be {0}, {1}, or {0,1}
-    :return:
+    Create Elasticsearch scan generator depending on doc_type
+    :param doc_type: str -> video | channel
+    :return: Video or Channel document
     """
+    managers = dict(
+        video=VideoManager,
+        channel=ChannelManager,
+    )
     sections = (Sections.GENERAL_DATA, Sections.TASK_US_DATA)
     query = QueryBuilder().build().must().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist").value(True).get()
-    if 0 in blocklist_types:
-        channel_manager = ChannelManager(sections)
-        for channel in channel_manager.scan(query):
-            yield channel
-            break
-
-    if 1 in blocklist_types:
-        video_manager = VideoManager(sections)
-        for video in video_manager.scan(query):
-            yield video
+    manager = managers[doc_type]
+    for doc in manager(sections).scan(query):
+        yield doc
 
 
 def _export(filepath):
