@@ -61,18 +61,15 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             determined by whether we should block or unblock the count
             e.g. if blocking, counter_key = "blocked_count"
         """
-        # Determine which field counter we need to increment
-        counter_key = "blocked_count" if strtobool(request.query_params.get("block", "")) is 1 else "unblocked_count"
+        should_block = bool(strtobool(request.query_params.get("block", "")))
+        # Determine which field BlacklistItem counter field we need to increment
+        counter_key = "blocked_count" if should_block else "unblocked_count"
         item_ids = self._map_urls(request.data.get("item_urls", []), data_type=kwargs["data_type"])
         to_update, to_create = self._prepare_items(item_ids, kwargs["data_type"], counter_key)
         safe_bulk_create(BlacklistItem, to_create)
         BlacklistItem.objects.bulk_update(to_update, fields=["blocked_count", "unblocked_count",
                                                              "updated_at", "processed_by_user_id"])
-        if counter_key == "blocked_count":
-            self._update_blocklist(item_ids, True)
-        else:
-            # Rescore items if unblocking
-            self._update_rescore(item_ids)
+        self._update_docs(item_ids, should_block)
         return Response()
 
     def _prepare_items(self, item_ids: list, data_type: str, counter_key: str):
@@ -119,23 +116,20 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             mapped_ids.append(mapped)
         return mapped_ids
 
-    def _update_rescore(self, item_ids: list) -> None:
+    def _update_docs(self, item_ids: list, should_block: bool) -> None:
         """
-        Set brand_safety.rescore values to True for unblocked items
+        Set brand_safety.rescore values to True for rescoring after changing blocklist values
         :param item_ids: list of Youtube channel or video ids
+        :param should_block: bool whether to blocklist or not
         :return: None
         """
-        es_manager_class = self._get_es_manager(self.kwargs["data_type"])
-        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(item_ids).get()
-        es_manager_class(upsert_sections=[Sections.BRAND_SAFETY]).update_rescore(query, rescore=True)
+        es_manager = self._get_es_manager(self.kwargs["data_type"])(upsert_sections=[
+            Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
+        docs = [es_manager.model(item_id, brand_safety={"rescore": True},
+                                 custom_properties={"blocklist": should_block}) for item_id in item_ids]
+        es_manager.upsert(docs)
 
-    def _update_blocklist(self, item_ids, block):
-        es_manager = self._get_es_manager(self.kwargs["data_type"])(upsert_sections=[Sections.CUSTOM_PROPERTIES])
-        es_manager.update(es_manager.ids_query(item_ids))\
-            .script(source=f"ctx._source.custom_properties.blocklist={str(block).lower()}")\
-            .execute()
-
-    def _get_es_manager(self, doc_type):
+    def _get_es_manager(self, doc_type: str):
         managers = dict(
             video=VideoManager,
             channel=ChannelManager,
