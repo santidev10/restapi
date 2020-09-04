@@ -103,6 +103,8 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         data = super().to_representation(instance)
         data.pop("title_hash", None)
         data["pending"] = not bool(data["statistics"])
+        # adding this here instead of using a SerializerMethodField to preserve to-db serialization
+        data["segment_type"] = self.map_to_str(instance.segment_type, item_type="segment")
         if not data["statistics"]:
             data["statistics"] = {
                 "top_three_items": [{
@@ -112,12 +114,11 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
                 } for _ in range(3)]
             }
         try:
-            # reversing this update so that instance data overwrites
-            # param data, as instance data is the most up-to-date
+            # instance data should overwrite export query params as it is the most up-to-date
             export_query_params = instance.export.query.get("params", {})
             export_query_params.update(data)
             data = export_query_params
-            data['download_url'] = instance.export.download_url
+            data["download_url"] = instance.export.download_url
         except CustomSegmentFileUpload.DoesNotExist:
             data["download_url"] = None
         return data

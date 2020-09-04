@@ -259,7 +259,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         data = response.data["items"][0]
         assert_equal_map = {
-            'segment_type': '1',
+            'segment_type': CHANNEL,
         }
         for key, value in assert_equal_map.items():
             with self.subTest(key):
@@ -278,7 +278,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         data = response.data["items"][0]
         assert_equal_map = {
-            'segment_type': '0',
+            'segment_type': VIDEO,
         }
         for key, value in assert_equal_map.items():
             with self.subTest(key):
