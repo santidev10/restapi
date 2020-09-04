@@ -1,7 +1,7 @@
 TERMS_FILTER = ("general_data.country_code", "general_data.top_lang_code", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "main.id", "general_data.iab_categories",
                 "custom_properties.is_tracked", "task_us_data.age_group", "task_us_data.content_type",
-                "task_us_data.gender", "task_us_data.content_quality", "brand_safety.limbo_status")
+                "task_us_data.gender", "task_us_data.content_quality", "brand_safety.limbo_status",)
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
@@ -13,6 +13,8 @@ RANGE_FILTER = ("stats.views_per_video", "stats.engage_rate", "stats.sentiment",
                 "general_data.youtube_published_at", "analytics.gender_female", "analytics.gender_male",)
 
 EXISTS_FILTER = ("monetization.is_monetizable", "task_us_data.last_vetted_at", "ads_stats")
+
+MUST_NOT_TERMS_FILTER = ("custom_properties.blocklist",)
 
 CHANNEL_CSV_HEADERS = [
     "title",

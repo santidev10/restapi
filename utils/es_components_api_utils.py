@@ -122,6 +122,7 @@ class QueryGenerator:
     match_phrase_filter = ()
     exists_filter = ()
     params_adapters = ()
+    must_not_terms_filter = ()
 
     def __init__(self, query_params):
         self.query_params = self._adapt_query_params(query_params)
@@ -211,6 +212,17 @@ class QueryGenerator:
 
         return filters
 
+    def __get_filters_must_not_terms(self):
+        filters = []
+        for field in self.must_not_terms_filter:
+            value = self.query_params.get(field, None)
+            if value:
+                value = value.split(",") if isinstance(value, str) else value
+                filters.append(
+                    QueryBuilder().build().must_not().terms().field(field).value(value).get()
+                )
+        return filters
+
     def __get_filters_match_phrase(self):
         """
         Applies a multi-match to ALL match_phrase_filter fields if at least one
@@ -298,6 +310,7 @@ class QueryGenerator:
 
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
+        filters_must_not_terms = self.__get_filters_must_not_terms()
         filters_range = self.__get_filter_range()
         filters_match_phrase = self.__get_filters_match_phrase()
         filters_exists = self.__get_filters_exists()
@@ -306,7 +319,7 @@ class QueryGenerator:
         ids_filter = self.__get_filters_by_ids()
 
         filters = filters_term + filters_range + filters_match_phrase + \
-                  filters_exists + forced_filter + ids_filter
+                  filters_exists + forced_filter + ids_filter + filters_must_not_terms
 
         return filters
 
@@ -561,6 +574,7 @@ class APIViewMixin:
     allowed_percentiles = ()
 
     terms_filter = ()
+    must_not_terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
@@ -589,6 +603,7 @@ class PaginatorWithAggregationMixin:
 class ExportDataGenerator:
     serializer_class = ESDictSerializer
     terms_filter = ()
+    must_not_terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
@@ -606,6 +621,7 @@ class ExportDataGenerator:
             dict(
                 es_manager=self.queryset.manager,
                 terms_filter=self.terms_filter,
+                must_not_terms_filter=self.must_not_terms_filter,
                 range_filter=self.range_filter,
                 match_phrase_filter=self.match_phrase_filter,
                 exists_filter=self.exists_filter,
