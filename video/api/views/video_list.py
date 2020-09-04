@@ -119,7 +119,7 @@ class VideoListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutu
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                    Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA)
+                    Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
 

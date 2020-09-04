@@ -198,3 +198,42 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual({c1["blocked_count"], c2["blocked_count"]}, {blc.blocked_count})
         self.assertEqual({c1["unblocked_count"], c2["unblocked_count"]}, {blc.unblocked_count})
         self.assertEqual({c1["added_by_user"], c2["added_by_user"]}, {user.email})
+
+    def test_does_not_update_same_blocklist_value(self):
+        """ Should not update BlacklistItem object if blocklist value does not change """
+        self.create_admin_user()
+        video = Video(f"video_id{next(int_iterator)}")
+        channel = Channel(f"youtube__channel__id__{next(int_iterator)}")
+        video.populate_custom_properties(blocklist=True)
+        video.populate_custom_properties(blocklist=True)
+
+        bl1 = BlacklistItem.objects.create(item_id=video.main.id, item_type=0, item_id_hash=get_hash_name(video.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        bl2 = BlacklistItem.objects.create(item_id=channel.main.id, item_type=1,
+                                           item_id_hash=get_hash_name(channel.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        self.video_manager.upsert([video])
+        self.channel_manager.upsert([channel])
+
+        payload1 = {"item_ids": [video.main.id]}
+        payload2 = {"item_ids": [channel.main.id]}
+        with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+            res1 = self.client.post(self._get_url("video") + "?block=true", data=json.dumps(payload1),
+                                    content_type="application/json")
+            res2 = self.client.post(self._get_url("channel") + "?block=true", data=json.dumps(payload2),
+                                    content_type="application/json")
+
+        self.assertEqual(res1.status_code, HTTP_200_OK)
+        self.assertEqual(res2.status_code, HTTP_200_OK)
+
+        updated_video = self.video_manager.get([video.main.id])[0]
+        updated_channel = self.channel_manager.get([channel.main.id])[0]
+        updated_bl1 = BlacklistItem.objects.get(item_id=video.main.id)
+        updated_bl2 = BlacklistItem.objects.get(item_id=channel.main.id)
+
+        self.assertEqual(video.custom_properties.blocklist, updated_video.custom_properties.blocklist)
+        self.assertEqual(channel.custom_properties.blocklist, updated_channel.custom_properties.blocklist)
+        self.assertEqual(bl1.blocked_count, updated_bl1.blocked_count)
+        self.assertEqual(bl1.unblocked_count, updated_bl1.unblocked_count)
+        self.assertEqual(bl2.blocked_count, updated_bl2.blocked_count)
+        self.assertEqual(bl2.unblocked_count, updated_bl2.unblocked_count)
