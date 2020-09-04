@@ -768,7 +768,7 @@ class AuditAgeGroup(models.Model):
     parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None, related_name="children")
 
     @staticmethod
-    def get_by_group():
+    def get_by_group(top_level_only=False):
         """
         Get age groups with subgroups
         :return: dict
@@ -776,8 +776,9 @@ class AuditAgeGroup(models.Model):
         by_group = [{
             "id": group.id,
             "value": group.age_group,
-            "children": [{"id": child.id, "value": child.age_group} for child in
-                         AuditAgeGroup.objects.filter(parent_id=group.id)]
+            "children": [] if top_level_only
+            else [{"id": child.id, "value": child.age_group} for child in
+                  AuditAgeGroup.objects.filter(parent_id=group.id)]
         } for group in AuditAgeGroup.objects.filter(parent=None)]
         return by_group
 
