@@ -112,12 +112,14 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
                 } for _ in range(3)]
             }
         try:
-            data["download_url"] = instance.export.download_url
-            data.update(instance.export.query.get("params", {}))
+            # reversing this update so that instance data overwrites
+            # param data, as instance data is the most up-to-date
+            export_query_params = instance.export.query.get("params", {})
+            export_query_params.update(data)
+            data = export_query_params
+            data['download_url'] = instance.export.download_url
         except CustomSegmentFileUpload.DoesNotExist:
             data["download_url"] = None
-        # overwrites segment_type from the data.update above
-        data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         return data
 
     @staticmethod
