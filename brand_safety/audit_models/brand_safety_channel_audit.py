@@ -169,3 +169,9 @@ class BrandSafetyChannelAudit(object):
                 continue
         channel.brand_safety = brand_safety_data
         return channel
+
+    @staticmethod
+    def instantiate_blocklist(item_id):
+        blocklist_item = Channel(item_id)
+        blocklist_item.populate_brand_safety(overall_score=0)
+        return blocklist_item

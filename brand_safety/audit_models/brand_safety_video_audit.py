@@ -154,3 +154,9 @@ class BrandSafetyVideoAudit(object):
         video.brand_safety = brand_safety_data
         video.populate_channel(id=self.metadata["channel_id"], title=self.metadata["channel_title"])
         return video
+
+    @staticmethod
+    def instantiate_blocklist(item_id):
+        blocklist_item = Video(item_id)
+        blocklist_item.populate_brand_safety(overall_score=0)
+        return blocklist_item

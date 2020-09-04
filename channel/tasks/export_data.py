@@ -9,6 +9,7 @@ from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import TERMS_FILTER
+from channel.constants import MUST_NOT_TERMS_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 class ChannelListDataGenerator(ExportDataGenerator):
     serializer_class = ChannelListExportSerializer
     terms_filter = TERMS_FILTER
+    must_not_terms_filter = MUST_NOT_TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
