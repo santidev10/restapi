@@ -137,8 +137,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :param should_block: bool whether to blocklist or not
         :return: None
         """
-        es_manager = self._get_es_manager(self.kwargs["data_type"])(upsert_sections=[
-            Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
+        es_manager = self._get_es_manager(self.kwargs["data_type"])([Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
         docs = [es_manager.model(item_id, brand_safety={"rescore": True},
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
         es_manager.upsert(docs)
