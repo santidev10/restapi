@@ -40,8 +40,8 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
 
     def _validate(self):
         """ Validation logic for get request """
-        page = self.request.query_params.get("page", 1)
-        size = self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
+        page = int(self.request.query_params.get("page", 1))
+        size = int(self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE))
         validate_max_page(10000, size, page)
 
     def get_serializer_context(self) -> dict:

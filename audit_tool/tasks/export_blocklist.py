@@ -6,10 +6,9 @@ import tempfile
 from django.conf import settings
 from uuid import uuid4
 
-from audit_tool.utils.get_blocklist_serializer_context import get_context
 from administration.notifications import send_html_email
+from audit_tool.utils.get_blocklist_serializer_context import get_context
 from audit_tool.api.serializers.blocklist_serializer import BlocklistSerializer
-from audit_tool.models import BlacklistItem
 from audit_tool.utils.blocklist_exporter import BlocklistExporter
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
