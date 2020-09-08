@@ -20,16 +20,20 @@ class BlocklistSerializer(serializers.Serializer):
                            "values in serializer context.")
 
     def get_date_added(self,  obj):
-        added = self._get(obj.main.id, "date_added")
+        added = self._get(obj.main.id, "updated_at")
+        try:
+            added = added.date()
+        except AttributeError:
+            pass
         return added
 
     def get_added_by_user(self, obj):
-        email = self._get(obj.main.id, "added_by_user")
+        email = self._get(obj.main.id, "email")
         return email
 
     def get_url(self, obj):
         item_id = obj.main.id
-        resource = "/v/?watch=" if len(item_id) < 20 else "/channel/"
+        resource = "/watch?v=" if len(item_id) < 20 else "/channel/"
         url = f"https://www.youtube.com{resource}{item_id}"
         return url
 

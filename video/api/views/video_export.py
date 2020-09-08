@@ -34,8 +34,17 @@ class VideoListExportApiView(VettingAdminAggregationsMixin,ESDataS3ExportApiView
                     self.request.query_params["transcripts"] = None
 
         self.guard_vetting_admin_aggregations()
-
+        request = self._add_mandatory_filters(request)
         return super(VideoListExportApiView, self)._get_query_params(request)
+
+    def _add_mandatory_filters(self, request):
+        """ Add mandatory filters to channel research export """
+        request.query_params._mutable = True
+        # custom_properties.blocklist is a must_not_terms_filter, so this will query for videos that
+        # must not have a value of custom_properties.blocklist = true
+        request.query_params["custom_properties.blocklist"] = "true"
+        request.query_params._mutable = False
+        return request
 
     @staticmethod
     def get_filename(name):

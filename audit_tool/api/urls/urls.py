@@ -14,6 +14,7 @@ from audit_tool.api.views import AuditSaveApiView
 from audit_tool.api.views import AuditStopApiView
 from audit_tool.api.views import AuditVetRetrieveUpdateAPIView
 from audit_tool.api.views import AuditVettingOptionsAPIView
+from audit_tool.api.views import BlocklistExportAPIView
 from audit_tool.api.views import BlocklistListCreateAPIView
 from .names import AuditPathName
 
@@ -35,4 +36,6 @@ urlpatterns = [
     url(r"^audit_tool/vet/(?P<pk>[\w-]+)/$", AuditItemRetrieveUpdateAPIView.as_view(), name=AuditPathName.AUDIT_ITEM),
     url(r"^audit_tool/blocklist/(?P<data_type>{})/$".format(DATA_TYPES), BlocklistListCreateAPIView.as_view(),
         name=AuditPathName.BLOCKLIST_LIST_CREATE),
+    url(r"^audit_tool/blocklist/(?P<data_type>{})/export/$".format(DATA_TYPES), BlocklistExportAPIView.as_view(),
+        name=AuditPathName.BLOCKLIST_EXPORT),
 ]

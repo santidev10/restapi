@@ -756,8 +756,9 @@ class AuditAgeGroup(models.Model):
         (4, "18 - 35 Adults"),
         (5, "36 - 54 Older Adults"),
         (6, "55+ Seniors"),
-        (7, "Group - Kids (not teens)"),  # parent=2
-        (8, "Group - Family Friendly"),  # parent=3
+        # commenting these for now. Removed in task/VIQ2-503
+        # (7, "Group - Kids (not teens)"),  # parent=2
+        # (8, "Group - Family Friendly"),  # parent=3
     ]
     to_str = dict(ID_CHOICES)
     to_id = {val.lower(): key for key, val in to_str.items()}
@@ -767,7 +768,7 @@ class AuditAgeGroup(models.Model):
     parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None, related_name="children")
 
     @staticmethod
-    def get_by_group():
+    def get_by_group(top_level_only=False):
         """
         Get age groups with subgroups
         :return: dict
@@ -775,8 +776,9 @@ class AuditAgeGroup(models.Model):
         by_group = [{
             "id": group.id,
             "value": group.age_group,
-            "children": [{"id": child.id, "value": child.age_group} for child in
-                         AuditAgeGroup.objects.filter(parent_id=group.id)]
+            "children": [] if top_level_only
+            else [{"id": child.id, "value": child.age_group} for child in
+                  AuditAgeGroup.objects.filter(parent_id=group.id)]
         } for group in AuditAgeGroup.objects.filter(parent=None)]
         return by_group
 

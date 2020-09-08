@@ -18,12 +18,13 @@ class SegmentQueryBuilder:
     AD_STATS_RANGE_FIELDS = ("video_view_rate", "average_cpv", "average_cpm", "ctr", "ctr_v", "video_quartile_100_rate")
     STATS_RANGE_FIELDS = ("last_30day_views",)
 
-    def __init__(self, data, with_forced_filters=True):
+    def __init__(self, data, with_forced_filters=True, exclude_blocklist=True):
         """
         :param data: dict -> Query options
         :param video_ids: str -> Youtube ID (Query videos with channel_id=related_to)
         """
         self.with_forced_filters = with_forced_filters
+        self._exclude_blocklist = exclude_blocklist
         # When returning _get_query_params, ui expects the score threshold that was originally passed in
         self._original_score_threshold = data.get("score_threshold")
         self._params = self._map_params(data)
@@ -220,6 +221,10 @@ class SegmentQueryBuilder:
         if self.with_forced_filters is True:
             forced_filters = self.es_manager.forced_filters()
             query &= forced_filters
+
+        if self._exclude_blocklist is True:
+            query &= QueryBuilder().build().must_not().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist")\
+                .value(True).get()
 
         return query
 
