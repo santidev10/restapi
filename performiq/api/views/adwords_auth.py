@@ -1,4 +1,3 @@
-from django.db import transaction
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
@@ -9,20 +8,13 @@ from suds import WebFault
 
 from aw_reporting.adwords_api import get_customers
 from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer
-from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
-from aw_reporting.models import AWAccountPermission
-from aw_reporting.models import AWConnection
-from aw_reporting.models import AWConnectionToUserRelation
-from aw_reporting.models import Account
 from aw_reporting.utils import get_google_access_token_info
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.models.constants import OAUTH_CHOICES
 from performiq.models import OAuthAccount
-from userprofile.permissions import PermissionGroupNames
 
 
-class ConnectAWAccountApiView(APIView):
+class AdWordsAuthApiView(APIView):
     """
     The view allows to connect user's AdWords account
     GET method gives a URL to go and grant access to our app
@@ -101,7 +93,7 @@ class ConnectAWAccountApiView(APIView):
                     user=self.request.user,
                     email=token_info["email"]
                 )
-            except AWConnection.DoesNotExist:
+            except OAuthAccount.DoesNotExist:
                 if refresh_token:
                     OAuthAccount.objects.create(
                         oauth_type=OAUTH_CHOICES[0],
@@ -157,7 +149,6 @@ class ConnectAWAccountApiView(APIView):
             response = AWAuthSerializer(oauth_account).data
             return Response(data=response)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
-
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()
