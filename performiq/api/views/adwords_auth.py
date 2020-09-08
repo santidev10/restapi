@@ -16,7 +16,7 @@ from performiq.models import OAuthAccount
 
 class AdWordsAuthApiView(APIView):
     """
-    The view allows to connect user's AdWords account
+    API View for Granting AdWords OAuth Access to PerformIQ
     GET method gives a URL to go and grant access to our app
     then send the code you will get in the query in POST request
 
