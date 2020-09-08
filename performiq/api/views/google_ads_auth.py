@@ -16,6 +16,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.utils import get_google_access_token_info
+from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.models.constants import OAUTH_CHOICES
 from performiq.models import OAuthAccount
 from userprofile.permissions import PermissionGroupNames
@@ -121,7 +122,42 @@ class ConnectAWAccountApiView(APIView):
                     oauth_account.token = access_token
                     oauth_account.refresh_token = refresh_token
                     oauth_account.save()
+
+        # Get Name of First MCC Account
+        try:
+            customers = get_customers(
+                oauth_account.refresh_token,
+                **load_web_app_settings()
+            )
+        except WebFault as e:
+            fault_string = e.fault.faultstring
+            if "AuthenticationError.NOT_ADS_USER" in fault_string:
+                fault_string = "AdWords account does not exist"
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data=dict(error=fault_string))
+        except HttpAccessTokenRefreshError as e:
+            ex_token_error = "Token has been expired or revoked"
+            if ex_token_error in str(e):
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data=dict(error=ex_token_error))
+        else:
+            mcc_accounts = list(filter(
+                lambda i: i["canManageClients"] and not i["testAccount"],
+                customers,
+            ))
+            if not mcc_accounts:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data=dict(error=self.no_mcc_error)
+                )
+            primary_account = mcc_accounts[0]
+            oauth_account.id = primary_account["customerId"]
+            oauth_account.name = primary_account["descriptiveName"]
+            oauth_account.save(update_fields=["id", "name"])
+            response = AWAuthSerializer(oauth_account).data
+            return Response(data=response)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
+
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()
