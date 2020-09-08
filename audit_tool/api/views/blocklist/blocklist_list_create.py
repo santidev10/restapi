@@ -92,7 +92,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         # Mapping of item id to blocklist value to determine if blocklist value is changing
         blocked_mapping = {
             doc.main.id: doc.custom_properties.blocklist for doc in
-            self._get_es_manager(self.kwargs["data_type"])(sections=[Sections.CUSTOM_PROPERTIES]).get(item_ids)
+            self._get_es_manager(self.kwargs["data_type"])(sections=[Sections.CUSTOM_PROPERTIES]).get(item_ids, skip_none=True)
         }
         to_update = []
         for item in exists:
