@@ -95,7 +95,7 @@ class AdWordsAuthApiView(APIView):
                 )
             except OAuthAccount.DoesNotExist:
                 if refresh_token:
-                    OAuthAccount.objects.create(
+                    oauth_account = OAuthAccount.objects.create(
                         oauth_type=OAuthType.GOOGLE_ADS.value,
                         user=self.request.user,
                         email=token_info["email"],
