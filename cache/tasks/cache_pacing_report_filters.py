@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(expires=TaskExpiration.PACING_REPORT_FILTERS, soft_time_limit=TaskTimeout.PACING_REPORT_FILTERS)
-def cache_channel_aggregations():
+def cache_pacing_report_filters():
     try:
         # pylint: disable=no-value-for-parameter
         lock(lock_name=LOCK_NAME, max_retries=MAX_RETRIES, expire=TaskExpiration.PACING_REPORT_FILTERS)
