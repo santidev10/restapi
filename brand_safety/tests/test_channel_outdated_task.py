@@ -4,7 +4,6 @@ from mock import MagicMock
 
 from django.utils import timezone
 from elasticsearch_dsl import Q
-import redis
 
 from brand_safety.tasks.channel_outdated import channel_outdated_scheduler
 from es_components.constants import Sections
@@ -38,7 +37,8 @@ class ChannelOutdatedTestCase(ExtendedAPITestCase, ESTestCase):
         )
         with patch.object(ChannelManager, "forced_filters", return_value=Q({"bool": {}})),\
                 patch("es_components.managers.base.datetime_service.now", return_value=outdated),\
-                patch("brand_safety.tasks.channel_outdated.channel_update_helper") as helper_mock,\
+                patch("brand_safety.tasks.channel_outdated.channel_update_helper") as helper_mock, \
+                patch("brand_safety.tasks.channel_outdated.get_queue_size", return_value=0), \
                 patch("utils.celery.tasks.REDIS_CLIENT") as mock_redis:
             mock_lock = MagicMock()
             mock_lock.acquire.return_value = True

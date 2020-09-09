@@ -35,7 +35,8 @@ class ChannelDiscoveryTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_manager.upsert([doc_excluded_has_bs, doc_excluded_rescore_false,
                                      doc_included_rescore_true, doc_included_has_no_bs])
         with patch.object(ChannelManager, "forced_filters", return_value=Q({"bool": {}})),\
-                patch("brand_safety.tasks.channel_discovery.channel_update_helper") as helper_mock:
+                patch("brand_safety.tasks.channel_discovery.channel_update_helper") as helper_mock,\
+                patch("brand_safety.tasks.channel_discovery.get_queue_size", return_value=0):
             channel_discovery_scheduler()
             query = helper_mock.call_args.args[1]
             channels = self.channel_manager.search(query).execute()
