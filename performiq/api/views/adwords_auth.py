@@ -143,9 +143,8 @@ class AdWordsAuthApiView(APIView):
                     data=dict(error=self.no_mcc_error)
                 )
             primary_account = mcc_accounts[0]
-            oauth_account.id = primary_account["customerId"]
             oauth_account.name = primary_account["descriptiveName"]
-            oauth_account.save(update_fields=["id", "name"])
+            oauth_account.save(update_fields=["name"])
             response = AWAuthSerializer(oauth_account).data
             return Response(data=response)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
