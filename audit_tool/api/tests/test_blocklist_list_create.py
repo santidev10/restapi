@@ -150,6 +150,32 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated_video.brand_safety.rescore, True)
         self.assertEqual(updated_channel.brand_safety.rescore, True)
 
+    def test_block_zero_score(self):
+        """ Test that blocking items sets brand safety overall score to 0 """
+        self.create_admin_user()
+        video = Video(f"video_{next(int_iterator)}")
+        channel = Channel(f"yt_channel_{next(int_iterator)}")
+        video.populate_brand_safety(overall_score=100)
+        channel.populate_brand_safety(overall_score=100)
+
+        self.video_manager.upsert([video])
+        self.channel_manager.upsert([channel])
+        payload1 = json.dumps(dict(item_urls=[self._get_youtube_url(video.main.id)]))
+        payload2 = json.dumps(dict(item_urls=[self._get_youtube_url(channel.main.id, "channel")]))
+        with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+            res1 = self.client.post(self._get_url("video") + "?block=true", data=payload1, content_type="application/json")
+            res2 = self.client.post(self._get_url("channel") + "?block=true", data=payload2, content_type="application/json")
+
+        self.assertEqual(res1.status_code, HTTP_200_OK)
+        self.assertEqual(res2.status_code, HTTP_200_OK)
+
+        updated_video = self.video_manager.get([video.main.id], skip_none=True)[0]
+        updated_channel = self.channel_manager.get([channel.main.id], skip_none=True)[0]
+        self.assertEqual(updated_video.brand_safety.overall_score, 0)
+        self.assertEqual(updated_channel.brand_safety.overall_score, 0)
+        self.assertEqual(updated_video.brand_safety.rescore, False)
+        self.assertEqual(updated_channel.brand_safety.rescore, False)
+
     def test_list_search(self):
         """ Test search by id and title """
         user = self.create_admin_user()

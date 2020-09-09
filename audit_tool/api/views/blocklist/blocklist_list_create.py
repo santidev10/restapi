@@ -138,7 +138,12 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :return: None
         """
         es_manager = self._get_es_manager(self.kwargs["data_type"])([Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
-        docs = [es_manager.model(item_id, brand_safety={"rescore": True},
+        bs_data = {
+            "rescore": True if should_block is False else False,
+        }
+        if should_block:
+            bs_data["overall_score"] = 0
+        docs = [es_manager.model(item_id, brand_safety=bs_data,
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
         es_manager.upsert(docs)
 
