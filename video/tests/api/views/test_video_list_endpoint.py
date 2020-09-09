@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
+from brand_safety import constants
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from es_components.models import Video
@@ -352,7 +353,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
-    def test_vetting_admin_guard(self):
+    def test_vetting_admin_aggregations_guard(self):
         user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("video_list")
@@ -422,3 +423,61 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         for aggregation in vetting_admin_aggregations:
             with self.subTest(aggregation):
                 self.assertIn(aggregation, response_aggregation_keys)
+
+    def test_brand_safety_high_risk_permission(self):
+        """
+        test that a regular user can filter on RISKY or above scores, while
+        admin users can additionally filter on HIGH_RISK scores
+        """
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("video_list")
+        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+
+        video_id = str(next(int_iterator))
+        video_id_2 = str(next(int_iterator))
+        video = Video(**{
+            "meta": {
+                "id": video_id
+            },
+            "brand_safety": {
+                "overall_score": 77
+            }
+        })
+        video_2 = Video(**{
+            "meta": {
+                "id": video_id_2
+            },
+            "brand_safety": {
+                "overall_score": 61
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.MAIN, Sections.BRAND_SAFETY]
+        VideoManager(sections=sections).upsert([video, video_2])
+        url = self.get_url() + urlencode({
+            "brand_safety": ",".join([constants.RISKY, constants.HIGH_RISK])
+        })
+
+        # regular user, no high risk allowed
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 1)
+
+        # regular admin, all filters available
+        user.is_staff = True
+        user.save(update_fields=['is_staff'])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 2)
+
+        # vetting admin, all filters available
+        user.is_staff = False
+        user.save(update_fields=['is_staff'])
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 2)
