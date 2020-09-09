@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class BrandSafetyParamAdapter:
     scores = {
-        # brand_safety_constants.HIGH_RISK: "0,69",
+        brand_safety_constants.HIGH_RISK: "0,69",
         brand_safety_constants.RISKY: "70,79",
         brand_safety_constants.LOW_RISK: "80,89",
         brand_safety_constants.SAFE: "90,100"
@@ -579,6 +579,44 @@ class APIViewMixin:
     match_phrase_filter = ()
     exists_filter = ()
     params_adapters = ()
+
+    def get_cached_aggregations_key(self):
+        """
+        gets cached aggregations key depending on user type:
+        if vetting admin, return with 'Unsuitable' brand safety agg,
+        if not, return without 'Unsuitable' agg
+        """
+        if self.vetting_admin_permission_class().has_permission(self.request):
+            return self.admin_cached_aggregations_key
+        return self.cached_aggregations_key
+
+    def get_cached_aggregations(self):
+        """
+        gets and sets cached aggregations depending on key provided
+        by self.get_cached_aggregations_key
+        """
+        if hasattr(self, 'cached_aggregations'):
+            return self.cached_aggregations
+
+        key = self.get_cached_aggregations_key()
+        try:
+            cached_aggregations_object = self.cache_class.objects.get(key=key)
+            self.cached_aggregations = cached_aggregations_object.value
+        # pylint: disable=broad-except
+        except Exception as e:
+            # pylint: enable=broad-except
+            self.cached_aggregations = None
+
+        return self.cached_aggregations
+
+    def get_manager_class(self):
+        """
+        gets the correct manager class based on user permissions.
+        admin class currently adds brand_safety's 'Unsuitable' score range
+        """
+        if self.vetting_admin_permission_class().has_permission(self.request):
+            return self.admin_manager_class
+        return self.manager_class
 
 
 class PaginatorWithAggregationMixin:
