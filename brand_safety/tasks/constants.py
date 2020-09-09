@@ -12,6 +12,8 @@ class BaseScheduler:
     TASK_EXPIRATION = dict(hours=2)
     TASK_BATCH_SIZE = 5
     MAX_QUEUE_SIZE = 5
+    # Minimum percentage before task queue should be refilled
+    TASK_REQUEUE_THRESHOLD = .20
 
     @classmethod
     def get_expiration(cls):
@@ -24,6 +26,11 @@ class BaseScheduler:
         if limit < 0:
             limit = 0
         return limit
+
+    @classmethod
+    def get_minimum_threshold(cls):
+        minimum = round(cls.MAX_QUEUE_SIZE * cls.TASK_REQUEUE_THRESHOLD)
+        return minimum
 
 
 class Schedulers:

@@ -14,17 +14,13 @@ from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
-# Minimum percentage before queue should be refilled
-TASK_REQUEUE_THRESHOLD = .20
-
-
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
 def video_discovery_scheduler():
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
 
-    if queue_size <= round(Schedulers.VideoDiscovery.MAX_QUEUE_SIZE * TASK_REQUEUE_THRESHOLD):
+    if queue_size <= Schedulers.VideoDiscovery.get_minimum_threshold():
         base_query = video_manager.forced_filters()
         task_signatures = []
 
