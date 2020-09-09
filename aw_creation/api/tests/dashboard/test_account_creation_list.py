@@ -17,6 +17,7 @@ from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_BRAND
 from aw_reporting.demo.data import DEMO_COST_METHOD
+from aw_reporting.demo.data import DEMO_SF_ACCOUNT
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -364,6 +365,18 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"], DEMO_COST_METHOD)
+
+    def test_demo_agency(self):
+        recreate_test_demo_data()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["sf_account"], DEMO_SF_ACCOUNT)
 
     def test_list_only_chf_accounts(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
