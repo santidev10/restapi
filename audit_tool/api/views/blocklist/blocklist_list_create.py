@@ -86,7 +86,6 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :return: tuple of items to create and update
         """
         now = now_in_default_tz()
-        data_type = 1 if data_type == "channel" else 0
         exists = BlacklistItem.objects.filter(item_id__in=item_ids)
         exists_ids = set(exists.values_list("item_id", flat=True))
 
@@ -104,10 +103,11 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
                 value = getattr(item, counter_key) + 1
                 setattr(item, counter_key, value)
                 to_update.append(item)
-
+                
+        item_type = 1 if data_type == "channel" else 0
         to_create = [
             BlacklistItem(
-                item_type=data_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
+                item_type=item_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
                 processed_by_user_id=self.request.user.id, **{counter_key: 1}
             ) for item_id in item_ids if item_id not in exists_ids
         ]
