@@ -52,6 +52,11 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
 
+    # Update video rescore batch to False
+    if ignore_vetted_videos is False:
+        manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
+        manager.update_rescore(manager.ids_query(video_ids), rescore=False, conflicts="proceed")
+
 
 def get_rescore_ids(manager, base_query):
     with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
