@@ -111,14 +111,6 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
         "stats.sentiment:percentiles",
     )
 
-    # try:
-    #     cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
-    #     cached_aggregations = cached_aggregations_object.value
-    # # pylint: disable=broad-except
-    # except Exception as e:
-    #     # pylint: enable=broad-except
-    #     cached_aggregations = None
-
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
     def get_serializer_class(self):
