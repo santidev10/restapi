@@ -17,7 +17,7 @@ class OAuthAccount(OAuthBase):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     name = models.CharField(max_length=255, null=True, db_index=True)
     email = models.EmailField(max_length=255, null=True, db_index=True)
-    token = models.CharField(null=True, max_length=150)
+    token = models.CharField(null=True, max_length=255)
     refresh_token = models.CharField(null=True, max_length=150)
     revoked_access = models.BooleanField(default=False, db_index=True)
 

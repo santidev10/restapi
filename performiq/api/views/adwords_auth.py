@@ -10,7 +10,7 @@ from aw_reporting.adwords_api import get_customers
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.utils import get_google_access_token_info
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
-from performiq.models.constants import OAUTH_CHOICES
+from performiq.models.constants import OAuthType
 from performiq.models import OAuthAccount
 
 
@@ -96,7 +96,7 @@ class AdWordsAuthApiView(APIView):
             except OAuthAccount.DoesNotExist:
                 if refresh_token:
                     OAuthAccount.objects.create(
-                        oauth_type=OAUTH_CHOICES[0],
+                        oauth_type=OAuthType.GOOGLE_ADS.value,
                         user=self.request.user,
                         email=token_info["email"],
                         token=access_token,
