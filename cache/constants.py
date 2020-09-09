@@ -1,5 +1,7 @@
 VIDEO_AGGREGATIONS_KEY = "video_aggregations"
 CHANNEL_AGGREGATIONS_KEY = "channel_aggregations"
+ADMIN_VIDEO_AGGREGATIONS_KEY = "admin_video_aggregations"
+ADMIN_CHANNEL_AGGREGATIONS_KEY = "admin_channel_aggregations"
 KEYWORD_AGGREGATIONS_KEY = "keyword_aggregations"
 PRICING_TOOL_FILTERS_KEY = "pricing_tool_filters"
 GLOBAL_TRENDS_FILTERS_KEY = "global_trends_filters"

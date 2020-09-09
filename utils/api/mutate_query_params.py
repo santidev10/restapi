@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 
 from utils.permissions import IsVettingAdmin
+from brand_safety.constants import HIGH_RISK
 
 
 @contextmanager
@@ -97,7 +98,28 @@ class VettingAdminAggregationsMixin:
             return
 
         aggregations_str = self.request.query_params.get("aggregations")
+        if not aggregations_str:
+            return
+
         aggregations = aggregations_str.split(',')
         less_vetting_admin_aggs = [agg for agg in aggregations if "task_us_data.last_vetted_at" not in agg]
         with mutate_query_params(self.request.query_params):
-            self.request.query_params['aggregations'] = ",".join(less_vetting_admin_aggs)
+            self.request.query_params["aggregations"] = ",".join(less_vetting_admin_aggs)
+
+class VettingAdminFiltersMixin:
+    """
+    remove filtering on 'unsuitable' brand safety scores
+    """
+    def guard_vetting_admin_filters(self):
+        if IsVettingAdmin().has_permission(self.request) \
+                or "brand_safety" not in self.request.query_params:
+            return
+
+        brand_safety = self.request.query_params.get("brand_safety")
+        if not brand_safety:
+            return
+
+        groups = brand_safety.split(",")
+        less_high_risk_filter = [group for group in groups if group != HIGH_RISK]
+        with mutate_query_params(self.request.query_params):
+            self.request.query_params["brand_safety"] = ",".join(less_high_risk_filter)

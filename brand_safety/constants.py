@@ -83,7 +83,7 @@ BRAND_SAFETY_DECORATED_VIEWS = (
 SAFE = "Suitable"
 LOW_RISK = "Medium Suitability"
 RISKY = "Low Suitability"
-HIGH_RISK = "Unsuitable"
+HIGH_RISK = "7 And Below" # used to be "Unsuitable"
 
 CHANNELS_INDEX = "channels"
 VIDEOS_INDEX = "videos"
