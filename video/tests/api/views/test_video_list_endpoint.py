@@ -481,3 +481,48 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
+
+    def test_non_admin_brand_safety_exclusion(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("video_list")
+
+        url = self.get_url() + urlencode({
+            "aggregations": ",".join(ALLOWED_VIDEO_AGGREGATIONS),
+        })
+
+        # normal user should not see HIGH_RISK brand safety agg
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 3)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertNotIn(constants.HIGH_RISK, labels)
+
+        # admin should see HIGH_RISK agg
+        user.is_staff = True
+        user.save(update_fields=["is_staff"])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 4)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertIn(constants.HIGH_RISK, labels)
+
+        # vetting admin should see HIGH_RISK agg
+        user.is_staff = False
+        user.save(update_fields=["is_staff"])
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 4)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertIn(constants.HIGH_RISK, labels)
