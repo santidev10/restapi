@@ -4,6 +4,7 @@ from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 
+
 @celery_app.task(expires=TaskExpiration.INDUSTRY_PERFORMANCE_CACHING,
                  soft_time_limit=TaskTimeout.INDUSTRY_PERFORMANCE_CACHING)
 def cache_industry_performance():

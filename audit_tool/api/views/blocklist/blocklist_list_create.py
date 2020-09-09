@@ -40,8 +40,8 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
 
     def _validate(self):
         """ Validation logic for get request """
-        page = self.request.query_params.get("page", 1)
-        size = self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
+        page = int(self.request.query_params.get("page", 1))
+        size = int(self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE))
         validate_max_page(10000, size, page)
 
     def get_serializer_context(self) -> dict:
@@ -92,7 +92,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         # Mapping of item id to blocklist value to determine if blocklist value is changing
         blocked_mapping = {
             doc.main.id: doc.custom_properties.blocklist for doc in
-            self._get_es_manager(self.kwargs["data_type"])(sections=[Sections.CUSTOM_PROPERTIES]).get(item_ids)
+            self._get_es_manager(self.kwargs["data_type"])(sections=[Sections.CUSTOM_PROPERTIES]).get(item_ids, skip_none=True)
         }
         to_update = []
         for item in exists:
@@ -137,8 +137,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :param should_block: bool whether to blocklist or not
         :return: None
         """
-        es_manager = self._get_es_manager(self.kwargs["data_type"])(upsert_sections=[
-            Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
+        es_manager = self._get_es_manager(self.kwargs["data_type"])([Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
         docs = [es_manager.model(item_id, brand_safety={"rescore": True},
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
         es_manager.upsert(docs)

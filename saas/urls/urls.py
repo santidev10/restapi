@@ -15,6 +15,7 @@ from dashboard.api.urls import urls as dashboard_urls
 from email_reports import urls as email_reports_api_urls
 from healthcheck.api.urls import urls as healthcheck_api_urls
 from keywords.api import urls as keyword_api_urls
+from performiq.api.urls.urls import urlpatterns as performiq_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
 from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
@@ -64,6 +65,8 @@ urlpatterns = [
     url(r"^api/v3/", include((segment_v3_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V3)),
 
     url(r"^api/v2/", include((dashboard_urls, APP_NAME), namespace=Namespace.DASHBOARD)),
+
+    url(r"^api/v1/", include((performiq_urls, APP_NAME), namespace=Namespace.PERFORMIQ)),
 
     url(r"^api/healthcheck/", include((healthcheck_api_urls, APP_NAME), namespace=Namespace.HEALTHCHECK)),
     url(r"^docs/", include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION)),
