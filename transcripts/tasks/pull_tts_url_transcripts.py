@@ -91,8 +91,7 @@ def pull_tts_url_transcripts():
                         if vid_ids_to_rescore:
                             rescore_start = time.perf_counter()
                             rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                            video_manager.update_rescore(filter_query=rescore_filter, rescore=True,
-                                                         proceed_conflict=True)
+                            video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
                             rescore_end = time.perf_counter()
                             rescore_time = rescore_end - rescore_start
                             logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
@@ -130,7 +129,7 @@ def pull_tts_url_transcripts():
             if vid_ids_to_rescore:
                 rescore_start = time.perf_counter()
                 rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                video_manager.update_rescore(filter_query=rescore_filter, rescore=True, proceed_conflict=True)
+                video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
                 rescore_end = time.perf_counter()
                 rescore_time = rescore_end - rescore_start
                 logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")

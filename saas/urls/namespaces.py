@@ -16,4 +16,4 @@ class Namespace:
     HEALTHCHECK = "healthcheck"
     TRANSCRIPTS = "transcripts"
     DASHBOARD = "dashboard"
-
+    PERFORMIQ = "performiq"
