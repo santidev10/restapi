@@ -40,7 +40,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     """
     export_content_type = "application/CSV"
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS,
-                Sections.TASK_US_DATA, Sections.ADS_STATS)
+                Sections.TASK_US_DATA, Sections.ADS_STATS, Sections.CUSTOM_PROPERTIES,)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
     is_vetting = False
@@ -122,7 +122,8 @@ class CustomSegment(SegmentMixin, Timestampable):
     @property
     def es_manager(self):
         if self.segment_type == 0:
-            es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            sections = self.SECTIONS + (Sections.CHANNEL,)
+            es_manager = VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
         else:
             es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         return es_manager
