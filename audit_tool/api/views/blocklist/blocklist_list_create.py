@@ -36,6 +36,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         self._validate()
         es_manager_class = self._get_es_manager(self.kwargs["data_type"])
         queryset = ESQuerysetAdapter(es_manager_class())
+        queryset.get_data = queryset.uncached_get_data
         return queryset
 
     def _validate(self):
