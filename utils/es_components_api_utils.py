@@ -266,6 +266,12 @@ class QueryGenerator:
         else:
             return
 
+    def adapt_ias_filters(self, filters, value):
+        if value is True or value == "true":
+            q = QueryBuilder().build().must().range().field("ias_data.ias_verified").gte("now-7d/d").get()
+            filters.append(q)
+        return
+
     def __get_filters_exists(self):
         filters = []
 
@@ -277,6 +283,9 @@ class QueryGenerator:
 
             if field == "transcripts":
                 self.adapt_transcript_filters(filters, value)
+                continue
+            elif field == "ias_data.ias_verified":
+                self.adapt_ias_filters(filters, value)
                 continue
 
             query = QueryBuilder().build()
