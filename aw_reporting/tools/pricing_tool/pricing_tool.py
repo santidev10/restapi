@@ -26,6 +26,10 @@ class PricingTool:
         self.estimate_tool = PricingToolEstimate(kwargs)
 
     @classmethod
+    def clean_filters_defaults(cls):
+        return PricingToolFiltering.clean_filters_defaults()
+
+    @classmethod
     def get_filters(cls, user=None):
         return PricingToolFiltering.get_filters(user=user)
 

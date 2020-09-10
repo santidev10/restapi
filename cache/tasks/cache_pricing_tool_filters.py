@@ -18,13 +18,20 @@ logger = logging.getLogger(__name__)
 def cache_pricing_tool_filters():
     logger.debug("Starting pricing tool filters caching.")
 
+    PricingTool.clean_filters_defaults()
+    campaign_all_count = Opportunity.objects.have_campaigns().count()
+    campaign_all_filters = PricingTool.get_filters()
+
     for user in get_user_model().objects.filter(is_active=True).all():
         opportunities_ids = Opportunity.objects.have_campaigns(user=user).values_list("id", flat=True)
 
         if not len(opportunities_ids) > 0:
             continue
 
-        pricing_tool_filters = PricingTool.get_filters(user=user)
+        if campaign_all_count == len(opportunities_ids):
+            pricing_tool_filters = campaign_all_filters
+        else:
+            pricing_tool_filters = PricingTool.get_filters(user=user)
 
         cached_pricing_tool_filters, _ = CacheItem.objects.get_or_create(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
 
