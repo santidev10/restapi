@@ -128,7 +128,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache_pacing_report_filters": {
-        "task": "cache:tasks.cache_pacing_report_filters",
+        "task": "cache.tasks.cache_pacing_report_filters.cache_pacing_report_filters",
         "schedule": crontab(minute=0, hour="*/2"),
     },
     "brand_safety_channel_discovery": {
