@@ -60,11 +60,11 @@ class PricingToolFiltering:
         self.filter_item_ids = None
 
     @classmethod
-    def clean_filters_defaults(cls):
+    def clean_filters_interests(cls):
         cls.INTERESTS_FILTERS = None
 
     @classmethod
-    def get_filters(cls, user, opportunities_ids=None):
+    def get_filters(cls, user, opportunities_ids=None, reuse_interests=False):
 
         start, end = cls._get_default_dates()
 
@@ -89,7 +89,7 @@ class PricingToolFiltering:
             .distinct()
         product_types = [dict(id=t, name=t) for t in sorted(product_types)
                          if t not in ["", " --", "Standard"]]
-        if not cls.INTERESTS_FILTERS:
+        if not cls.INTERESTS_FILTERS or not reuse_interests:
             cls.INTERESTS_FILTERS = _get_interests_filters()
         filters = dict(
             # timing

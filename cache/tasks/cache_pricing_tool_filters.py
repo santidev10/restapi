@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def cache_pricing_tool_filters():
     logger.debug("Starting pricing tool filters caching.")
 
-    PricingTool.clean_filters_defaults()
+    PricingTool.clean_filters_interests()
     campaign_all_count = Opportunity.objects.have_campaigns().count()
     campaign_all_filters = PricingTool.get_filters()
 
@@ -31,7 +31,7 @@ def cache_pricing_tool_filters():
         if campaign_all_count == len(opportunities_ids):
             pricing_tool_filters = campaign_all_filters
         else:
-            pricing_tool_filters = PricingTool.get_filters(user=user)
+            pricing_tool_filters = PricingTool.get_filters(user=user, reuse_interests=True)
 
         cached_pricing_tool_filters, _ = CacheItem.objects.get_or_create(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
 
