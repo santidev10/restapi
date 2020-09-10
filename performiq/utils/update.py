@@ -1,52 +1,49 @@
 from performiq.models import Campaign
-from performiq.models import OAuthAccount
 
-from googleads import adwords
-from aw_reporting.adwords_api import get_web_app_client
-from performiq.utils.adwords_report import get_campaigns
 from performiq.models.constants import OAuthType
-from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
+from performiq.utils.adwords_report import get_client
 from performiq.utils.adwords_report import get_report
 from utils.db.functions import safe_bulk_create
 
 
-def pull_gads_task(account_id):
-    # oauth_account = OAuthAccount.objects.get(id=account_id)
-    chf = "1//0d48Q1_odkiDjCgYIARAAGA0SNwF-L9IrfX-mcPp6uNFQ_2qXzLU4QoEdp8C2cvcTcaVj6OWwCCcpUSXKqtsGTym7G7QXWB1irLw"
-    client = get_web_app_client(
-        refresh_token=chf,
-        client_customer_id=account_id,
-    )
-    update_campaigns(client, fields=CAMPAIGN_FIELDS_MAPPING.values())
-    pass
 
+def update(account_id, fields, field_mapping, report_query, model):
+    """
 
-def update_campaigns(client, fields, report_query=None):
-    report_query = report_query or \
-                   (adwords.ReportQueryBuilder()
-                        .From("CAMPAIGN_PERFORMANCE_REPORT")
-                        .Where("ServingStatus")
-                        .EqualTo("SERVING")
-                        .Select(*fields)
-                        .Build())
+    :param client: Adwords client instantiated from get_web_app_client
+    :param fields: list -> Adwords report fields to fetch
+    :param field_mapping: dict -> Postgres column fields to Adwords report field for the current report
+        {
+            "id": "CampaignId",
+            "impressions": "Impressions",
+            "video_views": "VideoViews",
+            ...
+        }
+    :param report_query: str -> Adwords Query Language query string
+    :param model: Postgres model to create / update items
+    :return:
+    """
+    client = get_client(account_id)
     report = get_report(client, report_query, fields)
-    # Only use relevant fields in report columns
+    # Not all report fields will be used in field_mapping, limit mapping for
+    # setting values on model objects and for bulk_update operation
     fields_mapping = {
-        obj_field: report_field for obj_field, report_field in CAMPAIGN_FIELDS_MAPPING.items()
+        obj_field: report_field for obj_field, report_field in field_mapping.items()
         if report_field in fields
     }
-    to_update, to_create = _prepare_items(report, Campaign, fields_mapping)
-    safe_bulk_create(Campaign, to_create)
+    to_update, to_create = prepare_items(report, Campaign, fields_mapping, OAuthType.GOOGLE_ADS.value)
+    safe_bulk_create(model, to_create)
     fields_mapping.pop("id")
-    Campaign.objects.bulk_update(to_update, fields=fields_mapping.keys())
+    model.objects.bulk_update(to_update, fields=fields_mapping.keys())
 
 
-def _prepare_items(report, model, fields_mapping):
+def prepare_items(report, model, fields_mapping, ouath_type):
     """
     Prepare items to be updated or created
     :param report: iter -> Iterable that contains report rows
     :param model: Model of report being retrieved
     :param fields_mapping: dict -> Mapping of model field to report fields e.g. id: CampaignId
+    :param ouath_type: OAuthType enum value
     :return: tuple
     """
     exists_mapping = {
@@ -67,7 +64,7 @@ def _prepare_items(report, model, fields_mapping):
                 setattr(obj, obj_field, report_value)
             container = to_update
         except KeyError:
-            default = {"oauth_type": OAuthType.GOOGLE_ADS.value}
+            default = {"oauth_type": ouath_type}
             # Prepare obj field values
             values = {
                 obj_field: getattr(row, report_field)
@@ -77,4 +74,3 @@ def _prepare_items(report, model, fields_mapping):
             container = to_create
         container.append(obj)
     return to_update, to_create
-
