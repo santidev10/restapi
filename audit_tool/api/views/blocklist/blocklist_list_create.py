@@ -36,6 +36,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         self._validate()
         es_manager_class = self._get_es_manager(self.kwargs["data_type"])
         queryset = ESQuerysetAdapter(es_manager_class())
+        queryset.get_data = queryset.uncached_get_data
         return queryset
 
     def _validate(self):
@@ -64,14 +65,15 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             should_block = bool(strtobool(request.query_params.get("block", "")))
         except ValueError:
             raise ValidationError("Please provide the query parameter 'block' as 'true' or 'false'.")
+        data_type = kwargs["data_type"]
         # Determine which field BlacklistItem counter field we need to increment
         counter_key = "blocked_count" if should_block else "unblocked_count"
-        item_ids = self._map_urls(request.data.get("item_urls", []), data_type=kwargs["data_type"])
-        to_update, to_create = self._prepare_items(item_ids, kwargs["data_type"], counter_key, should_block)
+        item_ids = self._map_urls(request.data.get("item_urls", []), data_type=data_type)
+        to_update, to_create = self._prepare_items(item_ids, data_type, counter_key, should_block)
         safe_bulk_create(BlacklistItem, to_create)
         BlacklistItem.objects.bulk_update(to_update, fields=["blocked_count", "unblocked_count",
                                                              "updated_at", "processed_by_user_id"])
-        self._update_docs(item_ids, should_block)
+        self._update_docs(item_ids, should_block, data_type)
         return Response()
 
     def _prepare_items(self, item_ids: list, data_type: str, counter_key: str, should_block: bool):
@@ -85,7 +87,6 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :return: tuple of items to create and update
         """
         now = now_in_default_tz()
-        data_type = 1 if data_type == "channel" else 0
         exists = BlacklistItem.objects.filter(item_id__in=item_ids)
         exists_ids = set(exists.values_list("item_id", flat=True))
 
@@ -103,10 +104,11 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
                 value = getattr(item, counter_key) + 1
                 setattr(item, counter_key, value)
                 to_update.append(item)
-
+                
+        item_type = 1 if data_type == "channel" else 0
         to_create = [
             BlacklistItem(
-                item_type=data_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
+                item_type=item_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
                 processed_by_user_id=self.request.user.id, **{counter_key: 1}
             ) for item_id in item_ids if item_id not in exists_ids
         ]
@@ -130,17 +132,30 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             mapped_ids.append(mapped)
         return mapped_ids
 
-    def _update_docs(self, item_ids: list, should_block: bool) -> None:
+    def _update_docs(self, item_ids: list, should_block: bool, data_type: str) -> None:
         """
         Set brand_safety.rescore values to True for rescoring after changing blocklist values
+        Sets channel videos blocklist = True if blocklisting
         :param item_ids: list of Youtube channel or video ids
         :param should_block: bool whether to blocklist or not
         :return: None
         """
-        es_manager = self._get_es_manager(self.kwargs["data_type"])([Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES])
-        docs = [es_manager.model(item_id, brand_safety={"rescore": True},
+        upsert_sections = (Sections.BRAND_SAFETY, Sections.CUSTOM_PROPERTIES)
+        es_manager = self._get_es_manager(data_type)(upsert_sections=upsert_sections)
+        # Only set overall_score to 0 if adding to blocklist
+        overall_score = {"overall_score": 0} if should_block else {}
+        bs_data = {
+            "rescore": True if should_block is False else False,
+            **overall_score
+        }
+        docs = [es_manager.model(item_id, brand_safety=bs_data,
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
         es_manager.upsert(docs)
+        if should_block is True and data_type == "channel":
+            # Set videos all channels to blocklist = True
+            video_manager = VideoManager(upsert_sections=upsert_sections)
+            channel_query = es_manager.ids_query(item_ids, f"{Sections.CHANNEL}.id")
+            video_manager.update_blocklist(channel_query, True)
 
     def _get_es_manager(self, doc_type: str):
         managers = dict(

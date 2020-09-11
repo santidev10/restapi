@@ -14,17 +14,13 @@ from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
-# Minimum percentage before queue should be refilled
-TASK_REQUEUE_THRESHOLD = .20
-
-
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
 def video_discovery_scheduler():
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
 
-    if queue_size <= round(Schedulers.VideoDiscovery.MAX_QUEUE_SIZE * TASK_REQUEUE_THRESHOLD):
+    if queue_size <= Schedulers.VideoDiscovery.get_minimum_threshold():
         base_query = video_manager.forced_filters()
         task_signatures = []
 
@@ -51,6 +47,11 @@ def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=Tr
     # Add rescore flag to be rescored by channel discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
+
+    # Update video rescore batch to False
+    if ignore_vetted_videos is False:
+        manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
+        manager.update_rescore(manager.ids_query(video_ids), rescore=False, conflicts="proceed")
 
 
 def get_rescore_ids(manager, base_query):

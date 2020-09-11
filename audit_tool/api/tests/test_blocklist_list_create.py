@@ -23,7 +23,7 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES)
     channel_manager = ChannelManager(SECTIONS)
-    video_manager = VideoManager(SECTIONS)
+    video_manager = VideoManager(SECTIONS + (Sections.CHANNEL,))
 
     def _get_url(self, data_type):
         url = reverse(AuditPathName.BLOCKLIST_LIST_CREATE, [Namespace.AUDIT_TOOL], kwargs=dict(data_type=data_type))
@@ -150,6 +150,32 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated_video.brand_safety.rescore, True)
         self.assertEqual(updated_channel.brand_safety.rescore, True)
 
+    def test_block_zero_score(self):
+        """ Test that blocking items sets brand safety overall score to 0 """
+        self.create_admin_user()
+        video = Video(f"video_{next(int_iterator)}")
+        channel = Channel(f"yt_channel_{next(int_iterator)}")
+        video.populate_brand_safety(overall_score=100)
+        channel.populate_brand_safety(overall_score=100)
+
+        self.video_manager.upsert([video])
+        self.channel_manager.upsert([channel])
+        payload1 = json.dumps(dict(item_urls=[self._get_youtube_url(video.main.id)]))
+        payload2 = json.dumps(dict(item_urls=[self._get_youtube_url(channel.main.id, "channel")]))
+        with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+            res1 = self.client.post(self._get_url("video") + "?block=true", data=payload1, content_type="application/json")
+            res2 = self.client.post(self._get_url("channel") + "?block=true", data=payload2, content_type="application/json")
+
+        self.assertEqual(res1.status_code, HTTP_200_OK)
+        self.assertEqual(res2.status_code, HTTP_200_OK)
+
+        updated_video = self.video_manager.get([video.main.id], skip_none=True)[0]
+        updated_channel = self.channel_manager.get([channel.main.id], skip_none=True)[0]
+        self.assertEqual(updated_video.brand_safety.overall_score, 0)
+        self.assertEqual(updated_channel.brand_safety.overall_score, 0)
+        self.assertEqual(updated_video.brand_safety.rescore, False)
+        self.assertEqual(updated_channel.brand_safety.rescore, False)
+
     def test_list_search(self):
         """ Test search by id and title """
         user = self.create_admin_user()
@@ -237,3 +263,26 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(bl1.unblocked_count, updated_bl1.unblocked_count)
         self.assertEqual(bl2.blocked_count, updated_bl2.blocked_count)
         self.assertEqual(bl2.unblocked_count, updated_bl2.unblocked_count)
+
+    def test_channel_block_videos_block(self):
+        """ Test blocklisting channels blocks each channels videos """
+        self.create_admin_user()
+        channel1 = Channel(f"yt_channel_{next(int_iterator)}")
+        channel2 = Channel(f"yt_channel_{next(int_iterator)}")
+        videos1 = [Video(**{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel1.main.id}})
+                   for _ in range(2)]
+        videos2 = [Video(**{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel2.main.id}})
+                   for _ in range(2)]
+        channels = [channel1, channel2]
+        self.video_manager.upsert(videos1 + videos2)
+        self.channel_manager.upsert(channels)
+        payload = json.dumps(dict(item_urls=[self._get_youtube_url(channel.main.id, "channel") for channel in channels]))
+        with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+            res = self.client.post(self._get_url("channel") + "?block=true", data=payload,
+                                    content_type="application/json")
+
+        self.assertEqual(res.status_code, HTTP_200_OK)
+        updated_videos = self.video_manager.get([video.main.id for video in videos1 + videos2], skip_none=True)
+        updated_channels = self.channel_manager.get([channel.main.id for channel in channels], skip_none=True)
+
+        self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_channels + updated_videos))
