@@ -32,6 +32,8 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
         return Response(serializer.data)
 
     def _get_account_creation(self, pk):
+        if not pk.isnumeric():
+            raise Http404
         filters = {"is_deleted": False}
         user_settings = self.request.user.get_aw_settings()
         if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
