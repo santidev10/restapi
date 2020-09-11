@@ -59,22 +59,33 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         user = self.create_admin_user()
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
-        bl_v_exists = BlacklistItem.objects.create(item_id=videos[1].main.id, item_type=0, blocked_count=1,
-                                                   item_id_hash=get_hash_name(videos[1].main.id))
-        bl_c_exists = BlacklistItem.objects.create(item_id=channels[1].main.id, item_type=1, blocked_count=4,
-                                                   item_id_hash=get_hash_name(channels[1].main.id))
+
+        self.video_manager.upsert(videos)
+        self.channel_manager.upsert(channels)
+
+        bl_v_exists = BlacklistItem\
+            .objects\
+            .create(item_id=videos[1].main.id, item_type=0, blocked_count=1,
+                    item_id_hash=get_hash_name(videos[1].main.id), processed_by_user_id=user.id)
+        bl_c_exists = BlacklistItem\
+            .objects\
+            .create(item_id=channels[1].main.id, item_type=1, blocked_count=4,
+                    item_id_hash=get_hash_name(channels[1].main.id), processed_by_user_id=user.id)
         # Also test view can handle just sending ids instead of full urls
         payload1 = dict(item_urls=[i.main.id for i in videos])
         payload2 = dict(item_urls=[i.main.id for i in channels])
         with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
             res1 = self.client.post(self._get_url("video") + "?block=true", data=json.dumps(payload1), content_type="application/json")
             res2 = self.client.post(self._get_url("channel") + "?block=true", data=json.dumps(payload2), content_type="application/json")
+
         self.assertEqual(res1.status_code, HTTP_200_OK)
         self.assertEqual(res2.status_code, HTTP_200_OK)
+
         blv1, blv2 = BlacklistItem.objects.filter(item_id__in=payload1["item_urls"], item_type=0).order_by("id")
         blc1, blc2 = BlacklistItem.objects.filter(item_id__in=payload2["item_urls"], item_type=1).order_by("id")
-        # blocked_count should increment by 1 from existing value
-        self.assertEqual(blv1.blocked_count, bl_v_exists.blocked_count + 1)
+
+        # blocked_count should increment by 1 from existing value only if value is changing
+        self.assertEqual(blv1.blocked_count, bl_v_exists.blocked_count)
         self.assertEqual(blv1.unblocked_count, 0)
         self.assertEqual(blv1.processed_by_user_id, user.id)
 
@@ -82,7 +93,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(blv2.unblocked_count, 0)
         self.assertEqual(blv2.processed_by_user_id, user.id)
 
-        self.assertEqual(blc1.blocked_count, bl_c_exists.blocked_count + 1)
+        self.assertEqual(blc1.blocked_count, bl_c_exists.blocked_count)
         self.assertEqual(blc1.unblocked_count, 0)
         self.assertEqual(blc1.processed_by_user_id, user.id)
 
@@ -96,9 +107,9 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
         bl_v_exists = BlacklistItem.objects.create(item_id=videos[1].main.id, item_type=0, unblocked_count=11,
-                                                   item_id_hash=get_hash_name(videos[1].main.id))
+                                                   item_id_hash=get_hash_name(videos[1].main.id), processed_by_user_id=user.id)
         bl_c_exists = BlacklistItem.objects.create(item_id=channels[1].main.id, item_type=1, unblocked_count=9,
-                                                   item_id_hash=get_hash_name(channels[1].main.id))
+                                                   item_id_hash=get_hash_name(channels[1].main.id), processed_by_user_id=user.id)
         # Also test view can handle just sending ids instead of full urls
         payload1 = dict(item_urls=[i.main.id for i in videos])
         payload2 = dict(item_urls=[i.main.id for i in channels])
@@ -111,8 +122,8 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(res2.status_code, HTTP_200_OK)
         blv1, blv2 = BlacklistItem.objects.filter(item_id__in=payload1["item_urls"], item_type=0).order_by("id")
         blc1, blc2 = BlacklistItem.objects.filter(item_id__in=payload2["item_urls"], item_type=1).order_by("id")
-        # unblocked_count should increment by 1 from existing value
-        self.assertEqual(blv1.unblocked_count, bl_v_exists.unblocked_count + 1)
+        # unblocked_count should increment by 1 from existing value only if value is changing
+        self.assertEqual(blv1.unblocked_count, bl_v_exists.unblocked_count)
         self.assertEqual(blv1.blocked_count, 0)
         self.assertEqual(blv1.processed_by_user_id, user.id)
 
@@ -120,7 +131,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(blv2.blocked_count, 0)
         self.assertEqual(blv2.processed_by_user_id, user.id)
 
-        self.assertEqual(blc1.unblocked_count, bl_c_exists.unblocked_count + 1)
+        self.assertEqual(blc1.unblocked_count, bl_c_exists.unblocked_count)
         self.assertEqual(blc1.blocked_count, 0)
         self.assertEqual(blc1.processed_by_user_id, user.id)
 
@@ -265,7 +276,11 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(bl2.unblocked_count, updated_bl2.unblocked_count)
 
     def test_channel_block_videos_block(self):
-        """ Test blocklisting channels blocks each channels videos """
+        """
+        Test blocklisting channels does not set blocklist values on videos. Videos are implicitly blocklisted
+        from channel blocklist value
+        https://channelfactory.atlassian.net/browse/VIQ2-488
+        """
         self.create_admin_user()
         channel1 = Channel(f"yt_channel_{next(int_iterator)}")
         channel2 = Channel(f"yt_channel_{next(int_iterator)}")
@@ -285,4 +300,37 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         updated_videos = self.video_manager.get([video.main.id for video in videos1 + videos2], skip_none=True)
         updated_channels = self.channel_manager.get([channel.main.id for channel in channels], skip_none=True)
 
-        self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_channels + updated_videos))
+        self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_channels))
+        self.assertTrue(all(item.custom_properties.blocklist is not True for item in updated_videos))
+
+    def test_channel_unblock(self):
+        """ Test blocklisting channels does not unblock already blocked videos"""
+        self.create_admin_user()
+        channel1 = Channel(f"yt_channel_{next(int_iterator)}")
+        channel2 = Channel(f"yt_channel_{next(int_iterator)}")
+        channel3 = Channel(f"yt_channel_{next(int_iterator)}")
+        blocklist = {"custom_properties": {"blocklist": True}}
+        videos1 = [
+            Video(
+                **{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel1.main.id}},
+                **blocklist
+            ) for _ in range(2)]
+        videos2 = [
+            Video(
+                **{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel2.main.id}},
+                **blocklist
+            ) for _ in range(2)]
+        channels = [channel1, channel2, channel3]
+        self.video_manager.upsert(videos1 + videos2)
+        self.channel_manager.upsert(channels)
+        payload = json.dumps(dict(item_urls=[self._get_youtube_url(channel.main.id, "channel") for channel in channels]))
+        with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+            res = self.client.post(self._get_url("channel") + "?block=false", data=payload,
+                                    content_type="application/json")
+
+        self.assertEqual(res.status_code, HTTP_200_OK)
+        updated_videos = self.video_manager.get([video.main.id for video in videos1 + videos2], skip_none=True)
+        updated_channels = self.channel_manager.get([channel.main.id for channel in channels], skip_none=True)
+
+        self.assertTrue(all(item.custom_properties.blocklist is False for item in updated_channels))
+        self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_videos))
