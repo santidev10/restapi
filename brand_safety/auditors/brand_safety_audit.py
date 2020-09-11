@@ -77,16 +77,22 @@ class BrandSafetyAudit(object):
         video_results = []
         channel_results = []
         for batch in self.audit_utils.batch(channel_ids, self.CHANNEL_BATCH_SIZE):
-            batch = set(batch)
+            serialized = self.serialize(batch, doc_type="channel")
+
+            non_blocklist = []
+            blocklist_docs = []
+            for channel in serialized:
+                if not channel.get("id"):
+                    continue
+                if channel.get("blocklist") is True:
+                    blocklist_docs.append(BrandSafetyChannelAudit.instantiate_blocklist(channel["id"]))
+                else:
+                    non_blocklist.append(channel)
+
             curr_batch_channel_audits = []
             curr_batch_video_audits = []
-
-            # Blocklisted channels do not require full audit as they will immediately get an overall_score of 0
-            non_blocklist_ids, blocklist_docs = self._process_blocklist(self.channel_manager, BrandSafetyChannelAudit, batch)
-            serialized = self.serialize(non_blocklist_ids, doc_type="channel")
-
             # Set video data on each channel
-            data = self._get_channel_batch_data(serialized)
+            data = self._get_channel_batch_data(non_blocklist)
             for channel in data:
                 if not channel.get("id"):
                     continue
@@ -106,11 +112,12 @@ class BrandSafetyAudit(object):
                 self.channel_manager.upsert(blocklist_docs)
         return video_results, channel_results
 
-    def process_videos(self, video_ids: list, index=True) -> list:
+    def process_videos(self, video_ids: list, index=True, channel_blocklist_mapping=None) -> list:
         """
         Audit videos ids with indexing
         :param video_ids: list[str]
         :param index: Should index results
+        :param channel_blocklist_mapping: dict -> dict of channel id to blocklist value
         :return:
         """
         if not isinstance(video_ids, list):
@@ -118,13 +125,24 @@ class BrandSafetyAudit(object):
         video_results = []
         check_rescore_channels = []
         for batch in self.audit_utils.batch(video_ids, self.VIDEO_BATCH_SIZE):
-            batch = set(batch)
+            serialized = self.serialize(batch)
 
-            # Blocklisted videos do not require full audit as they will immediately get an overall_score of 0
-            non_blocklist_ids, blocklist_docs = self._process_blocklist(self.video_manager, BrandSafetyVideoAudit, batch)
+            # If channel is blocklisted videos are implicitly blocklisted
+            if not channel_blocklist_mapping:
+                batch_channel_blocklist = self._get_channel_blocklist(video["channel_id"] for video in serialized)
+            else:
+                batch_channel_blocklist = channel_blocklist_mapping
 
-            serialized = self.serialize(non_blocklist_ids)
+            # Blocklisted channels do not require full audit as they will immediately get an overall_score of 0
+            non_blocklist = []
+            blocklist_docs = []
             for video in serialized:
+                if video["blocklist"] is True or batch_channel_blocklist.get(video["channel_id"]) is True:
+                    blocklist_docs.append(BrandSafetyVideoAudit.instantiate_blocklist(video["id"]))
+                else:
+                    non_blocklist.append(video)
+
+            for video in non_blocklist:
                 if not video.get("id") or not video.get("channel_id") or not video.get("channel_title"):
                     # Ignore videos that can not be indexed without required fields
                     continue
@@ -259,22 +277,10 @@ class BrandSafetyAudit(object):
         serialized = serializer(manager.get(ids, skip_none=True), many=True).data
         return serialized
 
-    def _process_blocklist(self, manager, audit_model, item_ids: set) -> tuple:
-        """
-        Process blocklisted items
-        Determine what is blocklisted by custom_properties.blocklist field and prepare blocklist documents
-            for upsert
-        :param manager: es_components.manager
-        :param audit_model: BrandSafetyVideoAudit | BrandSafetyChannelAudit
-        :param item_ids: list
-        :return: tuple
-        """
-        if not isinstance(item_ids, set):
-            item_ids = set(item_ids)
-        docs = manager.get(item_ids, skip_none=True)
-        blocklist_ids = set(doc.main.id for doc in docs if doc.custom_properties.blocklist is True)
-        non_blocklist_ids = item_ids - blocklist_ids
-        blocklist_docs = [
-            audit_model.instantiate_blocklist(_id) for _id in blocklist_ids
-        ]
-        return non_blocklist_ids, blocklist_docs
+    def _get_channel_blocklist(self, channel_ids):
+        channels = self.channel_manager.get([_id for _id in channel_ids if _id is not None], skip_none=True)
+        blocklist_map = {
+            channel.main.id: channel.custom_properties.blocklist
+            for channel in channels
+        }
+        return blocklist_map

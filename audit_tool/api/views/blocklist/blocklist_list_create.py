@@ -13,6 +13,7 @@ from audit_tool.models import get_hash_name
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.db.functions import safe_bulk_create
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -151,11 +152,6 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         docs = [es_manager.model(item_id, brand_safety=bs_data,
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
         es_manager.upsert(docs)
-        if should_block is True and data_type == "channel":
-            # Set videos all channels to blocklist = True
-            video_manager = VideoManager(upsert_sections=upsert_sections)
-            channel_query = es_manager.ids_query(item_ids, f"{Sections.CHANNEL}.id")
-            video_manager.update_blocklist(channel_query, True)
 
     def _get_es_manager(self, doc_type: str):
         managers = dict(
