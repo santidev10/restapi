@@ -152,7 +152,7 @@ def _clean_blocklist(videos):
     :return:
     """
     channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
-    channels = channel_manager.get([video.channel.id for video in videos])
+    channels = channel_manager.get([video.channel.id for video in videos if video.channel.id is not None])
     blocklist = {
         channel.main.id: channel.custom_properties.blocklist
         for channel in channels
