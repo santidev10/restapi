@@ -47,6 +47,9 @@ class BrandSafetyAudit(object):
 
     MAX_THREAD_POOL = 10
     THREAD_BATCH_SIZE = 5
+    CHANNEL_SECTIONS = (Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY,
+                        Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES)
+    VIDEO_SECTIONS = CHANNEL_SECTIONS + (Sections.CHANNEL, Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS)
 
     def __init__(self, *_, should_check_rescore_channels=False, ignore_vetted_channels=True, ignore_vetted_videos=True,
                  ignore_blacklist_data=False, **kwargs):
@@ -62,13 +65,11 @@ class BrandSafetyAudit(object):
         self.audit_utils = AuditUtils()
 
         self.channel_manager = ChannelManager(
-            sections=(
-                Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+            sections=self.CHANNEL_SECTIONS,
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
-                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA),
+            sections=self.VIDEO_SECTIONS,
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
@@ -76,18 +77,30 @@ class BrandSafetyAudit(object):
         video_results = []
         channel_results = []
         for batch in self.audit_utils.batch(channel_ids, self.CHANNEL_BATCH_SIZE):
+            serialized = self.serialize(batch, doc_type="channel")
+
+            non_blocklist = []
+            blocklist_docs = []
+            for channel in serialized:
+                if not channel.get("id"):
+                    continue
+                if channel.get("blocklist") is True:
+                    blocklist_docs.append(BrandSafetyChannelAudit.instantiate_blocklist(channel["id"]))
+                else:
+                    non_blocklist.append(channel)
+
             curr_batch_channel_audits = []
             curr_batch_video_audits = []
-            serialized = self.serialize(batch, doc_type="channel")
             # Set video data on each channel
-            data = self._get_channel_batch_data(serialized)
+            data = self._get_channel_batch_data(non_blocklist)
             for channel in data:
                 if not channel.get("id"):
                     continue
                 # Audit all videos for each channel to be used for channel score
-                channel["video_audits"] = self.process_videos(channel["videos"], index=False)
+                channel["video_audits"] = [self.audit_video(video) for video in channel["videos"]]
                 channel_audit = BrandSafetyChannelAudit(channel, self.audit_utils,
-                                                        ignore_blacklist_data=self.ignore_blacklist_data)
+                                                        ignore_blacklist_data=self.ignore_blacklist_data
+                                                        )
                 channel_audit.run()
                 curr_batch_video_audits.extend(channel["video_audits"])
                 curr_batch_channel_audits.append(channel_audit)
@@ -96,13 +109,15 @@ class BrandSafetyAudit(object):
             channel_results.extend(curr_batch_channel_audits)
             if index:
                 self._index_results(curr_batch_video_audits, curr_batch_channel_audits)
+                self.channel_manager.upsert(blocklist_docs)
         return video_results, channel_results
 
-    def process_videos(self, video_ids: list, index=True) -> list:
+    def process_videos(self, video_ids: list, index=True, channel_blocklist_mapping=None) -> list:
         """
         Audit videos ids with indexing
-        :param video_ids: list[dict]
+        :param video_ids: list[str]
         :param index: Should index results
+        :param channel_blocklist_mapping: dict -> dict of channel id to blocklist value
         :return:
         """
         if not isinstance(video_ids, list):
@@ -110,12 +125,24 @@ class BrandSafetyAudit(object):
         video_results = []
         check_rescore_channels = []
         for batch in self.audit_utils.batch(video_ids, self.VIDEO_BATCH_SIZE):
-            if not isinstance(batch[0], dict):
-                serialized = self.serialize(batch)
-            else:
-                serialized = batch
+            serialized = self.serialize(batch)
 
+            # If channel is blocklisted videos are implicitly blocklisted
+            if not channel_blocklist_mapping:
+                batch_channel_blocklist = self._get_channel_blocklist(video["channel_id"] for video in serialized)
+            else:
+                batch_channel_blocklist = channel_blocklist_mapping
+
+            # Blocklisted channels do not require full audit as they will immediately get an overall_score of 0
+            non_blocklist = []
+            blocklist_docs = []
             for video in serialized:
+                if video["blocklist"] is True or batch_channel_blocklist.get(video["channel_id"]) is True:
+                    blocklist_docs.append(BrandSafetyVideoAudit.instantiate_blocklist(video["id"]))
+                else:
+                    non_blocklist.append(video)
+
+            for video in non_blocklist:
                 if not video.get("id") or not video.get("channel_id") or not video.get("channel_title"):
                     # Ignore videos that can not be indexed without required fields
                     continue
@@ -226,14 +253,15 @@ class BrandSafetyAudit(object):
         for channel in channels:
             if self.ignore_vetted_channels is True and channel.task_us_data:
                 continue
-            channel_overall_score = getattr(channel.brand_safety, "overall_score", None)
-            if channel_overall_score and channel_overall_score > 0:
+            channel_overall_score = channel.brand_safety.overall_score
+            blocklisted = channel.custom_properties.blocklist is True
+            if channel_overall_score and channel_overall_score > 0 and blocklisted is False:
                 try:
                     self.channels_to_rescore.append(channel.main.id)
-                except KeyError:
+                except (KeyError, TypeError):
                     pass
 
-    def serialize(self, ids: list, doc_type="video") -> list:
+    def serialize(self, ids: iter, doc_type="video") -> list:
         """
         Serialize video or channel ids
         :param ids: list
@@ -248,3 +276,11 @@ class BrandSafetyAudit(object):
             manager = self.channel_manager
         serialized = serializer(manager.get(ids, skip_none=True), many=True).data
         return serialized
+
+    def _get_channel_blocklist(self, channel_ids):
+        channels = self.channel_manager.get([_id for _id in channel_ids if _id is not None], skip_none=True)
+        blocklist_map = {
+            channel.main.id: channel.custom_properties.blocklist
+            for channel in channels
+        }
+        return blocklist_map

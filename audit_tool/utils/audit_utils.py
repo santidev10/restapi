@@ -145,7 +145,7 @@ class AuditUtils(object):
         Returns subgroups as children keys for parent age groups
         :return: list
         """
-        age_groups = AuditAgeGroup.get_by_group()
+        age_groups = AuditAgeGroup.get_by_group(top_level_only=True)
         return age_groups
 
     @staticmethod

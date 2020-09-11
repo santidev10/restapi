@@ -3,6 +3,7 @@ from copy import deepcopy
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.serializers.channel import ChannelAdminSerializer
@@ -17,10 +18,12 @@ from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
+from es_components.managers.channel import VettingAdminChannelManager
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
+from utils.api.mutate_query_params import VettingAdminFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
@@ -30,6 +33,7 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
+from utils.permissions import IsVettingAdmin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -74,7 +78,8 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin, APIViewMixin, ListAPIView):
+class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+                         APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
@@ -119,6 +124,14 @@ class ChannelListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYou
     exists_filter = EXISTS_FILTER
     params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter, VettedParamsAdapter, IsTrackedParamsAdapter)
     allowed_aggregations = ALLOWED_CHANNEL_AGGREGATIONS
+    cached_aggregations_key = CHANNEL_AGGREGATIONS_KEY
+    admin_cached_aggregations_key = ADMIN_CHANNEL_AGGREGATIONS_KEY
+    manager_class = ChannelManager
+    admin_manager_class = VettingAdminChannelManager
+
+    # can't import in es_components_api_utils app registry not ready
+    vetting_admin_permission_class = IsVettingAdmin
+    cache_class = CacheItem
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
@@ -132,14 +145,6 @@ class ChannelListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYou
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
-
-    try:
-        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
-        cached_aggregations = cached_aggregations_object.value
-    # pylint: disable=broad-except
-    except Exception as e:
-        # pylint: enable=broad-except
-        cached_aggregations = None
 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
@@ -177,12 +182,13 @@ class ChannelListApiView(VettingAdminAggregationsMixin, AddFieldsMixin, ValidYou
 
         self.guard_vetting_admin_aggregations()
 
+        self.guard_vetting_admin_filters()
+
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
         self.add_fields()
 
-        result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
-        return result
+        return ESQuerysetAdapter(self.get_manager_class()(sections), cached_aggregations=self.get_cached_aggregations())
 
     @staticmethod
     def get_own_channel_ids(user, query_params):
