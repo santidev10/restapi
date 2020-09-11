@@ -205,8 +205,8 @@ class AuditExportApiView(APIView):
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
         do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-            do_exclusion = True
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        do_exclusion = True
         cols = [
             "Video URL",
             "Name",
