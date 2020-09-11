@@ -14,7 +14,7 @@ def update_campaigns(account_id, fields=None, report_query=None):
     :return:
     """
     report_query = report_query or _get_default_query()
-    fields = fields or CAMPAIGN_FIELDS_MAPPING.keys()
+    fields = fields or CAMPAIGN_FIELDS_MAPPING.values()
     items = update(account_id, fields, CAMPAIGN_FIELDS_MAPPING, report_query, Campaign)
     return items
 

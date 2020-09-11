@@ -20,10 +20,14 @@ def get_campaigns(client, fields=None):
 
 
 def get_client(account_id):
-    account = OAuthAccount.objects.get(id=account_id)
+    # account = OAuthAccount.objects.get(id=account_id)
+    # client = get_web_app_client(
+    #     refresh_token=account.refresh_token,
+    #     client_customer_id=account_id
+    # )
     client = get_web_app_client(
-        refresh_token=account.refresh_token,
-        client_customer_id=account_id
+        refresh_token='1/dFSYu09IZl43oA8pPOLE_NbkSDgO-Wm5LwA_dlkQoWsNoYWpKb856YvPe91IqL9t',
+        client_customer_id=5453761695
     )
     return client
 

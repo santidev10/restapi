@@ -7,7 +7,6 @@ CAMPAIGN_FIELDS_MAPPING = dict(
     impressions="Impressions",
     video_views="VideoViews",
     cost="Cost",
-    clicks="Clicks",
     active_view_viewability="ActiveViewViewability",
     video_quartile_100_rate="VideoQuartile100Rate",
 )

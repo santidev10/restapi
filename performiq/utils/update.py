@@ -1,9 +1,14 @@
+import operator
+
 from performiq.models import Campaign
 
 from performiq.models.constants import OAuthType
 from performiq.utils.adwords_report import get_client
 from performiq.utils.adwords_report import get_report
 from utils.db.functions import safe_bulk_create
+from aw_reporting.models.ad_words.calculations import get_ctr
+from aw_reporting.models.ad_words.calculations import get_average_cpv
+from aw_reporting.models.ad_words.calculations import get_average_cpm
 
 
 
@@ -65,12 +70,40 @@ def prepare_items(report, model, fields_mapping, ouath_type):
             container = to_update
         except KeyError:
             default = {"oauth_type": ouath_type}
-            # Prepare obj field values
+            # Prepare model obj instantiation values by mapping report fields to obj fields
             values = {
                 obj_field: getattr(row, report_field)
-                for obj_field, report_field in fields_mapping.items(),
+                for obj_field, report_field in fields_mapping.items()
             }
             obj = model(**default, **values)
             container = to_create
         container.append(obj)
     return to_update, to_create
+
+
+def _add_computed_fields(obj):
+    """ Add calculated fields not returned from Adwords API """
+    values = {
+        "ctr": get_ctr(obj.clicks, obj.impressions) if obj.impressions > 0 else 0,
+        "cpm": get_average_cpm(obj.cost, obj.impressions) if obj.impressions > 0 else 0,
+        "cpv": get_average_cpv(obj.cost, obj.video_views) if obj.video_views > 0 else 0,
+    }
+
+
+def _safe_calculate(a, b, operation):
+    """
+
+    :param a:
+    :param b:
+    :param operation: add, div, prod
+    :return:
+    """
+    try:
+        if operation == "prod":
+            result = a * b
+        else:
+            func = getattr(operator, operation)
+            result = func(a, b)
+    except (ZeroDivisionError, TypeError):
+        result = 0
+    return result
