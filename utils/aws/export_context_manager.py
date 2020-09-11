@@ -24,10 +24,10 @@ class ExportContextManager:
             writer.writeheader()
 
             for batch in chunks_generator(self.items, size=1000):
-                batch = list(batch)
+                chunk = list(batch)
                 # Ignore videos if its channel is blocklisted
                 if isinstance(self.items, VideoListDataGenerator):
-                    chunk = self._clean_blocklist(batch)
+                    chunk = self._clean_blocklist(chunk)
                 # Each chunk may be a sequence itself from a generator
                 if isinstance(chunk, collections.abc.Sequence) and not isinstance(chunk, str):
                     writer.writerows(self._get_export_data(chunk, sequence=True))
