@@ -188,7 +188,6 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
 
         self.add_fields()
 
-
         return ESQuerysetAdapter(self.get_manager_class()(sections), cached_aggregations=self.get_cached_aggregations())
 
     @staticmethod

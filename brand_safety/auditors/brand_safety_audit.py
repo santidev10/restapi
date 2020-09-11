@@ -253,11 +253,12 @@ class BrandSafetyAudit(object):
         for channel in channels:
             if self.ignore_vetted_channels is True and channel.task_us_data:
                 continue
-            channel_overall_score = getattr(channel.brand_safety, "overall_score", None)
-            if channel_overall_score and channel_overall_score > 0:
+            channel_overall_score = channel.brand_safety.overall_score
+            blocklisted = channel.custom_properties.blocklist is True
+            if channel_overall_score and channel_overall_score > 0 and blocklisted is False:
                 try:
                     self.channels_to_rescore.append(channel.main.id)
-                except KeyError:
+                except (KeyError, TypeError):
                     pass
 
     def serialize(self, ids: iter, doc_type="video") -> list:

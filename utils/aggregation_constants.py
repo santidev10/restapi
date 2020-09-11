@@ -40,6 +40,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "general_data.top_category",
     "general_data.top_lang_code",
     "general_data.iab_categories",
+    "ias_data.ias_verified:exists",
     "monetization.is_monetizable:exists",
     "stats.last_30day_subscribers:max",
     "stats.last_30day_subscribers:min",

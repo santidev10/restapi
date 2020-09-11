@@ -191,6 +191,12 @@ class SegmentQueryBuilder:
                 .gte(self._params["vetted_after"]).get()
             must_queries.append(vetted_after_query)
 
+        if self._params.get("ias_verified_date"):
+            ias_verified_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.IAS_DATA}.ias_verified") \
+                .gte(self._params["ias_verified_date"]).get()
+            must_queries.append(ias_verified_query)
+
         if self._params.get("mismatched_language") is not None:
             mismatched_language_queries = QueryBuilder().build().must().term().field(
                 "task_us_data.mismatched_language").value(self._params["mismatched_language"]).get()
