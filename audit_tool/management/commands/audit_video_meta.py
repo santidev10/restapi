@@ -301,11 +301,11 @@ class Command(BaseCommand):
 
     def check_video_is_blocklisted(self, video_id, channel_id, avp):
         if BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM):
-            avp.word_hits["exclusion"] = ['blocklist']
+            avp.word_hits["exclusion"] = ['BLOCKLIST']
             #self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
             return True
         if BlacklistItem.get(video_id, BlacklistItem.VIDEO_ITEM):
-            avp.word_hits["exclusion"] = ['blocklist']
+            avp.word_hits["exclusion"] = ['BLOCKLIST']
             self.append_to_channel(avp, [avp.video_id], "bad_video_ids")
             return True
 
