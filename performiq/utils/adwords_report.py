@@ -1,22 +1,32 @@
+from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
-from googleads import adwords
+from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
 from performiq.models import OAuthAccount
 
 from aw_reporting.adwords_api import get_web_app_client
 
 
-def get_campaigns(client, fields=None):
-    fields = fields or ("CampaignId", "ServingStatus")
-    report_query = (
-        adwords.ReportQueryBuilder()
-            .Select(*fields)
-            .From("CAMPAIGN_PERFORMANCE_REPORT")
-            .Where("ServingStatus").EqualTo("SERVING")
-            .Build()
-    )
-    report = get_report(client, report_query, fields)
-    return report
+def get_campaign_report(client, predicates: dict = None, date_range: dict = None, addl_fields: list = None) -> list:
+    """
+    Retrieve Adwords Campaign Performance report
+    :param client: get_client function client result
+    :param predicates: dict -> Adwords report selector predicates
+    :param date_range: dict -> Date range for report
+    :param addl_fields: Additional report fields to retrieve
+    :return: list -> namedtuples
+    """
+    fields = list(CAMPAIGN_FIELDS_MAPPING.values()) + list(addl_fields or [])
+    predicates = predicates or [{"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]}]
+    selector = {"fields": fields, "predicates": predicates}
+    date_range_type = "ALL_TIME"
+    if date_range:
+        date_range_type = "CUSTOM_DATE"
+        selector["dateRange"] = date_range
+    report = _get_report(client, "CAMPAIGN_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
+                         use_raw_enum_values=True, skip_column_header=True)
+    rows = _output_to_rows(report, fields)
+    return rows
 
 
 def get_client(account_id):
