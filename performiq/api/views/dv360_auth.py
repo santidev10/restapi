@@ -8,11 +8,14 @@ from aw_reporting.utils import get_google_access_token_info
 from performiq.models.constants import OAuthType
 from performiq.models import OAuthAccount
 from performiq.api.views.adwords_auth import AdWordsAuthApiView
+from utils.api.dv360 import DV360APIClient
 
 class DV360AuthApiView(AdWordsAuthApiView):
 
     scopes = (
         "https://www.googleapis.com/auth/display-video",
+        # "https://www.googleapis.com/auth/display-video-media-planning",
+        # "https://www.googleapis.com/auth/display-video-user-management",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/userinfo.email",
     )

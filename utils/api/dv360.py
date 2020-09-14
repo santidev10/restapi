@@ -66,15 +66,3 @@ class DV360APIClient:
         data = res.json()
         first_item = data[f"{item_type}s"][0]
         return first_item[f"{item_type}Id"]
-
-    # TODO remove
-    def get_partner_id(self, partners_res):
-        j = partners_res.json()
-        partner = j['partners'][0]
-        return partner['partnerId']
-
-    # TODO remove
-    def get_first_advertiser_id(self, advertisers_res):
-        j = advertisers_res.json()
-        advertiser = j["advertisers"][0]
-        return advertiser['advertiserId']
