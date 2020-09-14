@@ -26,6 +26,8 @@ class DV360AuthApiView(AdWordsAuthApiView):
             scope=self.scopes,
             user_agent=aw_settings.get("user_agent"),
             redirect_uri=redirect_url,
+            # SEE https://github.com/googleapis/google-api-python-client/issues/213
+            prompt="consent",
         )
         return flow
 
