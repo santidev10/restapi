@@ -12,6 +12,7 @@ from cache.constants import VIDEO_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers.video import VettingAdminVideoManager
 from es_components.managers.video import VideoManager
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
@@ -119,6 +120,17 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
         if self.request.user.has_perm("userprofile.vet_audit_admin"):
             return VideoWithVettedStatusSerializer
         return VideoSerializer
+
+    def get_serializer_context(self):
+        channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
+        channel_ids = [video.channel.id for video in self.paginator.page.object_list if video.channel.id is not None]
+        context = {
+            "channel_blocklist": {
+                channel.main.id: channel.custom_properties.blocklist
+                for channel in channel_manager.get(channel_ids, skip_none=True)
+            }
+        }
+        return context
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
