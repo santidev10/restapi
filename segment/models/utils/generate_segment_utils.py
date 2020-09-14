@@ -56,7 +56,7 @@ class GenerateSegmentUtils:
         else:
             brand_safety_categories = {
                 category.id: category.name
-                for category in BadWordCategory.objects.all()
+                for category in BadWordCategory.objects.filter(vettable=True)
             }
             self._default_context = context = {
                 "brand_safety_categories": brand_safety_categories,
