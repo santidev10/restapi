@@ -29,7 +29,6 @@ class Campaign(OAuthBase):
     impressions = models.IntegerField(default=0, db_index=True)
     video_views = models.IntegerField(default=0, db_index=True)
     cost = models.FloatField(default=0, db_index=True)
-    clicks = models.FloatField(default=0, db_index=True)
     cpm = models.FloatField(default=0, db_index=True)
     cpv = models.FloatField(default=0, db_index=True)
     ctr = models.FloatField(default=0, db_index=True)

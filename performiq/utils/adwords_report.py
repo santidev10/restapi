@@ -32,13 +32,14 @@ def get_client(account_id):
     return client
 
 
-def get_report(client, report_query, fields):
+def get_report(client, report_query, fields, addl_fields=None):
     opts = dict(
         use_raw_enum_values=True,
         skip_report_header=True,
         skip_column_header=True,
         skip_report_summary=True,
     )
+    fields = list(fields) + (addl_fields or [])
     report_downloader = client.GetReportDownloader(version='v201809')
     report = report_downloader.DownloadReportAsStreamWithAwql(report_query, 'CSV', **opts)
     result = _output_to_rows(stream_iterator(report), fields)
