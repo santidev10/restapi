@@ -19,6 +19,7 @@ class DV360AuthApiView(AdWordsAuthApiView):
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()
+        # TODO these credentials are temporary. Using "awong research" client ID for now
         flow = client.OAuth2WebServerFlow(
             client_id="832846444492-tfbiuttltrpcki3tgmvds1o1l6gud1qm.apps.googleusercontent.com",
             client_secret="UV9vE5S5D0KnVAwDD8D7C3-S",
