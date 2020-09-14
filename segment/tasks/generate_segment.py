@@ -4,14 +4,17 @@ import tempfile
 from collections import defaultdict
 
 from django.conf import settings
+from elasticsearch_dsl import Q
 
+from es_components.constants import Sections
+from es_components.query_builder import QueryBuilder
+from es_components.managers import ChannelManager
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
-from es_components.query_builder import QueryBuilder
-from elasticsearch_dsl import Q
+
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -75,7 +78,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                     source_list, source_type,
                     segment.es_manager.model, query, sort, default_search_config["cursor_field"],
                     **bulk_search_kwargs)
+
             for batch in es_generator:
+                # Clean video blocklist items depending on channel blocklist values
+                if segment.segment_type == 0:
+                    batch = _clean_blocklist(batch)
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
@@ -135,6 +142,26 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
             else:
                 batch = [item for item in batch if item.main.id not in source_list]
         yield batch
+
+
+def _clean_blocklist(videos):
+    """
+    Remove videos that have their channel blocklisted
+    :param videos:
+    :param channel_manager:
+    :return:
+    """
+    channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
+    channels = channel_manager.get([video.channel.id for video in videos if video.channel.id is not None])
+    blocklist = {
+        channel.main.id: channel.custom_properties.blocklist
+        for channel in channels
+    }
+    non_blocklist = [
+        video for video in videos if blocklist.get(video.channel.id) is not True
+        and video.custom_properties.blocklist is not True
+    ]
+    return non_blocklist
 
 
 class MaxItemsException(Exception):
