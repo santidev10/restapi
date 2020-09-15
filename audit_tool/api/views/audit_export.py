@@ -221,9 +221,9 @@ class AuditExportApiView(APIView):
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
-        do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-            do_exclusion = True
+        do_exclusion = True
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        #    do_exclusion = True
         self.delete_blocklist_videos(audit)
         cols = [
             "Video URL",
@@ -526,9 +526,9 @@ class AuditExportApiView(APIView):
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
-        do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-           do_exclusion = True
+        #do_exclusion = False
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        do_exclusion = True
         self.get_categories()
         self.delete_blocklist_channels(audit)
         cols = [
