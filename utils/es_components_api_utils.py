@@ -398,7 +398,7 @@ class VettedStatusSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -408,6 +408,8 @@ class ESQuerysetAdapter:
         self.fields_to_load = None
         self.search_limit = None
         self.cached_aggregations = cached_aggregations
+        # Additional control if cached methods should use cache
+        self.from_cache = from_cache
 
     @cached_method(timeout=7200)
     def count(self):

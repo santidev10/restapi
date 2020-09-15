@@ -27,7 +27,7 @@ def cache_channel_aggregations():
         logger.info("Starting channel aggregations caching.")
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                    Sections.TASK_US_DATA, Sections.ANALYTICS, Sections.MONETIZATION)
+                    Sections.TASK_US_DATA, Sections.ANALYTICS, Sections.MONETIZATION, Sections.IAS_DATA)
         aggregation_params = ALLOWED_CHANNEL_AGGREGATIONS
 
         for key, manager_class in {
