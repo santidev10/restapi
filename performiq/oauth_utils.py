@@ -1,6 +1,6 @@
 import logging
-import yaml
 
+from django.conf import settings
 from googleads import adwords
 from googleads import oauth2
 from googleads.common import ZeepServiceProxy
@@ -11,8 +11,11 @@ API_VERSION = "v201809"
 
 
 def load_client_settings():
-    with open("performiq/performiq.yaml", "r") as f:
-        conf = yaml.load(f, Loader=yaml.FullLoader)
+    conf = {
+        "user_agent": settings.PERFORMIQ_OAUTH_USER_AGENT,
+        "client_id": settings.PERFORMIQ_OAUTH_CLIENT_ID,
+        "client_secret": settings.PERFORMIQ_OAUTH_CLIENT_SECRET
+    }
     return conf
 
 
