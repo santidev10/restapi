@@ -148,6 +148,9 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 2)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
         self.assertEqual(csv_context.count(today.strftime(DATE_FORMAT)), 0)
+        self.assertGreaterEqual(csv_context.count("EUR"), 1)
+        self.assertEqual(csv_context.count("USD"), 0)
+
     # pylint: enable=(too-many-statements
 
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
