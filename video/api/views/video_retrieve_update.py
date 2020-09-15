@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
@@ -46,7 +47,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = VideoWithBlackListSerializer(video).data
+        context = self._get_serializer_context(video.channel.id)
+        result = VideoWithBlackListSerializer(video, context=context).data
         try:
             result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
         # pylint: disable=broad-except
@@ -60,3 +62,16 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                 del result[Sections.ANALYTICS]
 
         return Response(result)
+
+    def _get_serializer_context(self, channel_id):
+        try:
+            channel = ChannelManager(Sections.CUSTOM_PROPERTIES).get([channel_id], skip_none=True)[0]
+            channel_blocklist = channel.custom_properties.blocklist
+        except IndexError:
+            channel_blocklist = False
+        context = {
+            "channel_blocklist": {
+                channel_id: channel_blocklist
+            }
+        }
+        return context
