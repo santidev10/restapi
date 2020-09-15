@@ -288,9 +288,7 @@ class Command(BaseCommand):
                 self.get_videos(acp)
             acp.processed = timezone.now()
             if db_channel_meta.name:
-                blocklisted = False
-                if not self.audit.params.get("override_blocklist"):
-                    blocklisted = self.check_channel_is_blocklisted(db_channel.channel_id, acp)
+                blocklisted = self.check_channel_is_blocklisted(db_channel.channel_id, acp)
                 if not blocklisted:
                     acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
                 else:
