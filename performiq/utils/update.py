@@ -37,7 +37,7 @@ def prepare_items(report: list, model, fields_mapping: dict, ouath_type: int, co
     for row in report:
         row = _map_fields(row)
         try:
-            obj = exists_mapping[str(getattr(row, fields_mapping["id"]))]
+            obj = exists_mapping[int(getattr(row, fields_mapping["id"]))]
             # Set each report value on existing obj
             for obj_field, report_field in fields_mapping.items():
                 report_value = getattr(row, report_field)

@@ -29,15 +29,15 @@ def get_campaign_report(client, predicates: dict = None, date_range: dict = None
     return rows
 
 
-def get_client(account_id):
-    # account = OAuthAccount.objects.get(id=account_id)
-    # client = get_web_app_client(
-    #     refresh_token=account.refresh_token,
-    #     client_customer_id=account_id
-    # )
+def get_client(account_id, ouath_account_id=None):
+    if ouath_account_id is None:
+        oauth_id = account_id
+    else:
+        oauth_id = ouath_account_id
+    oauth_account = OAuthAccount.objects.get(id=oauth_id)
     client = get_web_app_client(
-        refresh_token='1/dFSYu09IZl43oA8pPOLE_NbkSDgO-Wm5LwA_dlkQoWsNoYWpKb856YvPe91IqL9t',
-        client_customer_id=5453761695
+        refresh_token=oauth_account.refresh_token,
+        client_customer_id=account_id
     )
     return client
 

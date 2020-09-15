@@ -6,3 +6,5 @@ class PerformIQPathName:
     class AWAuth:
         CONNECTION_LIST = "connect_aw_account"
         CONNECTION = "aw_account_connection"
+
+    CAMPAIGNS = "campaigns"
