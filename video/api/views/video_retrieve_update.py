@@ -4,6 +4,7 @@ Video api views module
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from elasticsearch.exceptions import NotFoundError
+from elasticsearch.exceptions import RequestError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -67,7 +68,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         try:
             channel = ChannelManager(Sections.CUSTOM_PROPERTIES).get([channel_id], skip_none=True)[0]
             channel_blocklist = channel.custom_properties.blocklist
-        except IndexError:
+        except (IndexError, RequestError):
             channel_blocklist = False
         context = {
             "channel_blocklist": {

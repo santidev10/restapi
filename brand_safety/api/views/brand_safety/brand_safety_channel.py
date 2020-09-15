@@ -77,6 +77,8 @@ class BrandSafetyChannelAPIView(APIView):
             })
         try:
             videos = self._get_channel_video_data(channel_data)
+        except AttributeError:
+            videos = []
         # pylint: disable=broad-except
         except Exception:
         # pylint: enable=broad-except
