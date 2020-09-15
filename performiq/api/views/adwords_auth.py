@@ -6,12 +6,12 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 from suds import WebFault
 
-from aw_reporting.adwords_api import get_customers
-from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.utils import get_google_access_token_info
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.models.constants import OAuthType
 from performiq.models import OAuthAccount
+from performiq.oauth_utils import get_customers
+from performiq.oauth_utils import get_google_access_token_info
+from performiq.oauth_utils import load_client_settings
 
 
 class AdWordsAuthApiView(APIView):
@@ -119,7 +119,7 @@ class AdWordsAuthApiView(APIView):
         try:
             customers = get_customers(
                 oauth_account.refresh_token,
-                **load_web_app_settings()
+                **load_client_settings()
             )
         except WebFault as e:
             fault_string = e.fault.faultstring
@@ -150,13 +150,14 @@ class AdWordsAuthApiView(APIView):
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 
     def get_flow(self, redirect_url):
-        aw_settings = load_web_app_settings()
+        aw_settings = load_client_settings()
         flow = client.OAuth2WebServerFlow(
             client_id=aw_settings.get("client_id"),
             client_secret=aw_settings.get("client_secret"),
             scope=self.scopes,
             user_agent=aw_settings.get("user_agent"),
             redirect_uri=redirect_url,
+            prompt="consent"
         )
         return flow
 
