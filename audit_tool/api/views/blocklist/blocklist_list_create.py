@@ -160,13 +160,14 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         }
         docs = [es_manager.model(item_id, brand_safety=bs_data,
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
-        es_manager.upsert(docs)
+        es_manager.upsert(docs, refresh=False)
         if data_type == "channel" and should_block is True:
             script = "ctx._source.brand_safety.overall_score = 0"
             video_manager = VideoManager(upsert_sections=upsert_sections)
             query = video_manager.ids_query(item_ids, id_field=f"{Sections.CHANNEL}.id") \
                     & QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
-            video_manager.update(query).script(source=script, lang="painless").params(conflicts="proceed").execute()
+            video_manager.update(query).script(source=script, lang="painless")\
+                .params(conflicts="proceed", wait_for_completion=False).execute()
 
     def _get_es_manager(self, doc_type: str):
         managers = dict(
