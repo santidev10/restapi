@@ -3,6 +3,7 @@ from collections import Counter
 from itertools import count
 from itertools import groupby
 
+from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from utils.lang import flatten
 
 
@@ -71,9 +72,7 @@ def convert_subscriber_count(s):
 
 
 def prune_iab_categories(iab_categories):
-    EXCLUDED_IAB_CATEGORIES = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
-                               "Content Source", "Content Source Geo", "Video Game Genres"]
-    return [category for category in iab_categories if category not in EXCLUDED_IAB_CATEGORIES]
+    return [category for category in iab_categories if category not in HIDDEN_IAB_CATEGORIES]
 
 
 def remove_tags_punctuation(s):
