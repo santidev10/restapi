@@ -3,11 +3,11 @@ from urllib.parse import unquote
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
-from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.utils import get_google_access_token_info
-from performiq.models.constants import OAuthType
-from performiq.models import OAuthAccount
 from performiq.api.views.adwords_auth import AdWordsAuthApiView
+from performiq.models import OAuthAccount
+from performiq.models.constants import OAuthType
+from performiq.oauth_utils import load_client_settings
 
 class DV360AuthApiView(AdWordsAuthApiView):
 
@@ -18,16 +18,14 @@ class DV360AuthApiView(AdWordsAuthApiView):
     )
 
     def get_flow(self, redirect_url):
-        aw_settings = load_web_app_settings()
-        # TODO these credentials are temporary. Using "awong research" client ID for now
+        aw_settings = load_client_settings()
         flow = client.OAuth2WebServerFlow(
-            client_id="832846444492-tfbiuttltrpcki3tgmvds1o1l6gud1qm.apps.googleusercontent.com",
-            client_secret="UV9vE5S5D0KnVAwDD8D7C3-S",
+            client_id=aw_settings.get("client_id"),
+            client_secret=aw_settings.get("client_secret"),
             scope=self.scopes,
             user_agent=aw_settings.get("user_agent"),
             redirect_uri=redirect_url,
-            # SEE https://github.com/googleapis/google-api-python-client/issues/213
-            prompt="consent",
+            prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
         )
         return flow
 
