@@ -10,3 +10,4 @@ OAUTH_CHOICES = [
     (OAuthType.GOOGLE_ADS.value, "Google Ads Oauth"),
     (OAuthType.DV360.value, "Google DV360 Oauth"),
 ]
+
