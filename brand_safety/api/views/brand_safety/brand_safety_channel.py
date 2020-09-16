@@ -29,8 +29,9 @@ class BrandSafetyChannelAPIView(APIView):
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
     MAX_PAGE_SIZE = 24
-    channel_manager = ChannelManager(sections=(Sections.STATS, Sections.BRAND_SAFETY))
-    video_manager = VideoManager(sections=(Sections.BRAND_SAFETY,))
+    SHARED_SECTIONS = (Sections.CUSTOM_PROPERTIES, Sections.BRAND_SAFETY)
+    channel_manager = ChannelManager(sections=(Sections.STATS,) + SHARED_SECTIONS)
+    video_manager = VideoManager(sections=SHARED_SECTIONS)
 
     # pylint: disable=too-many-branches,too-many-statements
     def get(self, request, **kwargs):
@@ -75,7 +76,9 @@ class BrandSafetyChannelAPIView(APIView):
                 **get_brand_safety_data(None)
             })
         try:
-            videos = self._get_channel_video_data(channel_id)
+            videos = self._get_channel_video_data(channel_data)
+        except AttributeError:
+            videos = []
         # pylint: disable=broad-except
         except Exception:
         # pylint: enable=broad-except
@@ -133,21 +136,24 @@ class BrandSafetyChannelAPIView(APIView):
                     return transcript
         return None
 
-    def _get_channel_video_data(self, channel_id):
+    def _get_channel_video_data(self, channel):
         """
         Retrieve all video data for channel
-        :param channel_id: str
+        :param channel: Channel document
         :return: list
         """
         fields_to_load = ("main.id", "general_data.title", "general_data.thumbnail_image_url",
                           "general_data.youtube_published_at", "stats.views", "stats.engage_rate",
-                          "captions", "brand_safety.overall_score")
+                          "captions", "brand_safety.overall_score", "custom_properties.blocklist",)
 
-        by_channel_filter = self.video_manager.by_channel_ids_query(channel_id)
+        by_channel_filter = self.video_manager.by_channel_ids_query(channel.main.id)
         videos = self.video_manager.search(filters=by_channel_filter,
                                            limit=self.MAX_SIZE,
                                            sort=[{"main.id": {"order": SortDirections.ASCENDING}}]). \
             source(includes=fields_to_load).execute().hits
+        if channel.custom_properties.blocklist is True:
+            for video in videos:
+                video.custom_properties.blocklist = True
         return videos
 
     @staticmethod
@@ -207,6 +213,7 @@ class BrandSafetyChannelAPIView(APIView):
             "transcript": self.__get_transcript(video.captions),
             "youtube_published_at": video.general_data.youtube_published_at,
             "views": video.stats.views,
-            "engage_rate": video.stats.engage_rate
+            "engage_rate": video.stats.engage_rate,
+            "blocklist": video.custom_properties.blocklist,
         }
         return data
