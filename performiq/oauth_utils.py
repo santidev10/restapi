@@ -19,11 +19,12 @@ def load_client_settings():
     return conf
 
 
-def get_customers(refresh_token, **kwargs):
+def get_customers(refresh_token):
+    config = load_client_settings()
     aw_client = get_client(
         client_customer_id=None,
         refresh_token=refresh_token,
-        **kwargs
+        **config
     )
     customer_service = aw_client.GetService(
         "CustomerService", version=API_VERSION
