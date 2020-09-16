@@ -657,6 +657,7 @@ class BlacklistItem(models.Model):
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
     blocked_count = models.IntegerField(default=0, db_index=True)
     unblocked_count = models.IntegerField(default=0, db_index=True)
+    blocklist = models.BooleanField(default=True, db_index=True)
 
     class Meta:
         unique_together = ("item_type", "item_id")
@@ -680,12 +681,13 @@ class BlacklistItem(models.Model):
         return b_i[0]
 
     @staticmethod
-    def get(item_ids, item_type, to_dict=False):
+    def get(item_ids, item_type, to_dict=False, blocklist=True):
         if isinstance(item_ids, (str,)):
             item_ids = [item_ids]
         data = []
         items = BlacklistItem.objects.filter(item_type=item_type,
-                                             item_id_hash__in=[get_hash_name(_id) for _id in item_ids])
+                                             item_id_hash__in=[get_hash_name(_id) for _id in item_ids],
+                                             blocklist=blocklist)
         for item in items:
             if item.item_id in item_ids:
                 if to_dict:

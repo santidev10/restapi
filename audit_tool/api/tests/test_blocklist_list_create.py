@@ -65,12 +65,12 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
         bl_v_exists = BlacklistItem\
             .objects\
-            .create(item_id=videos[1].main.id, item_type=0, blocked_count=1,
-                    item_id_hash=get_hash_name(videos[1].main.id), processed_by_user_id=user.id)
+            .create(item_id=videos[0].main.id, item_type=0, blocked_count=1,
+                    item_id_hash=get_hash_name(videos[1].main.id), processed_by_user_id=user.id, blocklist=False)
         bl_c_exists = BlacklistItem\
             .objects\
-            .create(item_id=channels[1].main.id, item_type=1, blocked_count=4,
-                    item_id_hash=get_hash_name(channels[1].main.id), processed_by_user_id=user.id)
+            .create(item_id=channels[0].main.id, item_type=1, blocked_count=4,
+                    item_id_hash=get_hash_name(channels[1].main.id), processed_by_user_id=user.id, blocklist=False)
         # Also test view can handle just sending ids instead of full urls
         payload1 = dict(item_urls=[i.main.id for i in videos])
         payload2 = dict(item_urls=[i.main.id for i in channels])
@@ -85,30 +85,34 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         blc1, blc2 = BlacklistItem.objects.filter(item_id__in=payload2["item_urls"], item_type=1).order_by("id")
 
         # blocked_count should increment by 1 from existing value only if value is changing
-        self.assertEqual(blv1.blocked_count, bl_v_exists.blocked_count)
+        self.assertEqual(blv1.blocked_count, bl_v_exists.blocked_count + 1)
         self.assertEqual(blv1.unblocked_count, 0)
         self.assertEqual(blv1.processed_by_user_id, user.id)
+        self.assertEqual(blv1.blocklist, True)
 
         self.assertEqual(blv2.blocked_count, 1)
         self.assertEqual(blv2.unblocked_count, 0)
         self.assertEqual(blv2.processed_by_user_id, user.id)
+        self.assertEqual(blv2.blocklist, True)
 
-        self.assertEqual(blc1.blocked_count, bl_c_exists.blocked_count)
+        self.assertEqual(blc1.blocked_count, bl_c_exists.blocked_count + 1)
         self.assertEqual(blc1.unblocked_count, 0)
         self.assertEqual(blc1.processed_by_user_id, user.id)
+        self.assertEqual(blc1.blocklist, True)
 
         self.assertEqual(blc2.blocked_count, 1)
         self.assertEqual(blc2.unblocked_count, 0)
         self.assertEqual(blc2.processed_by_user_id, user.id)
+        self.assertEqual(blc2.blocklist, True)
 
     def test_remove_increments(self):
-        """ Test that removing new and existing items from blacklist increments unblocked count """
+        """ Test that removing only existing items from blocklist increments unblocked count """
         user = self.create_admin_user()
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
-        bl_v_exists = BlacklistItem.objects.create(item_id=videos[1].main.id, item_type=0, unblocked_count=11,
+        bl_v_exists = BlacklistItem.objects.create(item_id=videos[0].main.id, item_type=0, unblocked_count=11,
                                                    item_id_hash=get_hash_name(videos[1].main.id), processed_by_user_id=user.id)
-        bl_c_exists = BlacklistItem.objects.create(item_id=channels[1].main.id, item_type=1, unblocked_count=9,
+        bl_c_exists = BlacklistItem.objects.create(item_id=channels[0].main.id, item_type=1, unblocked_count=9,
                                                    item_id_hash=get_hash_name(channels[1].main.id), processed_by_user_id=user.id)
         # Also test view can handle just sending ids instead of full urls
         payload1 = dict(item_urls=[i.main.id for i in videos])
@@ -120,24 +124,21 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
                                     content_type="application/json")
         self.assertEqual(res1.status_code, HTTP_200_OK)
         self.assertEqual(res2.status_code, HTTP_200_OK)
-        blv1, blv2 = BlacklistItem.objects.filter(item_id__in=payload1["item_urls"], item_type=0).order_by("id")
-        blc1, blc2 = BlacklistItem.objects.filter(item_id__in=payload2["item_urls"], item_type=1).order_by("id")
+
+        # Should only be one item as items that are being unblocked but are not on the blocklist should not have an
+        # entry created
+        blv = BlacklistItem.objects.get(item_id=payload1["item_urls"][0], item_type=0)
+        blc = BlacklistItem.objects.get(item_id=payload2["item_urls"][0], item_type=1)
         # unblocked_count should increment by 1 from existing value only if value is changing
-        self.assertEqual(blv1.unblocked_count, bl_v_exists.unblocked_count)
-        self.assertEqual(blv1.blocked_count, 0)
-        self.assertEqual(blv1.processed_by_user_id, user.id)
+        self.assertEqual(blv.unblocked_count, bl_v_exists.unblocked_count + 1)
+        self.assertEqual(blv.blocked_count, 0)
+        self.assertEqual(blv.processed_by_user_id, user.id)
+        self.assertEqual(blv.blocklist, False)
 
-        self.assertEqual(blv2.unblocked_count, 1)
-        self.assertEqual(blv2.blocked_count, 0)
-        self.assertEqual(blv2.processed_by_user_id, user.id)
-
-        self.assertEqual(blc1.unblocked_count, bl_c_exists.unblocked_count)
-        self.assertEqual(blc1.blocked_count, 0)
-        self.assertEqual(blc1.processed_by_user_id, user.id)
-
-        self.assertEqual(blc2.unblocked_count, 1)
-        self.assertEqual(blc2.blocked_count, 0)
-        self.assertEqual(blc2.processed_by_user_id, user.id)
+        self.assertEqual(blc.unblocked_count, bl_c_exists.unblocked_count + 1)
+        self.assertEqual(blc.blocked_count, 0)
+        self.assertEqual(blc.processed_by_user_id, user.id)
+        self.assertEqual(blc.blocklist, False)
 
     def test_unblock_rescore(self):
         """ Test that unblocking items sets brand safety rescore field to true """

@@ -24,6 +24,18 @@ from utils.datetime import now_in_default_tz
 class BlocklistPaginator(CustomPageNumberPaginator):
     page_size = 20
 
+    def _get_response_data(self, data):
+        response_data = super()._get_response_data(data)
+        try:
+            response_data["max_page"] = int(min((10000 / self.page_size), response_data["max_page"]))
+        except (TypeError, ZeroDivisionError):
+            pass
+        return response_data
+
+    def get_page_size(self, request):
+        self.page_size = super().get_page_size(request)
+        return self.page_size
+
 
 class BlocklistListCreateAPIView(ListCreateAPIView):
     serializer_class = BlocklistSerializer
@@ -72,7 +84,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         to_update, to_create = self._prepare_items(item_ids, data_type, counter_key, should_block)
         safe_bulk_create(BlacklistItem, to_create)
         BlacklistItem.objects.bulk_update(to_update, fields=["blocked_count", "unblocked_count",
-                                                             "updated_at", "processed_by_user_id"])
+                                                             "updated_at", "processed_by_user_id", "blocklist"])
         self._update_docs(item_ids, should_block, data_type)
         return Response()
 
@@ -90,15 +102,11 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         exists = BlacklistItem.objects.filter(item_id__in=item_ids)
         exists_ids = set(exists.values_list("item_id", flat=True))
 
-        # Mapping of item id to blocklist value to determine if blocklist value is changing
-        blocked_mapping = {
-            doc.main.id: doc.custom_properties.blocklist for doc in
-            self._get_es_manager(self.kwargs["data_type"])(sections=[Sections.CUSTOM_PROPERTIES]).get(item_ids, skip_none=True)
-        }
         to_update = []
         for item in exists:
-            previous_value = blocked_mapping.get(item.item_id)
-            if previous_value is not None and previous_value != should_block:
+            # Only update blocklist item if blocklist value is changing
+            if item.blocklist != should_block:
+                item.blocklist = not item.blocklist
                 item.processed_by_user_id = self.request.user.id
                 item.updated_at = now
                 value = getattr(item, counter_key) + 1
@@ -106,12 +114,14 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
                 to_update.append(item)
                 
         item_type = 1 if data_type == "channel" else 0
-        to_create = [
-            BlacklistItem(
-                item_type=item_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
-                processed_by_user_id=self.request.user.id, **{counter_key: 1}
-            ) for item_id in item_ids if item_id not in exists_ids
-        ]
+        to_create = []
+        if should_block:
+            to_create = [
+                BlacklistItem(
+                    item_type=item_type, item_id=item_id, item_id_hash=get_hash_name(item_id), updated_at=now,
+                    processed_by_user_id=self.request.user.id, **{counter_key: 1}
+                ) for item_id in item_ids if item_id not in exists_ids
+            ]
         return to_update, to_create
 
     def _map_urls(self, urls: list, data_type: str) -> list:
@@ -150,13 +160,14 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         }
         docs = [es_manager.model(item_id, brand_safety=bs_data,
                                  custom_properties={"blocklist": should_block}) for item_id in item_ids]
-        es_manager.upsert(docs)
+        es_manager.upsert(docs, refresh=False)
         if data_type == "channel" and should_block is True:
             script = "ctx._source.brand_safety.overall_score = 0"
             video_manager = VideoManager(upsert_sections=upsert_sections)
             query = video_manager.ids_query(item_ids, id_field=f"{Sections.CHANNEL}.id") \
                     & QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
-            video_manager.update(query).script(source=script, lang="painless").params(conflicts="proceed").execute()
+            video_manager.update(query).script(source=script, lang="painless")\
+                .params(conflicts="proceed", wait_for_completion=False).execute()
 
     def _get_es_manager(self, doc_type: str):
         managers = dict(
