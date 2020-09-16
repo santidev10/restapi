@@ -70,7 +70,7 @@ class AuditUtils(object):
         all_categories = [{
             "id": category.id,
             "value": category.name
-        } for category in BadWordCategory.objects.all() if category.name not in excluded_category_names]
+        } for category in BadWordCategory.objects.filter(vettable=True) if category.name not in excluded_category_names]
 
         return all_categories
 
