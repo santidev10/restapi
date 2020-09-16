@@ -54,6 +54,8 @@ class AuditSaveApiView(APIView):
         include_unknown_likes = strtobool(
             query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
         force_data_refresh = strtobool(query_params["force_data_refresh"]) if "force_data_refresh" in query_params else None
+        override_blocklist = strtobool(
+            query_params["override_blocklist"]) if "override_blocklist" in query_params else None
 
         if name:
             name = name.strip()
@@ -119,6 +121,7 @@ class AuditSaveApiView(APIView):
             "min_views": min_views,
             "max_dislikes": max_dislikes,
             "num_videos": num_videos,
+            "override_blocklist": override_blocklist,
             "max_recommended_type": max_recommended_type,
             "files": {
                 "inclusion": None,
@@ -219,6 +222,7 @@ class AuditSaveApiView(APIView):
             audit.params["inclusion_hit_count"] = inclusion_hit_count
             audit.params["include_unknown_views"] = include_unknown_views
             audit.params["include_unknown_likes"] = include_unknown_likes
+            audit.params["override_blocklist"] = override_blocklist
             audit.save()
         else:
             audit = AuditProcessor.objects.create(

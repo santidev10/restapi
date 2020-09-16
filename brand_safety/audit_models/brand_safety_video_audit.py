@@ -1,6 +1,7 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 from brand_safety.models import BadWordCategory
+from es_components.models import Video
 
 
 class BrandSafetyVideoAudit(object):
@@ -12,13 +13,13 @@ class BrandSafetyVideoAudit(object):
         "transcript": 1
     }
 
-    def __init__(self, data, audit_utils, blacklist_data=None):
+    def __init__(self, data, audit_utils, ignore_blacklist_data=False):
         self.audit_utils = audit_utils
         self.score_mapping = audit_utils.score_mapping
         self.default_category_scores = audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
+        self.ignore_blacklist_data = ignore_blacklist_data
         self._set_metadata(data)
-        self.blacklist_data = blacklist_data or {}
         self.is_vetted = data.get("is_vetted")
 
     @property
@@ -112,14 +113,16 @@ class BrandSafetyVideoAudit(object):
                 brand_safety_score.add_keyword_score(word.name, keyword_category, calculated_score)
 
         # If blacklist data available, then set overall score and blacklisted category score to 0
-        for category_id in self.blacklist_data.keys():
-            brand_safety_score.category_scores[category_id] = 0
-            if category_id not in BadWordCategory.EXCLUDED:
-                brand_safety_score.overall_score = 0
+        if self.ignore_blacklist_data is False:
+            for category_id in self.metadata.get("brand_safety_blacklist", []):
+                brand_safety_score.category_scores[category_id] = 0
+                if category_id not in BadWordCategory.EXCLUDED:
+                    brand_safety_score.overall_score = 0
 
         return brand_safety_score
 
-    def instantiate_es(self, video):
+    def instantiate_es(self):
+        video = Video(self.metadata["id"])
         """
         Instantiate Elasticsearch video model with brand safety data
         """
@@ -150,3 +153,10 @@ class BrandSafetyVideoAudit(object):
 
         video.brand_safety = brand_safety_data
         video.populate_channel(id=self.metadata["channel_id"], title=self.metadata["channel_title"])
+        return video
+
+    @staticmethod
+    def instantiate_blocklist(item_id):
+        blocklist_item = Video(item_id)
+        blocklist_item.populate_brand_safety(overall_score=0)
+        return blocklist_item

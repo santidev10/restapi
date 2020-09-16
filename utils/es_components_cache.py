@@ -19,9 +19,12 @@ def cached_method(timeout):
             options = (args, kwargs)
             part = method.__name__
 
-            data = get_from_cache(obj, part=part, options=options) \
-                if settings.ES_CACHE_ENABLED \
-                else None
+            try:
+                from_cache = obj.from_cache if obj.from_cache is not None else settings.ES_CACHE_ENABLED
+            except AttributeError:
+                from_cache = settings.ES_CACHE_ENABLED
+
+            data = get_from_cache(obj, part=part, options=options) if from_cache else None
             if data is None:
                 data = method(obj, *args, **kwargs)
                 set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)

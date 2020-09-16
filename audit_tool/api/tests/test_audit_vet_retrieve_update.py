@@ -19,7 +19,6 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
-from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 from es_components.managers import ChannelManager
@@ -369,10 +368,6 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["monetization"]["is_monetizable"], payload["is_monetizable"])
         self.assertTrue(vetting_item.processed > before)
         self.assertIsNone(vetting_item.checked_out_at)
-
-        blacklist_data = BlacklistItem.objects.get(item_id=audit_item_yt_id)
-        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]),
-                         set(blacklist_data.blacklist_category.keys()))
         self.assertEqual(mock_generate_vetted.delay.call_count, 0)
 
     def test_patch_channel_vetting_item_success(self, mock_generate_vetted):
@@ -431,10 +426,6 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertTrue(vetting_item.processed > before)
         self.assertIsNone(vetting_item.checked_out_at)
         self.assertEqual(mock_generate_vetted.delay.call_count, 0)
-
-        blacklist_data = BlacklistItem.objects.get(item_id=audit_item_yt_id)
-        self.assertEqual(set([str(_id) for _id in payload["brand_safety"]]),
-                         set(blacklist_data.blacklist_category.keys()))
 
     def test_handle_video_skip_not_exists(self, *args):
         """

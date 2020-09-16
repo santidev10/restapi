@@ -7,23 +7,25 @@ from saas import celery_app
 from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
 from utils.celery.tasks import celery_lock
+from utils.celery.utils import get_queue_size
 
 
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.ChannelDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_CHANNEL_DISCOVERY, max_retries=0)
 def channel_discovery_scheduler():
     """ Queue channels with rescore = True or have no brand safety overall score """
-    channel_manager = ChannelManager()
-    base_query = channel_manager.forced_filters()
+    if get_queue_size(Queue.BRAND_SAFETY_CHANNEL_PRIORITY) <= Schedulers.ChannelDiscovery.get_minimum_threshold():
+        channel_manager = ChannelManager()
+        base_query = channel_manager.forced_filters()
 
-    query_with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
-    channel_update_helper(
-        Schedulers.ChannelDiscovery, query_with_rescore, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
-        sort=("-stats.subscribers",), ignore_vetted_channels=False
-    )
+        query_with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
+        channel_update_helper(
+            Schedulers.ChannelDiscovery, query_with_rescore, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
+            sort=("-stats.subscribers",), ignore_vetted_channels=False
+        )
 
-    query_with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
-    channel_update_helper(
-        Schedulers.ChannelDiscovery, query_with_no_score, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
-        sort=("-stats.subscribers",)
-    )
+        query_with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
+        channel_update_helper(
+            Schedulers.ChannelDiscovery, query_with_no_score, Queue.BRAND_SAFETY_CHANNEL_PRIORITY,
+            sort=("-stats.subscribers",)
+        )

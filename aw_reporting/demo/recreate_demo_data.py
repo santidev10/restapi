@@ -14,6 +14,7 @@ from saas import celery_app
 from .data import CAMPAIGN_NAME_REPLACEMENTS
 from .data import DEMO_ACCOUNT_ID
 from .data import DEMO_BRAND
+from .data import DEMO_SF_ACCOUNT
 from ..models import AdGroupStatistic
 from ..models import AdStatistic
 from ..models import AgeRangeStatistic
@@ -64,7 +65,8 @@ def clone_opportunities():
 def clone_opportunity(source_opportunity):
     opportunity_number = next(opportunity_number_generator)
     opportunity_name = f"Acme Instant Coffee Q2-Q3’20 {opportunity_number}"
-    new_account = clone_model(source_opportunity.account, data=dict(id=next(sf_account_id_generator)))
+    new_account = clone_model(source_opportunity.account, data=dict(id=next(sf_account_id_generator),
+                                                                    name=DEMO_SF_ACCOUNT))
     new_account_id = new_account.id if new_account is not None else None
     new_opportunity = clone_model(source_opportunity, data=dict(id=DEMO_ACCOUNT_ID,
                                                                 number=opportunity_number,
@@ -91,6 +93,7 @@ def clone_campaign(source_campaign, target_account, index):
     campaign_name = re.sub(r"PL\d+", placement_number, replacement_name)
     campaign = clone_model(source_campaign, data=dict(account_id=target_account.id,
                                                       name=campaign_name,
+                                                      placement_code=placement_number,
                                                       salesforce_placement_id=op_placement.id))
     clone_model_multiple(source_campaign.campaign_creation.all(), campaign, target_account.account_creation)
     for ag_index, ad_group in enumerate(source_campaign.ad_groups.all()):

@@ -14,3 +14,7 @@ class AuditPathName:
     AUDIT_VETTING_OPTIONS = "audit_vetting_options"
     AUDIT_ADMIN = "audit_admin"
     AUDIT_ITEM = "audit_item"
+    BLOCKLIST_LIST_CREATE = "blocklist_list_create"
+    BLOCKLIST_EXPORT = "blocklist_export"
+
+

@@ -7,6 +7,7 @@ from django.test import override_settings
 from aw_reporting.demo.data import CAMPAIGN_NAME_REPLACEMENTS
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_BRAND
+from aw_reporting.demo.data import DEMO_SF_ACCOUNT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -64,6 +65,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
         new_number = demo_campaign.salesforce_placement.number
         expected_name = origin_name_template.format(new_number)
         self.assertEqual(demo_campaign.name, expected_name)
+        self.assertEqual(demo_campaign.placement_code, new_number)
 
     @generic_test([
         (None, args, dict())
@@ -88,7 +90,7 @@ class RecreateDemoDataTestCase(TransactionTestCase):
             recreate_demo_data()
 
         opportunity = Opportunity.objects.get(id=DEMO_ACCOUNT_ID)
-        self.assertEqual(opportunity.account.name, source_sf_account_name)
+        self.assertEqual(opportunity.account.name, DEMO_SF_ACCOUNT)
 
     def test_ad_group_name(self):
         _, account = self._create_source_root()

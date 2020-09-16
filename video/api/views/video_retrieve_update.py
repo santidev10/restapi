@@ -4,11 +4,13 @@ Video api views module
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from elasticsearch.exceptions import NotFoundError
+from elasticsearch.exceptions import RequestError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from es_components.constants import Sections
+from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
@@ -33,7 +35,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
                                     Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,
-                                    Sections.CUSTOM_CAPTIONS)
+                                    Sections.CUSTOM_CAPTIONS, Sections.CUSTOM_PROPERTIES,)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
         try:
@@ -46,7 +48,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = VideoWithBlackListSerializer(video).data
+        context = self._get_serializer_context(video.channel.id)
+        result = VideoWithBlackListSerializer(video, context=context).data
         try:
             result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
         # pylint: disable=broad-except
@@ -60,3 +63,16 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                 del result[Sections.ANALYTICS]
 
         return Response(result)
+
+    def _get_serializer_context(self, channel_id):
+        try:
+            channel = ChannelManager(Sections.CUSTOM_PROPERTIES).get([channel_id], skip_none=True)[0]
+            channel_blocklist = channel.custom_properties.blocklist
+        except (IndexError, RequestError):
+            channel_blocklist = False
+        context = {
+            "channel_blocklist": {
+                channel_id: channel_blocklist
+            }
+        }
+        return context

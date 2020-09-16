@@ -129,7 +129,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             ias_campaign_name = stats.campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.campaign__account__currency_code,
+                "EUR",  # stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
                 ias_campaign_name or self.get_campaign_name(stats.campaign__account__name),
@@ -200,7 +200,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             ias_campaign_name = stats.ad_group__campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.ad_group__campaign__account__currency_code,
+                "EUR",  # stats.ad_group__campaign__account__currency_code,
                 "Cross Device",
                 stats.ad_group__campaign__id,
                 ias_campaign_name or self.get_campaign_name(stats.ad_group__campaign__account__name),

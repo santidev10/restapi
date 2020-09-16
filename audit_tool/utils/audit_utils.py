@@ -21,6 +21,7 @@ from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
+from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from segment.models.constants import VETTED_MAPPING
 
@@ -90,10 +91,8 @@ class AuditUtils(object):
         :return: list
         """
         iab_categories = []
-        bad_tier_1s = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
-                       "Content Source", "Content Source Geo", "Video Game Genres"]
         for tier_1, tier_2_values in IAB_TIER2_CATEGORIES_MAPPING.items():
-            if tier_1 not in bad_tier_1s:
+            if tier_1 not in HIDDEN_IAB_CATEGORIES:
                 category = {
                     "id": tier_1,
                     "value": tier_1,
@@ -145,7 +144,7 @@ class AuditUtils(object):
         Returns subgroups as children keys for parent age groups
         :return: list
         """
-        age_groups = AuditAgeGroup.get_by_group()
+        age_groups = AuditAgeGroup.get_by_group(top_level_only=True)
         return age_groups
 
     @staticmethod

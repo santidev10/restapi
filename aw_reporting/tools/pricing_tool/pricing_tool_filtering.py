@@ -51,6 +51,7 @@ CONDITIONS = [
 
 class PricingToolFiltering:
     default_condition = "or"
+    INTERESTS_FILTERS = None
 
     def __init__(self, kwargs):
         self.kwargs = kwargs
@@ -59,7 +60,11 @@ class PricingToolFiltering:
         self.filter_item_ids = None
 
     @classmethod
-    def get_filters(cls, user, opportunities_ids=None):
+    def clean_filters_interests(cls):
+        cls.INTERESTS_FILTERS = None
+
+    @classmethod
+    def get_filters(cls, user, opportunities_ids=None, reuse_interests=False):
 
         start, end = cls._get_default_dates()
 
@@ -84,7 +89,8 @@ class PricingToolFiltering:
             .distinct()
         product_types = [dict(id=t, name=t) for t in sorted(product_types)
                          if t not in ["", " --", "Standard"]]
-
+        if not cls.INTERESTS_FILTERS or not reuse_interests:
+            cls.INTERESTS_FILTERS = _get_interests_filters()
         filters = dict(
             # timing
             quarters=[dict(id=c, name=c)
@@ -134,7 +140,7 @@ class PricingToolFiltering:
             ctr_v=dict(min=0, max=None),
             video_view_rate=dict(min=0, max=100),
             video100rate=dict(min=0, max=100),
-            **_get_interests_filters()
+            **cls.INTERESTS_FILTERS
         )
         return filters
 

@@ -205,8 +205,8 @@ class AuditExportApiView(APIView):
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
         do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-            do_exclusion = True
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        do_exclusion = True
         cols = [
             "Video URL",
             "Name",
@@ -352,12 +352,13 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words = ""
                 title_bad_hit_words = ""
             try:
-                video_audit_score = auditor.audit_video({
+                video_audit = auditor.audit_video({
                     "id": vid.video_id,
                     "title": v.name,
                     "description": v.description,
                     "tags": v.keywords,
-                }, full_audit=False)
+                })
+                video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
                 mapped_score = map_brand_safety_score(video_audit_score)
             # pylint: disable=broad-except
             except Exception:
@@ -507,9 +508,9 @@ class AuditExportApiView(APIView):
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
-        do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-            do_exclusion = True
+        do_exclusion = True
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        #    do_exclusion = True
         self.get_categories()
         cols = [
             "Channel Title",

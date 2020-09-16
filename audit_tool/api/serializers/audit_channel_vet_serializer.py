@@ -92,9 +92,6 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         for key, value in data.items():
             setattr(self.instance, key, value)
         self.instance.save(update_fields=list(data.keys()))
-        if channel_meta and self.validated_data["monetization"].get("is_monetizable") is True:
-            channel_meta.monetised = True
-            channel_meta.save()
 
     def _update_videos(self, channel_id):
         """

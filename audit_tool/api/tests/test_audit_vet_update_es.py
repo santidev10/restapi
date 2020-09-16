@@ -11,8 +11,6 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
-from audit_tool.models import BlacklistItem
-from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -78,10 +76,6 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 "category_score": 5
             },
         }
-        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
-        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=1,
-                                     item_id_hash=get_hash_name(audit_item_yt_id),
-                                     blacklist_category={"2": 100})
         channel = Channel(audit_item_yt_id)
         channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
         channel.populate_task_us_data(iab_categories=["more", "wrong"])
@@ -144,10 +138,6 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
-        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
-        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=0,
-                                     item_id_hash=get_hash_name(audit_item_yt_id),
-                                     blacklist_category={"3": 100})
         bs_category_data = {
             "3": {
                 "severity_counts": {
@@ -297,10 +287,6 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
-        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
-        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=1,
-                                     item_id_hash=get_hash_name(audit_item_yt_id),
-                                     blacklist_category={"2": 100})
         channel = Channel(audit_item_yt_id)
         channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
         channel.populate_task_us_data(iab_categories=["more", "wrong"])

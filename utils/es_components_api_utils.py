@@ -122,6 +122,7 @@ class QueryGenerator:
     match_phrase_filter = ()
     exists_filter = ()
     params_adapters = ()
+    must_not_terms_filter = ()
 
     def __init__(self, query_params):
         self.query_params = self._adapt_query_params(query_params)
@@ -211,6 +212,17 @@ class QueryGenerator:
 
         return filters
 
+    def __get_filters_must_not_terms(self):
+        filters = []
+        for field in self.must_not_terms_filter:
+            value = self.query_params.get(field, None)
+            if value:
+                value = value.split(",") if isinstance(value, str) else value
+                filters.append(
+                    QueryBuilder().build().must_not().terms().field(field).value(value).get()
+                )
+        return filters
+
     def __get_filters_match_phrase(self):
         """
         Applies a multi-match to ALL match_phrase_filter fields if at least one
@@ -254,6 +266,12 @@ class QueryGenerator:
         else:
             return
 
+    def adapt_ias_filters(self, filters, value):
+        if value is True or value == "true":
+            q = QueryBuilder().build().must().range().field("ias_data.ias_verified").gte("now-7d/d").get()
+            filters.append(q)
+        return
+
     def __get_filters_exists(self):
         filters = []
 
@@ -265,6 +283,9 @@ class QueryGenerator:
 
             if field == "transcripts":
                 self.adapt_transcript_filters(filters, value)
+                continue
+            elif field == "ias_data.ias_verified":
+                self.adapt_ias_filters(filters, value)
                 continue
 
             query = QueryBuilder().build()
@@ -298,6 +319,7 @@ class QueryGenerator:
 
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
+        filters_must_not_terms = self.__get_filters_must_not_terms()
         filters_range = self.__get_filter_range()
         filters_match_phrase = self.__get_filters_match_phrase()
         filters_exists = self.__get_filters_exists()
@@ -306,7 +328,7 @@ class QueryGenerator:
         ids_filter = self.__get_filters_by_ids()
 
         filters = filters_term + filters_range + filters_match_phrase + \
-                  filters_exists + forced_filter + ids_filter
+                  filters_exists + forced_filter + ids_filter + filters_must_not_terms
 
         return filters
 
@@ -320,6 +342,7 @@ class ESDictSerializer(Serializer):
         if chart_data and isinstance(chart_data, list):
             chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
         data = instance.to_dict()
+        data = self._add_blocklist(data)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -328,6 +351,24 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+
+    def _add_blocklist(self, data: dict):
+        """
+        Add blocklist data to video if video does not have blocklist data
+            Video is implicitly blocklisted if channel is blocklisted
+        :param data:
+        :return:
+        """
+        if data.get("custom_properties", {}).get("blocklist") is None:
+            try:
+                channel_id = data["channel"]["id"]
+                channel_blocklisted = self.context["channel_blocklist"][channel_id]
+            except KeyError:
+                channel_blocklisted = False
+            custom_properties = data.get("custom_properties", {})
+            custom_properties.update({"blocklist": channel_blocklisted})
+            data["custom_properties"] = custom_properties
+        return data
 # pylint: enable=abstract-method
 
 
@@ -357,7 +398,7 @@ class VettedStatusSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -367,6 +408,8 @@ class ESQuerysetAdapter:
         self.fields_to_load = None
         self.search_limit = None
         self.cached_aggregations = cached_aggregations
+        # Additional control if cached methods should use cache
+        self.from_cache = from_cache
 
     @cached_method(timeout=7200)
     def count(self):
@@ -561,10 +604,49 @@ class APIViewMixin:
     allowed_percentiles = ()
 
     terms_filter = ()
+    must_not_terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
     params_adapters = ()
+
+    def get_cached_aggregations_key(self):
+        """
+        gets cached aggregations key depending on user type:
+        if vetting admin, return with 'Unsuitable' brand safety agg,
+        if not, return without 'Unsuitable' agg
+        """
+        if self.vetting_admin_permission_class().has_permission(self.request):
+            return self.admin_cached_aggregations_key
+        return self.cached_aggregations_key
+
+    def get_cached_aggregations(self):
+        """
+        gets and sets cached aggregations depending on key provided
+        by self.get_cached_aggregations_key
+        """
+        if hasattr(self, 'cached_aggregations'):
+            return self.cached_aggregations
+
+        key = self.get_cached_aggregations_key()
+        try:
+            cached_aggregations_object = self.cache_class.objects.get(key=key)
+            self.cached_aggregations = cached_aggregations_object.value
+        # pylint: disable=broad-except
+        except Exception as e:
+            # pylint: enable=broad-except
+            self.cached_aggregations = None
+
+        return self.cached_aggregations
+
+    def get_manager_class(self):
+        """
+        gets the correct manager class based on user permissions.
+        admin class currently adds brand_safety's 'Unsuitable' score range
+        """
+        if self.vetting_admin_permission_class().has_permission(self.request):
+            return self.admin_manager_class
+        return self.manager_class
 
 
 class PaginatorWithAggregationMixin:
@@ -589,6 +671,7 @@ class PaginatorWithAggregationMixin:
 class ExportDataGenerator:
     serializer_class = ESDictSerializer
     terms_filter = ()
+    must_not_terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
@@ -606,6 +689,7 @@ class ExportDataGenerator:
             dict(
                 es_manager=self.queryset.manager,
                 terms_filter=self.terms_filter,
+                must_not_terms_filter=self.must_not_terms_filter,
                 range_filter=self.range_filter,
                 match_phrase_filter=self.match_phrase_filter,
                 exists_filter=self.exists_filter,

@@ -9,6 +9,7 @@ from django.utils import timezone
 from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
+from brand_safety import constants
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -111,25 +112,81 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
-        high_risk_url = self.url + "?brand_safety=Unsuitable"
         risky_url = self.url + "?brand_safety=Low%20Suitability"
         low_risk_url = self.url + "?brand_safety=Medium%20Suitability"
         safe_url = self.url + "?brand_safety=Suitable"
-        high_risk_and_safe_url = high_risk_url + "%2CSuitable"
-        high_risk_response = self.client.get(high_risk_url)
+        low_risk_and_safe_url = low_risk_url + "%2CSuitable"
         risky_response = self.client.get(risky_url)
         low_risk_response = self.client.get(low_risk_url)
         safe_response = self.client.get(safe_url)
-        high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
-        self.assertEqual(len(high_risk_response.data["items"]), 1)
+        low_risk_and_safe = self.client.get(low_risk_and_safe_url)
         self.assertEqual(len(risky_response.data["items"]), 2)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
         self.assertEqual(len(safe_response.data["items"]), 1)
-        self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
+        self.assertEqual(len(low_risk_and_safe.data["items"]), 2)
         self.assertEqual(
             89,
             low_risk_response.data["items"][0]["brand_safety"]["overall_score"]
         )
+
+    def test_brand_safety_high_risk_permission(self):
+        """
+        test that a regular user can filter on RISKY or above scores, while
+        admin users can additionally filter on HIGH_RISK scores
+        """
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+
+        channel_id = str(next(int_iterator))
+        channel_id_2 = str(next(int_iterator))
+        channel = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 77
+            }
+        })
+        channel_2 = Channel(**{
+            "meta": {
+                "id": channel_id_2
+            },
+            "brand_safety": {
+                "overall_score": 61
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([channel, channel_2])
+        url = self.url + "?" + urlencode({
+            "brand_safety": ",".join([constants.RISKY, constants.HIGH_RISK])
+        })
+
+        # regular user, no high risk allowed
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 1)
+
+        # regular admin, all filters available
+        user.is_staff = True
+        user.save(update_fields=['is_staff'])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 2)
+
+        # vetting admin, all filters available
+        user.is_staff = False
+        user.save(update_fields=['is_staff'])
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 2)
+
 
     def test_extra_fields(self):
         self.create_admin_user()
@@ -496,7 +553,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
-    def test_vetting_admin_guard(self):
+    def test_vetting_admin_aggregations_guard(self):
         user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("channel_list")
@@ -545,7 +602,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         # admin should see aggs
         user.is_staff = True
-        user.save()
+        user.save(update_fields=["is_staff"])
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data['aggregations']
@@ -556,7 +613,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         # vetting admin should see aggs
         user.is_staff = False
-        user.save()
+        user.save(update_fields=["is_staff"])
         Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
         user.add_custom_user_permission("vet_audit_admin")
         response = self.client.get(url)
@@ -566,3 +623,48 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         for aggregation in vetting_admin_aggregations:
             with self.subTest(aggregation):
                 self.assertIn(aggregation, response_aggregation_keys)
+
+    def test_non_admin_brand_safety_exclusion(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+
+        url = self.url + "?" + urlencode({
+            "aggregations": ",".join(ALLOWED_CHANNEL_AGGREGATIONS),
+        })
+
+        # normal user should not see HIGH_RISK brand safety agg
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 3)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertNotIn(constants.HIGH_RISK, labels)
+
+        # admin should see HIGH_RISK agg
+        user.is_staff = True
+        user.save(update_fields=["is_staff"])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 4)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertIn(constants.HIGH_RISK, labels)
+
+        # vetting admin should see HIGH_RISK agg
+        user.is_staff = False
+        user.save(update_fields=["is_staff"])
+        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
+        user.add_custom_user_permission("vet_audit_admin")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_aggregations = response.data["aggregations"]
+        self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
+        buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
+        self.assertEqual(len(buckets), 4)
+        labels = [bucket['key'] for bucket in buckets]
+        self.assertIn(constants.HIGH_RISK, labels)

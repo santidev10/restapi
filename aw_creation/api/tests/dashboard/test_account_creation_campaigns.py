@@ -1,4 +1,5 @@
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
@@ -55,3 +56,13 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertGreater(len(response.data), 0)
         self.assertNotIn(None, [c["status"] for c in response.data])
+
+    def test_not_numeric_id(self):
+        """
+        Jira ticket: https://channelfactory.atlassian.net/browse/VIQ2-530
+        """
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
+        url = self._get_url("07c1856dc03f")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

@@ -115,7 +115,8 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         with patch.object(Schedulers.ChannelOutdated, "get_items_limit", return_value=10), \
              patch.object(Schedulers.ChannelOutdated, "UPDATE_TIME_THRESHOLD", return_value="now",
                           new_callable=PropertyMock), \
-             patch("brand_safety.tasks.channel_update_helper.get_queue_size", return_value=0): \
+             patch("brand_safety.tasks.channel_update_helper.get_queue_size", return_value=0),\
+             patch("brand_safety.tasks.channel_outdated.get_queue_size", return_value=0): \
             channel_outdated_scheduler()
 
         vetted_channels_should_ignore = self.vetted_channel_manager.get(vetted_channel_ids)
