@@ -169,7 +169,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
-        "schedule": crontab(hour=17, minute=30),
+        "schedule": crontab(hour=21, minute=0),
     },
 }
 
