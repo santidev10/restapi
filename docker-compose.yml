@@ -64,7 +64,7 @@ services:
 
   celery_beat:
     image: viewiq-restapi
-    command: ["celery", "-A", "saas", "beat", "-l", "debug"]
+    command: ["celery", "-A", "saas", "beat", "-l", "info"]
     depends_on:
       - rabbitmq
     environment:
