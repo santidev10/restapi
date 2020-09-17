@@ -169,7 +169,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
-        "schedule": crontab(hour="0", minute="0"),
+        "schedule": crontab(hour=10, minute=0),
     },
 }
 
@@ -188,6 +188,7 @@ class Queue:
     BRAND_SAFETY_CHANNEL_PRIORITY = "brand_safety_channel_priority"
     BRAND_SAFETY_VIDEO_PRIORITY = "brand_safety_video_priority"
     SCHEDULERS = "schedulers"
+    IAS = "ias"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -201,6 +202,7 @@ CELERY_ROUTES_PREPARED = [
     ("*export*", {"queue": Queue.EXPORT}),
     ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
+    ("channel.tasks.ingest_ias_channels.*", {"queue": Queue.IAS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
@@ -226,7 +228,7 @@ class TaskExpiration:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(hours=2).total_seconds()
-    INGEST_IAS = timedelta(hours=6).total_seconds()
+    INGEST_IAS = timedelta(hours=12).total_seconds()
 
 
 class TaskTimeout:
@@ -244,4 +246,4 @@ class TaskTimeout:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(minutes=2).total_seconds()
-    INGEST_IAS = timedelta(hours=6).total_seconds()
+    INGEST_IAS = timedelta(hours=12).total_seconds()
