@@ -219,15 +219,12 @@ class SegmentQueryBuilder:
 
         last_30d_field = "last_30day_views"
         if self._params.get(last_30d_field):
-            bounds = self._params.get(last_30d_field).split(",")
-            numeric_bounds = [item.strip() for item in bounds if item.strip().isnumeric()]
-            if len(bounds) == 2 and len(numeric_bounds) == 2:
-                last_30d_views_query = Q("bool")
-                if self._params.get("ads_stats_include_na") is True:
-                    last_30d_views_query |= QueryBuilder().build().must_not().exists() \
-                        .field(f"{Sections.STATS}.{last_30d_field}").get()
-                last_30d_views_query |= self._get_range_queries(["last_30day_views"], Sections.STATS)
-                must_queries.append(last_30d_views_query)
+            last_30d_views_query = Q("bool")
+            if self._params.get("ads_stats_include_na") is True:
+                last_30d_views_query |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.STATS}.{last_30d_field}").get()
+            last_30d_views_query |= self._get_range_queries(["last_30day_views"], Sections.STATS)
+            must_queries.append(last_30d_views_query)
 
         query = Q("bool", must=must_queries)
 
