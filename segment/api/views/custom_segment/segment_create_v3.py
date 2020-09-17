@@ -163,6 +163,16 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
         opts["content_type"] = with_all(choice=opts.get("content_type", None))
         opts["content_quality"] = with_all(choice=opts.get("content_quality", None))
+        # fault tolerant validation for range fields. handles ", ":
+        for field_name in list(SegmentQueryBuilder.AD_STATS_RANGE_FIELDS) + list(SegmentQueryBuilder.STATS_RANGE_FIELDS):
+            field = opts.get(field_name, None)
+            if not field:
+                continue
+            bounds = field.replace(" ", "").split(",")
+            numeric_bounds = [bound for bound in bounds if bound.isnumeric()]
+            # we want 1 to 2 numeric bounds
+            if len(bounds) != 2 or len(numeric_bounds) not in range(1, 3):
+                opts[field_name] = None
         return opts
 
     def _create(self, data: dict):
