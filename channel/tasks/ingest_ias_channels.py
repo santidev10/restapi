@@ -58,7 +58,6 @@ def ingest_ias_channels():
                         continue
                     new_cids.append(cid)
                 new_channels = channel_manager.get_or_create(new_cids)
-                counter = 0
                 for channel in new_channels:
                     if not channel:
                         continue
@@ -68,7 +67,6 @@ def ingest_ias_channels():
                     ias_channel = IASChannel.get_or_create(channel_id=channel_id)
                     ias_channel.ias_verified = timezone.now()
                     ias_channel.save(update_fields=["ias_verified"])
-                    counter += 1
                 channel_manager.upsert(new_channels)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
