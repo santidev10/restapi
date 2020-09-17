@@ -1,4 +1,5 @@
 import logging
+from time import perf_counter
 
 from django.conf import settings
 from django.utils import timezone
@@ -68,7 +69,6 @@ def ingest_ias_channels():
                     ias_channel.ias_verified = timezone.now()
                     ias_channel.save(update_fields=["ias_verified"])
                     counter += 1
-                    print(counter)
                 channel_manager.upsert(new_channels)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
