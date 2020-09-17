@@ -47,7 +47,7 @@ services:
     image: viewiq-restapi
     command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q",
               "celery,reports,delivery_statistic,email_reports,export,transcripts,hourly_statistic,cache_research,segments,
-              schedulers,brand_safety_channel_light,brand_safety_channel_priority,brand_safety_video_priority"
+              schedulers,brand_safety_channel_light,brand_safety_channel_priority,brand_safety_video_priority,ias"
     ]
     depends_on:
       - rabbitmq

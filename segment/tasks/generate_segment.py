@@ -80,9 +80,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                     **bulk_search_kwargs)
 
             for batch in es_generator:
-                # Clean video blocklist items depending on channel blocklist values
-                if segment.segment_type == 0:
-                    batch = _clean_blocklist(batch)
+                # Clean blocklist items
+                batch = _clean_blocklist(batch, segment.segment_type)
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
@@ -144,23 +143,28 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
         yield batch
 
 
-def _clean_blocklist(videos):
+def _clean_blocklist(items, data_type=0):
     """
     Remove videos that have their channel blocklisted
-    :param videos:
-    :param channel_manager:
+    :param items:
+    :param data_type: int -> 0 = videos, 1 = channels
     :return:
     """
     channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
-    channels = channel_manager.get([video.channel.id for video in videos if video.channel.id is not None])
-    blocklist = {
-        channel.main.id: channel.custom_properties.blocklist
-        for channel in channels
-    }
-    non_blocklist = [
-        video for video in videos if blocklist.get(video.channel.id) is not True
-        and video.custom_properties.blocklist is not True
-    ]
+    if data_type == 0:
+        channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None])
+        blocklist = {
+            channel.main.id: channel.custom_properties.blocklist
+            for channel in channels
+        }
+        non_blocklist = [
+            video for video in items if blocklist.get(video.channel.id) is not True
+            and video.custom_properties.blocklist is not True
+        ]
+    else:
+        non_blocklist = [
+            channel for channel in items if channel.custom_properties.blocklist is not True
+        ]
     return non_blocklist
 
 
