@@ -215,20 +215,13 @@ class SegmentQueryBuilder:
             must_queries.append(content_quality_query)
 
         ads_stats_queries = self._get_ads_stats_queries()
-        must_queries.extend(ads_stats_queries)
-
-        last_30d_field = "last_30day_views"
-        if self._params.get(last_30d_field):
-            bounds = self._params.get(last_30d_field).split(",")
-            numeric_bounds = [item.strip() for item in bounds if item.strip().isnumeric()]
-            if len(bounds) == 2 and len(numeric_bounds) == 2:
-                last_30d_views_query = Q("bool")
-                if self._params.get("ads_stats_include_na") is True:
-                    last_30d_views_query |= QueryBuilder().build().must_not().exists() \
-                        .field(f"{Sections.STATS}.{last_30d_field}").get()
-                last_30d_views_query |= self._get_range_queries(["last_30day_views"], Sections.STATS)
-                must_queries.append(last_30d_views_query)
-
+        if self._params.get("last_30day_views"):
+            query = self._get_range_queries(["last_30day_views"], Sections.STATS)
+            if self._params.get("ads_stats_include_na") is True:
+                query |= QueryBuilder().build().must_not().exists().field(f"{Sections.STATS}.last_30day_views").get()
+            ads_stats_queries &= query
+        must_queries.append(ads_stats_queries)
+        
         query = Q("bool", must=must_queries)
 
         if self.with_forced_filters is True:
@@ -262,19 +255,10 @@ class SegmentQueryBuilder:
             .gte(self._params.get(attr_name)).get()
         return queries
 
-    def _get_ads_stats_queries(self) -> list:
-        """
-        returns a list of bool query items, one per detected and allowed ad stat, with
-        an include_na condition appended as an OR.
-        """
-        queries = []
-        for field in self.AD_STATS_RANGE_FIELDS:
-            if self._params.get(field):
-                query = Q("bool")
-                if self._params.get("ads_stats_include_na") is True:
-                    query |= QueryBuilder().build().must_not().exists().field(f"{Sections.ADS_STATS}.{field}").get()
-                query |= self._get_range_queries([field], Sections.ADS_STATS)
-                queries.append(query)
+    def _get_ads_stats_queries(self):
+        queries = self._get_range_queries(self.AD_STATS_RANGE_FIELDS, Sections.ADS_STATS)
+        if self._params.get("ads_stats_include_na") is True:
+            queries |= QueryBuilder().build().must_not().exists().field(Sections.ADS_STATS).get()
         return queries
 
     def _get_range_queries(self, fields, section):
@@ -289,11 +273,9 @@ class SegmentQueryBuilder:
             else:
                 if lower_bound and upper_bound and float(lower_bound) > float(upper_bound):
                     raise ValueError(f"Lower bound must be less than upper bound. {key}: {params}")
-                if lower_bound and upper_bound:
-                    query &= QueryBuilder().build().must().range().field(field).gte(lower_bound).lte(upper_bound).get()
-                elif lower_bound:
+                if lower_bound:
                     query &= QueryBuilder().build().must().range().field(field).gte(lower_bound).get()
-                elif upper_bound:
+                if upper_bound:
                     query &= QueryBuilder().build().must().range().field(field).lte(upper_bound).get()
         return query
 
