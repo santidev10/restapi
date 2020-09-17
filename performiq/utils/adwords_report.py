@@ -1,8 +1,10 @@
+from aw_reporting.adwords_api import _get_client
 from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
-from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
 from performiq.models import OAuthAccount
+from performiq.oauth_utils import get_customers
+from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
 
 from aw_reporting.adwords_api import get_web_app_client
 
@@ -35,9 +37,12 @@ def get_client(account_id, ouath_account_id=None):
     else:
         oauth_id = ouath_account_id
     oauth_account = OAuthAccount.objects.get(id=oauth_id)
-    client = get_web_app_client(
-        refresh_token=oauth_account.refresh_token,
-        client_customer_id=account_id
+    # client = get_web_app_client(
+    #     refresh_token=oauth_account.refresh_token,
+    #     client_customer_id=account_id
+    # )
+    client = _get_client(
+
     )
     return client
 
@@ -54,3 +59,16 @@ def get_report(client, report_query, fields, addl_fields=None):
     report = report_downloader.DownloadReportAsStreamWithAwql(report_query, 'CSV', **opts)
     result = _output_to_rows(stream_iterator(report), fields)
     return result
+
+
+def get_accounts(refresh_token):
+    gads_accounts = get_customers(refresh_token)
+    mcc_accounts = []
+    cid_accounts = []
+    for account in gads_accounts:
+        if account["canManageClients"] and not account["testAccount"]:
+            container = mcc_accounts
+        else:
+            container = cid_accounts
+        container.append(account)
+    return mcc_accounts, cid_accounts
