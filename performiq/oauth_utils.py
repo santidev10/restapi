@@ -23,7 +23,6 @@ def load_client_settings():
 
 
 def get_customers(refresh_token):
-    # config = load_web_app_settings()
     config = load_client_settings()
     aw_client = get_client(
         client_customer_id=None,

@@ -1,12 +1,8 @@
-from aw_reporting.adwords_api import _get_client
 from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
-from performiq.models import OAuthAccount
 from performiq.oauth_utils import get_customers
 from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
-
-from aw_reporting.adwords_api import get_web_app_client
 
 
 def get_campaign_report(client, predicates: dict = None, date_range: dict = None, addl_fields: list = None) -> list:
@@ -29,22 +25,6 @@ def get_campaign_report(client, predicates: dict = None, date_range: dict = None
                          use_raw_enum_values=True, skip_column_header=True)
     rows = _output_to_rows(report, fields)
     return rows
-
-
-def get_client(account_id, ouath_account_id=None):
-    if ouath_account_id is None:
-        oauth_id = account_id
-    else:
-        oauth_id = ouath_account_id
-    oauth_account = OAuthAccount.objects.get(id=oauth_id)
-    # client = get_web_app_client(
-    #     refresh_token=oauth_account.refresh_token,
-    #     client_customer_id=account_id
-    # )
-    client = _get_client(
-
-    )
-    return client
 
 
 def get_report(client, report_query, fields, addl_fields=None):
