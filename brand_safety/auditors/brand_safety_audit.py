@@ -153,6 +153,7 @@ class BrandSafetyAudit(object):
                     check_rescore_channels.append(video["channel_id"])
             if index:
                 self._index_results(video_results, [])
+                self.video_manager.upsert(blocklist_docs)
             if self.should_check_rescore_channels:
                 self._check_rescore_channels(check_rescore_channels)
         return video_results

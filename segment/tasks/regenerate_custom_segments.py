@@ -12,7 +12,7 @@ from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
 LOCK_NAME = "regenerate_custom_segments"
-EXPIRE = 60 * 60 * 24 * 2
+EXPIRE = 60 * 30
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,8 @@ def regenerate_custom_segments():
     All non-featured segments are Custom Target Lists.
     """
     date_threshold = timezone.now() - timedelta(days=settings.CUSTOM_SEGMENT_REGENERATION_DAYS_THRESHOLD)
-    for segment in CustomSegment.objects.filter(Q(is_regenerating=True) & Q(updated_at__lte=date_threshold)):
+    query = CustomSegment.objects.filter(Q(is_regenerating=True) & Q(updated_at__lte=date_threshold))
+    for segment in query:
         logger.debug("Processing regenerating segment titled: %s", segment.title)
         export = segment.export
         results = generate_segment(segment, export.query["body"], segment.config.LIST_SIZE, add_uuid=False)

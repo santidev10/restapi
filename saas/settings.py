@@ -512,6 +512,10 @@ PROXY_PORT = ""
 IAS_ARCHIVE_FOLDER = "archive/"
 ARCHIVE_IAS = False
 
+PERFORMIQ_OAUTH_USER_AGENT = "Web application"
+PERFORMIQ_OAUTH_CLIENT_ID = "832846444492-s0tktc1j0klmt16pdemo9s8hf73t3cie.apps.googleusercontent.com"
+PERFORMIQ_OAUTH_CLIENT_SECRET = "CuLTRo8NoeKZpakATPHbCkai"
+
 TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
     "george.su@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",

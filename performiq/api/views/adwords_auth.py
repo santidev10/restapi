@@ -1,17 +1,20 @@
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 from suds import WebFault
 
-from aw_reporting.adwords_api import get_customers
-from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.utils import get_google_access_token_info
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.models.constants import OAuthType
 from performiq.models import OAuthAccount
+from performiq.oauth_utils import get_customers
+from performiq.oauth_utils import get_google_access_token_info
+from performiq.oauth_utils import load_client_settings
+from performiq.tasks.update_campaigns import update_mcc_campaigns_task
+from performiq.tasks.update_campaigns import update_campaigns_task
 
 
 class AdWordsAuthApiView(APIView):
@@ -119,7 +122,7 @@ class AdWordsAuthApiView(APIView):
         try:
             customers = get_customers(
                 oauth_account.refresh_token,
-                **load_web_app_settings()
+                **load_client_settings()
             )
         except WebFault as e:
             fault_string = e.fault.faultstring
@@ -133,30 +136,41 @@ class AdWordsAuthApiView(APIView):
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=ex_token_error))
         else:
-            mcc_accounts = list(filter(
-                lambda i: i["canManageClients"] and not i["testAccount"],
-                customers,
-            ))
-            if not mcc_accounts:
-                return Response(
-                    status=HTTP_400_BAD_REQUEST,
-                    data=dict(error=self.no_mcc_error)
-                )
-            primary_account = mcc_accounts[0]
-            oauth_account.name = primary_account["descriptiveName"]
-            oauth_account.save(update_fields=["name"])
-            response = AWAuthSerializer(oauth_account).data
-            return Response(data=response)
+            mcc_accounts = []
+            cid_accounts = []
+            for account in customers:
+                if account["canManageClients"] and not account["testAccount"]:
+                    container = mcc_accounts
+                else:
+                    container = cid_accounts
+                container.append(account)
+            if mcc_accounts:
+                first = mcc_accounts[0]
+                oauth_account.name = first["descriptiveName"]
+                oauth_account.save(update_fields=["name"])
+                update_mcc_campaigns_task(first["customerId"], ouath_account_id=oauth_account.id)
+                response = AWAuthSerializer(oauth_account).data
+                status = HTTP_200_OK
+            elif cid_accounts:
+                for cid in cid_accounts:
+                    update_campaigns_task(cid["customerId"], ouath_account_id=oauth_account.id)
+                response = AWAuthSerializer(oauth_account).data
+                status = HTTP_200_OK
+            else:
+                response = "You have no accounts to sync."
+                status = HTTP_400_BAD_REQUEST
+            return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 
     def get_flow(self, redirect_url):
-        aw_settings = load_web_app_settings()
+        aw_settings = load_client_settings()
         flow = client.OAuth2WebServerFlow(
             client_id=aw_settings.get("client_id"),
             client_secret=aw_settings.get("client_secret"),
             scope=self.scopes,
             user_agent=aw_settings.get("user_agent"),
             redirect_uri=redirect_url,
+            prompt="consent"
         )
         return flow
 
