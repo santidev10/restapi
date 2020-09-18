@@ -20,6 +20,7 @@ from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import BlacklistItem
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from es_components.constants import Sections
 from es_components.models import Channel
@@ -181,6 +182,25 @@ class AuditExportApiView(APIView):
             self.cache['country'][obj_id] = AuditCountry.objects.get(id=obj_id).country
         return self.cache['country'][obj_id]
 
+    def delete_blocklist_channels(self, audit):
+        if audit.params.get("override_blocklist"):
+            return
+        blocklist_channels = BlacklistItem.objects.filter(item_type=1).values_list('item_id', flat=True)
+        bad_channels = AuditChannelProcessor.objects.filter(audit=audit,
+                                                            channel__channel_id__in=blocklist_channels)
+        bad_channels_videos = AuditVideoProcessor.objects.filter(audit=audit,
+                                                            channel__channel_id__in=blocklist_channels)
+        bad_channels.delete()
+        bad_channels_videos.delete()
+
+    def delete_blocklist_videos(self, audit):
+        if audit.params.get("override_blocklist"):
+            return
+        blocklist_videos = BlacklistItem.objects.filter(item_type=0).values_list('item_id', flat=True)
+        bad_videos = AuditVideoProcessor.objects.filter(audit=audit,
+                                                            video__video_id__in=blocklist_videos)
+        bad_videos.delete()
+
     def export_videos(self, audit, audit_id=None, clean=None, export=None):
         clean_string = 'none'
         if clean is not None:
@@ -204,9 +224,10 @@ class AuditExportApiView(APIView):
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
-        do_exclusion = False
-        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         do_exclusion = True
+        #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+        #    do_exclusion = True
+        self.delete_blocklist_videos(audit)
         cols = [
             "Video URL",
             "Name",
@@ -508,10 +529,11 @@ class AuditExportApiView(APIView):
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
-        do_exclusion = True
+        #do_exclusion = False
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-        #    do_exclusion = True
+        do_exclusion = True
         self.get_categories()
+        self.delete_blocklist_channels(audit)
         cols = [
             "Channel Title",
             "Channel URL",
