@@ -105,7 +105,8 @@ class BrandSafetyChannelAudit(object):
                                                              data["hits"])
 
             for category, score in video_brand_safety_score.category_scores.items():
-                channel_brand_safety_score.add_category_score(category, score)
+                if category in channel_brand_safety_score.category_scores:
+                    channel_brand_safety_score.add_category_score(category, score)
             channel_brand_safety_score.add_overall_score(video_brand_safety_score.overall_score)
 
         # Average all scores
@@ -129,9 +130,10 @@ class BrandSafetyChannelAudit(object):
         # If blacklist data available, then set overall score and blacklisted category score to 0
         if self.ignore_blacklist_data is False:
             for category_id in self.metadata.get("brand_safety_blacklist", []):
-                channel_brand_safety_score.category_scores[category_id] = 0
-                if category_id not in BadWordCategory.EXCLUDED:
-                    channel_brand_safety_score.overall_score = 0
+                if category_id in channel_brand_safety_score.category_scores:
+                    channel_brand_safety_score.category_scores[category_id] = 0
+                    if category_id not in BadWordCategory.EXCLUDED:
+                        channel_brand_safety_score.overall_score = 0
 
         return channel_brand_safety_score
 

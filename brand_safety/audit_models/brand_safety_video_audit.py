@@ -115,9 +115,10 @@ class BrandSafetyVideoAudit(object):
         # If blacklist data available, then set overall score and blacklisted category score to 0
         if self.ignore_blacklist_data is False:
             for category_id in self.metadata.get("brand_safety_blacklist", []):
-                brand_safety_score.category_scores[category_id] = 0
-                if category_id not in BadWordCategory.EXCLUDED:
-                    brand_safety_score.overall_score = 0
+                if category_id in brand_safety_score.category_scores:
+                    brand_safety_score.category_scores[category_id] = 0
+                    if category_id not in BadWordCategory.EXCLUDED:
+                        brand_safety_score.overall_score = 0
 
         return brand_safety_score
 
