@@ -7,6 +7,7 @@ from aw_reporting.models import BaseQueryset
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
+    vettable = models.BooleanField(default=True, db_index=True)
     # Categories to exclude from brand safety
     EXCLUDED = ["1", "2"]
 
