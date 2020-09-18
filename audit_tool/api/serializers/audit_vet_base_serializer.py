@@ -306,7 +306,7 @@ class AuditVetBaseSerializer(Serializer):
         else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
         try:
-            general_data["primary_category"] = self.validated_data["primary_category"]
+            general_data["primary_category"] = self.validated_data["general_data"]["primary_category"]
         except KeyError:
             pass
         return general_data
