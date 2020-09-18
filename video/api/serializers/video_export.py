@@ -17,6 +17,7 @@ class YTVideoLinkFromID(CharField):
 
 
 class VideoListExportSerializer(ListExportSerializerMixin, Serializer):
+    channel_id = CharField(source="channel.id")
     title = CharField(source="general_data.title")
     url = YTVideoLinkFromID(source="main.id")
     iab_categories = SerializerMethodField()

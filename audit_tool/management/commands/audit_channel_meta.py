@@ -487,7 +487,7 @@ class Command(BaseCommand):
 
     def check_channel_is_blocklisted(self, channel_id, acp):
         if BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM):
-            acp.word_hits["exclusion"] = ['blocklist']
+            acp.word_hits["exclusion"] = ['BLOCKLIST']
             return True
 
     def check_channel_is_clean(self, db_channel_meta, acp):

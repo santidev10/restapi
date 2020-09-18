@@ -21,6 +21,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views",
         "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
+        "IAS_Verified"
     )
 
     URL = SerializerMethodField("get_url")
@@ -48,6 +49,8 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
     Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
     Views_30_Days = FloatField(source="stats.last_30day_views")
+    IAS_Verified = DateTimeField(source="ias_data.ias_verified", format="%Y-%m-%d", default="")
+
 
     def update(self, instance, validated_data):
         raise NotImplementedError

@@ -41,11 +41,11 @@ def cache_research_videos_defaults():
         logger.info("Starting default research videos caching.")
         default_sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                             Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                            Sections.CUSTOM_CAPTIONS)
+                            Sections.CUSTOM_CAPTIONS, Sections.CUSTOM_PROPERTIES)
         admin_sections = default_sections + (Sections.ANALYTICS,)
 
         fields_to_load = ["general_data", "main", "monetization", "channel", "ads_stats", "cms", "captions", "stats",
-                          "brand_safety", "custom_captions", "task_us_data"]
+                          "brand_safety", "custom_captions", "task_us_data", "custom_properties"]
 
         sort = [
             {"stats.views": {"order": "desc"}},

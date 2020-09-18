@@ -4,6 +4,7 @@ from audit_tool.models import AuditGender
 from audit_tool.models import AuditContentQuality
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
+from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -11,7 +12,8 @@ class SegmentExportSerializerMixin:
     """ Context provided by context kwarg in serializer instantiation """
     def get_category(self, obj):
         categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join([category for category in categories if isinstance(category, str)])
+        joined = ", ".join([category for category in categories
+                           if isinstance(category, str) and category not in HIDDEN_IAB_CATEGORIES])
         return joined
 
     def get_brand_safety(self, obj):

@@ -266,6 +266,12 @@ class QueryGenerator:
         else:
             return
 
+    def adapt_ias_filters(self, filters, value):
+        if value is True or value == "true":
+            q = QueryBuilder().build().must().range().field("ias_data.ias_verified").gte("now-7d/d").get()
+            filters.append(q)
+        return
+
     def __get_filters_exists(self):
         filters = []
 
@@ -277,6 +283,9 @@ class QueryGenerator:
 
             if field == "transcripts":
                 self.adapt_transcript_filters(filters, value)
+                continue
+            elif field == "ias_data.ias_verified":
+                self.adapt_ias_filters(filters, value)
                 continue
 
             query = QueryBuilder().build()
@@ -333,6 +342,7 @@ class ESDictSerializer(Serializer):
         if chart_data and isinstance(chart_data, list):
             chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
         data = instance.to_dict()
+        data = self._add_blocklist(data)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -341,6 +351,24 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+
+    def _add_blocklist(self, data: dict):
+        """
+        Add blocklist data to video if video does not have blocklist data
+            Video is implicitly blocklisted if channel is blocklisted
+        :param data:
+        :return:
+        """
+        if data.get("custom_properties", {}).get("blocklist") is None:
+            try:
+                channel_id = data["channel"]["id"]
+                channel_blocklisted = self.context["channel_blocklist"][channel_id]
+            except KeyError:
+                channel_blocklisted = False
+            custom_properties = data.get("custom_properties", {})
+            custom_properties.update({"blocklist": channel_blocklisted})
+            data["custom_properties"] = custom_properties
+        return data
 # pylint: enable=abstract-method
 
 
@@ -370,7 +398,7 @@ class VettedStatusSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -380,6 +408,8 @@ class ESQuerysetAdapter:
         self.fields_to_load = None
         self.search_limit = None
         self.cached_aggregations = cached_aggregations
+        # Additional control if cached methods should use cache
+        self.from_cache = from_cache
 
     @cached_method(timeout=7200)
     def count(self):

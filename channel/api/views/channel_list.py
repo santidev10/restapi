@@ -156,7 +156,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                    Sections.TASK_US_DATA)
+                    Sections.TASK_US_DATA, Sections.IAS_DATA)
         try:
             channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         except UserChannelsNotAvailable:
@@ -187,7 +187,6 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
         self.add_fields()
-
 
         return ESQuerysetAdapter(self.get_manager_class()(sections), cached_aggregations=self.get_cached_aggregations())
 

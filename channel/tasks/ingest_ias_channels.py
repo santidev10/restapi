@@ -45,7 +45,7 @@ def ingest_ias_channels():
         contents = objects["Contents"]
         file_names = [content["Key"] for content in contents]
         for file_name in file_names:
-            if file_name in ["archive/", "archive-rc/"]:
+            if "archive" in file_name:
                 continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
@@ -53,7 +53,7 @@ def ingest_ias_channels():
                 for byte in ias_content["Body"].iter_lines():
                     row = (byte.decode("utf-8")).split(",")
                     cid = row[0].split("/")[-1]
-                    if len(cid) < 24:
+                    if len(cid) != 24 or cid[:2] != "UC":
                         continue
                     new_cids.append(cid)
                 new_channels = channel_manager.get_or_create(new_cids)
