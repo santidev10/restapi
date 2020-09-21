@@ -289,9 +289,8 @@ class Command(BaseCommand):
                     db_channel_meta.save(
                         update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
                 avp.channel = db_video.channel
-                blocklisted = False
-                if not self.audit.params.get("override_blocklist"):
-                    blocklisted = self.check_video_is_blocklisted(db_video.video_id, channel_id, avp)
+                #if not self.audit.params.get("override_blocklist"):
+                blocklisted = self.check_video_is_blocklisted(db_video.video_id, channel_id, avp)
                 if not blocklisted:
                     avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 else:

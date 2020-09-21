@@ -6,6 +6,8 @@ from googleads import oauth2
 from googleads.common import ZeepServiceProxy
 import requests
 
+from aw_reporting.adwords_api import load_web_app_settings
+
 logger = logging.getLogger(__name__)
 API_VERSION = "v201809"
 
@@ -14,16 +16,18 @@ def load_client_settings():
     conf = {
         "user_agent": settings.PERFORMIQ_OAUTH_USER_AGENT,
         "client_id": settings.PERFORMIQ_OAUTH_CLIENT_ID,
-        "client_secret": settings.PERFORMIQ_OAUTH_CLIENT_SECRET
+        "client_secret": settings.PERFORMIQ_OAUTH_CLIENT_SECRET,
+        "developer_token": "C2L8KuJbIRw40vmNtaKgZw",
     }
     return conf
 
 
-def get_customers(refresh_token, **kwargs):
+def get_customers(refresh_token):
+    config = load_client_settings()
     aw_client = get_client(
         client_customer_id=None,
         refresh_token=refresh_token,
-        **kwargs
+        **config
     )
     customer_service = aw_client.GetService(
         "CustomerService", version=API_VERSION

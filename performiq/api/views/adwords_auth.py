@@ -13,8 +13,8 @@ from performiq.models import OAuthAccount
 from performiq.oauth_utils import get_customers
 from performiq.oauth_utils import get_google_access_token_info
 from performiq.oauth_utils import load_client_settings
-from performiq.tasks.update_campaigns import update_mcc_campaigns_task
 from performiq.tasks.update_campaigns import update_campaigns_task
+from performiq.utils.adwords_report import get_accounts
 
 
 class AdWordsAuthApiView(APIView):
@@ -120,10 +120,7 @@ class AdWordsAuthApiView(APIView):
 
         # Get Name of First MCC Account
         try:
-            customers = get_customers(
-                oauth_account.refresh_token,
-                **load_client_settings()
-            )
+            mcc_accounts, cid_accounts = get_accounts(oauth_account.refresh_token)
         except WebFault as e:
             fault_string = e.fault.faultstring
             if "AuthenticationError.NOT_ADS_USER" in fault_string:
@@ -136,29 +133,18 @@ class AdWordsAuthApiView(APIView):
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=ex_token_error))
         else:
-            mcc_accounts = []
-            cid_accounts = []
-            for account in customers:
-                if account["canManageClients"] and not account["testAccount"]:
-                    container = mcc_accounts
-                else:
-                    container = cid_accounts
-                container.append(account)
             if mcc_accounts:
                 first = mcc_accounts[0]
                 oauth_account.name = first["descriptiveName"]
                 oauth_account.save(update_fields=["name"])
-                update_mcc_campaigns_task(first["customerId"], ouath_account_id=oauth_account.id)
-                response = AWAuthSerializer(oauth_account).data
-                status = HTTP_200_OK
-            elif cid_accounts:
-                for cid in cid_accounts:
-                    update_campaigns_task(cid["customerId"], ouath_account_id=oauth_account.id)
+
+            if mcc_accounts or cid_accounts:
                 response = AWAuthSerializer(oauth_account).data
                 status = HTTP_200_OK
             else:
                 response = "You have no accounts to sync."
                 status = HTTP_400_BAD_REQUEST
+            update_campaigns_task(oauth_account.id)
             return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 

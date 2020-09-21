@@ -195,11 +195,12 @@ class AuditVetBaseSerializer(Serializer):
             else:
                 key = "id"
             mapping = {
-                getattr(item, key): str(item.id)
+                getattr(item, key): item
                 for item in BadWordCategory.objects.all()
             }
             try:
-                categories = [mapping[val] for val in set(values)]
+                # Clean non vettable categories from being saved
+                categories = [mapping[val].id for val in set(values) if mapping[val].vettable is True]
             except KeyError as e:
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
