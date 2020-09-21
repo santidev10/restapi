@@ -160,6 +160,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             top_lang_code="ru",
             iab_categories=["Top category",],
             emails=["example1@mail.com", "example2@email.com"],
+            primary_category="Primary category"
         )
         channel.populate_stats(
             subscribers=123,
