@@ -209,14 +209,14 @@ class BrandSafetyAudit(object):
             if self.ignore_vetted_videos is True and audit.is_vetted is True:
                 continue
             videos_to_upsert.append(audit.instantiate_es())
-        self.video_manager.upsert(videos_to_upsert)
+        self.video_manager.upsert(videos_to_upsert, refresh=False)
 
         channels_to_upsert = []
         for audit in channel_audits:
             if self.ignore_vetted_channels is True and audit.is_vetted is True:
                 continue
             channels_to_upsert.append(audit.instantiate_es())
-        self.channel_manager.upsert(channels_to_upsert)
+        self.channel_manager.upsert(channels_to_upsert, refresh=False)
         return videos_to_upsert, channels_to_upsert
 
     def _get_channel_batch_data(self, channel_batch: list) -> list:
