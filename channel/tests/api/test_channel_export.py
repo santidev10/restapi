@@ -130,7 +130,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "url",
             "country",
             "language",
-            "iab_categories",
+            "primary_category",
+            "additional_categories",
             "subscribers",
             "thirty_days_subscribers",
             "views",
@@ -158,7 +159,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             title="Test channel title",
             country_code="RU",
             top_lang_code="ru",
-            iab_categories=["Top category",],
+            iab_categories=["Top category"],
             emails=["example1@mail.com", "example2@email.com"],
             primary_category="Primary category"
         )
@@ -196,6 +197,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             f"https://www.youtube.com/channel/{channel.main.id}",
             "RU",
             "Russian",
+            channel.general_data.primary_category,
             ",".join(channel.general_data.iab_categories),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
@@ -371,6 +373,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-        rows = sorted(data[1:], key=lambda x: x[15])
-        self.assertEqual(7, int(rows[0][15]))
-        self.assertEqual(7, int(rows[1][15]))
+        # 15 is brand safety score index in export row
+        rows = sorted(data[1:], key=lambda x: x[16])
+        self.assertEqual(7, int(rows[0][16]))
+        self.assertEqual(7, int(rows[1][16]))
