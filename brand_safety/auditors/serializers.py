@@ -22,7 +22,7 @@ class BrandSafetyChannelSerializer(Serializer):
 
     def get_is_vetted(self, obj):
         is_vetted = False
-        if obj.task_us_data:
+        if obj.task_us_data.last_vetted_at:
             is_vetted = True
         return is_vetted
 
@@ -55,7 +55,7 @@ class BrandSafetyVideoSerializer(Serializer):
 
     def get_is_vetted(self, obj):
         is_vetted = False
-        if obj.task_us_data:
+        if obj.task_us_data.last_vetted_at:
             is_vetted = True
         return is_vetted
 
