@@ -1,23 +1,15 @@
 import csv
 import logging
-import os
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand
-from pid import PidFile
-from pid import PidFileError
 
 from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditChannel
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditGender
-from audit_tool.models import BlacklistItem
 from brand_safety.languages import LANGUAGES
-from brand_safety.models import BadWordCategory
 from django.utils import timezone
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.iab_categories import IAB_TIER2_SET
 from es_components.managers.channel import ChannelManager
@@ -30,13 +22,16 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--filename",
-            help="Name of TaskUs .csv file to import data from."
+            help="Name of Channel List .csv file to import data from."
         )
 
     def handle(self, *args, **kwargs):
         channel_ids = []
         channels_data = {}
-        file_name = "ViewIQ upload 091720.csv"
+        try:
+            file_name = kwargs["filename"]
+        except KeyError:
+            raise ValidationError("Argument 'filename' is required.")
         with open(file_name, "r") as f:
             reader = csv.reader(f)
             next(reader)
@@ -46,27 +41,41 @@ class Command(BaseCommand):
                     if len(cid) != 24 or cid[:2] != "UC":
                         continue
                     title = row[1]
-                    categories = self.get_categories(row[2])
-                    language = self.get_language(row[3].lower())
-                    age_group = self.get_age_group(row[4].lower())
-                    gender = self.get_gender(row[5].lower())
-                    content_type = self.get_content_type(row[5].lower())
-                    content_quality = self.get_content_quality(row[5].lower())
+                    categories = self.get_categories(row[2].strip())
+                    lang_code = self.get_language(row[3].strip().lower())
+                    age_group = self.get_age_group(row[4].strip().lower())
+                    gender = self.get_gender(row[5].strip().lower())
+                    content_type = self.get_content_type(row[6].strip().lower())
+                    content_quality = self.get_content_quality(row[7].strip().lower())
                     channel_ids.append(cid)
                     channels_data[cid] = {
-                        "title": title,
-                        "categories": categories,
-                        "language": language,
-                        "age_group": age_group,
-                        "gender": gender,
-                        "content_type": content_type,
-                        "content_quality": content_quality,
-                        "last_vetted_at": timezone.now()
+                        "general_data": {
+                            "title": title
+                        },
+                        "task_us_data": {
+                            "is_safe": True,
+                            "iab_categories": categories,
+                            "lang_code": lang_code,
+                            "age_group": age_group,
+                            "gender": gender,
+                            "content_type": content_type,
+                            "content_quality": content_quality,
+                            "last_vetted_at": timezone.now()
+                        }
                     }
                 # pylint: disable=broad-except
                 except Exception:
                 # pylint: enable=broad-except
                     continue
+        manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,),
+                                 upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,))
+        channels = manager.get_or_create(channel_ids)
+        for channel in channels:
+            channel_id = channel.main.id
+            channel_data = channels_data[channel_id]
+            channel.populate_general_data(**channel_data["general_data"])
+            channel.populate_task_us_data(**channel_data["task_us_data"])
+        manager.upsert(channels)
 
     @staticmethod
     def get_categories(categories_string):
