@@ -965,6 +965,11 @@ class PacingReport:
             flight["alerts"] = alerts
             flights.append(flight)
 
+            try:
+                spend_goal = flight["budget"] - (flight["budget"] * flight["margin_cap"])
+            except (TypeError, KeyError):
+                spend_goal = None
+            flight["spend_goal"] = spend_goal
         return flights
 
     # ## FLIGHTS ## #
