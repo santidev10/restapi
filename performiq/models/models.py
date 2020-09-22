@@ -49,7 +49,7 @@ class DV360Base(Timestampable):
 
 
 class DV360Partner(DV360Base):
-    oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="partners")
+    oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="dv360_partners")
 
 
 class DV360Advertiser(DV360Base):

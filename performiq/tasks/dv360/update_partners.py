@@ -36,6 +36,6 @@ def update_partners():
                 partner = serializer.save()
                 partners.append(partner)
 
-        account.partner_set.set(partners)
+        account.dv360_partners.set(partners)
         account.updated_at = timezone.now()
         account.save(update_fields=["updated_at"])
