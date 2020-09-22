@@ -11,7 +11,8 @@ class PartnerSerializer(serializers.Serializer):
     update_time = serializers.DateTimeField()
 
     def save(self, **kwargs):
-        return DV360Partner.objects.update_or_create(
+        partner, _created = DV360Partner.objects.update_or_create(
             id=self.validated_data.get("id"),
             defaults=self.validated_data
         )
+        return partner
