@@ -97,6 +97,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -174,6 +175,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -222,6 +224,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "age_group": 1,
             "brand_safety": [],  # Should update with empty list
             "content_type": 1,
+            "primary_category": "Automotive",
             "gender": 2,
             "iab_categories": [],
             "is_monetizable": False,
@@ -260,6 +263,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "brand_safety": [],  # Should update with empty list
             "content_type": 1,
             "gender": 1,
+            "primary_category": "Automotive",
             "iab_categories": [],
             "is_monetizable": False,
             "language": "en",
@@ -302,6 +306,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "brand_safety": [
                 1, 1,
             ],
+            "primary_category": "Automotive",
             "content_type": 1,
             "gender": 2,
             "iab_categories": [
@@ -343,6 +348,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -392,6 +398,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -430,6 +437,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -475,6 +483,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -515,6 +524,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -561,6 +571,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -600,6 +611,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -639,6 +651,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
@@ -682,6 +695,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -717,6 +731,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "iab_categories": [
                 "Auto Rentals", "Scooters", "Auto Rentals",
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True

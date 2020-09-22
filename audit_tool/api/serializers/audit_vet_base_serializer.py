@@ -24,7 +24,7 @@ class AuditVetBaseSerializer(Serializer):
     general_data_lang_code_field = None
     es_manager = None
 
-    # Elasticsearch fields
+    # Elasticsearch fields for serialization. Some fields are also used to deserialization
     age_group = IntegerField(source="task_us_data.age_group", default=None)
     content_type = IntegerField(source="task_us_data.content_type", default=None)
     content_quality = IntegerField(source="task_us_data.content_quality", default=None)
@@ -37,7 +37,9 @@ class AuditVetBaseSerializer(Serializer):
     brand_safety = SerializerMethodField()
     brand_safety_overall_score = IntegerField(source="brand_safety.overall_score", default=None)
     language = SerializerMethodField()
+    primary_category = CharField(source="general_data.primary_category")
 
+    # Postgres fields to save during deserialization
     checked_out_at = DateTimeField(required=False, allow_null=True)
     suitable = BooleanField(required=False)
     processed = DateTimeField(required=False)
@@ -114,6 +116,11 @@ class AuditVetBaseSerializer(Serializer):
         """
         title = getattr(self.context.get("segment", {}), "title", None)
         return title
+
+    def validate_primary_category(self, value: str) -> str:
+        """ Validate that primary category is tier 1 IAB category """
+        primary_category = AuditToolValidator.validate_primary_category(value)
+        return primary_category
 
     def validate_language_code(self, value: str) -> str:
         """
@@ -298,6 +305,10 @@ class AuditVetBaseSerializer(Serializer):
             general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
         else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
+        try:
+            general_data["primary_category"] = self.validated_data["general_data"]["primary_category"]
+        except KeyError:
+            pass
         return general_data
 
     def _get_brand_safety_limbo(self, task_us_data, overall_score, pre_limbo_score):
