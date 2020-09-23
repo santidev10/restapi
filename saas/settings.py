@@ -337,7 +337,6 @@ VETTING_EXPORT_EMAIL_RECIPIENTS = [
 
 EMERGENCY_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
-    "alexander.alexandrov@sigma.software",
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
@@ -351,7 +350,6 @@ EMERGENCY_EMAIL_ADDRESSES = [
 
 ES_MONITORING_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
-    "alexander.alexandrov@sigma.software",
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",

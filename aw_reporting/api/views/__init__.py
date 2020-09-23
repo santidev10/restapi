@@ -2,6 +2,7 @@ from .connect_aw_account import ConnectAWAccountApiView
 from .connect_aw_account_list import ConnectAWAccountListApiView
 from .forecast_tool import *
 from .health_check_tool import *
+from .pacing_report import FlightAPIView
 from .pacing_report.pacing_report_campaigns import PacingReportCampaignsApiView
 from .pacing_report.pacing_report_collect import PacingReportCollectView
 from .pacing_report.pacing_report_export import PacingReportExportView
