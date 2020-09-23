@@ -43,25 +43,19 @@ def get_discovery_resource(credentials: GoogleCredentials):
     }
     return build(**params)
 
-class PartnerAdapter:
+
+class DV360BaseAdapter:
     """
-    adapt from Google's representation to performiq.models.DV360Partner
+    adapt from Google's displayvideo api representation to performiq.models.*
     representation
     """
-
-    # maps google field name to ours
-    field_name_mapping = {
-        "name": "name",
-        "partnerId": "id",
-        "updateTime": "update_time",
-        "displayName": "display_name",
-        "entityStatus": "entity_status",
-    }
-
     # field value to callable which does adapting
     field_value_mapping = {
         "entity_status": "adapt_entity_status",
     }
+
+    class Meta:
+        abstract = True
 
     def adapt(self, dv360_data: dict) -> dict:
         adapted = {}
@@ -79,3 +73,34 @@ class PartnerAdapter:
     def adapt_entity_status(value: str) -> int:
         """map entity status string to our int id representation"""
         return ENTITY_STATUS_MAP_TO_ID.get(value)
+
+
+class PartnerAdapter(DV360BaseAdapter):
+    """
+    adapt from Google's representation to performiq.models.DV360Partner
+    representation
+    """
+    # maps google field name to ours
+    field_name_mapping = {
+        "name": "name",
+        "partnerId": "id",
+        "updateTime": "update_time",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+    }
+
+
+class AdvertiserAdapter(DV360BaseAdapter):
+    """
+    adapt from Google's representation to performiq.models.DV360Advertiser
+    representation
+    """
+    # maps google field name to ours
+    field_name_mapping = {
+        "name": "name",
+        "advertiserId": "id",
+        "partnerId": "partner_id",
+        "updateTime": "update_time",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+    }
