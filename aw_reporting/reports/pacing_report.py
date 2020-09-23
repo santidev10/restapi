@@ -965,8 +965,6 @@ class PacingReport:
                 alerts.append(create_alert(short, detail))
 
             flight["alerts"] = alerts
-            flights.append(flight)
-
             margin_cap = f["margin_cap"]
             try:
                 spend_goal = f["total_cost"] - (f["total_cost"] * margin_cap / 100)
@@ -974,6 +972,8 @@ class PacingReport:
                 spend_goal = None
             flight["spend_goal"] = spend_goal
             flight["margin_cap"] = margin_cap
+
+            flights.append(flight)
         return flights
 
     # ## FLIGHTS ## #
