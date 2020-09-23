@@ -53,8 +53,8 @@ class DV360Partner(DV360Base):
 
 
 class DV360Advertiser(DV360Base):
-    partner_id = models.ForeignKey(DV360Partner, on_delete=models.CASCADE, related_name="advertisers")
+    partner = models.ForeignKey(DV360Partner, on_delete=models.CASCADE, related_name="advertisers")
 
 
 class DV360Campaign(DV360Base):
-    advertiser_id = models.ForeignKey(DV360Advertiser, on_delete=models.CASCADE, related_name="campaigns")
+    advertiser = models.ForeignKey(DV360Advertiser, on_delete=models.CASCADE, related_name="campaigns")
