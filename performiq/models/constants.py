@@ -28,3 +28,7 @@ ENTITY_STATUS_CHOICES = [
     (EntityStatusType.ENTITY_STATUS_PAUSED.value, "Paused"),
     (EntityStatusType.ENTITY_STATUS_SCHEDULED_FOR_DELETION.value, "Scheduled for Deletion"),
 ]
+
+ENTITY_STATUS_MAP_TO_ID = {status.name: status.value for status in EntityStatusType}
+
+ENTITY_STATUS_MAP_TO_STR = {status.value: status.name for status in EntityStatusType}
