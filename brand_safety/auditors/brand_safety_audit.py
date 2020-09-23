@@ -13,6 +13,9 @@ from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from es_components.models import Video
+from es_components.models import Channel
+
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +85,6 @@ class BrandSafetyAudit(object):
             non_blocklist = []
             blocklist_docs = []
             for channel in serialized:
-                if not channel.get("id"):
-                    continue
                 if channel.get("blocklist") is True:
                     blocklist_docs.append(BrandSafetyChannelAudit.instantiate_blocklist(channel["id"]))
                 else:
@@ -127,25 +128,10 @@ class BrandSafetyAudit(object):
         for batch in self.audit_utils.batch(video_ids, self.VIDEO_BATCH_SIZE):
             serialized = self.serialize(batch)
 
-            # If channel is blocklisted videos are implicitly blocklisted
-            if not channel_blocklist_mapping:
-                batch_channel_blocklist = self._get_channel_blocklist(video["channel_id"] for video in serialized)
-            else:
-                batch_channel_blocklist = channel_blocklist_mapping
+            to_score, blocklist_docs = self._clean_video_blocklist(serialized, channel_blocklist_mapping)
+            to_score, vetted_docs = self._clean_video_vetted(to_score)
 
-            # Blocklisted channels do not require full audit as they will immediately get an overall_score of 0
-            non_blocklist = []
-            blocklist_docs = []
-            for video in serialized:
-                if video["blocklist"] is True or batch_channel_blocklist.get(video["channel_id"]) is True:
-                    blocklist_docs.append(BrandSafetyVideoAudit.instantiate_blocklist(video["id"]))
-                else:
-                    non_blocklist.append(video)
-
-            for video in non_blocklist:
-                if not video.get("id") or not video.get("channel_id") or not video.get("channel_title"):
-                    # Ignore videos that can not be indexed without required fields
-                    continue
+            for video in to_score:
                 audit = self.audit_video(video)
                 video_results.append(audit)
                 # Prepare videos that have scored low to check if their channel should be rescored
@@ -153,10 +139,58 @@ class BrandSafetyAudit(object):
                     check_rescore_channels.append(video["channel_id"])
             if index:
                 self._index_results(video_results, [])
-                self.video_manager.upsert(blocklist_docs)
+                self.video_manager.upsert(blocklist_docs + vetted_docs)
             if self.should_check_rescore_channels:
                 self._check_rescore_channels(check_rescore_channels)
         return video_results
+
+    def _clean_video_vetted(self, serialized_videos: list) -> tuple:
+        """
+        Separate vetted documents as they do not need to be fully vetted
+        If has task_us_data.brand_safety categories, set all scores to 0
+        Else set all scores to 100
+        :param serialized_videos: list -> self.serialize result
+        :return: tuple
+        """
+        to_score = []
+        vetted_to_upsert = []
+        for video in serialized_videos:
+            if video["is_vetted"] is True:
+                video = Video(video["id"])
+                if any(category for category in video["brand_safety_blacklist"]):
+                    bs_data = dict(overall_score=0, **self.audit_utils.default_zero_score)
+                else:
+                    bs_data = dict(overall_score=100, **self.audit_utils.default_full_score)
+                video.populate_brand_safety(**bs_data)
+                vetted_to_upsert.append(video)
+            else:
+                to_score.append(video)
+        return to_score, vetted_to_upsert
+
+    def _clean_video_blocklist(self, serialized_videos: list, channel_blocklist_mapping: dict):
+        """
+        Method to separate blocklisted videos from videos to score as blocklist videos should not go through
+        normal flow
+        Blocklist video scores are automatically set with overall score = 0
+        :param serialized_videos: list -> self.serialize result
+        :param channel_blocklist_mapping: dict -> Mapping of channel id to channel's blocklist boolean value
+        :return:
+        """
+        # If channel is blocklisted videos are implicitly blocklisted
+        if not channel_blocklist_mapping:
+            batch_channel_blocklist = self._get_channel_blocklist(video["channel_id"] for video in serialized_videos)
+        else:
+            batch_channel_blocklist = channel_blocklist_mapping
+
+        # Blocklisted channels do not require full audit as they will immediately get an overall_score of 0
+        non_blocklist = []
+        blocklist_docs = []
+        for video in serialized_videos:
+            if video["blocklist"] is True or batch_channel_blocklist.get(video["channel_id"]) is True:
+                blocklist_docs.append(BrandSafetyVideoAudit.instantiate_blocklist(video["id"]))
+            else:
+                non_blocklist.append(video)
+        return non_blocklist, blocklist_docs
 
     def audit_video(self, video_data: dict) -> BrandSafetyVideoAudit:
         """

@@ -40,18 +40,24 @@ class BrandSafetyChannelSerializer(Serializer):
 
 
 class BrandSafetyVideoSerializer(Serializer):
-    id = CharField(source="main.id")
-    channel_id = CharField(source="channel.id", default="")
-    channel_title = CharField(source="channel.title", default="")
-    title = CharField(source="general_data.title", default="")
-    description = CharField(source="general_data.description", default="")
-    language = CharField(source="general_data.lang_code", default="")
-    brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
-    blocklist = BooleanField(source="custom_properties.blocklist", default=False)
+    # id = CharField(source="main.id")
+    # channel_id = CharField(source="channel.id", default="")
+    # channel_title = CharField(source="channel.title", default="")
+    # title = CharField(source="general_data.title", default="")
+    # description = CharField(source="general_data.description", default="")
+    # language = CharField(source="general_data.lang_code", default="")
+    # brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
+    # blocklist = BooleanField(source="custom_properties.blocklist", default=False)
     is_vetted = SerializerMethodField()
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
     transcript_language = SerializerMethodField()
+
+    def to_representation(self, instance):
+        extra_data = super().to_representation(instance)
+        for key, val in extra_data.items():
+            setattr(instance, key, val)
+        return instance
 
     def get_is_vetted(self, obj):
         is_vetted = False
