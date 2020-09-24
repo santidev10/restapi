@@ -6,9 +6,10 @@ from es_components.models import Channel
 
 class BrandSafetyChannelAudit(object):
     """
-    Brand safety Audit for channels using SDB data
+    Brand safety audit for channels
+    Gathers text metadata and applies brand safety scoring by detecting channel language, detecting words,
+    calculating scores relative to the word, hit location (e.g. title, description)
     """
-    metadata = {}
     score_multiplier = {
         "title": 4,
         "description": 1,
@@ -16,43 +17,38 @@ class BrandSafetyChannelAudit(object):
         "transcript": 1
     }
 
-    def __init__(self, channel_data, audit_utils, ignore_blacklist_data=False):
-        self.video_audits = channel_data.get("video_audits", [])
+    def __init__(self, channel, audit_utils, ignore_vetted_brand_safety=False):
+        self.video_audits = channel.video_audits
+        self.doc = channel
         self.audit_utils = audit_utils
         self.score_mapping = audit_utils.score_mapping
-        # If channel has video audits, then channel should start with default_zero_score to find average category
-        # scores
+        # If channel has video audits, then channel should start with default_zero_score to find average category scores
         # Else, channel should start with full_score since no average can be calculated and will be used to subtract
         # metadata scores
         self.default_category_scores = audit_utils.default_zero_score if len(
             self.video_audits) > 0 else audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
-        self._set_metadata(channel_data)
-        self.ignore_blacklist_data = ignore_blacklist_data
-        self.is_vetted = channel_data.get("is_vetted")
+        self.audit_metadata = self._get_metadata(channel)
+        self.ignore_vetted_brand_safety = ignore_vetted_brand_safety
 
-    @property
-    def pk(self):
-        pk = self.metadata["id"]
-        return pk
-
-    def _set_metadata(self, data: dict):
+    def _get_metadata(self, channel: Channel) -> dict:
         """
-        Set audit metadata
-        :param data: keys = channel_id, description, channel_title
+        Get audit metadata to be used during scoring
+        :param channel: Channel
         :return:
         """
-        text = ", ".join([
-            data.get("title", "") or "",
-            data.get("description", "") or "",
-            data.get("video_tags", "") or "",
-        ])
-        detected = {
-            "has_emoji": self.audit_utils.has_emoji(text),
-            "language": self.audit_utils.get_language(text)
+        text_mapping = {
+            "title": channel.general_data.title or "",
+            "description": channel.general_data.description or "",
+            "video_tags": channel.video_tags or "",
         }
-        data.update(detected)
-        self.metadata = data
+        text = ",".join(text_mapping.keys())
+        audit_data = {
+            "has_emoji": self.audit_utils.has_emoji(text),
+            "language": self.audit_utils.get_language(text),
+            **text_mapping
+        }
+        return audit_data
 
     def run(self):
         """
@@ -63,26 +59,29 @@ class BrandSafetyChannelAudit(object):
 
     def _run_brand_safety_audit(self):
         """
-        Brand safety audit
+        Search for keyword hits using keyword processors depending on the detected language of the Channel
+        If valid language is detected, keyword processor uses language and universal language processor to
+        detect words. The use of universal language is required to obtain word hits that span across all languages
+        If no valid language detected, then defaults to "all" which also includes universal language processor
         :return:
         """
         # Try to get channel language processor
         try:
-            keyword_processor = self.language_processors[self.metadata["language"]]
-            universal_processor = self.language_processors['un']
+            keyword_processor = self.language_processors[self.audit_metadata["language"]]
+            universal_processor = self.language_processors["un"]
         except KeyError:
             # Set the language the audit uses
-            self.metadata["language"] = "all"
+            self.audit_metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
             universal_processor = False
-        title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, keyword_processor)
-        description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION,
+        title_hits = self.audit_utils.audit(self.audit_metadata["title"], constants.TITLE, keyword_processor)
+        description_hits = self.audit_utils.audit(self.audit_metadata["description"], constants.DESCRIPTION,
                                                   keyword_processor)
         all_hits = title_hits + description_hits
         # Universal keywords hits
         if universal_processor:
-            universal_title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, universal_processor)
-            universal_description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION,
+            universal_title_hits = self.audit_utils.audit(self.audit_metadata["title"], constants.TITLE, universal_processor)
+            universal_description_hits = self.audit_utils.audit(self.audit_metadata["description"], constants.DESCRIPTION,
                                                                 universal_processor)
             all_hits += universal_title_hits + universal_description_hits
 
@@ -91,11 +90,12 @@ class BrandSafetyChannelAudit(object):
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
         """
-        Aggregate video audit brand safety results
+        Aggregate video audit brand safety results by averaging all video keyword hits and combining with channel
+        metadata scores
         :param channel_metadata_hits: All channel metadata hits
         :return:
         """
-        channel_brand_safety_score = BrandSafetyChannelScore(self.pk, len(self.video_audits),
+        channel_brand_safety_score = BrandSafetyChannelScore(self.doc.main.id, len(self.video_audits),
                                                              self.default_category_scores)
         # Aggregate video audits scores for channel
         for audit in self.video_audits:
@@ -127,13 +127,24 @@ class BrandSafetyChannelAudit(object):
             else:
                 channel_brand_safety_score.add_metadata_score(word.name, keyword_category, keyword_score)
 
-        # If blacklist data available, then set overall score and blacklisted category score to 0
-        if self.ignore_blacklist_data is False:
-            for category_id in self.metadata.get("brand_safety_blacklist", []):
-                if category_id in channel_brand_safety_score.category_scores:
-                    channel_brand_safety_score.category_scores[category_id] = 0
-                    if category_id not in BadWordCategory.EXCLUDED:
-                        channel_brand_safety_score.overall_score = 0
+        # If vetted brand safety data available
+        if self.ignore_vetted_brand_safety is False and self.doc.task_us_data.last_vetted_at is not None:
+            # Set overall score and category scores to 0 as it is vetted unsafe
+            has_vetted_brand_safety = any(category for category in self.doc.task_us_data.brand_safety)
+            if has_vetted_brand_safety:
+                for category_id in self.doc.task_us_data.brand_safety:
+                    if category_id in channel_brand_safety_score.category_scores:
+                        channel_brand_safety_score.category_scores[category_id] = 0
+                        if category_id not in BadWordCategory.EXCLUDED:
+                            channel_brand_safety_score.overall_score = 0
+            else:
+                # Vetted safe as it has no vetted brand safety categories
+                for category_id in channel_brand_safety_score.category_scores.keys():
+                    channel_brand_safety_score.category_scores[category_id] = 100
+                channel_brand_safety_score.overall_score = 100
+
+        if self.doc.custom_properties.blocklist is True:
+            channel_brand_safety_score.overall_score = 0
 
         return channel_brand_safety_score
 
@@ -141,12 +152,12 @@ class BrandSafetyChannelAudit(object):
         """
         Instantiate Elasticsearch channel model with brand safety data
         """
-        channel = Channel(self.metadata["id"])
+        channel = Channel(self.doc.main.id)
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_data = {
             "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
             "videos_scored": brand_safety_score.videos_scored,
-            "language": self.metadata["language"],
+            "language": self.audit_metadata["language"],
             "categories": {
                 category: {
                     "category_score": score,
@@ -159,10 +170,11 @@ class BrandSafetyChannelAudit(object):
         for word, keyword_data in brand_safety_score.keyword_scores.items():
             try:
                 # Pop category as we do not need to store in categories section, only needed for key access
-                category = keyword_data.pop("category", None)
+                category = keyword_data.get("category")
+                data = {key: val for key, val in keyword_data.items() if key != "category"}
                 if category is None:
                     category = self.score_mapping[word]["category"]
-                brand_safety_data["categories"][category]["keywords"].append(keyword_data)
+                brand_safety_data["categories"][category]["keywords"].append(data)
 
                 # Increment category severity hit counts
                 severity = str(self.score_mapping[word]["score"])
@@ -171,9 +183,3 @@ class BrandSafetyChannelAudit(object):
                 continue
         channel.brand_safety = brand_safety_data
         return channel
-
-    @staticmethod
-    def instantiate_blocklist(item_id):
-        blocklist_item = Channel(item_id)
-        blocklist_item.populate_brand_safety(overall_score=0)
-        return blocklist_item
