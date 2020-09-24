@@ -49,6 +49,29 @@ class AuditUtils(object):
         self._bad_word_processors_by_language = get_bad_word_processors_by_language()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
+        self._vetted_safe_score = self._get_vetted_score(safe=True)
+        self._vetted_unsafe_score = self._get_vetted_score(safe=False)
+
+    def _get_vetted_score(self, safe=True):
+        if safe is True:
+            overall_score = 100
+            category_scores = self._default_full_score
+        else:
+            overall_score = 0
+            category_scores = self._default_zero_score
+        scores = {
+            "overall_score": overall_score,
+            "categories": category_scores
+        }
+        return scores
+
+    @property
+    def vetted_safe_score(self):
+        return self._vetted_safe_score.copy()
+
+    @property
+    def vetted_unsafe_score(self):
+        return self._vetted_unsafe_score.copy()
 
     @property
     def bad_word_processors_by_language(self):
@@ -83,8 +106,7 @@ class AuditUtils(object):
         :param keyword_processor: flashtext module KeywordProcessor instance
         :return:
         """
-        if isinstance(text, str):
-            text = remove_tags_punctuation(text.lower())
+        text = remove_tags_punctuation(str(text).lower())
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
@@ -281,3 +303,40 @@ class AuditUtils(object):
             }) for _id in item_ids
         ]
         manager.upsert(updated)
+
+    def get_brand_safety_data(self, doc):
+        """
+        Get brand safety scores depending on if doc has vetted brand safety categories
+        Items that are vetted safe by having no brand safety categories determines the item is safe
+        If it has brand safety categories, then it is not safe and should have scores of 0
+
+        If has brand safety categories, set all category scores and overall score to 0
+        Else, set all to 100
+        :param doc: Video | Channel
+        :return:
+        """
+        if any(category for category in doc.task_us_data.brand_safety):
+            bs_data = self.vetted_unsafe_score
+        else:
+            bs_data = self.vetted_safe_score
+        return bs_data
+
+    def index_audit_results(self, es_manager, audits: list, ignore_vetted=True, chunk_size=2000) -> list:
+        """
+        Update audits with audited brand safety scores
+        Check if each document should be upserted depending on config, as vetted videos should not always be updated
+        :param es_manager: VideoManager | ChannelManager
+        :param audits: list -> BrandSafetyVideo | BrandSafetyChannel audits
+        :param ignore_vetted: bool -> Determine if vetted items should be indexed
+        :param chunk_size: int -> Size of each index batch
+        :return: list
+        """
+        to_upsert = []
+        # Check if vetted items should be upserted
+        for audit in audits:
+            if ignore_vetted is True and audit.doc.task_us_data.last_vetted_at is not None:
+                continue
+            to_upsert.append(audit.instantiate_es())
+        for chunk in self.batch(to_upsert, chunk_size):
+            es_manager.upsert(chunk, refresh=False)
+        return to_upsert

@@ -1,8 +1,5 @@
 import re
 
-from rest_framework.serializers import BooleanField
-from rest_framework.serializers import CharField
-from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
@@ -11,14 +8,15 @@ from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 
 
 class BrandSafetyChannelSerializer(Serializer):
-    id = CharField(source="main.id")
-    title = CharField(source="general_data.title", default="")
-    description = CharField(source="general_data.description", default="")
-    brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
-    blocklist = BooleanField(source="custom_properties.blocklist", default=False)
-    is_vetted = SerializerMethodField()
+    """ Adds attributes to Channel instances """
     video_tags = SerializerMethodField()
     updated_at = SerializerMethodField()
+
+    def to_representation(self, instance):
+        extra_data = super().to_representation(instance)
+        for key, val in extra_data.items():
+            setattr(instance, key, val)
+        return instance
 
     def get_is_vetted(self, obj):
         is_vetted = False
@@ -40,15 +38,7 @@ class BrandSafetyChannelSerializer(Serializer):
 
 
 class BrandSafetyVideoSerializer(Serializer):
-    # id = CharField(source="main.id")
-    # channel_id = CharField(source="channel.id", default="")
-    # channel_title = CharField(source="channel.title", default="")
-    # title = CharField(source="general_data.title", default="")
-    # description = CharField(source="general_data.description", default="")
-    # language = CharField(source="general_data.lang_code", default="")
-    # brand_safety_blacklist = ListField(source="task_us_data.brand_safety", default=[])
-    # blocklist = BooleanField(source="custom_properties.blocklist", default=False)
-    is_vetted = SerializerMethodField()
+    """ Adds attributes to Video instances """
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
     transcript_language = SerializerMethodField()
@@ -57,13 +47,20 @@ class BrandSafetyVideoSerializer(Serializer):
         extra_data = super().to_representation(instance)
         for key, val in extra_data.items():
             setattr(instance, key, val)
+
+        # Set blocklist value if channel is blocklisted
+        instance.custom_properties.blocklist = self._is_blocklist(instance)
         return instance
 
-    def get_is_vetted(self, obj):
-        is_vetted = False
-        if obj.task_us_data.last_vetted_at:
-            is_vetted = True
-        return is_vetted
+    def _is_blocklist(self, instance):
+        is_blocklist = False
+        try:
+            channel_blocklist = self.context["channels"][instance.channel.id].custom_properties.blocklist
+        except KeyError:
+            channel_blocklist = False
+        if instance.custom_properties.blocklist is True or channel_blocklist is True:
+            is_blocklist = True
+        return is_blocklist
 
     def get_tags(self, obj):
         tags = " ".join(getattr(obj.general_data, "tags", []))
