@@ -1,7 +1,8 @@
 from django.conf import settings
 
-from oauth2client.client import GoogleCredentials
 from googleapiclient.discovery import build
+from oauth2client.client import GoogleCredentials
+from rest_framework import serializers
 
 from performiq.models.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
@@ -104,3 +105,46 @@ class AdvertiserAdapter(DV360BaseAdapter):
         "displayName": "display_name",
         "entityStatus": "entity_status",
     }
+
+
+class CampaignAdapter(DV360BaseAdapter):
+    """
+    adapt from Google's representation to performiq.models.DV360Campaign
+    representation
+    """
+    field_name_mapping = {
+        "name": "name",
+        "campaignId": "id",
+        "advertiserId": "advertiser_id",
+        "updateTime": "update_time",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+    }
+
+
+def persist_dv360_list_response_items(
+        response: dict,
+        items_name: str,
+        adapter_class: DV360BaseAdapter,
+        serializer_class: serializers.Serializer
+) -> list:
+    """
+    given a json response from a "list" method list response from dv,
+    persist the items with the given adapter and serializer
+    :param response: a dict response from a dv discovery resource
+    :param items_name: the name of the node enclosing the items
+    :param adapter_class: the adapter class to be used in adapting from response to our stored format
+    :param serializer_class: serializer to valdatate and save adapted data
+    :return:
+    """
+    items = response[items_name]
+    instances = []
+    for item in items:
+        adapted = adapter_class().adapt(item)
+        serializer = serializer_class(data=adapted)
+        if not serializer.is_valid():
+            continue
+        instance = serializer.save()
+        instances.append(instance)
+
+    return instances
