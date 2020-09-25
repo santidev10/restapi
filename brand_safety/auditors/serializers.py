@@ -1,6 +1,7 @@
 import re
 
 from rest_framework.serializers import Serializer
+from rest_framework.serializers import ListField
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
@@ -11,6 +12,7 @@ class BrandSafetyChannelSerializer(Serializer):
     """ Adds attributes to Channel instances """
     video_tags = SerializerMethodField()
     updated_at = SerializerMethodField()
+    videos = ListField(default=[])
 
     def to_representation(self, instance):
         extra_data = super().to_representation(instance)
