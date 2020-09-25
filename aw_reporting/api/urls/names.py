@@ -17,6 +17,7 @@ class Name:
         OPPORTUNITY_BUFFER = "pacing_report_opportunity_buffer"
         OPPORTUNITIES = "pacing_report_opportunities"
         PLACEMENTS = "pacing_report_placements"
+        FLIGHT = "pacing_report_flight"
         FLIGHTS = "pacing_report_flights"
         FLIGHT_PACING_ALLOCATIONS = "pacing_report_flight_pacing_allocations"
         COLLECT = "pacing_report_collect"
