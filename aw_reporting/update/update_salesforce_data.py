@@ -44,7 +44,8 @@ WRITE_START = datetime(2016, 9, 1).date()
 @celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
 def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None,
                            force_update=False,
-                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14):
+                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14,
+                           get_from_days=14):
     logger.info("Salesforce update started")
     start = time.time()
     today = now_in_default_tz().date()
@@ -55,7 +56,7 @@ def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_up
 
     if do_get:
         sc = sc or SConnection()
-        perform_get(sc=sc)
+        perform_get(sc=sc, get_from_days=get_from_days)
 
     if do_update:
         sc = sc or SConnection()
@@ -87,10 +88,10 @@ def perform_delete(sc, delete_from_days):
 
 
 # pylint: disable=too-many-branches
-def perform_get(sc):
+def perform_get(sc, get_from_days):
     opportunity_ids = set()
     placement_ids = set()
-    end_date_threshold = datetime.today().date() - timedelta(days=14)
+    end_date_threshold = datetime.today().date() - timedelta(days=get_from_days)
     data = [
         (UserRole, "get_user_roles", None),
         (User, "get_users", None),
