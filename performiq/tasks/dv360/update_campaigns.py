@@ -1,6 +1,8 @@
+import random
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from itertools import cycle
+from typing import Callable
 
 from django.utils import timezone
 from googleapiclient.discovery import Resource
@@ -11,11 +13,14 @@ from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerial
 from performiq.utils.dv360 import CampaignAdapter
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import persist_dv360_list_response_items
+from performiq.utils.dv360 import serialize_dv360_list_response_items
 
 
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
+THREAD_CEILING = 5
+
+
 
 
 def update_campaigns():
@@ -46,7 +51,7 @@ def update_campaigns():
         executor_contexts.append(context)
     resource_context_pool = cycle(executor_contexts)
 
-    with ThreadPoolExecutor(max_workers=len(executor_contexts)) as executor:
+    with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
         # spread threaded load as evenly as possible over available good access tokens
         for advertiser in advertisers_query.prefetch_related("partner__oauth_accounts"):
             context = next(resource_context_pool)
@@ -55,7 +60,6 @@ def update_campaigns():
             # unpack context after we get a resource with credentials from an owning account
             account, resource = map(context.get, ("account", "resource"))
             executor.submit(persist_advertiser_campaigns, advertiser, resource)
-            print(f"new thread for credentials from OAuthAccount with id: {account.id}")
 
 
 def persist_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource) -> None:
@@ -65,16 +69,13 @@ def persist_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource
     :param advertiser:
     :param resource:
     """
-    print(f"persisting campaigns for advertiser with id: {advertiser.id} using resource: {resource}")
     try:
         campaign_response = resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()
     except Exception as e:
         raise e
-    campaigns = persist_dv360_list_response_items(
+    campaigns = serialize_dv360_list_response_items(
         response=campaign_response,
         items_name="campaigns",
         adapter_class=CampaignAdapter,
         serializer_class=CampaignSerializer
     )
-    campaign_ids = [str(campaign.id) for campaign in campaigns]
-    print(f"persisted {len(campaigns)} campaign(s). ids: {','.join(campaign_ids)}")

@@ -3,26 +3,22 @@ from datetime import timedelta
 from django.db.models import Q
 from django.utils import timezone
 from googleapiclient.errors import HttpError
-from googleapiclient.discovery import Resource
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.models.constants import OAuthType
 from performiq.models.models import OAuthAccount
-from performiq.models.models import DV360Partner
-from performiq.tasks.dv360.serializers.advertiser_serializer import AdvertiserSerializer
 from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer
-from performiq.utils.dv360 import AdvertiserAdapter
+from performiq.tasks.dv360.sync_dv_records import serialize_dv360_list_response_items
 from performiq.utils.dv360 import PartnerAdapter
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import persist_dv360_list_response_items
 
 
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
 
 
-def update_partners_and_advertisers():
+def sync_dv_partners():
     """
     Updates partners for accounts that were either created
     recently, or have not been recently updated
@@ -49,34 +45,13 @@ def update_partners_and_advertisers():
                 continue
             else:
                 raise e
-        partners = persist_dv360_list_response_items(
+        partners = serialize_dv360_list_response_items(
             response=partners_response,
             items_name="partners",
             adapter_class=PartnerAdapter,
             serializer_class=PartnerSerializer
         )
-        for partner in partners:
-            persist_partner_advertisers(partner, resource)
 
         account.dv360_partners.set(partners)
         account.updated_at = timezone.now()
         account.save(update_fields=["updated_at"])
-
-
-def persist_partner_advertisers(partner: DV360Partner, resource: Resource) -> None:
-    """
-    persist all of a given partner's advertisers, using the given resource
-    :param partner:
-    :param resource:
-    """
-    try:
-        advertisers_response = resource.advertisers().list(partnerId=str(partner.id)).execute()
-    except Exception as e:
-        raise e
-    advertisers = persist_dv360_list_response_items(
-        response=advertisers_response,
-        items_name="advertisers",
-        adapter_class=AdvertiserAdapter,
-        serializer_class=AdvertiserSerializer
-    )
-
