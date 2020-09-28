@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from itertools import cycle
 from typing import Callable
+from typing import Type
 
 from django.utils import timezone
 from googleapiclient.discovery import Resource
@@ -28,6 +29,11 @@ THREAD_CEILING = 5
 
 
 def sync_dv_campaigns():
+    """
+    syncs advertisers' campaigns, threading each advertiser
+    list request through sync_dv_records
+    :return:
+    """
     model_query = DV360Advertiser.objects.all()
     # created_threshold = timezone.now() - timedelta(minutes=CREATED_THRESHOLD_MINUTES)
     # updated_threshold = timezone.now() - timedelta(minutes=UPDATED_THRESHOLD_MINUTES)
@@ -46,6 +52,11 @@ def sync_dv_campaigns():
 
 
 def sync_dv_advertisers():
+    """
+    syncs partners' advertisers, threading each partner
+    list request through sync_dv_records
+    :return:
+    """
     model_query = DV360Partner.objects.all()
     # created_threshold = timezone.now() - timedelta(minutes=CREATED_THRESHOLD_MINUTES)
     # updated_threshold = timezone.now() - timedelta(minutes=UPDATED_THRESHOLD_MINUTES)
@@ -88,7 +99,11 @@ def sync_dv_records(
     # get all distinct oauth accounts related to the dv360 objects that are being updated
     model_object_ids = model_query.values_list("id", flat=True)
     accounts = OAuthAccount.objects \
-        .filter(**{model_id_filter: list(model_object_ids)}) \
+        .filter(
+            oauth_type=OAuthType.DV360.value,
+            revoked_access=False,
+            **{model_id_filter: list(model_object_ids)}
+        ) \
         .distinct()
 
     # create resources and pack in context dict for cycling
@@ -106,8 +121,8 @@ def sync_dv_records(
     resource_context_pool = cycle(executor_contexts)
 
     futures_with_context = []
-    # with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    # with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
         # spread threaded load as evenly as possible over available resources
         for model_instance in model_query.prefetch_related(oauth_accounts_prefetch):
             # traverse relation from instance to oauth accounts
@@ -127,6 +142,7 @@ def sync_dv_records(
             future_with_context = {
                 "future": future,
                 "account": account,
+                "instance": model_instance,
             }
             futures_with_context.append(future_with_context)
 
@@ -137,10 +153,17 @@ def sync_dv_records(
         try:
             responses.append(future_with_context.get("future").result())
         except HttpError as e:
+            print("caught HttpError!")
             if e.resp.status == HTTP_403_FORBIDDEN:
                 account = future_with_context.get("account")
                 account.revoked_access = True
                 account.save(update_fields=["revoked_access"])
+        except Exception as e:
+            if "timeout" in str(e):
+                continue
+            print("caught broad exception:")
+            print(e)
+    print(f"saving responses")
     for response in responses:
         serializers = serialize_dv360_list_response_items(response=response, **serializer_function_args)
         for serializer in serializers:
@@ -150,8 +173,8 @@ def sync_dv_records(
 def serialize_dv360_list_response_items(
         response: dict,
         items_name: str,
-        adapter_class: DV360BaseAdapter,
-        serializer_class: Serializer
+        adapter_class: Type[DV360BaseAdapter],
+        serializer_class: Type[Serializer]
 ) -> list:
     """
     given a json response from a "list" method list response from dv,
@@ -159,7 +182,7 @@ def serialize_dv360_list_response_items(
     :param response: a dict response from a dv discovery resource
     :param items_name: the name of the node enclosing the items
     :param adapter_class: the adapter class to be used in adapting from response to our stored format
-    :param serializer_class: serializer to valdatate and save adapted data
+    :param serializer_class: serializer to validate and save adapted data
     :return list: list of serializers
     """
     items = response[items_name]
