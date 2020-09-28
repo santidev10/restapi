@@ -180,9 +180,9 @@ class SegmentQueryBuilder:
                 must_queries.append(safety_queries)
 
         if self._params.get("is_vetted") is not None:
-            vetted_query = QueryBuilder().build().must().exists().field("task_us_data").get() \
+            vetted_query = QueryBuilder().build().must().exists().field("task_us_data.last_vetted_at").get() \
                 if self._params["is_vetted"] \
-                else QueryBuilder().build().must_not().exists().field("task_us_data").get()
+                else QueryBuilder().build().must_not().exists().field("task_us_data.last_vetted_at").get()
             must_queries.append(vetted_query)
 
         if self._params.get("vetted_after"):
