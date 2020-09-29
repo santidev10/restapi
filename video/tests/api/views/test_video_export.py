@@ -261,7 +261,8 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(headers, [
             "title",
             "url",
-            "iab_categories",
+            "primary_category",
+            "additional_categories",
             "language",
             "views",
             "monthly_views",
@@ -342,5 +343,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
         rows = sorted(data[1:], key=lambda x: x[11])
-        self.assertEqual(7, int(rows[0][12]))
-        self.assertEqual(7, int(rows[1][12]))
+        # 13 is brand safety score index in export row
+        self.assertEqual(7, int(rows[0][13]))
+        self.assertEqual(7, int(rows[1][13]))

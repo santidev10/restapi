@@ -25,7 +25,8 @@ HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_
 VIDEO_CSV_HEADERS = [
     "title",
     "url",
-    "iab_categories",
+    "primary_category",
+    "additional_categories",
     "language",
     "views",
     "monthly_views",

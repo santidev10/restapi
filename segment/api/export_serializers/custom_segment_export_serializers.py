@@ -17,7 +17,7 @@ from .segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, Serializer):
     columns = (
-        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
+        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views",
         "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
@@ -27,7 +27,8 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
-    Category = SerializerMethodField("get_category")
+    Primary_Category = CharField(source="general_data.primary_category")
+    Additional_Categories = SerializerMethodField("get_category")
     Subscribers = IntegerField(source="stats.subscribers")
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
@@ -61,7 +62,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
 
 class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
     columns = (
-        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
+        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
         "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
         "Country", "Sentiment", "Monthly_Views", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v",
@@ -82,8 +83,8 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
 
 class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     columns = (
-        "URL", "Title", "Language", "Category", "Views", "Monthly_Views", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
+        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Monthly_Views",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality", "Overall_Score",
         "Mismatched_Language", "Last_Vetted", "Country", "Sentiment",
         "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
     )
@@ -91,7 +92,8 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
-    Category = SerializerMethodField("get_category")
+    Primary_Category = CharField(source="general_data.primary_category")
+    Additional_Categories = SerializerMethodField("get_category")
     Views = IntegerField(source="stats.views")
     Monthly_Views = IntegerField(source="stats.last_30day_views")
     Overall_Score = SerializerMethodField("get_overall_score")

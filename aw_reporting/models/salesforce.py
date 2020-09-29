@@ -496,8 +496,9 @@ class Flight(BaseModel, DemoEntityModelMixin):
     ordered_units = models.IntegerField(null=True, db_index=True)
 
     budget = models.FloatField(null=True, db_index=True)
-
     pacing = models.FloatField(null=True)
+
+    margin_cap = models.FloatField(default=None, null=True)
 
     class Meta:
         ordering = ("start",)
