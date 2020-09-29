@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
 from channel.api.serializers.channel import ChannelAdminSerializer
+from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel import ChannelWithVettedStatusSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -129,7 +131,13 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelAdminSerializer(channel).data
+        if self.request and self.request.user and self.request.user.is_staff:
+            result = ChannelAdminSerializer(channel).data
+        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+            result = ChannelWithVettedStatusSerializer(channel).data
+        else:
+            result = ChannelSerializer(channel).data
+
         result.update({
             "performance": {
                 "average_views": average_views,

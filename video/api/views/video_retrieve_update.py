@@ -16,6 +16,8 @@ from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.utils import prune_iab_categories
 from video.api.serializers.video import VideoAdminSerializer
+from video.api.serializers.video import VideoSerializer
+from video.api.serializers.video import VideoWithVettedStatusSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -49,7 +51,13 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
         context = self._get_serializer_context(video.channel.id)
-        result = VideoAdminSerializer(video, context=context).data
+        if self.request and self.request.user and self.request.user.is_staff:
+            result = VideoAdminSerializer(video, context=context).data
+        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+            result = VideoWithVettedStatusSerializer(video, context=context).data
+        else:
+            result = VideoSerializer(video, context=context).data
+
         try:
             result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
         # pylint: disable=broad-except
