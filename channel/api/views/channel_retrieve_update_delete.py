@@ -16,6 +16,7 @@ from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from userprofile.models import UserChannel
+from utils.api.mutate_query_params import AddFieldsMixin
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_delete_channels
 from utils.es_components_api_utils import get_fields
@@ -35,7 +36,8 @@ class OwnChannelPermissions(BasePermission):
             .exists()
 
 
-class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, ChannelYoutubeStatisticsMixin):
+class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, ChannelYoutubeStatisticsMixin,
+                                         AddFieldsMixin):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_details"),
@@ -106,6 +108,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         if self.request.user.has_perm("userprofile.monetization_filter"):
             allowed_sections_to_load += (Sections.MONETIZATION,)
+
+        self.add_fields()
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
