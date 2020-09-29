@@ -5,6 +5,7 @@ from brand_safety.auditors.utils import AuditUtils
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.auditors.video_auditor import VideoAuditor
+from elasticsearch_dsl.connections import connections
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -36,6 +37,10 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     def tearDownClass(cls):
         super().tearDownClass()
 
+    def refresh_index(self):
+        es = connections.get_connection()
+        es.indices.refresh(index=Video._index._name)
+
     def test_audit(self):
         """ Test audit word detection """
         video = Video(f"v_{next(int_iterator)}")
@@ -45,6 +50,8 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         self.video_auditor.process([video.main.id])
+
+        self.refresh_index()
         updated = self.video_manager.get([video.main.id])[0]
         all_hits = []
         for category_id in updated.brand_safety.categories:
@@ -77,6 +84,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         self.video_auditor.process([video.main.id])
+        self.refresh_index()
         updated = self.video_manager.get([video.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
@@ -93,6 +101,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         self.video_auditor.process([video.main.id])
+        self.refresh_index()
         updated = self.video_manager.get([video.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
@@ -134,7 +143,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         auditor = VideoAuditor()
         audit = auditor.audit_serialized(data)
         video_audit_score = getattr(audit, "brand_safety_score")
-        self.assertTrue(0 < video_audit_score.overall_score < 100)
+        self.assertTrue(0 <= video_audit_score.overall_score <= 100)
         self.assertEqual(set(self.BS_WORDS), set(video_audit_score.hits))
 
     def test_ignore_vetted_brand_safety(self):
