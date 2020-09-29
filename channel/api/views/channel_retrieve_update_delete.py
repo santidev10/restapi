@@ -7,7 +7,9 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.serializers.channel import ChannelWithBlackListSerializer
+from channel.api.serializers.channel import ChannelAdminSerializer
+from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel import ChannelWithVettedStatusSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -94,8 +96,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         channel_id = kwargs.get("pk")
         allowed_sections_to_load = (
             Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
-            Sections.STATS, Sections.ADS_STATS,
-            Sections.BRAND_SAFETY,)
+            Sections.STATS, Sections.ADS_STATS, Sections.TASK_US_DATA,
+            Sections.BRAND_SAFETY, Sections.IAS_DATA)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
@@ -129,7 +131,13 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelWithBlackListSerializer(channel).data
+        if self.request and self.request.user and self.request.user.is_staff:
+            result = ChannelAdminSerializer(channel).data
+        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+            result = ChannelWithVettedStatusSerializer(channel).data
+        else:
+            result = ChannelSerializer(channel).data
+
         result.update({
             "performance": {
                 "average_views": average_views,
