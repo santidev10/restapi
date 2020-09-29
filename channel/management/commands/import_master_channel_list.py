@@ -9,6 +9,7 @@ from audit_tool.models import AuditContentType
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditGender
 from brand_safety.languages import LANGUAGES
+from brand_safety.models import BadWordCategory
 from django.utils import timezone
 from es_components.constants import Sections
 from es_components.iab_categories import IAB_TIER2_SET
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
+    REVIEW_SCORE_THRESHOLD = 79
+    BATCH_SIZE = 10
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -67,15 +71,37 @@ class Command(BaseCommand):
                 except Exception:
                 # pylint: enable=broad-except
                     continue
-        manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,),
-                                 upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,))
-        channels = manager.get_or_create(channel_ids)
+        manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY),
+                                 upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+        logger.info(f"Fetching {self.BATCH_SIZE} channels.")
+        channels = manager.get_or_create(channel_ids[:self.BATCH_SIZE])
         for channel in channels:
             channel_id = channel.main.id
+            logger.info(f"Populating data for Channel: {channel_id}")
             channel_data = channels_data[channel_id]
             channel.populate_general_data(**channel_data["general_data"])
             channel.populate_task_us_data(**channel_data["task_us_data"])
+            try:
+                bs_data = channel.brand_safety
+                item_overall_score = bs_data.overall_score
+                pre_limbo_score = bs_data.pre_limbo_score
+                previous_blacklist_categories = channel.task_us_data.brand_safety or []
+            except (IndexError, AttributeError):
+                previous_blacklist_categories = []
+                item_overall_score = None
+                pre_limbo_score = None
+            new_blacklist_categories, should_rescore = self.save_brand_safety(previous_blacklist_categories)
+            brand_safety_category_overall_scores = self._get_brand_safety(new_blacklist_categories)
+            channel.task_us_data["brand_safety"] = [None]
+            brand_safety_limbo = self._get_brand_safety_limbo(item_overall_score, pre_limbo_score)
+            channel.populate_brand_safety(
+                rescore=should_rescore,
+                categories=brand_safety_category_overall_scores,
+                **brand_safety_limbo
+            )
+        logger.info(f"Upserting {self.BATCH_SIZE} channels.")
         manager.upsert(channels)
+        logger.info(f"Finished upserting channels.")
 
     @staticmethod
     def get_categories(categories_string):
@@ -125,3 +151,60 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             return None
+
+    @staticmethod
+    def save_brand_safety(previous_brand_safety: list) -> tuple:
+        """
+        Will rescore the document if there is a change in brand safety
+        :param previous_brand_safety: list of brand safety categories before current vetting
+        :return: list -> Brand safety category ids
+        """
+        should_rescore = False
+        new_vetted_brand_safety = set()
+        # Rescore if any blacklist categories changed
+        if new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
+            should_rescore = True
+        return list(new_vetted_brand_safety), should_rescore
+
+    def _get_brand_safety_limbo(self, overall_score, pre_limbo_score):
+        """
+        Determine if the vetting item should be reviewed.
+
+        :param brand_safety_data: BrandSafety document section data
+        :return:
+        """
+        limbo_data = {}
+        # brand safety may be saved as [None]
+        safe = True
+
+        # If vetting agrees with pre_limbo_score, limbo_status is resolved
+        if pre_limbo_score is not None:
+            if (safe and pre_limbo_score > self.REVIEW_SCORE_THRESHOLD) \
+                    or (not safe and pre_limbo_score < self.REVIEW_SCORE_THRESHOLD):
+                limbo_data["limbo_status"] = False
+        # System scored as not safe but vet marks as safe. Because of discrepancy, mark in limbo
+        elif overall_score is not None:
+            if overall_score <= self.REVIEW_SCORE_THRESHOLD and safe:
+                limbo_data = {
+                    "limbo_status": True,
+                    "pre_limbo_score": overall_score,
+                }
+        return limbo_data
+
+    def _get_brand_safety(self, blacklist_categories: list):
+        """
+        Get updated brand safety categories based on blacklist_categories
+        If category is in blacklist_category, will have a score of 0. Else will have a score of 100
+        :param blacklist_categories: list of blacklist categories from vetting
+        :return:
+        """
+        # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
+            [int(category) for category in blacklist_categories])
+        brand_safety_category_overall_scores = {
+            str(category_id): {
+                "category_score": 100 if category_id in reset_brand_safety else 0
+            }
+            for category_id in self.all_brand_safety_category_ids
+        }
+        return brand_safety_category_overall_scores
