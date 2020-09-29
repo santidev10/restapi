@@ -95,7 +95,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         allowed_sections_to_load = (
             Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
             Sections.STATS, Sections.ADS_STATS,
-            Sections.BRAND_SAFETY,)
+            Sections.BRAND_SAFETY, Sections.IAS_data)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
