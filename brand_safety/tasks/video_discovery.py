@@ -1,6 +1,6 @@
 from celery import group
 
-from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.auditors.video_auditor import VideoAuditor
 from brand_safety.tasks.constants import Schedulers
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
@@ -25,7 +25,7 @@ def video_discovery_scheduler():
         task_signatures = []
 
         rescore_ids = get_rescore_ids(video_manager, base_query)
-        task_signatures.append(video_update.si(rescore_ids, ignore_vetted_videos=False).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+        task_signatures.append(video_update.si(rescore_ids, rescore=True).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
 
         batch_limit = (Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size) * Schedulers.VideoDiscovery.TASK_BATCH_SIZE
         with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
@@ -37,19 +37,18 @@ def video_discovery_scheduler():
 
 
 @celery_app.task
-def video_update(video_ids, ignore_vetted_channels=True, ignore_vetted_videos=True):
+def video_update(video_ids, rescore=False):
     if isinstance(video_ids, str):
         video_ids = [video_ids]
-    auditor = BrandSafetyAudit(should_check_rescore_channels=True, ignore_vetted_channels=ignore_vetted_channels,
-                               ignore_vetted_videos=ignore_vetted_videos)
-    auditor.process_videos(video_ids)
+    auditor = VideoAuditor()
+    auditor.process(video_ids)
     to_rescore = auditor.channels_to_rescore
     # Add rescore flag to be rescored by channel discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
     auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
 
     # Update video rescore batch to False
-    if ignore_vetted_videos is False:
+    if rescore is True:
         manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
         manager.update_rescore(manager.ids_query(video_ids), rescore=False, conflicts="proceed")
 

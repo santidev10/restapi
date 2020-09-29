@@ -1,20 +1,21 @@
 import re
 
-from rest_framework.serializers import Serializer
 from rest_framework.serializers import ListField
+from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 
 
-class BrandSafetyChannelSerializer(Serializer):
+class BrandSafetyChannel(Serializer):
     """ Adds attributes to Channel instances """
     video_tags = SerializerMethodField()
     updated_at = SerializerMethodField()
     videos = ListField(default=[])
 
-    def to_representation(self, instance):
+    def to_representation(self, *_, **__):
+        instance = self.instance
         extra_data = super().to_representation(instance)
         for key, val in extra_data.items():
             setattr(instance, key, val)
@@ -39,7 +40,7 @@ class BrandSafetyChannelSerializer(Serializer):
         return obj.brand_safety.updated_at
 
 
-class BrandSafetyVideoSerializer(Serializer):
+class BrandSafetyVideo(Serializer):
     """ Adds attributes to Video instances """
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
@@ -65,7 +66,9 @@ class BrandSafetyVideoSerializer(Serializer):
         return is_blocklist
 
     def get_tags(self, obj):
-        tags = " ".join(getattr(obj.general_data, "tags", []))
+        tags = getattr(obj.general_data, "tags", [])
+        if not isinstance(tags, str):
+            tags = " ".join(tags)
         return tags
 
     def get_transcript(self, video):

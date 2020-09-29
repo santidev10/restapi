@@ -55,13 +55,15 @@ class AuditUtils(object):
     def _get_vetted_score(self, safe=True):
         if safe is True:
             overall_score = 100
-            category_scores = self._default_full_score
         else:
             overall_score = 0
-            category_scores = self._default_zero_score
         scores = {
             "overall_score": overall_score,
-            "categories": category_scores
+            "categories": {
+                category_id: {
+                    "category_score": overall_score
+                } for category_id in self.bad_word_categories
+            }
         }
         return scores
 
@@ -321,7 +323,7 @@ class AuditUtils(object):
             bs_data = self.vetted_safe_score
         return bs_data
 
-    def index_audit_results(self, es_manager, audits: list, ignore_vetted=True, chunk_size=2000) -> list:
+    def index_audit_results(self, es_manager, audits: list, chunk_size=2000) -> list:
         """
         Update audits with audited brand safety scores
         Check if each document should be upserted depending on config, as vetted videos should not always be updated
@@ -331,12 +333,9 @@ class AuditUtils(object):
         :param chunk_size: int -> Size of each index batch
         :return: list
         """
-        to_upsert = []
-        # Check if vetted items should be upserted
-        for audit in audits:
-            if ignore_vetted is True and audit.doc.task_us_data.last_vetted_at is not None:
-                continue
-            to_upsert.append(audit.instantiate_es())
+        to_upsert = [
+            audit.instantiate_es() for audit in audits
+        ]
         for chunk in self.batch(to_upsert, chunk_size):
             es_manager.upsert(chunk, refresh=False)
         return to_upsert

@@ -1,21 +1,17 @@
-from .constants import CHANNEL_SECTIONS
-from .constants import VIDEO_SECTIONS
-from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
+from .base_auditor import BaseAuditor
+from brand_safety.auditors.serializers import BrandSafetyVideo
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from brand_safety.constants import BRAND_SAFETY_SCORE
-from brand_safety.auditors.utils import AuditUtils
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
-from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
 
 
-class VideoAuditor:
+class VideoAuditor(BaseAuditor):
+    es_model = Video
     VIDEO_BATCH_SIZE = 2000
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
-    def __init__(self, ignore_vetted_videos=True, ignore_vetted_brand_safety=False, audit_utils=None):
+    def __init__(self, *args, ignore_vetted_brand_safety=False, **kwargs):
         """
         Class to handle video brand safety scoring logic
         :param ignore_vetted_videos: bool -> Determines if vetted videos should be indexed after
@@ -25,17 +21,11 @@ class VideoAuditor:
         :param audit_utils: AuditUtils -> Optional passing of an AuditUtils object, as it is expensive to instantiate
             since it compiles keyword processors of every brand safety BadWord row
         """
+        super().__init__(*args, **kwargs)
         self._config = dict(
-            ignore_vetted_videos=ignore_vetted_videos,
             ignore_vetted_brand_safety=ignore_vetted_brand_safety,
         )
         self._channels_to_rescore = []
-        self.audit_utils = audit_utils or AuditUtils()
-        self.channel_manager = ChannelManager(sections=CHANNEL_SECTIONS)
-        self.video_manager = VideoManager(
-            sections=VIDEO_SECTIONS,
-            upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
-        )
 
     @property
     def channels_to_rescore(self):
@@ -45,9 +35,28 @@ class VideoAuditor:
         """
         return self._channels_to_rescore
 
+    def audit_serialized(self, video_dict: dict):
+        """
+        Audit single video with serialized data
+        :param video_dict:
+        :return:
+        """
+        video = Video(video_dict["id"])
+        video.populate_general_data(
+            title=video_dict.get("title"),
+            description=video_dict.get("description"),
+            tags=video_dict.get("tags"),
+        )
+        # Attributes added to video instance required for audit
+        with_data = BrandSafetyVideo(video).to_representation(video)
+        audit = BrandSafetyVideoAudit(with_data, self.audit_utils)
+        audit.run()
+        return audit
+
     def audit_video(self, video: Video) -> BrandSafetyVideoAudit:
         """
-        Audit single video
+        Audit single Video
+        Video should be an instance of BrandSafetyVideo as it adds additional attributes required for audit
         :param video: Video object
         :return:
         """
@@ -61,14 +70,14 @@ class VideoAuditor:
     def get_data(self, video_ids: list, channel_mapping=None) -> tuple:
         """
         Retrieve Videos by id
-        This also adds metadata to each Video document through BrandSafetyVideoSerializer
+        This also adds metadata to each Video document through BrandSafetyVideo
         :param video_ids: list
         :param channel_mapping: dict -> dict of channel id to channel
         :return: tuple
         """
         videos = self.video_manager.get(video_ids, skip_none=True)
         channel_mapping = channel_mapping or self._get_channel_mapping({v.channel.id for v in videos if v.channel.id is not None})
-        with_data = BrandSafetyVideoSerializer(videos, many=True, context=dict(channels=channel_mapping)).data
+        with_data = BrandSafetyVideo(videos, many=True, context=dict(channels=channel_mapping)).data
         return with_data, channel_mapping
 
     def process_for_channel(self, channel: Channel, videos: list, index=True) -> list:
@@ -82,7 +91,7 @@ class VideoAuditor:
         all_audits = []
         channel_mapping = {"channels": {channel.main.id: channel}}
         for batch in self.audit_utils.batch(videos, self.VIDEO_BATCH_SIZE):
-            with_data = BrandSafetyVideoSerializer(batch, many=True, context=channel_mapping).data
+            with_data = BrandSafetyVideo(batch, many=True, context=channel_mapping).data
             video_audits = [self.audit_video(video) for video in with_data]
             all_audits.extend(video_audits)
             if index:
@@ -107,8 +116,7 @@ class VideoAuditor:
             ]
             self._check_rescore_channels(check_rescore_channels)
             if index is True:
-                self.audit_utils.index_audit_results(self.video_manager, video_audits,
-                                                     ignore_vetted=self._config.get("ignore_vetted_videos"))
+                self.audit_utils.index_audit_results(self.video_manager, video_audits)
 
     def _get_channel_mapping(self, channel_ids: set) -> dict:
         """
@@ -132,7 +140,7 @@ class VideoAuditor:
         :return: None
         """
         for channel in channels:
-            if not channel or (self._config.get("ignore_vetted_channels") is True and channel.task_us_data):
+            if not channel:
                 continue
             channel_overall_score = channel.brand_safety.overall_score
             blocklisted = channel.custom_properties.blocklist is True

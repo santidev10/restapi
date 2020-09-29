@@ -134,10 +134,12 @@ class BrandSafetyVideoAudit(object):
 
         # If blacklist data available, then set overall score and blacklisted category score to 0
         if self.ignore_vetted_brand_safety is False and self.doc.task_us_data.last_vetted_at is not None:
+            # Check if categories are valid as sometimes task_us_data.brand_safety may be saved as [None]
+            # Elasticsearch dsl does not serialize empty lists
             has_vetted_brand_safety = any(category for category in self.doc.task_us_data.brand_safety)
             if has_vetted_brand_safety:
                 for category_id in self.doc.task_us_data.brand_safety:
-                    if category_id in brand_safety_score.category_scores:
+                    if str(category_id) in brand_safety_score.category_scores:
                         brand_safety_score.category_scores[category_id] = 0
                         if category_id not in BadWordCategory.EXCLUDED:
                             brand_safety_score.overall_score = 0
