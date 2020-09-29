@@ -4,8 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
-from brand_safety.auditors.serializers import BrandSafetyChannelSerializer
-from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
+from brand_safety.auditors.serializers import BrandSafetyChannel
+from brand_safety.auditors.serializers import BrandSafetyVideo
 from brand_safety.auditors.utils import AuditUtils
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from es_components.constants import Sections
@@ -201,7 +201,7 @@ class BrandSafetyAudit(object):
         """
         if isinstance(video_data, str):
             video_doc = self.video_manager.get([video_data], skip_none=True)[0]
-            video_data = BrandSafetyVideoSerializer(video_doc).data
+            video_data = BrandSafetyVideo(video_doc).data
         audit = BrandSafetyVideoAudit(video_data, self.audit_utils, ignore_blacklist_data=self.ignore_blacklist_data)
         audit.run()
         return audit
@@ -216,7 +216,7 @@ class BrandSafetyAudit(object):
             results = executor.map(self._query_channel_videos,
                                    self.audit_utils.batch(channel_ids, self.THREAD_BATCH_SIZE))
         all_results = list(itertools.chain.from_iterable(results))
-        data = BrandSafetyVideoSerializer(all_results, many=True).data
+        data = BrandSafetyVideo(all_results, many=True).data
         return data
 
     def _query_channel_videos(self, channel_ids: list) -> list:
@@ -304,10 +304,10 @@ class BrandSafetyAudit(object):
         :return: list
         """
         if doc_type == "video":
-            serializer = BrandSafetyVideoSerializer
+            serializer = BrandSafetyVideo
             manager = self.video_manager
         else:
-            serializer = BrandSafetyChannelSerializer
+            serializer = BrandSafetyChannel
             manager = self.channel_manager
         serialized = serializer(manager.get(ids, skip_none=True), many=True).data
         return serialized

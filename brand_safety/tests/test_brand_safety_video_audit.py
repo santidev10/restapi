@@ -1,28 +1,17 @@
-from datetime import timedelta
-import time
-
 from django.utils import timezone
-from mock import PropertyMock
-from mock import patch
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.utils import AuditUtils
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.auditors.video_auditor import VideoAuditor
-from brand_safety.tasks.channel_outdated import channel_outdated_scheduler
-from brand_safety.tasks.constants import Schedulers
-from brand_safety.tasks.video_discovery import video_update
-from brand_safety.tasks.video_discovery import video_discovery_scheduler
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
-from brand_safety.tasks.constants import Schedulers
 
 
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
