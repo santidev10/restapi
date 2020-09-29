@@ -8,6 +8,7 @@ from es_components.managers import VideoManager
 
 class BaseAuditor:
     es_model = None
+    _config = {} # should be set in __init__ on child classes
 
     def __init__(self, audit_utils=None):
         self.audit_utils = audit_utils or AuditUtils()
@@ -27,7 +28,7 @@ class BaseAuditor:
             return handled
 
     def _vetted_handler(self, doc):
-        if doc.task_us_data.last_vetted_at is not None:
+        if self._config.get("ignore_vetted_brand_safety") is False and doc.task_us_data.last_vetted_at is not None:
             handled = self._blank_doc(doc.main.id)
             handled.populate_brand_safety(**self.audit_utils.get_brand_safety_data(doc))
             return handled

@@ -31,7 +31,8 @@ class ChannelAuditor(BaseAuditor):
         self._config = dict(
             ignore_vetted_brand_safety=ignore_vetted_brand_safety,
         )
-        self.video_auditor = VideoAuditor(audit_utils=self.audit_utils)
+        self.video_auditor = VideoAuditor(ignore_vetted_brand_safety=ignore_vetted_brand_safety,
+                                          audit_utils=self.audit_utils)
 
     def get_data(self, channel_id: str):
         """
@@ -43,7 +44,7 @@ class ChannelAuditor(BaseAuditor):
         with_data = BrandSafetyChannel(channel).to_representation()
         return with_data
 
-    def process(self, channel_id, index=True):
+    def process(self, channel_id, index=True) -> Channel:
         """
         Process audit with handler depending on document data
         This method sequentially applies a handler method to the channel and if data is returned from the handler,

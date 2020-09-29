@@ -15,12 +15,9 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
-    vetted_channel_manager = ChannelManager(
-        sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
-    channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS))
-    vetted_video_manager = VideoManager(
-        sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA))
-    video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES))
+    SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
+    channel_manager = ChannelManager(sections=SECTIONS)
+    video_manager = VideoManager(sections=SECTIONS + (Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES))
     BS_CATEGORIES = ["test"]
     BS_WORDS = ["bad", "word"]
 
@@ -139,3 +136,19 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         video_audit_score = getattr(audit, "brand_safety_score")
         self.assertTrue(0 < video_audit_score.overall_score < 100)
         self.assertEqual(set(self.BS_WORDS), set(video_audit_score.hits))
+
+    def test_ignore_vetted_brand_safety(self):
+        """ Test ignore_vetted_brand_safety parameter successfully runs audit without brand safety """
+        now = timezone.now()
+        video = Video(f"v_{next(int_iterator)}")
+        bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
+        video.populate_task_us_data(
+            last_vetted_at=now,
+            brand_safety=[str(bs_category.id)]
+        )
+        self.video_manager.upsert([video])
+        auditor = VideoAuditor(ignore_vetted_brand_safety=True)
+        auditor.process([video.main.id])
+        updated = self.video_manager.get([video.main.id])[0]
+        # ignore_vetted_brand_safety=True should not automatically set scores to 0 because of task_us_data.brand_safety
+        self.assertTrue(updated.brand_safety.overall_score != 0)
