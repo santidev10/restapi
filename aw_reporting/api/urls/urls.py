@@ -79,6 +79,10 @@ urlpatterns = [
         views.PacingReportOpportunityWatchAPIView.as_view(),
         name=Name.PacingReport.OPPORTUNITY_WATCH),
 
+    url(r"^pacing_report/flight/(?P<pk>\w+)/$",
+        views.FlightAPIView.as_view(),
+        name=Name.PacingReport.FLIGHT),
+
     # AW WebHooks
     url(r"^webhook_aw/get_accounts_list/(?P<pk>\w+)/$",
         views.WebHookAWAccountsListApiView.as_view(),
