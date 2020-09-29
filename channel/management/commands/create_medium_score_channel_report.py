@@ -18,7 +18,7 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
 
-from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.auditors.channel_auditor import ChannelAuditor
 
 
 class Command(BaseCommand):
@@ -151,9 +151,7 @@ class Command(BaseCommand):
     def get_algorithmic_scores(self):
         # get algorithmic score without id
         print('getting algorithmic scores...')
-        auditor = BrandSafetyAudit(ignore_vetted_channels=False,
-                                   ignore_vetted_videos=False,
-                                   ignore_blacklist_data=True)
+        auditor = ChannelAuditor(ignore_vetted_brand_safety=True)
         slice_position = 0
         slice_size = 100
         while True:
@@ -161,9 +159,12 @@ class Command(BaseCommand):
             print(f'processing: {slice_position}:{slice_position + slice_size} of {len(self.channel_ids)}')
 
             tries = 0
+            channels_res = []
             while tries < self.TRIES_AFTER_RECONNECT:
                 try:
-                    videos_res, channels_res = auditor.process_channels(channel_ids, index=False)
+                    for _id in channel_ids:
+                        res = auditor.process(_id, index=False)
+                        channels_res.append(res)
                     break
                 except OperationalError as e:
                     self.reconnect()
@@ -174,7 +175,7 @@ class Command(BaseCommand):
                 continue
 
             for channel in channels_res:
-                overall_score = channel.brand_safety_score.overall_score
+                overall_score = channel.brand_safety.overall_score
                 self.add_score(channel.pk, 'algorithmic_only_score', overall_score)
             slice_position += slice_size
             if slice_position > len(self.channel_ids):
