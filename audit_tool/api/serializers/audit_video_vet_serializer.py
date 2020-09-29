@@ -37,7 +37,8 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
 
     def get_vetting_history(self, doc):
         """
-        Retrieve vetting history of all AuditVideoVet items with FK to AuditChannel
+        Retrieve vetting history of all AuditVideoVet items with FK to AuditChannel and who were vetted as part of an
+        audit (we don't want to show vetting history when just a single channel was vetted)
         Only retrieve if serializing with Elasticsearch document
         :param doc: Elasticsearch document
         :return: dict
@@ -47,7 +48,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             video_id_hash = get_hash_name(doc.main.id)
             vetting_items = AuditVideoVet.objects \
                 .select_related("video", "video__auditvideometa") \
-                .filter(video__video_id_hash=video_id_hash, processed__isnull=False)
+                .filter(video__video_id_hash=video_id_hash, processed__isnull=False, audit__isnull=False)
             history = [{
                 "data": f"{item.video.auditvideometa.name} - {item.processed.strftime('%b %d %Y')}",
                 "suitable": item.clean
