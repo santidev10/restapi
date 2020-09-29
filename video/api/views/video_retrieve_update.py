@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
+from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.utils import prune_iab_categories
@@ -20,7 +21,7 @@ from video.api.serializers.video import VideoSerializer
 from video.api.serializers.video import VideoWithVettedStatusSerializer
 
 
-class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
+class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ("userprofile.video_details",)
 
@@ -38,6 +39,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
                                     Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,
                                     Sections.CUSTOM_CAPTIONS, Sections.CUSTOM_PROPERTIES, Sections.TASK_US_DATA)
+
+        self.add_fields()
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
         try:
