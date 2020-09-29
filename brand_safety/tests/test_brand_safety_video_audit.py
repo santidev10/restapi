@@ -102,8 +102,9 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
     def test_special_characters(self):
-        langs = AuditLanguage.objects.bulk_create([AuditLanguage(language="en"), AuditLanguage(language="sv")])
-        bs_category = BadWordCategory.objects.create(name="test")
+        en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
+        sv_lang = AuditLanguage.objects.get_or_create(language="sv")[0]
+        bs_category = BadWordCategory.objects.get_or_create(name="test")[0]
         mma_video = Video(**dict(
             main=dict(id=f"channel_{next(int_iterator)}"),
             general_data=dict(description="mma"),
@@ -113,8 +114,8 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             general_data=dict(description="tycker jagnär man börjar bestämma sig för att man vill anamma den hela"),
         ))
         BadWord.objects.bulk_create([
-            BadWord(name="mma", language=langs[0], category=bs_category),
-            BadWord(name="mma", language=langs[1], category=bs_category),
+            BadWord(name="mma", language=en_lang, category=bs_category),
+            BadWord(name="mma", language=sv_lang, category=bs_category),
         ])
         audit_utils = AuditUtils()
         english_keywords_processor = audit_utils.bad_word_processors_by_language["en"]
