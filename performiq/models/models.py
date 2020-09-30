@@ -54,6 +54,7 @@ class DV360Partner(DV360Base):
 
 class DV360Advertiser(DV360Base):
     partner = models.ForeignKey(DV360Partner, on_delete=models.CASCADE, related_name="advertisers")
+    oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="dv360_advertisers")
 
 
 class DV360Campaign(DV360Base):
