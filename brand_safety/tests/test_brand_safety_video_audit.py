@@ -9,6 +9,7 @@ from brand_safety.auditors.video_auditor import VideoAuditor
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from utils.unittests.int_iterator import int_iterator
@@ -18,7 +19,8 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
     channel_manager = ChannelManager(sections=SECTIONS)
-    video_manager = VideoManager(sections=SECTIONS + (Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES))
+    video_manager = VideoManager(sections=SECTIONS + (Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES,
+                                                      Sections.CHANNEL))
     BS_CATEGORIES = ["test"]
     BS_WORDS = ["bad", "word"]
 
@@ -156,3 +158,20 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         updated = self.video_manager.get([video.main.id])[0]
         # ignore_vetted_brand_safety=True should not automatically set scores to 0 because of task_us_data.brand_safety
         self.assertTrue(updated.brand_safety.overall_score != 0)
+
+    def test_channel_rescore(self):
+        """ Test that channels are collected if its video scores badly enough """
+        self.video_auditor.channels_to_rescore.clear()
+        channel = Channel(f"test_channel_id_{next(int_iterator)}")
+        channel.populate_brand_safety(overall_score=100)
+        video = Video(f"v_{next(int_iterator)}")
+        video.populate_general_data(title="test")
+        video.populate_channel(id=channel.main.id)
+        # Set video score to 0
+        video.populate_custom_properties(blocklist=True)
+
+        self.channel_manager.upsert([channel])
+        self.video_manager.upsert([video])
+        self.video_auditor.process([video.main.id])
+        rescore_channels = self.video_auditor.channels_to_rescore
+        self.assertEqual(set(rescore_channels), {channel.main.id})
