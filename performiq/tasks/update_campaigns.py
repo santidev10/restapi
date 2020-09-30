@@ -16,7 +16,7 @@ from utils.db.functions import safe_bulk_create
 
 FROM_HISTORICAL_DAYS = 90
 
-
+@celery_app.task
 def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts=None):
     """
     Updates campaigns depending if OAuthAccount is MCC or regular cid
