@@ -121,11 +121,13 @@ def sync_dv_records(
     resource_context_pool = cycle(executor_contexts)
 
     futures_with_context = []
-    # with ThreadPoolExecutor(max_workers=2) as executor:
-    with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
+    # with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
+    # TODO get this threading going
+    with ThreadPoolExecutor(max_workers=1) as executor:
         # spread threaded load as evenly as possible over available resources
         for model_instance in model_query.prefetch_related(oauth_accounts_prefetch):
             # traverse relation from instance to oauth accounts
+            # TODO update the relation, since oauth account can now own an advertiser
             relation = model_instance
             for relation_name in dv_model_account_relation:
                 relation = getattr(relation, relation_name)
@@ -154,7 +156,9 @@ def sync_dv_records(
             responses.append(future_with_context.get("future").result())
         except HttpError as e:
             print("caught HttpError!")
+            # doesn't have visibility to the advertiser
             if e.resp.status == HTTP_403_FORBIDDEN:
+                # TODO update this to remove account ownership of the advertiser
                 account = future_with_context.get("account")
                 account.revoked_access = True
                 account.save(update_fields=["revoked_access"])
