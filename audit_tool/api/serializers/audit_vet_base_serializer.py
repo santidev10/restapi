@@ -225,7 +225,7 @@ class AuditVetBaseSerializer(Serializer):
             self.validated_data["task_us_data"].get("brand_safety", [])
         )
         # Rescore if any blacklist categories changed
-        if new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
+        if not previous_brand_safety or new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
             should_rescore = True
         return list(new_vetted_brand_safety), should_rescore
 
@@ -240,7 +240,7 @@ class AuditVetBaseSerializer(Serializer):
             bs_data = doc.brand_safety
             item_overall_score = bs_data.overall_score
             pre_limbo_score = bs_data.pre_limbo_score
-            previous_blacklist_categories = doc.task_us_data.brand_safety or []
+            previous_blacklist_categories = doc.task_us_data.brand_safety
         except (IndexError, AttributeError):
             previous_blacklist_categories = []
             item_overall_score = None
