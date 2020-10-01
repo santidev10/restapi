@@ -21,12 +21,19 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
     REVIEW_SCORE_THRESHOLD = 79
-    BATCH_SIZE = 10
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--filename",
+            default="ViewIQ upload 091720.csv",
             help="Name of Channel List .csv file to import data from."
+        )
+
+        parser.add_argument(
+            "--batch_size",
+            default=None,
+            type=int,
+            help="Number of Channels to import."
         )
 
     def handle(self, *args, **kwargs):
@@ -34,6 +41,7 @@ class Command(BaseCommand):
         channels_data = {}
         try:
             file_name = kwargs["filename"]
+            batch_size = kwargs["batch_size"]
         except KeyError:
             raise ValidationError("Argument 'filename' is required.")
         with open(file_name, "r") as f:
@@ -73,8 +81,8 @@ class Command(BaseCommand):
                     continue
         manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY),
                                  upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
-        logger.info(f"Fetching {self.BATCH_SIZE} channels.")
-        channels = manager.get_or_create(channel_ids[:self.BATCH_SIZE])
+        logger.info(f"Fetching {batch_size or 'ALL'} channels.")
+        channels = manager.get_or_create(channel_ids[:batch_size])
         for channel in channels:
             channel_id = channel.main.id
             logger.info(f"Populating data for Channel: {channel_id}")
@@ -90,16 +98,17 @@ class Command(BaseCommand):
                 previous_blacklist_categories = []
                 item_overall_score = None
                 pre_limbo_score = None
-            new_blacklist_categories, should_rescore = self.save_brand_safety(previous_blacklist_categories)
-            brand_safety_category_overall_scores = self._get_brand_safety(new_blacklist_categories)
-            channel.task_us_data["brand_safety"] = [None]
+            new_brand_safety = [None]
+            should_rescore = not previous_blacklist_categories or \
+                             set([str(s) for s in previous_blacklist_categories]) != \
+                             set([str(s) for s in new_brand_safety])
+            channel.task_us_data["brand_safety"] = new_brand_safety
             brand_safety_limbo = self._get_brand_safety_limbo(item_overall_score, pre_limbo_score)
             channel.populate_brand_safety(
                 rescore=should_rescore,
-                categories=brand_safety_category_overall_scores,
                 **brand_safety_limbo
             )
-        logger.info(f"Upserting {self.BATCH_SIZE} channels.")
+        logger.info(f"Upserting {batch_size or 'ALL'} channels.")
         manager.upsert(channels)
         logger.info(f"Finished upserting channels.")
 
@@ -151,20 +160,6 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             return None
-
-    @staticmethod
-    def save_brand_safety(previous_brand_safety: list) -> tuple:
-        """
-        Will rescore the document if there is a change in brand safety
-        :param previous_brand_safety: list of brand safety categories before current vetting
-        :return: list -> Brand safety category ids
-        """
-        should_rescore = False
-        new_vetted_brand_safety = set()
-        # Rescore if any blacklist categories changed
-        if new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
-            should_rescore = True
-        return list(new_vetted_brand_safety), should_rescore
 
     def _get_brand_safety_limbo(self, overall_score, pre_limbo_score):
         """
