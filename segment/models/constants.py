@@ -39,3 +39,9 @@ class ChannelConfig:
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
     RELATED_STATISTICS_MODEL = YTChannelStatistic
     LIST_SIZE = 100000
+
+
+class SegmentActionEnum(enum.IntEnum):
+    CREATE = 0
+    DELETE = 1
+    DOWNLOAD = 2

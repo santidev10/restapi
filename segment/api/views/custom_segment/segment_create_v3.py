@@ -24,6 +24,8 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from segment.utils.utils import with_all
 from segment.utils.query_builder import SegmentQueryBuilder
+from segment.models.constants import SegmentActionEnum
+from segment.models.utils.segment_action import segment_action
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
@@ -44,6 +46,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
     )
     parser_classes = [MultiPartParser]
 
+    @segment_action(SegmentActionEnum.CREATE.value)
     def post(self, request, *args, **kwargs):
         """
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
