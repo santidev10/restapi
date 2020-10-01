@@ -1,7 +1,7 @@
 from django.conf import settings
 
-from oauth2client.client import GoogleCredentials
 from googleapiclient.discovery import build
+from oauth2client.client import GoogleCredentials
 
 from performiq.models.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
@@ -100,6 +100,21 @@ class AdvertiserAdapter(DV360BaseAdapter):
         "name": "name",
         "advertiserId": "id",
         "partnerId": "partner_id",
+        "updateTime": "update_time",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+    }
+
+
+class CampaignAdapter(DV360BaseAdapter):
+    """
+    adapt from Google's representation to performiq.models.DV360Campaign
+    representation
+    """
+    field_name_mapping = {
+        "name": "name",
+        "campaignId": "id",
+        "advertiserId": "advertiser_id",
         "updateTime": "update_time",
         "displayName": "display_name",
         "entityStatus": "entity_status",

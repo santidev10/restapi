@@ -212,9 +212,10 @@ class AuditVetBaseSerializer(Serializer):
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
 
-    def save_brand_safety(self, previous_brand_safety: list) -> tuple:
+    def _get_vetted_brand_safety(self, previous_brand_safety: list) -> tuple:
         """
-        Will rescore the document if there is a change in brand safety
+        Get task_us_data.brand_safety value based on vetted brand safety
+            Will rescore the document if there is a change in brand safety
         :param previous_brand_safety: list of brand safety categories before current vetting
         :return: list -> Brand safety category ids
         """
@@ -224,7 +225,7 @@ class AuditVetBaseSerializer(Serializer):
             self.validated_data["task_us_data"].get("brand_safety", [])
         )
         # Rescore if any blacklist categories changed
-        if new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
+        if not previous_brand_safety or new_vetted_brand_safety != set([str(s) for s in previous_brand_safety]):
             should_rescore = True
         return list(new_vetted_brand_safety), should_rescore
 
@@ -232,8 +233,6 @@ class AuditVetBaseSerializer(Serializer):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
-        :param blacklist_categories: list -> [int, ...]
-        :param es_manager: BaseManager
         :return: None
         """
         try:
@@ -241,21 +240,22 @@ class AuditVetBaseSerializer(Serializer):
             bs_data = doc.brand_safety
             item_overall_score = bs_data.overall_score
             pre_limbo_score = bs_data.pre_limbo_score
-            previous_blacklist_categories = doc.task_us_data.brand_safety or []
+            previous_blacklist_categories = doc.task_us_data.brand_safety
         except (IndexError, AttributeError):
             previous_blacklist_categories = []
             item_overall_score = None
             pre_limbo_score = None
 
-        new_blacklist_categories, should_rescore = self.save_brand_safety(previous_blacklist_categories)
+        vetted_brand_safety_categories, should_rescore = self._get_vetted_brand_safety(previous_blacklist_categories)
         task_us_data = {
             "last_vetted_at": timezone.now(),
             **self.validated_data["task_us_data"],
         }
-        brand_safety_category_overall_scores = self._get_brand_safety(new_blacklist_categories)
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = self._get_general_data(task_us_data)
-        task_us_data["brand_safety"] = new_blacklist_categories if new_blacklist_categories else [None]
+        # Must use [None] as a sentinel value as elasticsearch_dsl will not serialize empty lists during update
+        # https://github.com/elastic/elasticsearch-dsl-py/issues/758
+        task_us_data["brand_safety"] = vetted_brand_safety_categories if vetted_brand_safety_categories else [None]
         brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score, pre_limbo_score)
 
         # Update Elasticsearch document
@@ -264,30 +264,11 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(
             rescore=should_rescore,
-            categories=brand_safety_category_overall_scores,
             **brand_safety_limbo
         )
         doc.populate_general_data(**general_data)
         self.es_manager.upsert([doc], refresh=False)
         return doc
-
-    def _get_brand_safety(self, blacklist_categories: list):
-        """
-        Get updated brand safety categories based on blacklist_categories
-        If category is in blacklist_category, will have a score of 0. Else will have a score of 100
-        :param blacklist_categories: list of blacklist categories from vetting
-        :return:
-        """
-        # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
-        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(
-            [int(category) for category in blacklist_categories])
-        brand_safety_category_overall_scores = {
-            str(category_id): {
-                "category_score": 100 if category_id in reset_brand_safety else 0
-            }
-            for category_id in self.all_brand_safety_category_ids
-        }
-        return brand_safety_category_overall_scores
 
     def _get_general_data(self, task_us_data):
         """
@@ -318,7 +299,9 @@ class AuditVetBaseSerializer(Serializer):
         categories.
 
         If the vetter is a vetting admin, accept vetting result as final
-        :param brand_safety_data: BrandSafety document section data
+        :param task_us_data: dict -> Submitted vetted data
+        :param overall_score: int -> Current brand_safety.overall_score of current vetting item
+        :param pre_limbo_score: int -> brand_safety.pre_limbo_score value
         :return:
         """
         limbo_data = {}

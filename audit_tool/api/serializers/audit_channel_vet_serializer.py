@@ -38,7 +38,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
 
     def get_vetting_history(self, doc):
         """
-        Retrieve vetting history of all AuditChannelVet items with FK to AuditChannel
+        Retrieve vetting history of all AuditChannelVet items with FK to AuditChannel and who were vetted as part of
+        an audit (we don't want to show vetting history when just a single channel was vetted)
         Only retrieve if serializing with Elasticsearch document since vetting history is only used for client to
             display during vetting
         :param doc: Elasticsearch document
@@ -48,7 +49,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         if hasattr(doc, "main"):
             channel_id_hash = get_hash_name(doc.main.id)
             vetting_items = AuditChannelVet.objects \
-                .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False) \
+                .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False, audit__isnull=False) \
                 .select_related("channel__auditchannelmeta")
             history = [{
                 "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",

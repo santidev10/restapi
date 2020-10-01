@@ -3,14 +3,12 @@ from datetime import timedelta
 from django.db.models import Q
 from django.utils import timezone
 from googleapiclient.errors import HttpError
-from googleapiclient.discovery import Resource
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.models.constants import OAuthType
 from performiq.models.models import OAuthAccount
-from performiq.tasks.dv360.serializers.advertiser_serialzer import AdvertiserSerializer
 from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer
-from performiq.utils.dv360 import AdvertiserAdapter
+from performiq.tasks.dv360.sync_dv_records import serialize_dv360_list_response_items
 from performiq.utils.dv360 import PartnerAdapter
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.utils.dv360 import load_credentials
@@ -20,7 +18,7 @@ UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
 
 
-def update_partners():
+def sync_dv_partners():
     """
     Updates partners for accounts that were either created
     recently, or have not been recently updated
@@ -47,36 +45,13 @@ def update_partners():
                 continue
             else:
                 raise e
-        items = partners_response["partners"]
-        partners = []
-        # TODO dry this out
-        for item in items:
-            adapted = PartnerAdapter().adapt(item)
-            serializer = PartnerSerializer(data=adapted)
-            if not serializer.is_valid(raise_exception=True):
-                continue
-            partner = serializer.save()
-            partners.append(partner)
-            # TODO thread this
-            update_advertisers(resource, partner.id)
+        partners = serialize_dv360_list_response_items(
+            response=partners_response,
+            items_name="partners",
+            adapter_class=PartnerAdapter,
+            serializer_class=PartnerSerializer
+        )
 
         account.dv360_partners.set(partners)
         account.updated_at = timezone.now()
         account.save(update_fields=["updated_at"])
-
-def update_advertisers(resource: Resource, partner_id: int) -> None:
-    try:
-        advertisers_response = resource.advertisers().list(partnerId=partner_id).execute()
-    except Exception as e:
-        raise e
-    items = advertisers_response["advertisers"]
-    advertiers = []
-    # TODO dry this out
-    for item in items:
-        adapted = AdvertiserAdapter().adapt(item)
-        serializer = AdvertiserSerializer(data=adapted)
-        if not serializer.is_valid():
-            continue
-        advertiser = serializer.save()
-        # TODO only need this if we associate to the owning account
-        advertiers.append(advertiser)
