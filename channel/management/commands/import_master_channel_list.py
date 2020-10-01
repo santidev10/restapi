@@ -99,9 +99,7 @@ class Command(BaseCommand):
                 item_overall_score = None
                 pre_limbo_score = None
             new_brand_safety = [None]
-            should_rescore = not previous_blacklist_categories or \
-                             set([str(s) for s in previous_blacklist_categories]) != \
-                             set([str(s) for s in new_brand_safety])
+            should_rescore = item_overall_score != 100
             channel.task_us_data["brand_safety"] = new_brand_safety
             brand_safety_limbo = self._get_brand_safety_limbo(item_overall_score, pre_limbo_score)
             channel.populate_brand_safety(
