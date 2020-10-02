@@ -83,15 +83,14 @@ class Command(BaseCommand):
                                  upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
         if not batch_size:
             batch_size = len(channel_ids)
-        logger.info(f"Fetching {batch_size} channels.")
         chunk_size = min(batch_size, 10000)
         offset = 0
         while offset < batch_size:
+            logger.info(f"Fetching {chunk_size} channels.")
             channels = manager.get_or_create(channel_ids[offset:offset+chunk_size])
             offset += chunk_size
             for channel in channels:
                 channel_id = channel.main.id
-                logger.info(f"Populating data for Channel: {channel_id}")
                 channel_data = channels_data[channel_id]
                 channel.populate_general_data(**channel_data["general_data"])
                 channel.populate_task_us_data(**channel_data["task_us_data"])
