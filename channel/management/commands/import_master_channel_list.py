@@ -81,34 +81,38 @@ class Command(BaseCommand):
                     continue
         manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY),
                                  upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
-        logger.info(f"Fetching {batch_size or 'ALL'} channels.")
-        channels = manager.get_or_create(channel_ids[:batch_size])
-        for channel in channels:
-            channel_id = channel.main.id
-            logger.info(f"Populating data for Channel: {channel_id}")
-            channel_data = channels_data[channel_id]
-            channel.populate_general_data(**channel_data["general_data"])
-            channel.populate_task_us_data(**channel_data["task_us_data"])
-            try:
-                bs_data = channel.brand_safety
-                item_overall_score = bs_data.overall_score
-                pre_limbo_score = bs_data.pre_limbo_score
-                previous_blacklist_categories = channel.task_us_data.brand_safety or []
-            except (IndexError, AttributeError):
-                previous_blacklist_categories = []
-                item_overall_score = None
-                pre_limbo_score = None
-            new_brand_safety = [None]
-            should_rescore = item_overall_score != 100
-            channel.task_us_data["brand_safety"] = new_brand_safety
-            brand_safety_limbo = self._get_brand_safety_limbo(item_overall_score, pre_limbo_score)
-            channel.populate_brand_safety(
-                rescore=should_rescore,
-                **brand_safety_limbo
-            )
-        logger.info(f"Upserting {batch_size or 'ALL'} channels.")
-        manager.upsert(channels)
-        logger.info(f"Finished upserting channels.")
+        if not batch_size:
+            batch_size = len(channel_ids)
+        chunk_size = min(batch_size, 10000)
+        offset = 0
+        while offset < batch_size:
+            logger.info(f"Fetching {chunk_size} channels.")
+            channels = manager.get_or_create(channel_ids[offset:offset+chunk_size])
+            offset += chunk_size
+            for channel in channels:
+                channel_id = channel.main.id
+                channel_data = channels_data[channel_id]
+                channel.populate_general_data(**channel_data["general_data"])
+                channel.populate_task_us_data(**channel_data["task_us_data"])
+                try:
+                    bs_data = channel.brand_safety
+                    item_overall_score = bs_data.overall_score
+                    pre_limbo_score = bs_data.pre_limbo_score
+                except (IndexError, AttributeError):
+                    item_overall_score = None
+                    pre_limbo_score = None
+                new_brand_safety = [None]
+                should_rescore = item_overall_score != 100
+                channel.task_us_data["brand_safety"] = new_brand_safety
+                brand_safety_limbo = self._get_brand_safety_limbo(item_overall_score, pre_limbo_score)
+                channel.populate_brand_safety(
+                    rescore=should_rescore,
+                    **brand_safety_limbo
+                )
+            logger.info(f"Upserting {chunk_size} channels.")
+            manager.upsert(channels)
+            logger.info(f"Finished upserting {chunk_size} channels.")
+        logger.info(f"Finished upserting {batch_size} channels.")
 
     @staticmethod
     def get_categories(categories_string):
