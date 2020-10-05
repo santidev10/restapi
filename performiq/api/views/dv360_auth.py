@@ -13,6 +13,8 @@ class DV360AuthApiView(AdWordsAuthApiView):
 
     scopes = (
         "https://www.googleapis.com/auth/display-video",
+        # "https://www.googleapis.com/auth/display-video-media-planning",
+        # "https://www.googleapis.com/auth/display-video-user-management",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/userinfo.email",
     )

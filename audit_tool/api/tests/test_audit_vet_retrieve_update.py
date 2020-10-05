@@ -66,14 +66,16 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.custom_segment_export_model.objects.create(segment=segment, query={})
         return audit, segment
 
-    def _create_mock_document(self, model, item_id, task_us_data=None, monetzation_data=None):
+    def _create_mock_document(self, model, item_id, task_us_data=None, monetzation_data=None, general_data=None):
         default_task_us = {}
         default_monetzation = {}
         default_task_us.update(task_us_data or {})
         default_monetzation.update(monetzation_data or {})
+        general_data = general_data or {}
         doc = model(item_id)
         doc.populate_task_us_data(**default_task_us)
         doc.populate_monetization(**default_monetzation)
+        doc.populate_general_data(**general_data)
         return doc
 
     def test_reject_permissions(self, *args):
@@ -116,8 +118,9 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             content_quality="0",
         )
         monetization = dict(is_monetizable=True)
+        general_data = dict(primary_category="Video Games")
         mock_video_doc = self._create_mock_document(Video, video_audit.video_id, task_us_data=task_us,
-                                                    monetzation_data=monetization)
+                                                    monetzation_data=monetization, general_data=general_data)
         self.mock_get_document.return_value = mock_video_doc
         url = self._get_url(kwargs=dict(pk=audit_3.id))
         response = self.client.get(url)
@@ -132,6 +135,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["content_type"], serialized.data["content_type"])
         self.assertEqual(data["content_quality"], serialized.data["content_quality"])
         self.assertEqual(data["is_monetizable"], monetization["is_monetizable"])
+        self.assertEqual(data["primary_category"], general_data["primary_category"])
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/watch?v={video_audit.video_id}/")
         self.assertEqual(data["vetting_id"], new_video_vet.id)
@@ -180,8 +184,9 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             content_quality="2",
         )
         monetization = dict(is_monetizable=False)
+        general_data = dict(primary_category="Video Games")
         mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us,
-                                                      monetzation_data=monetization)
+                                                      monetzation_data=monetization, general_data=general_data)
         self.mock_get_document.return_value = mock_channel_doc
         url = self._get_url(kwargs=dict(pk=audit_3.id))
         response = self.client.get(url)
@@ -196,6 +201,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["content_type"], serialized.data["content_type"])
         self.assertEqual(data["content_quality"], serialized.data["content_quality"])
         self.assertEqual(data["is_monetizable"], monetization["is_monetizable"])
+        self.assertEqual(data["primary_category"], general_data["primary_category"])
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/channel/{channel_audit.channel_id}/")
         self.assertEqual(data["vetting_id"], new_channel_vet.id)
@@ -343,6 +349,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "iab_categories": [
                 "Motorcycles"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": True,
             "language": "es",
             "suitable": False
@@ -400,6 +407,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True
@@ -627,6 +635,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "iab_categories": [
                 "Motorcycles"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": True,
             "language": "es",
             "suitable": False
@@ -662,6 +671,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
             ],
+            "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ja",
             "suitable": True

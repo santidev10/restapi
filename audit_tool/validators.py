@@ -8,9 +8,18 @@ from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
 from es_components.iab_categories import IAB_TIER2_SET
+from es_components.iab_categories import IAB_TIER1_CATEGORIES
 
 
 class AuditToolValidator:
+    @staticmethod
+    def validate_primary_category(value, should_raise=True):
+        primary_category = value
+        if value not in IAB_TIER1_CATEGORIES:
+            if should_raise:
+                raise ValidationError(f"Provided primary category of {value} is not a valid Tier 1 category.")
+            primary_category = None
+        return primary_category
 
     @staticmethod
     def validate_category(value, should_raise=True):

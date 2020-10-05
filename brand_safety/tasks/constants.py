@@ -47,4 +47,4 @@ class Schedulers:
 
     class VideoDiscovery(BaseScheduler):
         NAME = "brand_safety_video_discovery"
-        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 2000))
+        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 1000))

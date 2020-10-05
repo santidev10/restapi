@@ -86,6 +86,7 @@ FLIGHT_FIELDS = (
     "timezone",
     "total_cost",
     "update_time",
+    "margin_cap",
 )
 
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
@@ -485,6 +486,12 @@ class PacingReport:
         ad_ops_emails = set()
         opportunity_ids = []
         for o in opportunities:
+            # Opportunity aw_cid values sometimes incorrectly saved with dashes in Salesforce.
+            # Replace to allow for Account id queries using aw_cid values
+            try:
+                o["aw_cid"] = o["aw_cid"].replace("-", "")
+            except AttributeError:
+                pass
             opportunity_ids.append(o["id"])
             if o["ad_ops_manager__email"]:
                 ad_ops_emails.add(o["ad_ops_manager__email"])
@@ -919,6 +926,7 @@ class PacingReport:
                 "projected_budget": flight["projected_budget"],
                 "cpv": flight["cpv"],
                 "cpm": flight["cpm"],
+                "margin_cap": f["margin_cap"],
             })
             pacing_goal_charts = get_flight_historical_pacing_chart(f)
             flight.update(pacing_goal_charts)
@@ -963,8 +971,15 @@ class PacingReport:
                 alerts.append(create_alert(short, detail))
 
             flight["alerts"] = alerts
-            flights.append(flight)
+            margin_cap = f["margin_cap"]
+            try:
+                spend_goal = f["total_cost"] - (f["total_cost"] * margin_cap / 100)
+            except (TypeError, KeyError):
+                spend_goal = None
+            flight["spend_goal"] = spend_goal
+            flight["margin_cap"] = margin_cap
 
+            flights.append(flight)
         return flights
 
     # ## FLIGHTS ## #

@@ -21,7 +21,7 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.auditors.video_auditor import VideoAuditor
 from es_components.constants import Sections
 from es_components.models import Channel
 from es_components.query_builder import QueryBuilder
@@ -275,7 +275,7 @@ class AuditExportApiView(APIView):
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
-        auditor = BrandSafetyAudit()
+        auditor = VideoAuditor()
         rows = [cols]
         count = videos.count()
         if count > self.MAX_ROWS:
@@ -369,7 +369,7 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words = ""
                 title_bad_hit_words = ""
             try:
-                video_audit = auditor.audit_video({
+                video_audit = auditor.audit_serialized({
                     "id": vid.video_id,
                     "title": v.name,
                     "description": v.description,
