@@ -486,6 +486,12 @@ class PacingReport:
         ad_ops_emails = set()
         opportunity_ids = []
         for o in opportunities:
+            # Opportunity aw_cid values sometimes incorrectly saved with dashes in Salesforce.
+            # Replace to allow for Account id queries using aw_cid values
+            try:
+                o["aw_cid"] = o["aw_cid"].replace("-", "")
+            except AttributeError:
+                pass
             opportunity_ids.append(o["id"])
             if o["ad_ops_manager__email"]:
                 ad_ops_emails.add(o["ad_ops_manager__email"])
