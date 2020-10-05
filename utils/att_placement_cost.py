@@ -10,9 +10,8 @@ from datetime import datetime
 
 
 class ATTPlacementCost:
-    video_ids = []
     clients = []
-    account_ids_to_skip = []
+    account_ids_to_skip = {}
     video_data = {}
     refresh_tokens = []
     accounts = None
@@ -33,15 +32,15 @@ class ATTPlacementCost:
 
     def run(self):
         self.load_video_ids()
-        self.load_accounts()
         self.load_skip_accounts()
+        self.load_accounts()
         self.load_refresh_tokens()
 
         counter = 0
         accounts_count = len(self.accounts)
         for account in self.accounts:
             counter += 1
-            if account.id in self.account_ids_to_skip:
+            if self.account_ids_to_skip.get(account.id, False):
                 print(f"SKIPPING account {counter} of {accounts_count}")
                 continue
 
@@ -53,21 +52,17 @@ class ATTPlacementCost:
             shuffle(clients)
             client = clients.pop()
             dates = self.get_dates()
-            # predicates = self.get_predicates()
             try:
                 report = placement_performance_report(client, dates=dates)
             except AccountInactiveError:
-                self.account_ids_to_skip.append(account.id)
+                self.account_ids_to_skip[account.id] = True
                 continue
 
             if not len(report):
-                self.account_ids_to_skip.append(account.id)
+                self.account_ids_to_skip[account.id] = True
                 continue
 
             self.process_report(report)
-            # TODO debug only
-            # if len(self.video_data.keys()) > 1000:
-            #     break
 
         self.write_skip_accounts()
         self.write_csv()
@@ -105,8 +100,7 @@ class ATTPlacementCost:
             pass
         with open(self.skip_filename, "w", encoding="utf-8") as write_file:
             writer = csv.writer(write_file)
-            self.account_ids_to_skip = list(set(self.account_ids_to_skip))
-            for account_id in self.account_ids_to_skip:
+            for account_id, _ in self.account_ids_to_skip.items():
                 writer.writerow([account_id])
 
     def process_report(self, report: list):
@@ -115,10 +109,8 @@ class ATTPlacementCost:
 
         print("processing report data...")
         for row in report:
-            criteria = row.Criteria
-            if "youtube.com/" in criteria:
-                criteria = criteria.split("/")[-1]
-            if criteria not in self.video_ids:
+            criteria = self.validate_video_id(row.Criteria)
+            if self.video_data.get(criteria, False) is False:
                 continue
             date = row.Date
             format = "%Y-%m-%d" if "-" in date else "%-m-%r-d-%y"
@@ -179,18 +171,6 @@ class ATTPlacementCost:
         to_date = self.get_to_date()
         return [from_date, to_date]
 
-    def get_predicates(self):
-        # predicates = predicates or [{"field": "AdNetworkType1", "operator": "EQUALS", "values": ["YOUTUBE_WATCH"]}, ]
-        predicates = [
-            {
-                "field": "VideoId",
-                "operator": "IN",
-                "values": self.video_ids[:50]
-            },
-        ]
-        # return predicates
-        return []
-
     def get_clients(self, account):
         clients = []
         for token in self.refresh_tokens:
@@ -216,7 +196,7 @@ class ATTPlacementCost:
             reader = csv.reader(video_list)
             next(reader)
             for row in reader:
-                self.video_ids.append(row[0])
+                self.video_data[self.validate_video_id(row[0])] = {}
 
     def load_skip_accounts(self):
         if not os.path.exists(self.skip_filename):
@@ -226,7 +206,7 @@ class ATTPlacementCost:
             reader = csv.reader(video_list)
             next(reader)
             for row in reader:
-                self.account_ids_to_skip.append(int(row[0]))
+                self.account_ids_to_skip[int(row[0])] = True
 
     def load_accounts(self):
         mcc = Account.objects.get(id=self.mcc_id)
@@ -237,3 +217,8 @@ class ATTPlacementCost:
             .order_by("-update_time") \
             .all()
         print(f"loaded {len(self.accounts)} accounts.")
+
+    def validate_video_id(self, video_id):
+        if "youtube.com/" in video_id:
+            video_id = video_id.split("/")[-1]
+        return video_id
