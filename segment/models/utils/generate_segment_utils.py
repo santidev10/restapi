@@ -1,5 +1,7 @@
 import csv
 
+from audit_tool.models import AuditChannelProcessor
+from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
@@ -9,6 +11,7 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
+from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
@@ -158,3 +161,32 @@ class GenerateSegmentUtils:
         """ Create set of source list urls from segment export file """
         source_ids = set(segment.s3.get_extract_export_ids(segment.source.filename))
         return source_ids
+
+    @staticmethod
+    def clean_blocklist(items, data_type=0):
+        """
+        Remove videos that have their channel blocklisted
+        :param items:
+        :param data_type: int -> 0 = videos, 1 = channels
+        :return:
+        """
+        channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
+        if data_type == 0:
+            channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None])
+            blocklist = {
+                channel.main.id: channel.custom_properties.blocklist
+                for channel in channels
+            }
+            non_blocklist = [
+                video for video in items if blocklist.get(video.channel.id) is not True
+                and video.custom_properties.blocklist is not True
+            ]
+        else:
+            non_blocklist = [
+                channel for channel in items if channel.custom_properties.blocklist is not True
+            ]
+        return non_blocklist
+
+    def clean_inclusion_exclusion(self, items, audit):
+        audit_model = AuditVideoProcessor if self.segment_type == 0 else AuditChannelProcessor
+        audit_items = audit_model.objects.filter(audit=audit)

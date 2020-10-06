@@ -6,6 +6,7 @@ from collections import defaultdict
 from django.conf import settings
 from elasticsearch_dsl import Q
 
+from audit_tool.models import AuditProcessor
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from es_components.managers import ChannelManager
@@ -81,7 +82,15 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
 
             for batch in es_generator:
                 # Clean blocklist items
-                batch = _clean_blocklist(batch, segment.segment_type)
+                batch = generate_utils.clean_blocklist(batch, segment.segment_type)
+
+                # Clean inclusion and exclusion items if segment was created with inclusion / exclusion keywords
+                try:
+                    audit = AuditProcessor.objects.get(params__segment_id=segment.id)
+                    batch = generate_utils.clean_inclusion_exclusion(batch, audit)
+                except AuditProcessor.DoesNotExist:
+                    pass
+                # Ensure that we are not adding items past limit
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
