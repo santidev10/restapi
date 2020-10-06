@@ -12,6 +12,8 @@ from audit_tool.models import get_hash_name
 from saas.configs.celery import Queue
 from segment.api.paginator import SegmentPaginator
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
+from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SourceListType
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
@@ -44,7 +46,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         list_type = self.request.query_params.get("list_type")
         if list_type:
-            value = CustomSegmentSerializer.map_to_id(list_type, item_type="list")
+            value = SourceListType[list_type.upper()].value
             filters["list_type"] = value
 
         content_categories = self.request.query_params.get("general_data.iab_categories")
@@ -90,7 +92,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         :return: Queryset
         """
-        segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
+        segment_type = SegmentTypeEnum[self.kwargs["segment_type"].upper()].value
         # Filter queryset depending on permission level
         user = self.request.user
         if user.has_perm("userprofile.vet_audit_admin"):
