@@ -133,7 +133,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(e))
 
         query_builder = SegmentQueryBuilder(data)
-        CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
+        CustomSegmentFileUpload.objects.create(query=query_builder.query_body, segment=segment)
         generate_custom_segment.apply_async(args=[serializer.data["id"]], queue=Queue.SEGMENTS)
         return Response(status=HTTP_201_CREATED, data=serializer.data)
 

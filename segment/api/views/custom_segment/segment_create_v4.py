@@ -10,11 +10,9 @@ from rest_framework.status import HTTP_201_CREATED
 from audit_tool.models import get_hash_name
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
-from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
-from segment.tasks.generate_custom_segment import generate_custom_segment
+
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from segment.utils.query_builder import SegmentQueryBuilder
 
 
 class SegmentCreateApiViewV4(CreateAPIView):
@@ -36,15 +34,7 @@ class SegmentCreateApiViewV4(CreateAPIView):
         validated_data = self._validate_data(request, data)
         validated_data.update(request.FILES)
         segment = self._create(validated_data)
-        query_builder = SegmentQueryBuilder(validated_data)
-        # Use query_builder.query_params to get mapped values used in Elasticsearch query
-        query = {
-            "params": query_builder.query_params,
-            "body": query_builder.query_body.to_dict()
-        }
-        CustomSegmentFileUpload.enqueue(query=query, segment=segment)
-        generate_custom_segment.delay(segment.id)
-        res = self._get_response(query_builder.query_params, segment)
+        res = self._get_response(validated_data, segment)
         return Response(status=HTTP_201_CREATED, data=res)
 
     def _validate_data(self, request, data):

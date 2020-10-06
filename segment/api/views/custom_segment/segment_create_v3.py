@@ -92,7 +92,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
                 "params": query_builder.query_params,
                 "body": query_builder.query_body.to_dict()
             }
-            CustomSegmentFileUpload.enqueue(query=query, segment=segment)
+            CustomSegmentFileUpload.objects.create(query=query, segment=segment)
             generate_custom_segment.delay(segment.id)
             res = self._get_response(query_builder.query_params, segment)
             response.append(res)

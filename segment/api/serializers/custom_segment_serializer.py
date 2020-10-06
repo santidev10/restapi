@@ -4,7 +4,6 @@ from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import FileField
 from rest_framework.serializers import IntegerField
-from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.exceptions import ValidationError
@@ -17,6 +16,8 @@ from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
 
 
@@ -52,6 +53,10 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
 
     def get_pending(self, obj):
+        """
+        Implicitly determine if the CTL export has been generated as a statistics value is added to the CTL row
+        once an export is completed.
+        """
         pending = not bool(obj.statistics)
         return pending
 
@@ -74,15 +79,21 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         return statistics
 
     def create(self, validated_data):
+        """
+        Handle CustomSegment obj creation and other required creation steps
+        :param validated_data:
+        :return:
+        """
         try:
             with transaction.atomic():
                 segment = CustomSegment.objects.create(**validated_data)
+                self._create_query(segment, validated_data)
                 self._create_source_file(segment, validated_data)
-                self._create_audit(segment, validated_data)
+                self._start_segment_export_task(segment, validated_data)
         # pylint: disable=broad-except
         except Exception as error:
             # pylint: enable=broad-except
-            raise ValidationError(f"Exception trying to create segment: {error}")
+            raise ValidationError(f"Exception trying to create segment: {error}.")
         return segment
 
     def validate_owner(self, owner_id):
@@ -122,7 +133,44 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
             data["download_url"] = None
         return data
 
+    def _start_segment_export_task(self, segment, validated_data):
+        """
+        Handle CTL export generation task
+        Only execute generate_custom_segment task if CTL was created without inclusion / exclusion lists.
+        CTL creation with inclusion / exclusion lists must be created through audit app first
+        :param segment: CustomSegment
+        :param validated_data: dict
+        :return:
+        """
+        if validated_data.get("inclusion_file") or validated_data.get("exclusion_file"):
+            self._create_audit(segment, validated_data)
+        else:
+            generate_custom_segment.delay(segment.id)
+
+    def _create_query(self, segment, validated_data):
+        """
+        Create Elasticsearch query body with params for export generation
+        :param segment: CustomSegment
+        :param validated_data: dict
+        :return:
+        """
+        query_builder = SegmentQueryBuilder(validated_data)
+        # Use query_builder.query_params to get mapped values used in Elasticsearch query
+        query = {
+            "params": query_builder.query_params,
+            "body": query_builder.query_body.to_dict()
+        }
+        CustomSegmentFileUpload.objects.create(query=query, segment=segment)
+
     def _create_source_file(self, segment, validated_data):
+        """
+        Create CTL source file using user uploaded csv
+        This prepares csv for CTL export generation and is used to only include channels / videos that are both filtered
+        for and on the source csv
+        :param segment:
+        :param validated_data:
+        :return:
+        """
         request = self.context["request"]
         try:
             source_file = validated_data["source_file"]
@@ -144,6 +192,11 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         return source_upload
 
     def _get_file_data(self, file_reader: TemporaryUploadedFile):
+        """
+        Util method to extract rows from inclusion / exclusion csv upload
+        :param file_reader: TemporaryUploadedFile in open read +rb state
+        :return:
+        """
         rows = []
         for row in file_reader:
             decoded = row.decode("utf-8").lower().strip()
@@ -152,30 +205,42 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         return rows
 
     def _create_audit(self, segment, validated_data):
+        """
+        Create AuditProcessor to leverage audit flow for CTL creation
+        This will create an AuditProcessor that will handle detecting inclusion / exclusion words that were uploaded
+        during CTL creation
+        Once AuditProcessor finishes audit, a generate_custom_segment task will be executed to include these words hits
+        :param segment:
+        :param validated_data:
+        :return:
+        """
         inclusion_file = validated_data.get("inclusion_file")
         exclusion_file = validated_data.get("exclusion_file")
-        if inclusion_file or exclusion_file:
-            inclusion_rows = self._get_file_data(inclusion_file) if inclusion else []
-            exclusion_rows = self._get_file_data(exclusion_file) if exclusion else []
-            params = dict(
-                inclusion_hit_count=1,
-                exclusion_hit_count=1,
-                exclusion=exclusion_rows,
-                inclusion=inclusion_rows,
-                segment_id=segment.id,
+        inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
+        exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
+        params = dict(
+            inclusion_hit_count=1,
+            exclusion_hit_count=1,
+            exclusion=exclusion_rows,
+            inclusion=inclusion_rows,
+            segment_id=segment.id,
+        )
+        if segment.segment_type == 0:
+            # Video config
+            extra_data = dict(
+                audit_type=1
             )
-            if segment.segment_type == 0:
-                extra_data = dict(
-                    audit_type=1
-                )
-            else:
-                extra_data = dict(
-                    do_videos=False,
-                    num_videos=0,
-                    audit_type=2,
-                )
-            params.update(extra_data)
-            AuditProcessor.objects.create(**params)
+        else:
+            # Channel config
+            extra_data = dict(
+                do_videos=False,
+                num_videos=0,
+                audit_type=2,
+            )
+        params.update(extra_data)
+        # Once audit is created, audit machines will detect and begin processing
+        audit = AuditProcessor.objects.create(**params)
+        return audit
 
 
 class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
