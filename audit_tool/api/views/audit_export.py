@@ -190,15 +190,11 @@ class AuditExportApiView(APIView):
                                                             channel__channel_id__in=blocklist_channels)
         bad_channels_videos = AuditVideoProcessor.objects.filter(audit=audit,
                                                             channel__channel_id__in=blocklist_channels)
-        bad_channels.delete()
-        bad_channels_videos.delete()
-
-    def delete_blocklist_videos(self, audit):
-        if audit.params.get("override_blocklist"):
-            return
         blocklist_videos = BlacklistItem.objects.filter(item_type=0).values_list('item_id', flat=True)
         bad_videos = AuditVideoProcessor.objects.filter(audit=audit,
-                                                            video__video_id__in=blocklist_videos)
+                                                        video__video_id__in=blocklist_videos)
+        bad_channels.delete()
+        bad_channels_videos.delete()
         bad_videos.delete()
 
     def export_videos(self, audit, audit_id=None, clean=None, export=None):
@@ -227,7 +223,7 @@ class AuditExportApiView(APIView):
         do_exclusion = True
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         #    do_exclusion = True
-        self.delete_blocklist_videos(audit)
+        self.delete_blocklist_channels(audit)
         cols = [
             "Video URL",
             "Name",
