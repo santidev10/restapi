@@ -86,7 +86,7 @@ class Command(BaseCommand):
             # self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1,
-                                                           source=0).order_by("pause", "id")[self.machine_number]
+                                                           source__in=[0,2]).order_by("pause", "id")[self.machine_number]
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
@@ -98,6 +98,12 @@ class Command(BaseCommand):
         if self.thread_id > 6:
             if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
+
+    def update_ctl(self):
+        # handle logic here for removing bad channels/videos (clean=False)
+        # from the CTL that triggered this audit.  The original CTL ID should be
+        # stored in the params dictionary, self.audit.params['ctl_id'] for example
+        pass
 
     # pylint: disable=too-many-branches,too-many-statements
     def process_audit(self, num=2000):
@@ -144,10 +150,13 @@ class Command(BaseCommand):
                     if self.audit.params["audit_type_original"] == 2:
                         self.audit.audit_type = 2
                         self.audit.save(update_fields=["audit_type"])
-                AuditExporter.objects.create(
-                    audit=self.audit,
-                    owner_id=None
-                )
+                if self.audit.source == 0:
+                    AuditExporter.objects.create(
+                        audit=self.audit,
+                        owner_id=None
+                    )
+                elif self.audit.source==2:
+                    self.update_ctl()
                 raise Exception("Audit completed, all videos processed")
             raise Exception("not first thread but audit is done")
         videos = {}

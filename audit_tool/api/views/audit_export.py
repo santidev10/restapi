@@ -23,11 +23,11 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from brand_safety.auditors.video_auditor import VideoAuditor
 from es_components.constants import Sections
-from es_components.models import Channel
-from es_components.query_builder import QueryBuilder
+from es_components.managers import ChannelManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.brand_safety import map_brand_safety_score
 from utils.permissions import user_has_permission
+from utils.utils import chunks_generator
 
 
 class AuditExportApiView(APIView):
@@ -190,15 +190,11 @@ class AuditExportApiView(APIView):
                                                             channel__channel_id__in=blocklist_channels)
         bad_channels_videos = AuditVideoProcessor.objects.filter(audit=audit,
                                                             channel__channel_id__in=blocklist_channels)
-        bad_channels.delete()
-        bad_channels_videos.delete()
-
-    def delete_blocklist_videos(self, audit):
-        if audit.params.get("override_blocklist"):
-            return
         blocklist_videos = BlacklistItem.objects.filter(item_type=0).values_list('item_id', flat=True)
         bad_videos = AuditVideoProcessor.objects.filter(audit=audit,
-                                                            video__video_id__in=blocklist_videos)
+                                                        video__video_id__in=blocklist_videos)
+        bad_channels.delete()
+        bad_channels_videos.delete()
         bad_videos.delete()
 
     def export_videos(self, audit, audit_id=None, clean=None, export=None):
@@ -227,7 +223,7 @@ class AuditExportApiView(APIView):
         do_exclusion = True
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         #    do_exclusion = True
-        self.delete_blocklist_videos(audit)
+        self.delete_blocklist_channels(audit)
         cols = [
             "Video URL",
             "Name",
@@ -482,24 +478,16 @@ class AuditExportApiView(APIView):
                 # pylint: enable=broad-except
                     pass
 
-    def get_scores_for_channels(self, channel_ids, chunk_size=10000):
+    def get_scores_for_channels(self, channel_ids, chunk_size=1000):
         """
         Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
         """
         channel_scores = {}
-        search = Channel.search()
-        search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
-        while True:
-            chunk = channel_ids[:chunk_size]
-            channel_ids = channel_ids[chunk_size:]
-            search.query = QueryBuilder().build().must().terms().field('main.id').value(chunk).get()
-            search = search[0:chunk_size]
-            results = search.execute()
-            for channel in results.hits:
-                channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
-            if not len(channel_ids):
-                break
-
+        channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY,))
+        for chunk in chunks_generator(channel_ids, size=chunk_size):
+            results = channel_manager.get(chunk, skip_none=True)
+            for channel in results:
+                channel_scores[channel.main.id] = channel.brand_safety.overall_score
         return channel_scores
 
     def export_channels(self, audit, audit_id=None, clean=None, export=None):

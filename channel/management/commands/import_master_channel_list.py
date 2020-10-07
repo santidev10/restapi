@@ -116,11 +116,17 @@ class Command(BaseCommand):
 
     @staticmethod
     def get_categories(categories_string):
-        categories = [category for category in categories_string.split(", ") if category in IAB_TIER2_SET]
+        categories = [category.replace("and", "&") for category in categories_string.split(", ")
+                      if category.replace("and", "&") in IAB_TIER2_SET]
         return categories
 
     @staticmethod
     def get_language(lang):
+        canto_mando_map = {
+            "zh-c": "zh-yue",
+            "zh-m": "zh-cmn"
+        }
+        lang = canto_mando_map[lang] if lang in canto_mando_map else lang
         return lang.lower() if lang.lower() in LANGUAGES else None
 
     @staticmethod

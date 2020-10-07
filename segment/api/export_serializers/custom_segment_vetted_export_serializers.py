@@ -12,7 +12,7 @@ __all__ = [
 
 
 class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers",
+    columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers",
                "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
                "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
                "Vetting_Result", "Mismatched_Language", "Last_Vetted", "Vetted_By",
@@ -32,7 +32,7 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
 
 
 class CustomSegmentVideoVettedExportSerializer(CustomSegmentVideoExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score",
+    columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Overall_Score",
                "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
                "Content_Type", "Content_Quality", "Vetting_Result", "Mismatched_Language",
                "Last_Vetted", "Vetted_By", "Country",
