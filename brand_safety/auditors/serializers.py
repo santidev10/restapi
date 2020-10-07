@@ -66,7 +66,7 @@ class BrandSafetyVideo(Serializer):
         return is_blocklist
 
     def get_tags(self, obj):
-        tags = getattr(obj.general_data, "tags", [])
+        tags = getattr(obj.general_data, "tags", []) or []
         if not isinstance(tags, str):
             tags = " ".join(tags)
         return tags
