@@ -157,7 +157,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_boolean(value) if value is not None else None
         # validate all numeric fields
-        for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos", "gender"]:
+        for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos", "gender", "minimum_duration",
+                           "maximum_duration"]:
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
