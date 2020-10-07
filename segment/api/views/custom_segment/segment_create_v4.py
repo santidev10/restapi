@@ -41,7 +41,6 @@ class SegmentCreateApiViewV4(CreateAPIView):
         """
         Validate request data
         Raise ValidationError on invalid parameters
-        :param user_id: int
         :param data: dict
         :return: dict
         """
@@ -58,7 +57,17 @@ class SegmentCreateApiViewV4(CreateAPIView):
         :param data: dict
         :return: CustomSegment
         """
-        serializer = self.serializer_class(data=data, context=dict(request=self.request))
+        # Pass full CTLParamsSerializer as context as well since CustomSegmentSerializer will only use some fields
+        # to create instance
+        context = {
+            "request": self.request,
+            "ctl_params": data,
+            # Pop file keys as segment and query creation do not require these values
+            "files": {
+                key: data.pop(key, None) for key in {"source_file", "inclusion_file", "exclusion_file"}
+            },
+        }
+        serializer = self.serializer_class(data=data, context=context)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
         return segment

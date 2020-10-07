@@ -1,5 +1,12 @@
 import csv
+import os
+import tempfile
 
+from django.conf import settings
+from uuid import uuid4
+
+from audit_tool.models import AuditProcessor
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditAgeGroup
@@ -15,6 +22,7 @@ from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
+from utils.utils import chunks_generator
 
 
 class GenerateSegmentUtils:
@@ -190,3 +198,27 @@ class GenerateSegmentUtils:
     def clean_inclusion_exclusion(self, items, audit):
         audit_model = AuditVideoProcessor if self.segment_type == 0 else AuditChannelProcessor
         audit_items = audit_model.objects.filter(audit=audit)
+
+    def start_audit(self, filename):
+        """
+
+        :param filename: str -> On disk fp of export file
+        :return:
+        """
+        self._upload_audit_source_file(filename)
+        AuditProcessor.objects.filter(params__segment_id=self.segment.id).update(temp_stop=False)
+
+    def _upload_audit_source_file(self, source_fp):
+        source_urls_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        with open(source_fp, mode="r") as source_file,\
+                open(source_urls_file, mode="w") as dest_file:
+            reader = csv.reader(source_file)
+            writer = csv.writer(dest_file)
+            # Skip header and only use urls as source
+            next(reader)
+            for chunk in chunks_generator(reader, size=1000):
+                rows = [[row[0]] for row in chunk]
+                writer.writerows(rows)
+        name = uuid4().hex
+        AuditFileS3Exporter.export_file_to_s3(source_urls_file, name)
+        os.remove(source_urls_file)

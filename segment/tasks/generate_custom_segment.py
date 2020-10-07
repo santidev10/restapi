@@ -13,13 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def generate_custom_segment(segment_id, results=None, tries=0):
+def generate_custom_segment(segment_id, results=None, tries=0, with_audit=True):
 # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
-        if results is None:
-            results = generate_segment(segment, export.query["body"], segment.config.LIST_SIZE, add_uuid=False)
+        args = (segment, export.query["body"], segment.config.LIST_SIZE)
+        # If creating with_audit, do not send results email as export requires further processing with audit_tool logic
+        if with_audit is True:
+            generate_segment(*args, with_audit=with_audit)
+            return
+        elif results is None:
+            results = generate_segment(*args, segment.config.LIST_SIZE)
         segment.statistics = results["statistics"]
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
