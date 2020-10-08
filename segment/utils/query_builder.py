@@ -206,7 +206,7 @@ class SegmentQueryBuilder:
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
 
-        content_types = self._params.get("content_types", [])
+        content_types = self._params.get("content_type", [])
         # if we want any content type, then we don't need to filter
         if content_types and set(content_types) != set(AuditContentType.to_str.keys()):
             content_types_query = Q("bool")
@@ -215,7 +215,7 @@ class SegmentQueryBuilder:
                     .field(f"{Sections.TASK_US_DATA}.content_type").value(content_type).get()
             must_queries.append(content_types_query)
 
-        content_qualities = self._params.get("content_qualities", [])
+        content_qualities = self._params.get("content_quality", [])
         # if we want any content quality, then we don't need to filter
         if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str.keys()):
             content_qualities_query = Q("bool")
