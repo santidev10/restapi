@@ -1,11 +1,14 @@
+from datetime import timedelta
 import json
 import types
 from unittest.mock import patch
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from audit_tool.models import IASHistory
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models.bad_word import BadWordCategory
@@ -18,6 +21,12 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 @patch("segment.utils.query_builder.SegmentQueryBuilder.execute")
 class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
+    def setUp(self):
+        self.ingestion_1 = IASHistory.objects.create(name="test1.csv", started=timezone.now()-timedelta(days=7),
+                                                completed=timezone.now()-timedelta(days=6))
+        self.ingestion_2 = IASHistory.objects.create(name="test2.csv", started=timezone.now()-timedelta(minutes=30),
+                                                completed=timezone.now())
+
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
@@ -46,6 +55,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
+        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started)
 
     def test_that_content_categories_are_iab_categories(self, es_mock):
         self.create_test_user()
