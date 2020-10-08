@@ -217,35 +217,35 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         :return:
         """
         files = self.context["files"]
+        request = self.context["request"]
         inclusion_file = files.get("inclusion_file")
         exclusion_file = files.get("exclusion_file")
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         params = dict(
-            user_id=self.context["request"].user.id,
-            inclusion_hit_count=1,
-            exclusion_hit_count=1,
-            exclusion=exclusion_rows,
-            inclusion=inclusion_rows,
-            segment_id=segment.id,
             source=2,
+            segment_id=segment.id,
+            user_id=request.user.id,
+            inclusion=inclusion_rows,
+            exclusion=exclusion_rows,
+            inclusion_hit_count=request.query_params.get("inclusion_hit_count", 1),
+            exclusion_hit_count=request.query_params.get("exclusion_hit_count", 1),
         )
+        extra_params = {}
         if segment.segment_type == 0:
             # Video config
-            extra_data = dict(
-                audit_type=1
-            )
+            audit_type = 1
         else:
             # Channel config
-            extra_data = dict(
+            audit_type = 2
+            extra_params = dict(
                 do_videos=False,
                 num_videos=0,
-                audit_type=2,
             )
-        params.update(extra_data)
+        params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit
-        audit = AuditProcessor.objects.create(temp_stop=True, params=params)
+        audit = AuditProcessor.objects.create(audit_type=audit_type, temp_stop=True, params=params)
         return audit
 
 
