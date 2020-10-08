@@ -859,3 +859,9 @@ class IASChannel(Timestampable):
             except IntegrityError:
                 return IASChannel.objects.get(channel=audit_channel)
         return None
+
+
+class IASHistory(Timestampable):
+    name = models.CharField(max_length=100)
+    started = models.DateTimeField(auto_now_add=True, db_index=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
