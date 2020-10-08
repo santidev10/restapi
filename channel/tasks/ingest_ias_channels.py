@@ -50,7 +50,7 @@ def ingest_ias_channels():
                 continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
-                ias_history = IASHistory.objects.get_or_create(name=file_name)
+                ias_history, _ = IASHistory.objects.get_or_create(name=file_name)
                 new_cids = []
                 for byte in ias_content["Body"].iter_lines():
                     row = (byte.decode("utf-8")).split(",")

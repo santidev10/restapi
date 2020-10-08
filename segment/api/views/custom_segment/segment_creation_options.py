@@ -7,6 +7,7 @@ from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from audit_tool.models import IASHistory
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
@@ -133,6 +134,7 @@ class SegmentCreationOptionsApiView(APIView):
             "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
             "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
+            "latest_ias": IASHistory.objects.latest("started").started
         }
         return options
 
