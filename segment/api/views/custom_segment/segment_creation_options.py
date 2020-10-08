@@ -116,7 +116,9 @@ class SegmentCreationOptionsApiView(APIView):
                 AuditAgeGroup.ID_CHOICES
             ],
             "brand_safety_categories": [
-                {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
+                {"id": _id, "name": category}
+                for _id, category
+                in BadWordCategory.get_category_mapping(vettable=True).items()
             ],
             "content_categories": AuditUtils.get_iab_categories(),
             "gender": [

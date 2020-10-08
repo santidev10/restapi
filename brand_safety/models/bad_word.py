@@ -17,10 +17,12 @@ class BadWordCategory(models.Model):
         return db_result
 
     @staticmethod
-    def get_category_mapping():
+    def get_category_mapping(vettable=False):
+        query = BadWordCategory.objects.filter(vettable=True) if vettable \
+            else BadWordCategory.objects.all()
         mapping = {
             str(category.id): category.name
-            for category in BadWordCategory.objects.all()
+            for category in query
         }
         return mapping
 

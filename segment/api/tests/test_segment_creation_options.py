@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
+from brand_safety.models.bad_word import BadWordCategory
 from cache.models import CacheItem
 from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
@@ -53,6 +54,16 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             response.data["options"]["content_categories"],
             AuditUtils.get_iab_categories()
         )
+
+    def test_that_brand_safety_categories_include_only_vettables(self, es_mock):
+        self.create_test_user()
+        bad_word_unvettable = BadWordCategory.objects.create(name="unvettable", vettable=False)
+        bad_word_vettable = BadWordCategory.objects.create(name="vettable", vettable=True)
+        response = self.client.post(self._get_url(), None, content_type="application/json")
+        brand_safety_categories = response.data["options"]["brand_safety_categories"]
+        names = [category["name"] for category in brand_safety_categories]
+        self.assertIn(bad_word_vettable.name, names)
+        self.assertNotIn(bad_word_unvettable.name, names)
 
     def test_success_video_items(self, es_mock):
         self.create_test_user()
