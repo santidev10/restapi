@@ -14,39 +14,30 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
-from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
+from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.models import CustomSegment
 from segment.utils.utils import with_all
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
 class SegmentCreationOptionsApiView(APIView):
-
     def post(self, request, *args, **kwargs):
         """
         Generate segment creation options
         If segment_type in request, will respond with items count in request body filters
         """
-        options = self._validate_data(request.data)
         res_data = {
             "options": self._get_options()
         }
-        # Only get item estimates if valid segment_type
-        get_counts = options["segment_type"] is not None
-        if get_counts:
-            if options["segment_type"] == 2:
-                for int_type in range(options["segment_type"]):
-                    str_type = SegmentTypeEnum(int_type).name.lower()
-                    options["segment_type"] = int_type
-                    query_builder = SegmentQueryBuilder(options)
-                    result = query_builder.execute()
-                    res_data[f"{str_type}_items"] = result.hits.total.value or 0
-            else:
-                query_builder = SegmentQueryBuilder(options)
-                result = query_builder.execute()
-                str_type = SegmentTypeEnum(options["segment_type"]).name.lower()
-                res_data[f"{str_type}_items"] = result.hits.total.value or 0
+        get_estimate = request.data.get("segment_type") is not None
+        if get_estimate:
+            validator = CTLParamsSerializer(data=request.data)
+            validator.is_valid(raise_exception=True)
+            params = validator.validated_data
+            query_builder = SegmentQueryBuilder(params)
+            result = query_builder.execute()
+            str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
+            res_data[f"{str_type}_items"] = result.hits.total.value or 0
         return Response(status=HTTP_200_OK, data=res_data)
 
     @staticmethod
@@ -135,24 +126,4 @@ class SegmentCreationOptionsApiView(APIView):
             "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
         }
-        return options
-
-    def _validate_data(self, data):
-        """
-        Validate request body
-
-        :param data: dict
-        :return: dict
-        """
-        try:
-            if data.get("segment_type") is not None:
-                segment_type = SegmentCreateApiViewV3.validate_segment_type(int(data["segment_type"]))
-            else:
-                segment_type = None
-            options = SegmentCreateApiViewV3.validate_options(data)
-            options["segment_type"] = segment_type
-        except KeyError as err:
-            raise ValidationError(f"Missing required key: {err}")
-        except ValueError as err:
-            raise ValidationError(f"Invalid value: {err}")
         return options
