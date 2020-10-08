@@ -7,8 +7,6 @@ from uuid import uuid4
 
 from audit_tool.models import AuditProcessor
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from audit_tool.models import AuditChannelProcessor
-from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
@@ -195,20 +193,19 @@ class GenerateSegmentUtils:
             ]
         return non_blocklist
 
-    def clean_inclusion_exclusion(self, items, audit):
-        audit_model = AuditVideoProcessor if self.segment_type == 0 else AuditChannelProcessor
-        audit_items = audit_model.objects.filter(audit=audit)
-
     def start_audit(self, filename):
         """
 
         :param filename: str -> On disk fp of export file
         :return:
         """
-        self._upload_audit_source_file(filename)
-        AuditProcessor.objects.filter(params__segment_id=self.segment.id).update(temp_stop=False)
+        audit = AuditProcessor.objects.get(params__segment_id=self.segment.id)
+        self._upload_audit_source_file(audit, filename)
+        # Update audit.temp_stop to make it visible for processing
+        audit.temp_stop = False
+        audit.save()
 
-    def _upload_audit_source_file(self, source_fp):
+    def _upload_audit_source_file(self, audit, source_fp):
         source_urls_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
         with open(source_fp, mode="r") as source_file,\
                 open(source_urls_file, mode="w") as dest_file:
@@ -221,4 +218,6 @@ class GenerateSegmentUtils:
                 writer.writerows(rows)
         name = uuid4().hex
         AuditFileS3Exporter.export_file_to_s3(source_urls_file, name)
+        audit.params["seed_file"] = name
+        audit.save()
         os.remove(source_urls_file)

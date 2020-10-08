@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, with_audit=False):
+def generate_segment(segment, query, size, sort=None, s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -109,7 +109,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             generate_utils.start_audit(filename)
             results = {}
         else:
-            s3_key = segment.get_s3_key()
+            s3_key = s3_key or segment.get_s3_key()
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
             segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
             download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)

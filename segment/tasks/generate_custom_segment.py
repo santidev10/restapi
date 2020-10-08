@@ -28,6 +28,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=True):
         segment.statistics = results["statistics"]
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
+        export.filename = results["s3_key"]
         export.save()
         segment.save()
         export.refresh_from_db()
