@@ -67,7 +67,8 @@ def ingest_ias_channels():
                     channel.ias_data.ias_verified = timezone.now()
                     ias_channel = IASChannel.get_or_create(channel_id=channel_id)
                     ias_channel.ias_verified = timezone.now()
-                    ias_channel.save(update_fields=["ias_verified"])
+                    ias_channel.history = ias_history
+                    ias_channel.save(update_fields=["ias_verified", "history"])
                 channel_manager.upsert(new_channels)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
@@ -75,7 +76,7 @@ def ingest_ias_channels():
                 if settings.ARCHIVE_IAS:
                     ingestor.delete_obj(source_key)
                 ias_history.completed = timezone.now()
-                ias_history.save()
+                ias_history.save(update_fields=["completed"])
             # pylint: disable=broad-except
             except Exception as e:
                 # pylint: enable=broad-except
