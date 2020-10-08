@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 from audit_tool.models import get_hash_name
 from es_components.iab_categories import IAB_TIER2_SET
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
@@ -17,12 +19,12 @@ from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.utils.utils import validate_all_in
 from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from segment.utils.utils import with_all
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
@@ -161,8 +163,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
-        opts["content_type"] = with_all(choice=opts.get("content_type", None))
-        opts["content_quality"] = with_all(choice=opts.get("content_quality", None))
+        # validate that items are a list of numerics
+        valid_content_types = AuditContentType.to_str.keys()
+        opts["content_types"] = validate_all_in(opts.get("content_types", []), valid_content_types)
+        valid_content_qualities = AuditContentQuality.to_str.keys()
+        opts["content_qualities"] = validate_all_in(opts.get("content_qualities", []), valid_content_qualities)
         # fault tolerant validation for range fields. handles ", ":
         for field_name in list(SegmentQueryBuilder.AD_STATS_RANGE_FIELDS) + list(SegmentQueryBuilder.STATS_RANGE_FIELDS):
             field = opts.get(field_name, None)
