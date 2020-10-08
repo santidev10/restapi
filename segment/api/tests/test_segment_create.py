@@ -57,8 +57,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "segment_type": 0,
             "last_upload_date": "2000/01/01",
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(
@@ -75,8 +75,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": [],
             "segment_type": 3,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -91,8 +91,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "segment_type": 0,
             "last_upload_date": "2000/01/01",
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -111,8 +111,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": content_categories,
             "segment_type": 0,
             "last_upload_date": "2000/01/01",
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
@@ -130,8 +130,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_views": 0,
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [],
+            "content_qualities": [],
             "video_quartile_100_rate": 0,
             "average_cpm": 0,
             "last_30day_views": 0,
@@ -159,8 +159,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_views": 0,
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(payload))
         response = self.client.post(self._get_url(), form)
@@ -183,8 +183,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "minimum_views": "1,000,000",
             "minimum_views_include_na": False,
             "segment_type": 1,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(payload))
         with patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
@@ -203,8 +203,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_option": 0,
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         payload_2 = {
             "brand_safety_categories": [],
@@ -214,8 +214,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_option": 0,
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form_1 = dict(data=json.dumps(payload_1))
         form_2 = dict(data=json.dumps(payload_2))
@@ -232,8 +232,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_option": 0,
             "vetted_after": "2020-01-01",
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
             payload["title"] = "video"
@@ -283,8 +283,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
                 "6": [2]
             },
             "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(payload))
         segment = CustomSegment.objects.create(
@@ -314,8 +314,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "languages": [],
             "severity_counts": {},
             "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         file = BytesIO()
         form = dict(
@@ -334,8 +334,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "languages": [],
             "severity_counts": {},
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         file = BytesIO()
         file.name = payload["title"]
@@ -362,8 +362,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_categories": [],
             "minimum_views": 0,
             "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
+            "content_types": [0],
+            "content_qualities": [0],
         }
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
