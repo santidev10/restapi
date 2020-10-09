@@ -34,7 +34,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
         "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
-        "countries_include_na", "content_types", "content_qualities", "video_view_rate", "average_cpv", "average_cpm",
+        "countries_include_na", "content_type", "content_quality", "video_view_rate", "average_cpv", "average_cpm",
         "ctr", "ctr_v", "video_quartile_100_rate", "last_30day_views", "ads_stats_include_na",
         "exclude_content_categories",
     )
@@ -165,10 +165,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
         # validate that items are a list of numerics
-        valid_content_types = AuditContentType.to_str.keys()
-        opts["content_types"] = validate_all_in(opts.get("content_types", []), valid_content_types)
-        valid_content_qualities = AuditContentQuality.to_str.keys()
-        opts["content_qualities"] = validate_all_in(opts.get("content_qualities", []), valid_content_qualities)
+        opts["content_type"] = validate_all_in(opts.get("content_type", []), AuditContentType.to_str.keys())
+        opts["content_quality"] = validate_all_in(opts.get("content_quality", []), AuditContentQuality.to_str.keys())
         # fault tolerant validation for range fields. handles ", ":
         for field_name in list(SegmentQueryBuilder.AD_STATS_RANGE_FIELDS) + list(SegmentQueryBuilder.STATS_RANGE_FIELDS):
             field = opts.get(field_name, None)
