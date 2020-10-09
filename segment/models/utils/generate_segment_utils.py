@@ -1,10 +1,14 @@
 import csv
+from operator import attrgetter
 import os
 import tempfile
 
 from django.conf import settings
 from uuid import uuid4
 
+from .constants import channel_sum_aggs
+from .constants import shared_avg_aggs
+from .constants import video_sum_aggs
 from audit_tool.models import AuditProcessor
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditAgeGroup
@@ -28,8 +32,13 @@ class GenerateSegmentUtils:
     segment = None
 
     def __init__(self, segment):
-        self.segment_type = None
+        self.segment_type = segment.segment_type
         self.segment = segment
+        self.avg_aggs = shared_avg_aggs
+        if self.segment_type in {0, "video"}:
+            self.sum_aggs = video_sum_aggs
+        else:
+            self.sum_aggs = channel_sum_aggs
 
     @staticmethod
     def get_vetting_data(segment, item_ids):
@@ -117,46 +126,38 @@ class GenerateSegmentUtils:
             if write_header is True:
                 writer.writeheader()
             writer.writerows(rows)
-        self.add_aggregations(aggregations, items, segment.segment_type)
+        self.add_aggregations(aggregations, items)
 
-    @staticmethod
-    def add_aggregations(aggregations, items, segment_type):
+    def add_aggregations(self, aggregations, items):
         """
         Add values to aggregations
         Aggregations are performed in Python as calculating in Elasticsearch appears to overload memory usage
         """
+        # Calculating aggregations with each items already retrieved is much more efficient than
+        # executing an additional aggregation query
         for item in items:
-            # Calculating aggregations with each items already retrieved is much more efficient than
-            # executing an additional aggregation query
-            aggregations["monthly_views"] += item.stats.last_30day_views or 0
-            aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
-            aggregations["views"] += item.stats.views or 0
-            aggregations["ctr"] += item.ads_stats.ctr or 0
-            aggregations["ctr_v"] += item.ads_stats.ctr_v or 0
-            aggregations["video_view_rate"] += item.ads_stats.video_view_rate or 0
-            aggregations["average_cpm"] += item.ads_stats.average_cpm or 0
-            aggregations["average_cpv"] += item.ads_stats.average_cpv or 0
+            for agg in self.avg_aggs + self.sum_aggs:
+                key = agg.split(".")[1]
+                value = attrgetter(agg)(item) or 0
+                aggregations[key] += value
 
-            if segment_type in (0, "video"):
-                aggregations["likes"] += item.stats.likes or 0
-                aggregations["dislikes"] += item.stats.dislikes or 0
-            else:
-                aggregations["likes"] += item.stats.observed_videos_likes or 0
-                aggregations["dislikes"] += item.stats.observed_videos_dislikes or 0
-                aggregations["monthly_subscribers"] += item.stats.last_30day_subscribers or 0
-                aggregations["subscribers"] += item.stats.subscribers or 0
-                aggregations["audited_videos"] += item.brand_safety.videos_scored or 0
-
-    @staticmethod
-    def finalize_aggregations(aggregations, count):
+    def finalize_aggregations(self, aggregations, count):
         """ Finalize aggregations and calculate averages"""
-        aggregations["average_brand_safety_score"] = map_brand_safety_score(
-            aggregations["average_brand_safety_score"] // (count or 1))
-        aggregations["ctr"] /= count or 1
-        aggregations["ctr_v"] /= count or 1
-        aggregations["video_view_rate"] /= count or 1
-        aggregations["average_cpm"] /= count or 1
-        aggregations["average_cpv"] /= count or 1
+        for agg in self.avg_aggs:
+            key = agg.split(".")[1]
+            aggregations[key] /= count or 1
+        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"] // count or 1)
+        # Map channel keys
+        map_keys = (
+            ("observed_videos_likes", "likes"),
+            ("observed_videos_dislikes", "dislikes")
+        )
+        for old_key, new_key in map_keys:
+            try:
+                aggregations[new_key] = aggregations[old_key]
+                del aggregations[old_key]
+            except KeyError:
+                pass
         return aggregations
 
     def add_segment_uuid(self, segment, ids):
@@ -202,7 +203,7 @@ class GenerateSegmentUtils:
         audit = AuditProcessor.objects.get(params__segment_id=self.segment.id)
         self._upload_audit_source_file(audit, filename)
         # Update audit.temp_stop to make it visible for processing
-        audit.temp_stop = False
+        # audit.temp_stop = False
         audit.save()
 
     def _upload_audit_source_file(self, audit, source_fp):

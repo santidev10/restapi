@@ -90,7 +90,7 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
                 context["vetting"] = vetting
                 generate_utils.write_to_file(batch, filename, segment, context, aggregations,
                                              write_header=write_header is True)
-                generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
+                generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
                 if seen >= size:
