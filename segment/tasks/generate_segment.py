@@ -105,11 +105,12 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
             "top_three_items": top_three_items,
             **aggregations,
         }
+        s3_key = s3_key or segment.get_s3_key()
         if with_audit is True:
+            segment.s3.export_file_to_s3(filename, s3_key)
             generate_utils.start_audit(filename)
             results = {}
         else:
-            s3_key = s3_key or segment.get_s3_key()
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
             segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
             download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)

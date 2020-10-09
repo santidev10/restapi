@@ -117,8 +117,8 @@ class Command(BaseCommand):
             model_fk_ref = "channel"
             url_separator = "/channel/"
         clean_audits = audit_model.objects \
-            .select_related(model_fk_ref) \
             .filter(audit=self.audit, clean=True) \
+            .select_related(model_fk_ref) \
             .annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
         clean_ids = set(audit.item_id for audit in clean_audits)
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
@@ -134,7 +134,7 @@ class Command(BaseCommand):
                         write_header = False
                     rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
                     writer.writerows(rows)
-            # segment.s3.export_file_to_s3(temp_file, segment.export.filename)
+            segment.s3.export_file_to_s3(temp_file, segment.export.filename)
         except Exception as err:
             print(err)
         finally:

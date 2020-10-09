@@ -19,21 +19,18 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
         args = (segment, export.query["body"], segment.config.LIST_SIZE)
-        # If creating with_audit, do not send results email as export requires further processing with audit_tool logic
-        if with_audit is True:
-            generate_segment(*args, with_audit=with_audit)
-            return
-        elif results is None:
-            results = generate_segment(*args, segment.config.LIST_SIZE)
-        segment.statistics = results["statistics"]
-        export.download_url = results["download_url"]
+        results = generate_segment(*args, with_audit=with_audit)
+        segment.statistics = results.get("statistics", {})
+        export.download_url = results.get("download_url")
         export.completed_at = timezone.now()
-        export.filename = results["s3_key"]
+        export.filename = results.get("s3_key")
         export.save()
         segment.save()
         export.refresh_from_db()
-        send_export_email(segment.owner.email, segment.title, export.download_url)
-        logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id, segment.title)
+        # If creating with_audit, do not send results email as export requires further processing with audit_tool logic
+        if with_audit is False:
+            send_export_email(segment.owner.email, segment.title, export.download_url)
+            logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id, segment.title)
     except OperationalError as e:
         if tries < 2:
             tries += 1

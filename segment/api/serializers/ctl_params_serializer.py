@@ -8,6 +8,7 @@ source file, creating audit, invoking export task, etc.)
 """
 from datetime import datetime
 
+from django.core.validators import MinValueValidator
 from rest_framework import serializers
 from rest_framework.serializers import empty
 from rest_framework.exceptions import ValidationError
@@ -94,7 +95,7 @@ class NullableNumeric(serializers.CharField):
 
 class NonRequiredBooleanField(serializers.BooleanField):
     def __init__(self, *_, **kwargs):
-        super().__init__(required=False, **kwargs)
+        super().__init__(allow_null=True, required=False, **kwargs)
 
 
 class CTLParamsSerializer(serializers.Serializer):
@@ -109,12 +110,14 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
     exclusion_file = serializers.FileField(write_only=True, required=False)
+    exclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
     gender = serializers.IntegerField(allow_null=True)
     languages = NullableListField()
     last_30day_views = AdsPerformanceRangeField()
     last_upload_date = EmptyCharDateField()
     ias_verified_date = EmptyCharDateField()
     inclusion_file = serializers.FileField(write_only=True, required=False)
+    inclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
     is_vetted = serializers.NullBooleanField(required=False)
     minimum_subscribers = NullableNumeric()
     minimum_views = NullableNumeric()
@@ -133,9 +136,9 @@ class CTLParamsSerializer(serializers.Serializer):
     age_groups_include_na = NonRequiredBooleanField()
     countries_include_na = NonRequiredBooleanField()
     minimum_subscribers_include_na = NonRequiredBooleanField()
-    minimum_videos_include_na = NonRequiredBooleanField(allow_null=True)
-    minimum_views_include_na = NonRequiredBooleanField(allow_null=True)
-    mismatched_language = NonRequiredBooleanField(allow_null=True)
+    minimum_videos_include_na = NonRequiredBooleanField()
+    minimum_views_include_na = NonRequiredBooleanField()
+    mismatched_language = NonRequiredBooleanField()
 
     def validate_content_type(self, data):
         """
