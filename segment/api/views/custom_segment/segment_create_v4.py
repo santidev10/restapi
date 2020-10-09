@@ -34,7 +34,8 @@ class SegmentCreateApiViewV4(CreateAPIView):
         validated_data = self._validate_data(request, data)
         validated_data.update(request.FILES)
         segment = self._create(validated_data)
-        res = self._get_response(validated_data, segment)
+        res = CustomSegmentSerializer(segment).data
+        res.update(validated_data)
         return Response(status=HTTP_201_CREATED, data=res)
 
     def _validate_data(self, request, data):
@@ -71,21 +72,6 @@ class SegmentCreateApiViewV4(CreateAPIView):
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
         return segment
-
-    def _get_response(self, params, segment):
-        """
-        Copy params with additional fields for response
-        :param segment: CustomSegment
-        :param params: dict
-        :return:
-        """
-        res = params.copy()
-        res["id"] = segment.id
-        res["title"] = segment.title
-        res["segment_type"] = segment.segment_type
-        res["pending"] = True
-        res["statistics"] = {}
-        return res
 
 
 class SegmentCreationOptionsError(Exception):

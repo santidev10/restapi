@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from rest_framework import serializers
+from rest_framework.serializers import empty
 from rest_framework.exceptions import ValidationError
 
 from es_components.iab_categories import IAB_TIER2_SET
@@ -11,7 +14,7 @@ class NullableDictField(serializers.DictField):
 
     def run_validation(self, data=None):
         super().run_validation(data)
-        if not data:
+        if not data or data is empty:
             data = {}
         return data
 
@@ -22,7 +25,7 @@ class NullableListField(serializers.ListField):
 
     def run_validation(self, data=None):
         super().run_validation(data)
-        if not data:
+        if not data or data is empty:
             data = []
         return data
 
@@ -33,7 +36,7 @@ class AdsPerformanceRangeField(serializers.CharField):
 
     def run_validation(self, data=None):
         super().run_validation(data)
-        if data:
+        if data and data is not empty:
             data = self.validate_stats_field(data)
         return data
 
@@ -45,13 +48,17 @@ class AdsPerformanceRangeField(serializers.CharField):
         return val
 
 
-class EmptyDateField(serializers.DateField):
+class EmptyCharDateField(serializers.CharField):
     def __init__(self):
-        super().__init__(format="%Y-%m-%d", allow_null=True)
+        super().__init__(allow_null=True, allow_blank=True)
 
     def run_validation(self, data=None):
-        if data:
-            data = super().run_validation(data)
+        super().run_validation(data)
+        if data and data is not empty:
+            try:
+                datetime.strptime(data, "%Y-%m-%d")
+            except ValueError:
+                raise ValidationError("Date format must be YYYY-mm-dd")
         return data
 
 
@@ -60,13 +67,18 @@ class NullableNumeric(serializers.CharField):
         super().__init__(allow_null=True)
 
     def run_validation(self, data=None):
-        if data:
+        if data and data is not empty:
             formatted = data.replace(",", "")
             try:
                 data = int(formatted)
             except ValueError:
                 raise ValidationError(f"The value: '{formatted}' is not a valid number.")
         return data
+
+
+class CTLOptionsBooleanField(serializers.BooleanField):
+    def __init__(self, *_, **kwargs):
+        super().__init__(required=False, **kwargs)
 
 
 class CTLParamsSerializer(serializers.Serializer):
@@ -81,23 +93,33 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
     exclusion_file = serializers.FileField(write_only=True, required=False)
+    gender = serializers.IntegerField(allow_null=True)
     languages = NullableListField()
     last_30day_views = AdsPerformanceRangeField()
-    last_upload_date = EmptyDateField()
-    ias_verified_date = EmptyDateField()
+    last_upload_date = EmptyCharDateField()
+    ias_verified_date = EmptyCharDateField()
     inclusion_file = serializers.FileField(write_only=True, required=False)
+    is_vetted = serializers.NullBooleanField(required=False)
     minimum_subscribers = NullableNumeric()
     minimum_views = NullableNumeric()
     minimum_videos = NullableNumeric()
-    segment_type = serializers.IntegerField()
+    segment_type = serializers.IntegerField(allow_null=True)
     sentiment = serializers.IntegerField()
     severity_filters = NullableDictField()
     score_threshold = serializers.IntegerField()
     source_file = serializers.FileField(write_only=True, required=False)
-    title = serializers.CharField()
-    vetted_after = EmptyDateField()
+    title = serializers.CharField(required=False)
+    vetted_after = EmptyCharDateField()
     video_quartile_100_rate = AdsPerformanceRangeField()
     video_view_rate = AdsPerformanceRangeField()
+
+    ads_stats_include_na = CTLOptionsBooleanField()
+    age_groups_include_na = CTLOptionsBooleanField()
+    countries_include_na = CTLOptionsBooleanField()
+    minimum_subscribers_include_na = CTLOptionsBooleanField()
+    minimum_videos_include_na = CTLOptionsBooleanField(allow_null=True)
+    minimum_views_include_na = CTLOptionsBooleanField(allow_null=True)
+    mismatched_language = CTLOptionsBooleanField(allow_null=True)
 
     def validate_content_type(self, data):
         if data == -1:
