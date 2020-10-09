@@ -4,6 +4,7 @@ from .brand_safety.brand_safety_preview import PersistentSegmentPreviewAPIView
 from .brand_safety.brand_safety_retrieve import PersistentSegmentRetrieveApiView
 from .custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from .custom_segment.segment_creation_options import SegmentCreationOptionsApiView
+from .custom_segment.segment_creation_options_v4 import SegmentCreationOptionsApiViewV4
 from .custom_segment.segment_delete_v2 import SegmentDeleteApiViewV2
 from .custom_segment.segment_export import SegmentExport
 from .custom_segment.segment_list import SegmentListCreateApiView

@@ -37,7 +37,7 @@ class SegmentCreationOptionsApiView(APIView):
         if get_counts:
             if options["segment_type"] == 2:
                 for int_type in range(options["segment_type"]):
-                    str_type = SegmentTypeEnum(options["segment_type"]).name.lower()
+                    str_type = SegmentTypeEnum(int_type).name.lower()
                     options["segment_type"] = int_type
                     query_builder = SegmentQueryBuilder(options)
                     result = query_builder.execute()

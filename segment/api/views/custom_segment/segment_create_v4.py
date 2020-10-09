@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_201_CREATED
 
 from audit_tool.models import get_hash_name
 from segment.api.serializers import CTLParamsSerializer
-from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
+from segment.api.serializers.custom_segment_serializer_v4 import CustomSegmentSerializer
 
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission

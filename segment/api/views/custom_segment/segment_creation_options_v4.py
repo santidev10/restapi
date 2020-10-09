@@ -1,4 +1,3 @@
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
@@ -20,7 +19,7 @@ from segment.utils.utils import with_all
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
-class SegmentCreationOptionsApiView(APIView):
+class SegmentCreationOptionsApiViewV4(APIView):
     def post(self, request, *args, **kwargs):
         """
         Generate segment creation options

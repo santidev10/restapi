@@ -19,10 +19,10 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-@patch("segment.api.serializers.custom_segment_serializer.generate_custom_segment")
-class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
+@patch("segment.api.serializers.custom_segment_serializer_v4.generate_custom_segment")
+class SegmentCreateApiV4ViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
-        return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATE)
+        return reverse(Namespace.SEGMENT_V4 + ":" + Name.SEGMENT_CREATE)
 
     def _get_params(self, *_, **kwargs):
         params = {
@@ -265,7 +265,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         ).exists())
         mock_generate.delay.assert_called_once()
 
-        with patch("segment.api.serializers.custom_segment_serializer.generate_custom_segment") as mock_generate:
+        with patch("segment.api.serializers.custom_segment_serializer_v4.generate_custom_segment") as mock_generate:
             payload["title"] = f"test_segment_creation_channel_{next(int_iterator)}"
             payload["segment_type"] = 1
             form = dict(data=json.dumps(payload))
@@ -275,67 +275,6 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
                 title=payload["title"], segment_type=payload["segment_type"]
             ).exists())
             mock_generate.delay.assert_called_once()
-
-    def test_segment_creation_raises_deletes(self, mock_generate):
-        self.create_admin_user()
-        payload = {
-            "title": "test_segment_creation_raises_deletes",
-            "score_threshold": 0,
-            "content_categories": [
-                "20"
-            ],
-            "languages": [
-                "ar"
-            ],
-            "severity_counts": {
-                "1": [1, 2, 3],
-                "4": [1, 3],
-                "6": [2]
-            },
-            "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        payload = self._get_params(**payload)
-        form = dict(data=json.dumps(payload))
-        segment = CustomSegment.objects.create(
-            id=next(int_iterator),
-            title=payload["title"],
-            list_type=0,
-            segment_type=0,
-            uuid=uuid.uuid4()
-        )
-        with patch("segment.api.views.custom_segment.segment_create_v3.SegmentCreateApiViewV3._create") as \
-            mock_create, \
-            patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
-            mock_create_success = MagicMock()
-            mock_create_success.id = segment.id
-            mock_create.side_effect = [mock_create_success, Exception]
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertFalse(CustomSegment.objects.filter(title=payload["title"], segment_type__in=[1, 2]).exists())
-
-    def test_source_one_list_fail(self, mock_generate):
-        """ Test only allowing source list with one list creation """
-        self.create_admin_user()
-        payload = {
-            "title": "test_source_one_list_fail",
-            "score_threshold": 0,
-            "content_categories": [],
-            "languages": [],
-            "severity_counts": {},
-            "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        payload = self._get_params(**payload)
-        file = BytesIO()
-        form = dict(
-            file=file,
-            data=json.dumps(payload)
-        )
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_with_source_success(self, mock_generate):
         self.create_admin_user()

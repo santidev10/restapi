@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def generate_custom_segment(segment_id, results=None, tries=0, with_audit=True):
+def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False):
 # pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)

@@ -9,6 +9,7 @@ from segment.api.views import CustomSegmentUpdateApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.api.views import SegmentCreationOptionsApiView
+from segment.api.views import SegmentCreationOptionsApiViewV4
 from segment.api.views import SegmentDeleteApiViewV2
 from segment.api.views import SegmentExport
 from segment.api.views import SegmentListCreateApiView
@@ -70,4 +71,7 @@ urlpatterns_v4 = [
     url(r"^segments/$",
         SegmentCreateApiViewV4.as_view(),
         name=Name.SEGMENT_CREATE),
+    url(r"^segments/options/$",
+        SegmentCreationOptionsApiViewV4.as_view(),
+        name=Name.SEGMENT_CREATION_OPTIONS),
 ]

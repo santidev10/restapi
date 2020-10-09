@@ -75,24 +75,6 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         }
         return statistics
 
-    def create(self, validated_data):
-        """
-        Handle CustomSegment obj creation and other required creation steps
-        :param validated_data:
-        :return:
-        """
-        try:
-            with transaction.atomic():
-                segment = CustomSegment.objects.create(**validated_data)
-                self._create_query(segment)
-                self._create_source_file(segment)
-                self._start_segment_export_task(segment)
-        # pylint: disable=broad-except
-        except Exception as error:
-            # pylint: enable=broad-except
-            raise ValidationError(f"Exception trying to create segment: {error}.")
-        return segment
-
     def validate_owner(self, owner_id):
         try:
             user = UserProfile.objects.get(id=owner_id)
@@ -129,6 +111,24 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         except CustomSegmentFileUpload.DoesNotExist:
             data["download_url"] = None
         return data
+
+    def create(self, validated_data):
+        """
+        Handle CustomSegment obj creation and other required creation steps
+        :param validated_data:
+        :return:
+        """
+        try:
+            with transaction.atomic():
+                segment = CustomSegment.objects.create(**validated_data)
+                self._create_query(segment)
+                self._create_source_file(segment)
+                self._start_segment_export_task(segment)
+        # pylint: disable=broad-except
+        except Exception as error:
+            # pylint: enable=broad-except
+            raise ValidationError(f"Exception trying to create segment: {error}.")
+        return segment
 
     def _start_segment_export_task(self, segment):
         """

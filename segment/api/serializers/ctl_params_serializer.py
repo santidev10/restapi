@@ -1,3 +1,11 @@
+"""
+Module to handle validating CTL parameters for retrieving estimates from Elasticsearch and CTL creation.
+
+Typical usage will be using CTLParamsSerializer to first provide default values and validate all possible params, then
+using this validated data with CustomSegmentSerializer, in which only some fields defined on the CustomSegmentSerializer
+will be used for actual creation but the rest of the data will be passed as context for other processes (e.g. creating
+source file, creating audit, invoking export task, etc.)
+"""
 from datetime import datetime
 
 from rest_framework import serializers
@@ -9,6 +17,7 @@ from segment.models.constants import SegmentTypeEnum
 
 
 class NullableDictField(serializers.DictField):
+    """ Provide default dict for null / empty values """
     def __init__(self):
         super().__init__(allow_null=True, allow_empty=True)
 
@@ -20,6 +29,7 @@ class NullableDictField(serializers.DictField):
 
 
 class NullableListField(serializers.ListField):
+    """ Provide default list for null / empty values """
     def __init__(self):
         super().__init__(allow_null=True, allow_empty=True)
 
@@ -31,6 +41,7 @@ class NullableListField(serializers.ListField):
 
 
 class AdsPerformanceRangeField(serializers.CharField):
+    """ Field to validate for range query values """
     def __init__(self):
         super().__init__(allow_null=True, allow_blank=True)
 
@@ -49,6 +60,11 @@ class AdsPerformanceRangeField(serializers.CharField):
 
 
 class EmptyCharDateField(serializers.CharField):
+    """
+    Validate date formatted strings
+    We don't use a Date field here since the date string is not being used for deserialization for db row creation, but
+    for Elasticsearch date queries. We only need to validate that the date format is what Elasticsearch expects.
+    """
     def __init__(self):
         super().__init__(allow_null=True, allow_blank=True)
 
@@ -76,7 +92,7 @@ class NullableNumeric(serializers.CharField):
         return data
 
 
-class CTLOptionsBooleanField(serializers.BooleanField):
+class NonRequiredBooleanField(serializers.BooleanField):
     def __init__(self, *_, **kwargs):
         super().__init__(required=False, **kwargs)
 
@@ -113,20 +129,26 @@ class CTLParamsSerializer(serializers.Serializer):
     video_quartile_100_rate = AdsPerformanceRangeField()
     video_view_rate = AdsPerformanceRangeField()
 
-    ads_stats_include_na = CTLOptionsBooleanField()
-    age_groups_include_na = CTLOptionsBooleanField()
-    countries_include_na = CTLOptionsBooleanField()
-    minimum_subscribers_include_na = CTLOptionsBooleanField()
-    minimum_videos_include_na = CTLOptionsBooleanField(allow_null=True)
-    minimum_views_include_na = CTLOptionsBooleanField(allow_null=True)
-    mismatched_language = CTLOptionsBooleanField(allow_null=True)
+    ads_stats_include_na = NonRequiredBooleanField()
+    age_groups_include_na = NonRequiredBooleanField()
+    countries_include_na = NonRequiredBooleanField()
+    minimum_subscribers_include_na = NonRequiredBooleanField()
+    minimum_videos_include_na = NonRequiredBooleanField(allow_null=True)
+    minimum_views_include_na = NonRequiredBooleanField(allow_null=True)
+    mismatched_language = NonRequiredBooleanField(allow_null=True)
 
     def validate_content_type(self, data):
+        """
+        If data == -1, then query should include all content types, which is the same as not querying it at all.
+        """
         if data == -1:
             data = None
         return data
 
     def validate_content_quality(self, data):
+        """
+        If data == -1, then query should include all content qualities, which is the same as not querying it at all.
+        """
         if data == -1:
             data = None
         return data
