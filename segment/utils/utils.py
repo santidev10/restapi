@@ -106,14 +106,16 @@ def validate_boolean(value):
     raise ValueError(f"The value: '{value}' is not a valid boolean.")
 
 
-def validate_in(member, container):
+def validate_in(member, container: list):
     if member not in container:
         valid_values = ", ".join(map(str, container))
         raise ValueError(f"The value: '{member}' must be one of the following: {valid_values}")
     return member
 
 
-def validate_all_in(members, container):
+def validate_all_in(members: list, container: list) -> list:
+    if not isinstance(members, list):
+        raise ValueError(f"'{str(members)}' should be a list.")
     return [validate_in(member, container) for member in members]
 
 
