@@ -13,7 +13,7 @@ from saas.configs.celery import Queue
 from segment.api.paginator import SegmentPaginator
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import SourceListType
+from segment.models.constants import SegmentListType
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
@@ -21,7 +21,7 @@ from segment.utils.utils import validate_threshold
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
-class SegmentListCreateApiViewV2(ListCreateAPIView):
+class SegmentListCreateApiView(ListCreateAPIView):
     REQUIRED_FIELDS = [
         "brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title",
         "youtube_categories"
@@ -46,7 +46,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         list_type = self.request.query_params.get("list_type")
         if list_type:
-            value = SourceListType[list_type.upper()].value
+            value = SegmentListType[list_type.upper()].value
             filters["list_type"] = value
 
         content_categories = self.request.query_params.get("general_data.iab_categories")

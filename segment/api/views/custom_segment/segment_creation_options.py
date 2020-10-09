@@ -17,6 +17,7 @@ from es_components.countries import COUNTRIES
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.utils.utils import with_all
+from segment.models.constants import SegmentTypeEnum
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
@@ -36,7 +37,7 @@ class SegmentCreationOptionsApiView(APIView):
         if get_counts:
             if options["segment_type"] == 2:
                 for int_type in range(options["segment_type"]):
-                    str_type = CustomSegment.segment_id_to_type[int_type]
+                    str_type = SegmentTypeEnum(options["segment_type"]).name.lower()
                     options["segment_type"] = int_type
                     query_builder = SegmentQueryBuilder(options)
                     result = query_builder.execute()
@@ -44,7 +45,7 @@ class SegmentCreationOptionsApiView(APIView):
             else:
                 query_builder = SegmentQueryBuilder(options)
                 result = query_builder.execute()
-                str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
+                str_type = SegmentTypeEnum(options["segment_type"]).name.lower()
                 res_data[f"{str_type}_items"] = result.hits.total.value or 0
         return Response(status=HTTP_200_OK, data=res_data)
 

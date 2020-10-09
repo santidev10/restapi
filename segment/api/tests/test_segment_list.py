@@ -22,7 +22,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
+class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpClass(cls):

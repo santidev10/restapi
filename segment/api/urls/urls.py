@@ -8,14 +8,15 @@ from segment.api.views import CustomSegmentListApiView
 from segment.api.views import CustomSegmentUpdateApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
-from segment.api.views import SegmentCreateApiViewV3
 from segment.api.views import SegmentCreationOptionsApiView
 from segment.api.views import SegmentDeleteApiViewV2
 from segment.api.views import SegmentExport
-from segment.api.views import SegmentListCreateApiViewV2
+from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentPreviewAPIView
 from segment.models.persistent.constants import PersistentSegmentType
-from segment.api.views.custom_segment.segment_create_v4 import SegmentCreateApiViewV4
+from segment.api.views import SegmentCreateApiViewV3
+from segment.api.views import SegmentCreateApiViewV4
+
 
 segment_types = f"{PersistentSegmentType.CHANNEL}|{PersistentSegmentType.VIDEO}"
 
@@ -40,7 +41,7 @@ urlpatterns = [
 
 urlpatterns_v2 = [
     url(r"^segments/(?P<segment_type>{})/$".format(segment_types),
-        SegmentListCreateApiViewV2.as_view(),
+        SegmentListCreateApiView.as_view(),
         name=Name.SEGMENT_LIST),
     url(r"^segments/(?P<segment_type>{})/(?P<pk>\d+)/$".format(segment_types),
         SegmentDeleteApiViewV2.as_view(),
@@ -57,10 +58,16 @@ urlpatterns_v2 = [
 ]
 
 urlpatterns_v3 = [
-    url(r"^segments/$",
-        SegmentCreateApiViewV4.as_view(),
-        name=Name.SEGMENT_CREATE),
     url(r"^segments/options/$",
         SegmentCreationOptionsApiView.as_view(),
         name=Name.SEGMENT_CREATION_OPTIONS),
+    url(r"^segments/$",
+        SegmentCreateApiViewV3.as_view(),
+        name=Name.SEGMENT_CREATE),
+]
+
+urlpatterns_v4 = [
+    url(r"^segments/$",
+        SegmentCreateApiViewV4.as_view(),
+        name=Name.SEGMENT_CREATE),
 ]
