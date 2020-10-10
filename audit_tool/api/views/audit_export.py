@@ -373,7 +373,7 @@ class AuditExportApiView(APIView):
                     "id": vid.video_id,
                     "title": v.name,
                     "description": v.description,
-                    "tags": v.keywords,
+                    "tags": v.keywords if v.keywords else [],
                 })
                 video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
                 mapped_score = map_brand_safety_score(video_audit_score)
