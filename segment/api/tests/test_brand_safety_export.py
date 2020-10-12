@@ -28,36 +28,6 @@ class BrandSafetyListExportAPIViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     @mock_s3
-    def test_is_master_channel_success(self):
-        self.create_admin_user()
-        segment = PersistentSegmentChannel.objects.create(is_master=True, uuid=uuid4())
-        export = PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=f"{uuid4()}.csv")
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
-        s3_obj = conn.Object(settings.AMAZON_S3_BUCKET_NAME, export.filename)
-        file = BytesIO(",".join(segment.get_export_columns()).encode("utf-8"))
-        file.seek(0)
-        s3_obj.put(Body=file)
-        response = self.client.get(self._get_url("channel", segment.id) + "?is_master=true")
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.get_export_columns()))
-
-    @mock_s3
-    def test_is_master_video_success(self):
-        self.create_admin_user()
-        segment = PersistentSegmentVideo.objects.create(is_master=True, uuid=uuid4())
-        export = PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=f"{uuid4()}.csv")
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
-        s3_obj = conn.Object(settings.AMAZON_S3_BUCKET_NAME, export.filename)
-        file = BytesIO(",".join(segment.get_export_columns()).encode("utf-8"))
-        file.seek(0)
-        s3_obj.put(Body=file)
-        response = self.client.get(self._get_url("video", segment.id) + "?is_master=true")
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(",".join(row.decode("utf-8") for row in response), ",".join(segment.get_export_columns()))
-
-    @mock_s3
     def test_non_master_channel_success(self):
         self.create_admin_user()
         segment = CustomSegment.objects.create(segment_type=1, title="test_channel")
