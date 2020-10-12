@@ -137,10 +137,14 @@ def with_all(all_options=None, choice=None):
         data = None
     elif all_options:
         data = [{"id": _id, "name": name} for _id, name in all_options]
+        data.append({
+            "id": -1,
+            "name": "All",
+        })
     else:
         choice = int(choice)
         if choice == -1:
-            data = None
+            data = []
         else:
             data = choice
     return data
