@@ -23,6 +23,7 @@ from segment.utils.utils import validate_all_in
 from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
+from segment.utils.utils import with_all
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from segment.utils.query_builder import SegmentQueryBuilder
@@ -165,8 +166,12 @@ class SegmentCreateApiViewV3(CreateAPIView):
             opts[field_name] = validate_numeric(value) if value is not None else None
         opts["vetted_after"] = validate_date(opts.get("vetted_after") or "")
         # validate that items are a list of numerics
-        opts["content_type"] = validate_all_in(opts.get("content_type", []), AuditContentType.to_str.keys())
-        opts["content_quality"] = validate_all_in(opts.get("content_quality", []), AuditContentQuality.to_str.keys())
+        content_type = with_all(choice=opts.get("content_type", []))
+        content_type = [content_type] if isinstance(content_type, int) else content_type
+        opts["content_type"] = validate_all_in(content_type, AuditContentType.to_str.keys())
+        content_quality = with_all(choice=opts.get("content_quality", []))
+        content_quality = [content_quality] if isinstance(content_quality, int) else content_quality
+        opts["content_quality"] = validate_all_in(content_quality, AuditContentQuality.to_str.keys())
         # fault tolerant validation for range fields. handles ", ":
         for field_name in list(SegmentQueryBuilder.AD_STATS_RANGE_FIELDS) + list(SegmentQueryBuilder.STATS_RANGE_FIELDS):
             field = opts.get(field_name, None)
