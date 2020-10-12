@@ -15,6 +15,9 @@ from rest_framework.exceptions import ValidationError
 
 from es_components.iab_categories import IAB_TIER2_SET
 from segment.models.constants import SegmentTypeEnum
+from segment.utils.utils import validate_all_in
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 
 
 class NullableDictField(serializers.DictField):
@@ -98,13 +101,26 @@ class NonRequiredBooleanField(serializers.BooleanField):
         super().__init__(allow_null=True, required=False, **kwargs)
 
 
+class CoerceListMemberField(serializers.Field):
+    def __init__(self, *args, **kwargs):
+        self.valid_values = kwargs.pop("valid_values")
+        super().__init__(*args, **kwargs)
+
+    """ Coerce incoming value to list """
+    def run_validation(self, data=None):
+        if not isinstance(data, list):
+            data = [data]
+        validated = validate_all_in(data, self.valid_values)
+        return validated
+
+
 class CTLParamsSerializer(serializers.Serializer):
     age_groups = NullableListField()
     average_cpv = AdsPerformanceRangeField()
     average_cpm = AdsPerformanceRangeField()
     content_categories = NullableListField()
-    content_quality = serializers.IntegerField()
-    content_type = serializers.IntegerField()
+    content_quality = CoerceListMemberField(valid_values=set(AuditContentQuality.to_str.keys()))
+    content_type = CoerceListMemberField(valid_values=set(AuditContentType.to_str.keys()))
     countries = NullableListField()
     ctr = AdsPerformanceRangeField()
     ctr_v = AdsPerformanceRangeField()
