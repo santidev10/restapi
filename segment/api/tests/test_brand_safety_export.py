@@ -1,5 +1,4 @@
 from io import BytesIO
-from uuid import uuid4
 
 import boto3
 from django.conf import settings
@@ -11,9 +10,6 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
-from segment.models import PersistentSegmentChannel
-from segment.models import PersistentSegmentVideo
-from segment.models.persistent.base import PersistentSegmentFileUpload
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
