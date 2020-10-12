@@ -108,7 +108,9 @@ class CoerceListMemberField(serializers.Field):
 
     """ Coerce incoming value to list """
     def run_validation(self, data=None):
-        if not isinstance(data, list):
+        if data is None or data is empty:
+            data = []
+        elif not isinstance(data, list):
             data = [data]
         validated = validate_all_in(data, self.valid_values)
         return validated

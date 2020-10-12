@@ -146,7 +146,7 @@ class GenerateSegmentUtils:
         for agg in self.avg_aggs:
             key = agg.split(".")[1]
             aggregations[key] /= count or 1
-        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"] // count or 1)
+        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"] // (count or 1))
         # Map channel keys
         map_keys = (
             ("observed_videos_likes", "likes"),
