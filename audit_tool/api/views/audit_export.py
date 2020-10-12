@@ -487,7 +487,10 @@ class AuditExportApiView(APIView):
         for chunk in chunks_generator(channel_ids, size=chunk_size):
             results = channel_manager.get(chunk, skip_none=True)
             for channel in results:
-                channel_scores[channel.main.id] = channel.brand_safety.overall_score
+                try:
+                    channel_scores[channel.main.id] = channel.brand_safety.overall_score
+                except Exception as e:
+                    channel_scores[channel.main.id] = None
         return channel_scores
 
     def export_channels(self, audit, audit_id=None, clean=None, export=None):

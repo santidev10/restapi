@@ -106,6 +106,19 @@ def validate_boolean(value):
     raise ValueError(f"The value: '{value}' is not a valid boolean.")
 
 
+def validate_in(member, container: list):
+    if member not in container:
+        valid_values = ", ".join(map(str, container))
+        raise ValueError(f"The value: '{member}' must be one of the following: {valid_values}")
+    return member
+
+
+def validate_all_in(members: list, container: list) -> list:
+    if not isinstance(members, list):
+        raise ValueError(f"'{str(members)}' should be a list.")
+    return [validate_in(member, container) for member in members]
+
+
 def with_all(all_options=None, choice=None):
     """
     If choice is None, create dict mapping of id, name for list of two element tuple options
@@ -124,10 +137,6 @@ def with_all(all_options=None, choice=None):
         data = None
     elif all_options:
         data = [{"id": _id, "name": name} for _id, name in all_options]
-        data.append({
-            "id": -1,
-            "name": "All",
-        })
     else:
         choice = int(choice)
         if choice == -1:
