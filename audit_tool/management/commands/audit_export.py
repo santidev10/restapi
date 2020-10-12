@@ -64,7 +64,7 @@ class Command(BaseCommand):
                 logger.exception(e)
                 print("no audits to export at present")
                 return
-        self.process_export()
+            self.process_export()
 
     # pylint: disable=too-many-statements
     def process_export(self):
