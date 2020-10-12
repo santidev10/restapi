@@ -10,7 +10,6 @@ shared_avg_aggs = (
 )
 shared_sum_aggs = (
     "stats.views",
-    "stats.observed_videos_likes",
 )
 video_sum_aggs = (
     "stats.likes",

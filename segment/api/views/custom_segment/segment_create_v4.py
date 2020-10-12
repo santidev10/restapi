@@ -9,14 +9,14 @@ from rest_framework.status import HTTP_201_CREATED
 
 from audit_tool.models import get_hash_name
 from segment.api.serializers import CTLParamsSerializer
-from segment.api.serializers.custom_segment_serializer_v4 import CustomSegmentSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
 class SegmentCreateApiViewV4(CreateAPIView):
-    serializer_class = CustomSegmentSerializer
+    serializer_class = CTLSerializer
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.custom_target_list_creation"),
@@ -34,7 +34,7 @@ class SegmentCreateApiViewV4(CreateAPIView):
         validated_data = self._validate_data(request, data)
         validated_data.update(request.FILES)
         segment = self._create(validated_data)
-        res = CustomSegmentSerializer(segment).data
+        res = CTLSerializer(segment).data
         res.update(validated_data)
         return Response(status=HTTP_201_CREATED, data=res)
 
@@ -54,11 +54,11 @@ class SegmentCreateApiViewV4(CreateAPIView):
 
     def _create(self, data: dict):
         """
-        Create segment with CustomSegmentSerializer
+        Create segment with CTLSerializer
         :param data: dict
         :return: CustomSegment
         """
-        # Pass full CTLParamsSerializer as context as well since CustomSegmentSerializer will only use some fields
+        # Pass full CTLParamsSerializer as context as well since CTLSerializer will only use some fields
         # to create instance
         context = {
             "request": self.request,

@@ -35,7 +35,7 @@ class FeaturedImageUrlMixin:
         return self.get_featured_image_url(instance)
 
 
-class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
+class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     id = IntegerField(read_only=True)
     is_vetting_complete = BooleanField(read_only=True)
     is_featured = BooleanField(read_only=True)
@@ -250,7 +250,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, Serializer):
         return audit
 
 
-class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
+class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
     def to_representation(self, instance):
         """
         overrides CustomSegmentSerializer. Users without certain permissions
