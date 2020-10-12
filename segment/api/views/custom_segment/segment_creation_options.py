@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -7,12 +9,15 @@ from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from audit_tool.models import IASHistory
 from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
+from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
 from es_components.countries import COUNTRIES
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
@@ -109,6 +114,10 @@ class SegmentCreationOptionsApiView(APIView):
                 **get_agg_min_max_filter_values({}, ads_stats_keys, "ads_stats"),
                 **get_agg_min_max_filter_values({}, stats_keys, "stats"),
             }
+        try:
+            latest_ias_date = IASHistory.objects.latest("started").started
+        except ObjectDoesNotExist:
+            latest_ias_date = timezone.now() - timedelta(days=7)
         options = {
             "age_groups": [
                 {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
@@ -133,6 +142,7 @@ class SegmentCreationOptionsApiView(APIView):
             "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
             "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
+            "latest_ias": latest_ias_date
         }
         return options
 
