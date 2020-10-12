@@ -55,8 +55,6 @@ class CustomSegment(SegmentMixin, Timestampable):
     )
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
-    # audit_meta_id is AuditProcessor id used for ctl inclusion / exclusion word detection
-    # audit_meta_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
     statistics = JSONField(default=dict)
     list_type = models.IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
@@ -117,12 +115,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         else:
             es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         return es_manager
-
-    @property
-    def data_type(self):
-        """ Maps segment integer type (0 = video, 1 = channel) to string"""
-        data_type = self.segment_id_to_type[self.segment_type]
-        return data_type
 
     @property
     def audit_utils(self):

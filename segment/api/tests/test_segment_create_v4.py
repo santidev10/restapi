@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
@@ -36,8 +37,8 @@ class SegmentCreateApiV4ViewTestCase(ExtendedAPITestCase):
             "age_groups_include_na": False,
             "sentiment": 1,
             "gender": None,
-            "content_type": -1,
-            "content_quality": -1,
+            "content_type": 1,
+            "content_quality": 1,
             "is_vetted": 1,
             "minimum_videos": None,
             "minimum_videos_include_na": None,
@@ -321,3 +322,40 @@ class SegmentCreateApiV4ViewTestCase(ExtendedAPITestCase):
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+    def test_inclusion_exclusion_success(self, mock_generate):
+        """ Test that saving with inclusion and exclusion list creates audit """
+        user = self.create_admin_user()
+        payload = {
+            "title": "test inclusion",
+            "segment_type": 1
+        }
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        in_words = "\n".join(f"include_word_{i}" for i in range(10))
+        inclusion_file.write(in_words.encode("utf-8"))
+        inclusion_file.seek(0)
+
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_exclusion.csv"
+        ex_words = "\n".join(f"exclude_word_{i}" for i in range(10))
+        exclusion_file.write(ex_words.encode("utf-8"))
+        exclusion_file.seek(0)
+        payload = self._get_params(**payload)
+        form = dict(
+            inclusion_file=inclusion_file,
+            exclusion_file=exclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
+        params = audit.params
+        self.assertEqual(params["source"], 2)
+        self.assertEqual(params["user_id"], user.id)
+        self.assertEqual(params["do_videos"], False)
+        self.assertEqual(in_words.split("\n"), params["inclusion"])
+        self.assertEqual(ex_words.split("\n"), params["exclusion"])
+        task_args = mock_generate.method_calls
+        self.assertEqual(task_args[0][1][0], response.data["id"])
+        self.assertEqual(task_args[0][2]["with_audit"], True)

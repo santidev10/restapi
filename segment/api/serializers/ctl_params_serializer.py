@@ -156,22 +156,6 @@ class CTLParamsSerializer(serializers.Serializer):
     minimum_views_include_na = NonRequiredBooleanField()
     mismatched_language = NonRequiredBooleanField()
 
-    def validate_content_type(self, data):
-        """
-        If data == -1, then query should include all content types, which is the same as not querying it at all.
-        """
-        if data == -1:
-            data = None
-        return data
-
-    def validate_content_quality(self, data):
-        """
-        If data == -1, then query should include all content qualities, which is the same as not querying it at all.
-        """
-        if data == -1:
-            data = None
-        return data
-
     def validate(self, data):
         validated_data = super().validate(data)
         self._validate_categories(data)
