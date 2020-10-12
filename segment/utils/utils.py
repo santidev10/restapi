@@ -126,28 +126,32 @@ def with_all(all_options=None, choice=None):
 
     If choice is not None, then implies that we should map choice to either:
      if choice == -1:
-        None as we want to include everything
+        list as we want to include everything
      else:
         list of single of multiple element list for Elasticseach terms query
     :param all_options: list [tuple(int, str)...] List of two element tuple choices
-    :param choice: None | int Input that will be mapped into list of terms for Elasticsearch query
+    :param choice: None | int | list Input that will be mapped into list of terms for Elasticsearch query
     :return:
     """
     if all_options is None and choice is None:
-        data = None
-    elif all_options:
+        return None
+
+    if all_options:
         data = [{"id": _id, "name": name} for _id, name in all_options]
         data.append({
             "id": -1,
             "name": "All",
         })
-    else:
-        choice = int(choice)
-        if choice == -1:
-            data = []
-        else:
-            data = choice
-    return data
+        return data
+
+    if isinstance(choice, list):
+        return choice
+
+    choice = int(choice)
+    if choice == -1:
+        return []
+
+    return choice
 
 
 def get_content_disposition(segment, is_vetting=False, ext="csv"):
