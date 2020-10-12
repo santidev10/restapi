@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task
 def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False):
-# pylint: disable=broad-except
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
@@ -39,6 +38,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
             generate_custom_segment(segment_id, results=results, tries=tries)
         else:
             raise e
+# pylint: disable=broad-except
     except Exception:
         logger.exception("Error in generate_custom_segment task")
 # pylint: enable=broad-except

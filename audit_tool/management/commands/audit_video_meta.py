@@ -135,8 +135,16 @@ class Command(BaseCommand):
                     rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
                     writer.writerows(rows)
             segment.s3.export_file_to_s3(temp_file, segment.export.filename)
+            aggregations = GenerateSegmentUtils(segment).get_aggregations(segment.es_manager.ids_query(clean_ids)[:50000])
+            segment.statistics = {
+                "items_count": len(clean_ids),
+                **aggregations
+            }
+            segment.save()
+        # pylint: disable=broad-except
         except Exception as err:
-            print(err)
+            logger.exception(err)
+        # pylint: enable=broad-except
         finally:
             os.remove(temp_file)
 

@@ -196,17 +196,23 @@ class GenerateSegmentUtils:
 
     def start_audit(self, filename):
         """
-
+        Upload audit source channel / video urls file and make audit visible for processing
         :param filename: str -> On disk fp of export file
         :return:
         """
         audit = AuditProcessor.objects.get(params__segment_id=self.segment.id)
         self._upload_audit_source_file(audit, filename)
         # Update audit.temp_stop to make it visible for processing
-        # audit.temp_stop = False
+        audit.temp_stop = False
         audit.save()
 
     def _upload_audit_source_file(self, audit, source_fp):
+        """
+        Create source urls file for audit processing
+        :param audit: AuditProcessor
+        :param source_fp: str
+        :return:
+        """
         source_urls_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
         with open(source_fp, mode="r") as source_file,\
                 open(source_urls_file, mode="w") as dest_file:
@@ -222,3 +228,23 @@ class GenerateSegmentUtils:
         audit.params["seed_file"] = name
         audit.save()
         os.remove(source_urls_file)
+
+    def get_aggregations(self, query):
+        """
+        Calculate Elasticsearch aggregations
+        :param query: Q object
+        :return:
+        """
+        search = self.segment.es_manager.search(query, limit=0)
+        for agg in self.avg_aggs:
+            metric_name = agg.split(".")[-1]
+            search.aggs.metric(metric_name, "avg", field=agg, missing=0)
+        for agg in self.sum_aggs:
+            metric_name = agg.split(".")[-1]
+            search.aggs.metric(metric_name, "sum", field=agg, missing=0)
+        agg_result = search.execute()
+        aggregations = {}
+        for agg in self.avg_aggs + self.sum_aggs:
+            metric_name = agg.split(".")[-1]
+            aggregations[metric_name] = getattr(agg_result.aggregations, metric_name).value
+        return aggregations
