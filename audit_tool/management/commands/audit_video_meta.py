@@ -108,14 +108,16 @@ class Command(BaseCommand):
     def update_ctl(self):
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         export_file = segment.s3.get_export_lines_stream(segment.export.filename)
-        if self.audit.audit_type == 0:
+        if self.audit.audit_type == 1:
             audit_model = AuditVideoProcessor
             model_fk_ref = "video"
             url_separator = "?v="
-        else:
+        elif self.audit.audit_type == 2:
             audit_model = AuditChannelProcessor
             model_fk_ref = "channel"
             url_separator = "/channel/"
+        else:
+            return
         clean_audits = audit_model.objects \
             .filter(audit=self.audit, clean=True) \
             .select_related(model_fk_ref) \
