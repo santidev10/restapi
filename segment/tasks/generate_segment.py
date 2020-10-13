@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
+def generate_segment(segment, query, size, sort=None, s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -34,7 +34,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param size: int
     :param sort: list -> Additional sort fields
     :param add_uuid: Add uuid to document segments section
-    :param s3_key: Optional s3 key for file upload
     :return:
     """
     generate_utils = GenerateSegmentUtils(segment)
@@ -81,7 +80,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
 
             for batch in es_generator:
                 # Clean blocklist items
-                batch = _clean_blocklist(batch, segment.segment_type)
+                batch = generate_utils.clean_blocklist(batch, segment.segment_type)
+                # Ensure that we are not adding items past limit
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
@@ -90,7 +90,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
                 context["vetting"] = vetting
                 generate_utils.write_to_file(batch, filename, segment, context, aggregations,
                                              write_header=write_header is True)
-                generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
+                generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
                 if seen >= size:
@@ -105,15 +105,22 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
             "top_three_items": top_three_items,
             **aggregations,
         }
-        s3_key = segment.get_s3_key() if s3_key is None else s3_key
-        content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
-        segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
-        download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
-        results = {
-            "statistics": statistics,
-            "download_url": download_url,
-            "s3_key": s3_key,
-        }
+        s3_key = s3_key or segment.get_s3_key()
+        if with_audit is True:
+            segment.s3.export_file_to_s3(filename, s3_key)
+            # CTL export csv is finished, start audit for further filtering with inclusion_file / exclusion
+            # file keywords
+            generate_utils.start_audit(filename)
+            results = {}
+        else:
+            content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
+            segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+            download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+            results = {
+                "statistics": statistics,
+                "download_url": download_url,
+                "s3_key": s3_key,
+            }
         return results
 
     finally:

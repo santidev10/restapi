@@ -53,19 +53,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         (0, VIDEO),
         (1, CHANNEL)
     )
-    segment_type_to_id = {
-        segment_type: _id for _id, segment_type in dict(SEGMENT_TYPE_CHOICES).items()
-    }
-    list_type_to_id = {
-        list_type: _id for _id, list_type in dict(LIST_TYPE_CHOICES).items()
-    }
-    segment_id_to_type = {
-        _id: segment_type for segment_type, _id in segment_type_to_id.items()
-    }
-    list_id_to_type = {
-        _id: list_type for list_type, _id in list_type_to_id.items()
-    }
-
+    # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
     statistics = JSONField(default=dict)
@@ -127,12 +115,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         else:
             es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         return es_manager
-
-    @property
-    def data_type(self):
-        """ Maps segment integer type (0 = video, 1 = channel) to string"""
-        data_type = self.segment_id_to_type[self.segment_type]
-        return data_type
 
     @property
     def audit_utils(self):

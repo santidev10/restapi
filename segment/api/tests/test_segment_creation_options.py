@@ -6,7 +6,6 @@ from unittest.mock import patch
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import IASHistory
 from audit_tool.utils.audit_utils import AuditUtils
@@ -28,9 +27,48 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
                                                 completed=timezone.now())
 
     def _get_url(self):
-        return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATION_OPTIONS)
+        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
-    def test_success(self, es_mock):
+    def _get_params(self, *_, **kwargs):
+        params = {
+            "severity_filters": None,
+            "score_threshold": 4,
+            "content_categories": [],
+            "languages": [],
+            "countries": [],
+            "countries_include_na": False,
+            "age_groups": [],
+            "age_groups_include_na": False,
+            "sentiment": 1,
+            "gender": None,
+            "content_type": 1,
+            "content_quality": 1,
+            "is_vetted": 1,
+            "minimum_videos": None,
+            "minimum_videos_include_na": None,
+            "minimum_views": None,
+            "minimum_views_include_na": None,
+            "minimum_subscribers": None,
+            "minimum_subscribers_include_na": False,
+            "ads_stats_include_na": False,
+            "last_upload_date": "",
+            "vetted_after": "",
+            "mismatched_language": None,
+            "video_view_rate": None,
+            "average_cpv": None,
+            "average_cpm": None,
+            "ctr": None,
+            "ctr_v": None,
+            "video_quartile_100_rate": None,
+            "last_30day_views": None,
+            "exclude_content_categories": [],
+            "ias_verified_date": ""
+        }
+        params.update(kwargs)
+        return params
+
+    def test_video_success(self, es_mock):
+        """ Test options and estimate count retrieved for video """
         self.create_test_user()
         data = types.SimpleNamespace()
         data.hits = types.SimpleNamespace()
@@ -44,18 +82,42 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
-            "segment_type": 2
+            "segment_type": 0
         }
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
+        payload = self._get_params(**payload)
+        response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data.get("video_items"))
-        self.assertIsNotNone(response.data.get("channel_items"))
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
         self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started)
+        self.assertEqual(response.data["video_items"], data.hits.total.value)
+
+    def test_channel_success(self, es_mock):
+        """ Test options and estimate count retrieved for channel """
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 7
+        data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = 33345
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 1,
+        }
+        payload = self._get_params(**payload)
+        response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
+        self.assertIsNotNone(response.data["options"].get("content_categories"))
+        self.assertIsNotNone(response.data["options"].get("countries"))
+        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started)
+        self.assertEqual(response.data["channel_items"], data.hits.total.value)
 
     def test_that_content_categories_are_iab_categories(self, es_mock):
         self.create_test_user()
@@ -75,79 +137,9 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertIn(bad_word_vettable.name, names)
         self.assertNotIn(bad_word_unvettable.name, names)
 
-    def test_success_video_items(self, es_mock):
-        self.create_test_user()
-        data = types.SimpleNamespace()
-        data.hits = types.SimpleNamespace()
-        data.took = 5
-        data.timed_out = False
-        data.hits.total = types.SimpleNamespace()
-        data.hits.total.value = 100000
-        data.max_score = None
-        data.hits.hits = []
-        es_mock.return_value = data
-        payload = {
-            "languages": ["es"],
-            "score_threshold": 1,
-            "segment_type": 0
-        }
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["video_items"], data.hits.total.value)
-
-    def test_success_channel_items(self, es_mock):
-        self.create_test_user()
-        data = types.SimpleNamespace()
-        data.hits = types.SimpleNamespace()
-        data.took = 5
-        data.timed_out = False
-        data.hits.total = types.SimpleNamespace()
-        data.hits.total.value = 100000
-        data.max_score = None
-        data.hits.hits = []
-        es_mock.return_value = data
-        payload = {
-            "languages": ["es"],
-            "score_threshold": 1,
-            "segment_type": 1,
-        }
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["channel_items"], data.hits.total.value)
-
     def test_success_params_empty(self, es_mock):
         self.create_test_user()
-        data = types.SimpleNamespace()
-        data.hits = types.SimpleNamespace()
-        data.took = 5
-        data.timed_out = False
-        data.hits.total = types.SimpleNamespace()
-        data.hits.total.value = 100000
-        data.max_score = None
-        data.hits.hits = []
-        es_mock.return_value = data
-        payload = {
-            "score_threshold": None,
-            "languages": None,
-            "severity_filters": None,
-            "countries": None,
-            "segment_type": None,
-            "sentiment": None,
-            "content_categories": None,
-            "last_upload_date": None,
-            "vetted_after": None,
-            "video_view_rate": None,
-            "average_cpv": None,
-            "average_cpm": None,
-            "ctr_i": None,
-            "ctr_v": None,
-            "video_completion_100": None,
-            "video_views_30_days": None
-        }
+        payload = self._get_params()
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
         )

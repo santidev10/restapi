@@ -20,24 +20,24 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
-    def _get_url(self, segment_type):
-        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
-                       kwargs=dict(segment_type=segment_type))
+    def _get_url(self, segment_type, pk):
+        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_DELETE,
+                       kwargs=dict(segment_type=segment_type, pk=str(pk)))
 
     def test_not_found(self):
         self.create_admin_user()
         CustomSegment.objects.create(id=1, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
         response = self.client.delete(
-            self._get_url("video") + "2/"
+            self._get_url("video", "2")
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_forbidden(self):
         user = self.create_test_user()
-        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, list_type=0, segment_type=0, title="test_1")
-        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, segment_type=0, title="test_1")
+        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), segment_type=0, title="test_1")
         response = self.client.delete(
-            self._get_url("video") + "2/"
+            self._get_url("video", "2")
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -54,7 +54,7 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         segment.es_manager.upsert(mock_data)
         sleep(1)
         response = self.client.delete(
-            self._get_url("video") + f"{segment.id}/"
+            self._get_url("video", segment.id)
         )
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(segment_uuid).get()
@@ -68,6 +68,6 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
                                      audit_id=1)
         CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
         response = self.client.delete(
-            self._get_url("video") + "1/"
+            self._get_url("video", 1)
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
