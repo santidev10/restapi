@@ -1,5 +1,16 @@
 import csv
+from operator import attrgetter
+import os
+import tempfile
 
+from django.conf import settings
+from uuid import uuid4
+
+from .constants import channel_sum_aggs
+from .constants import shared_avg_aggs
+from .constants import video_sum_aggs
+from audit_tool.models import AuditProcessor
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
@@ -9,9 +20,11 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
+from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
+from utils.utils import chunks_generator
 
 
 class GenerateSegmentUtils:
@@ -19,8 +32,13 @@ class GenerateSegmentUtils:
     segment = None
 
     def __init__(self, segment):
-        self.segment_type = None
+        self.segment_type = segment.segment_type
         self.segment = segment
+        self.avg_aggs = shared_avg_aggs
+        if self.segment_type in {0, "video"}:
+            self.sum_aggs = video_sum_aggs
+        else:
+            self.sum_aggs = channel_sum_aggs
 
     @staticmethod
     def get_vetting_data(segment, item_ids):
@@ -108,46 +126,38 @@ class GenerateSegmentUtils:
             if write_header is True:
                 writer.writeheader()
             writer.writerows(rows)
-        self.add_aggregations(aggregations, items, segment.segment_type)
+        self.add_aggregations(aggregations, items)
 
-    @staticmethod
-    def add_aggregations(aggregations, items, segment_type):
+    def add_aggregations(self, aggregations, items):
         """
         Add values to aggregations
         Aggregations are performed in Python as calculating in Elasticsearch appears to overload memory usage
         """
+        # Calculating aggregations with each items already retrieved is much more efficient than
+        # executing an additional aggregation query
         for item in items:
-            # Calculating aggregations with each items already retrieved is much more efficient than
-            # executing an additional aggregation query
-            aggregations["monthly_views"] += item.stats.last_30day_views or 0
-            aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
-            aggregations["views"] += item.stats.views or 0
-            aggregations["ctr"] += item.ads_stats.ctr or 0
-            aggregations["ctr_v"] += item.ads_stats.ctr_v or 0
-            aggregations["video_view_rate"] += item.ads_stats.video_view_rate or 0
-            aggregations["average_cpm"] += item.ads_stats.average_cpm or 0
-            aggregations["average_cpv"] += item.ads_stats.average_cpv or 0
+            for agg in self.avg_aggs + self.sum_aggs:
+                key = agg.split(".")[1]
+                value = attrgetter(agg)(item) or 0
+                aggregations[key] += value
 
-            if segment_type in (0, "video"):
-                aggregations["likes"] += item.stats.likes or 0
-                aggregations["dislikes"] += item.stats.dislikes or 0
-            else:
-                aggregations["likes"] += item.stats.observed_videos_likes or 0
-                aggregations["dislikes"] += item.stats.observed_videos_dislikes or 0
-                aggregations["monthly_subscribers"] += item.stats.last_30day_subscribers or 0
-                aggregations["subscribers"] += item.stats.subscribers or 0
-                aggregations["audited_videos"] += item.brand_safety.videos_scored or 0
-
-    @staticmethod
-    def finalize_aggregations(aggregations, count):
+    def finalize_aggregations(self, aggregations, count):
         """ Finalize aggregations and calculate averages"""
-        aggregations["average_brand_safety_score"] = map_brand_safety_score(
-            aggregations["average_brand_safety_score"] // (count or 1))
-        aggregations["ctr"] /= count or 1
-        aggregations["ctr_v"] /= count or 1
-        aggregations["video_view_rate"] /= count or 1
-        aggregations["average_cpm"] /= count or 1
-        aggregations["average_cpv"] /= count or 1
+        for agg in self.avg_aggs:
+            key = agg.split(".")[1]
+            aggregations[key] /= count or 1
+        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"] // (count or 1))
+        # Map channel keys
+        map_keys = (
+            ("observed_videos_likes", "likes"),
+            ("observed_videos_dislikes", "dislikes")
+        )
+        for old_key, new_key in map_keys:
+            try:
+                aggregations[new_key] = aggregations[old_key]
+                del aggregations[old_key]
+            except KeyError:
+                pass
         return aggregations
 
     def add_segment_uuid(self, segment, ids):
@@ -158,3 +168,83 @@ class GenerateSegmentUtils:
         """ Create set of source list urls from segment export file """
         source_ids = set(segment.s3.get_extract_export_ids(segment.source.filename))
         return source_ids
+
+    @staticmethod
+    def clean_blocklist(items, data_type=0):
+        """
+        Remove videos that have their channel blocklisted
+        :param items:
+        :param data_type: int -> 0 = videos, 1 = channels
+        :return:
+        """
+        channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
+        if data_type == 0:
+            channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None])
+            blocklist = {
+                channel.main.id: channel.custom_properties.blocklist
+                for channel in channels
+            }
+            non_blocklist = [
+                video for video in items if blocklist.get(video.channel.id) is not True
+                and video.custom_properties.blocklist is not True
+            ]
+        else:
+            non_blocklist = [
+                channel for channel in items if channel.custom_properties.blocklist is not True
+            ]
+        return non_blocklist
+
+    def start_audit(self, filename):
+        """
+        Upload audit source channel / video urls file and make audit visible for processing
+        :param filename: str -> On disk fp of export file
+        :return:
+        """
+        audit = AuditProcessor.objects.get(params__segment_id=self.segment.id)
+        self._upload_audit_source_file(audit, filename)
+        # Update audit.temp_stop to make it visible for processing
+        audit.temp_stop = False
+        audit.save()
+
+    def _upload_audit_source_file(self, audit, source_fp):
+        """
+        Create source urls file for audit processing
+        :param audit: AuditProcessor
+        :param source_fp: str
+        :return:
+        """
+        source_urls_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        with open(source_fp, mode="r") as source_file,\
+                open(source_urls_file, mode="w") as dest_file:
+            reader = csv.reader(source_file)
+            writer = csv.writer(dest_file)
+            # Skip header and only use urls as source
+            next(reader)
+            for chunk in chunks_generator(reader, size=1000):
+                rows = [[row[0]] for row in chunk]
+                writer.writerows(rows)
+        name = uuid4().hex
+        AuditFileS3Exporter.export_file_to_s3(source_urls_file, name)
+        audit.params["seed_file"] = name
+        audit.save()
+        os.remove(source_urls_file)
+
+    def get_aggregations(self, query):
+        """
+        Calculate Elasticsearch aggregations
+        :param query: Q object
+        :return:
+        """
+        search = self.segment.es_manager.search(query, limit=0)
+        for agg in self.avg_aggs:
+            metric_name = agg.split(".")[-1]
+            search.aggs.metric(metric_name, "avg", field=agg, missing=0)
+        for agg in self.sum_aggs:
+            metric_name = agg.split(".")[-1]
+            search.aggs.metric(metric_name, "sum", field=agg, missing=0)
+        agg_result = search.execute()
+        aggregations = {}
+        for agg in self.avg_aggs + self.sum_aggs:
+            metric_name = agg.split(".")[-1]
+            aggregations[metric_name] = getattr(agg_result.aggregations, metric_name).value
+        return aggregations

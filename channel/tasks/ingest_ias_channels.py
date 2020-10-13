@@ -4,6 +4,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from audit_tool.models import IASChannel
+from audit_tool.models import IASHistory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from saas import celery_app
@@ -49,6 +50,7 @@ def ingest_ias_channels():
                 continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
+                ias_history, _ = IASHistory.objects.get_or_create(name=file_name)
                 new_cids = []
                 for byte in ias_content["Body"].iter_lines():
                     row = (byte.decode("utf-8")).split(",")
@@ -65,13 +67,16 @@ def ingest_ias_channels():
                     channel.ias_data.ias_verified = timezone.now()
                     ias_channel = IASChannel.get_or_create(channel_id=channel_id)
                     ias_channel.ias_verified = timezone.now()
-                    ias_channel.save(update_fields=["ias_verified"])
+                    ias_channel.history = ias_history
+                    ias_channel.save(update_fields=["ias_verified", "history"])
                 channel_manager.upsert(new_channels)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
                 ingestor.copy_from(source_key, dest_key)
                 if settings.ARCHIVE_IAS:
                     ingestor.delete_obj(source_key)
+                ias_history.completed = timezone.now()
+                ias_history.save(update_fields=["completed"])
             # pylint: disable=broad-except
             except Exception as e:
                 # pylint: enable=broad-except

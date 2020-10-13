@@ -1,7 +1,5 @@
 import json
-import uuid
 from io import BytesIO
-from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -9,9 +7,9 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
-from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from userprofile.permissions import Permissions
@@ -20,10 +18,48 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-@patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment")
-class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
+@patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
+class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
-        return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATE)
+        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
+
+    def _get_params(self, *_, **kwargs):
+        params = {
+            "severity_filters": None,
+            "score_threshold": 4,
+            "content_categories": [],
+            "languages": [],
+            "countries": [],
+            "countries_include_na": False,
+            "age_groups": [],
+            "age_groups_include_na": False,
+            "sentiment": 1,
+            "gender": None,
+            "content_type": 1,
+            "content_quality": 1,
+            "is_vetted": 1,
+            "minimum_videos": None,
+            "minimum_videos_include_na": None,
+            "minimum_views": None,
+            "minimum_views_include_na": None,
+            "minimum_subscribers": None,
+            "minimum_subscribers_include_na": False,
+            "ads_stats_include_na": False,
+            "last_upload_date": "",
+            "vetted_after": "",
+            "mismatched_language": None,
+            "video_view_rate": None,
+            "average_cpv": None,
+            "average_cpm": None,
+            "ctr": None,
+            "ctr_v": None,
+            "video_quartile_100_rate": None,
+            "last_30day_views": None,
+            "exclude_content_categories": [],
+            "ias_verified_date": ""
+        }
+        params.update(kwargs)
+        return params
 
     def test_reject_permission(self, mock_generate):
         self.create_test_user()
@@ -40,7 +76,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "list_type": "whitelist",
             "segment_type": 2
         }
-        form = dict(data=json.dumps(data))
+        params = self._get_params(**data)
+        form = dict(data=json.dumps(params))
         response = self.client.post(
             self._get_url(), form
         )
@@ -60,6 +97,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        data = self._get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(
             self._get_url(), form
@@ -78,6 +116,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        data = self._get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -94,6 +133,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        data = self._get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -110,20 +150,21 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": content_categories,
             "segment_type": 0,
-            "last_upload_date": "2000/01/01",
+            "last_upload_date": "2000-01-01",
             "content_type": 0,
             "content_quality": 0,
         }
+        data = self._get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        response_json = response.json()
+        response_json = response.json()['non_field_errors'][0]
         for category in content_categories:
-            self.assertIn(category, response_json[0])
+            self.assertIn(category, response_json)
 
     def test_success_response_create(self, mock_generate):
         self.create_admin_user()
-        data = {
+        payload = {
             "languages": ["es"],
             "score_threshold": 1,
             "title": "test blacklist",
@@ -140,38 +181,12 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "ctr_v": 0,
             "ctr": 0,
         }
-        form = dict(data=json.dumps(data))
-        response = self.client.post(self._get_url(), form)
-        data = response.data[0]
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(set(data.keys()),
-                         set(SegmentCreateApiViewV3.response_fields + ("statistics", "owner_id",
-                                                                       "list_type", "title_hash")))
-        self.assertTrue(data["pending"])
-
-    def test_success_create_export_query(self, mock_generate):
-        """ Test export query is created correctly """
-        self.create_admin_user()
-        payload = {
-            "languages": ["es"],
-            "score_threshold": 1,
-            "title": "test blacklist",
-            "content_categories": [],
-            "minimum_views": 0,
-            "segment_type": 0,
-            "content_type": 0,
-            "content_quality": 0,
-        }
+        payload = self._get_params(**payload)
         form = dict(data=json.dumps(payload))
         response = self.client.post(self._get_url(), form)
-        data = response.data[0]
+        data = response.data
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        segment = CustomSegment.objects.get(id=data["id"])
-        params = segment.export.query["params"]
-        payload.pop("score_threshold")
-        payload.pop("title")
-        payload.pop("segment_type")
-        self.assertEqual(payload, {key: params[key] for key in payload.keys()})
+        self.assertTrue(data["pending"])
 
     def test_create_integer_values(self, mock_generate):
         self.create_admin_user()
@@ -186,10 +201,11 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        payload = self._get_params(**payload)
         form = dict(data=json.dumps(payload))
         with patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
             response = self.client.post(self._get_url(), form)
-        data = response.data[0]
+        data = response.data
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(query["params"]["minimum_views"], data["minimum_views"])
@@ -217,6 +233,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        payload_1 = self._get_params(**payload_1)
+        payload_2 = self._get_params(**payload_2)
         form_1 = dict(data=json.dumps(payload_1))
         form_2 = dict(data=json.dumps(payload_2))
         response_1 = self.client.post(self._get_url(), form_1)
@@ -224,7 +242,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response_1.status_code, HTTP_201_CREATED)
         self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_segment_creation(self, *_):
+    def test_segment_creation(self, mock_generate):
         self.create_admin_user()
         payload = {
             "languages": ["pt"],
@@ -235,95 +253,27 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
-            payload["title"] = "video"
-            payload["segment_type"] = 0
-            form = dict(data=json.dumps(payload))
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
-            self.assertTrue(CustomSegment.objects.filter(
-                title=payload["title"], segment_type=payload["segment_type"], list_type=0
-            ).exists())
-            mock_generate.delay.assert_called_once()
+        payload = self._get_params(**payload)
+        payload["title"] = "video"
+        payload["segment_type"] = 0
+        form = dict(data=json.dumps(payload))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(
+            title=payload["title"], segment_type=payload["segment_type"]
+        ).exists())
+        mock_generate.delay.assert_called_once()
 
-        with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment") as mock_generate:
             payload["title"] = f"test_segment_creation_channel_{next(int_iterator)}"
             payload["segment_type"] = 1
             form = dict(data=json.dumps(payload))
             response = self.client.post(self._get_url(), form)
             self.assertEqual(response.status_code, HTTP_201_CREATED)
             self.assertTrue(CustomSegment.objects.filter(
-                title=payload["title"], segment_type=payload["segment_type"], list_type=0
+                title=payload["title"], segment_type=payload["segment_type"]
             ).exists())
             mock_generate.delay.assert_called_once()
-
-        with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
-            payload["title"] = "multiple"
-            payload["segment_type"] = 2
-            form = dict(data=json.dumps(payload))
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
-            self.assertEqual(CustomSegment.objects.filter(title=payload["title"], list_type=0).count(), 2)
-            self.assertEqual(mock_generate.delay.call_count, 2)
-
-    def test_segment_creation_raises_deletes(self, mock_generate):
-        self.create_admin_user()
-        payload = {
-            "title": "test_segment_creation_raises_deletes",
-            "score_threshold": 0,
-            "content_categories": [
-                "20"
-            ],
-            "languages": [
-                "ar"
-            ],
-            "severity_counts": {
-                "1": [1, 2, 3],
-                "4": [1, 3],
-                "6": [2]
-            },
-            "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        form = dict(data=json.dumps(payload))
-        segment = CustomSegment.objects.create(
-            id=next(int_iterator),
-            title=payload["title"],
-            list_type=0,
-            segment_type=0,
-            uuid=uuid.uuid4()
-        )
-        with patch("segment.api.views.custom_segment.segment_create_v3.SegmentCreateApiViewV3._create") as \
-            mock_create, \
-            patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
-            mock_create_success = MagicMock()
-            mock_create_success.id = segment.id
-            mock_create.side_effect = [mock_create_success, Exception]
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertFalse(CustomSegment.objects.filter(title=payload["title"], segment_type__in=[1, 2]).exists())
-
-    def test_source_one_list_fail(self, mock_generate):
-        """ Test only allowing source list with one list creation """
-        self.create_admin_user()
-        payload = {
-            "title": "test_source_one_list_fail",
-            "score_threshold": 0,
-            "content_categories": [],
-            "languages": [],
-            "severity_counts": {},
-            "segment_type": 2,
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        file = BytesIO()
-        form = dict(
-            file=file,
-            data=json.dumps(payload)
-        )
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_with_source_success(self, mock_generate):
         self.create_admin_user()
@@ -337,17 +287,18 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        payload = self._get_params(**payload)
         file = BytesIO()
         file.name = payload["title"]
         form = dict(
-            file=file,
+            source_file=file,
             data=json.dumps(payload)
         )
         with patch("segment.models.custom_segment.SegmentExporter"):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
-        source = CustomSegment.objects.get(id=response.data[0]["id"]).source
+        source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
@@ -365,6 +316,44 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
+        data = self._get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+    def test_inclusion_exclusion_success(self, mock_generate):
+        """ Test that saving with inclusion and exclusion list creates audit """
+        user = self.create_admin_user()
+        payload = {
+            "title": "test inclusion",
+            "segment_type": 1
+        }
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        in_words = "\n".join(f"include_word_{i}" for i in range(10))
+        inclusion_file.write(in_words.encode("utf-8"))
+        inclusion_file.seek(0)
+
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_exclusion.csv"
+        ex_words = "\n".join(f"exclude_word_{i}" for i in range(10))
+        exclusion_file.write(ex_words.encode("utf-8"))
+        exclusion_file.seek(0)
+        payload = self._get_params(**payload)
+        form = dict(
+            inclusion_file=inclusion_file,
+            exclusion_file=exclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
+        params = audit.params
+        self.assertEqual(params["source"], 2)
+        self.assertEqual(params["user_id"], user.id)
+        self.assertEqual(params["do_videos"], False)
+        self.assertEqual(in_words.split("\n"), params["inclusion"])
+        self.assertEqual(ex_words.split("\n"), params["exclusion"])
+        task_args = mock_generate.method_calls
+        self.assertEqual(task_args[0][1][0], response.data["id"])
+        self.assertEqual(task_args[0][2]["with_audit"], True)

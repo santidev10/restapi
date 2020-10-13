@@ -118,6 +118,7 @@ class AuditProcessor(models.Model):
     SOURCE_TYPES = {
         "0": "Audit Tool",
         "1": "Custom Target List Creator",
+        "2": "Custom Target List with Exclusion/Inclusions",
     }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -838,9 +839,16 @@ class AuditContentQuality(models.Model):
         return quality
 
 
+class IASHistory(Timestampable):
+    name = models.CharField(max_length=100)
+    started = models.DateTimeField(auto_now_add=True, db_index=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
+
+
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
+    history = models.ForeignKey(IASHistory, db_index=True, null=True, default=None, on_delete=models.CASCADE)
 
     @staticmethod
     def get_or_create(channel_id, create=True):

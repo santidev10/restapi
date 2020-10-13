@@ -11,6 +11,8 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
+from segment.models.constants import SegmentListType
+from segment.models.constants import SegmentTypeEnum
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.models import UserProfile
 
@@ -71,7 +73,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def validate_list_type(self, list_type):
         try:
-            data = self.map_to_id(list_type.lower().strip(), item_type="list")
+            data = SegmentListType[list_type.upper().strip()].value
         except KeyError:
             raise ValueError("list_type must be either whitelist or blacklist.")
         return data
@@ -96,7 +98,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
             raise ValueError("A {} target list with the title: {} already exists.".format(
-                self.map_to_str(segment_type, item_type="segment"), title))
+                SegmentTypeEnum(segment_type).name.lower(), title))
         return title
 
     def to_representation(self, instance):
@@ -104,7 +106,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         data.pop("title_hash", None)
         data["pending"] = not bool(data["statistics"])
         # adding this here instead of using a SerializerMethodField to preserve to-db serialization
-        data["segment_type"] = self.map_to_str(instance.segment_type, item_type="segment")
+        data["segment_type"] = SegmentTypeEnum(instance.segment_type).name.lower()
         if not data["statistics"]:
             data["statistics"] = {
                 "top_three_items": [{
@@ -122,24 +124,6 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         except CustomSegmentFileUpload.DoesNotExist:
             data["download_url"] = None
         return data
-
-    @staticmethod
-    def map_to_str(value, item_type="segment"):
-        config = {
-            "segment": dict(CustomSegment.SEGMENT_TYPE_CHOICES),
-            "list": dict(CustomSegment.LIST_TYPE_CHOICES)
-        }
-        to_str = config[item_type][int(value)]
-        return to_str
-
-    @staticmethod
-    def map_to_id(value, item_type="segment"):
-        config = {
-            "segment": CustomSegment.segment_type_to_id,
-            "list": CustomSegment.list_type_to_id
-        }
-        to_id = config[item_type][value]
-        return to_id
 
     def get_source_name(self, obj):
         """ Get name of uploaded source file """
