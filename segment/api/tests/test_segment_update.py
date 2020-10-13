@@ -20,10 +20,10 @@ from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.s3_mock import mock_s3 as mock_s3
 
 
-class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
+class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def _get_url(self, reverse_args=None):
-        return reverse(f"{Namespace.SEGMENT}:{Name.CUSTOM_SEGMENT_UPDATE}", args=reverse_args)
+        return reverse(f"{Namespace.SEGMENT_V2}:{Name.CUSTOM_SEGMENT_UPDATE}", args=reverse_args)
 
     def _create_custom_segment(self, owner):
         uuid_id = uuid.uuid4()
@@ -55,7 +55,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
         )
 
-        list_url = reverse(f"{Namespace.SEGMENT_V2}:{Name.SEGMENT_LIST}", args=['video'])
+        list_url = reverse(f"{Namespace.SEGMENT_V2}:{Name.SEGMENT_LIST}") + "?segment_type=video"
         list_response = self.client.get(list_url)
 
         self.assertEqual(list_response.status_code, HTTP_200_OK)
