@@ -3,6 +3,7 @@ from django.db import transaction
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
+from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.exceptions import ValidationError
@@ -45,7 +46,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     pending = SerializerMethodField()
     segment_type = CharField()
     source_name = SerializerMethodField(read_only=True)
-    statistics = SerializerMethodField()
+    statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
     title_hash = IntegerField(write_only=True)
     thumbnail_image_url = SerializerMethodField(read_only=True)
@@ -65,16 +66,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         except CustomSegmentSourceFileUpload.DoesNotExist:
             name = None
         return name
-
-    def get_statistics(self, obj):
-        statistics = obj.statistics if obj.statistics else {
-            "top_three_items": [{
-                "image_url": S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL,
-                "id": None,
-                "title": None
-            } for _ in range(3)]
-        }
-        return statistics
 
     def validate_owner(self, owner_id):
         try:

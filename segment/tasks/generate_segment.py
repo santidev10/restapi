@@ -54,7 +54,6 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
         sort = sort or [segment.config.SORT_KEY]
         seen = 0
         item_ids = []
-        top_three_items = []
         aggregations = defaultdict(int)
         default_search_config = generate_utils.default_search_config
         # Must use bool flag to determine if we should write header instead of seen. If there is a source_list, then
@@ -88,8 +87,7 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
                 # Get the current batch's Postgres vetting data context for serialization
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                generate_utils.write_to_file(batch, filename, segment, context, aggregations,
-                                             write_header=write_header is True)
+                generate_utils.write_to_file(batch, filename, segment, context, write_header=write_header is True)
                 generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
@@ -102,7 +100,6 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
             generate_utils.add_segment_uuid(segment, item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE])
         statistics = {
             "items_count": seen,
-            "top_three_items": top_three_items,
             **aggregations,
         }
         s3_key = s3_key or segment.get_s3_key()

@@ -2,6 +2,7 @@ import csv
 from operator import attrgetter
 import os
 import tempfile
+from collections import defaultdict
 
 from django.conf import settings
 from uuid import uuid4
@@ -111,7 +112,7 @@ class GenerateSegmentUtils:
         )
         return config
 
-    def write_to_file(self, items, filename, segment, serializer_context, aggregations, write_header=False, mode="a"):
+    def write_to_file(self, items, filename, segment, serializer_context, write_header=False, mode="a"):
         """ Write data to csv file """
         rows = []
         fieldnames = segment.export_serializer.columns
@@ -126,7 +127,6 @@ class GenerateSegmentUtils:
             if write_header is True:
                 writer.writeheader()
             writer.writerows(rows)
-        self.add_aggregations(aggregations, items)
 
     def add_aggregations(self, aggregations, items):
         """
@@ -146,7 +146,7 @@ class GenerateSegmentUtils:
         for agg in self.avg_aggs:
             key = agg.split(".")[1]
             aggregations[key] /= count or 1
-        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"] // (count or 1))
+        aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"])
         # Map channel keys
         map_keys = (
             ("observed_videos_likes", "likes"),
@@ -229,13 +229,25 @@ class GenerateSegmentUtils:
         audit.save()
         os.remove(source_urls_file)
 
-    def get_aggregations(self, query):
+    def get_aggregations_by_ids(self, ids):
         """
-        Calculate Elasticsearch aggregations
+        Convenience method to retrieve documents and manually calculate aggregations
+        If number of ids is too large, calculating aggregations by ids query is increasingly slow
+        """
+        aggregations = defaultdict(int)
+        for chunk in chunks_generator(ids, size=10000):
+            items = self.segment.es_manager.get(chunk, skip_none=True)
+            self.add_aggregations(aggregations, items)
+        self.finalize_aggregations(aggregations, len(ids))
+        return aggregations
+
+    def get_aggregations_by_query(self, query):
+        """
+        Calculate Elasticsearch aggregations by query
         :param query: Q object
         :return:
         """
-        search = self.segment.es_manager.search(query, limit=0)
+        search = self.segment.es_manager.search(filters=query, limit=0)
         for agg in self.avg_aggs:
             metric_name = agg.split(".")[-1]
             search.aggs.metric(metric_name, "avg", field=agg, missing=0)
