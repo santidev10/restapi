@@ -12,7 +12,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from saas.urls.namespaces import Namespace
-from segment.api.serializers.custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
+from segment.api.serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.custom_segment import CustomSegment

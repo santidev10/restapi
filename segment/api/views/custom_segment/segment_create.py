@@ -15,7 +15,7 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
-class SegmentCreateApiViewV4(CreateAPIView):
+class SegmentCreateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
         or_permission_classes(
@@ -72,7 +72,3 @@ class SegmentCreateApiViewV4(CreateAPIView):
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
         return segment
-
-
-class SegmentCreationOptionsError(Exception):
-    pass

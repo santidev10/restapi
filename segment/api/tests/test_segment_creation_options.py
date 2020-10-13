@@ -28,7 +28,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
                                                 completed=timezone.now())
 
     def _get_url(self):
-        return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATION_OPTIONS)
+        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
     def test_success(self, es_mock):
         self.create_test_user()
