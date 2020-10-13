@@ -1,7 +1,5 @@
 shared_avg_aggs = (
-    "stats.last_30day_views",
     "brand_safety.overall_score",
-    "stats.views",
     "ads_stats.ctr",
     "ads_stats.ctr_v",
     "ads_stats.video_view_rate",
@@ -10,6 +8,7 @@ shared_avg_aggs = (
 )
 shared_sum_aggs = (
     "stats.views",
+    "stats.last_30day_views",
 )
 video_sum_aggs = (
     "stats.likes",
