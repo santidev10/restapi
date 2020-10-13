@@ -281,6 +281,7 @@ class AuditExportApiView(APIView):
         if count > self.MAX_ROWS:
             count = self.MAX_ROWS
         num_done = 0
+        print("EXPORT {}: starting video processing".format(export.id))
         for avp in videos:
             vid = avp.video
             try:
@@ -633,11 +634,14 @@ class AuditExportApiView(APIView):
                 except Exception:
                 # pylint: enable=broad-except
                     pass
+        print("EXPORT: getting channel scores: starting")
         channel_scores = self.get_scores_for_channels(channel_ids)
+        print("EXPORT: getting channel scores: done")
         rows = [cols]
         count = channels.count()
         num_done = 0
         # sections = (Sections.MONETIZATION,)
+        print("EXPORT: starting channel processing of export {}".format(export.id))
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta
