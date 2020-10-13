@@ -7,8 +7,6 @@ from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent.constants import PersistentSegmentCategory
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.unittests.test_case import ExtendedAPITestCase
