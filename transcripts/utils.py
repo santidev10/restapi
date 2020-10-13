@@ -170,6 +170,9 @@ class YTVideo(object):
         Parses the response from a YT Video's URL to find the internal API URL Youtube is using to generate ASR captions,
         then makes a request to that internal API URL to retrieve the video's ASR captions. Then cleans those captions
         and stores the captions and language.
+
+        NOTE: If Youtube ever changes the internal API URL it uses for retrieving ASR captions, this method will need
+        to be updated.
         """
         try:
             vid_response, self.vid_url_status = self.get_response_through_proxy(self.scraper, self.vid_url)
