@@ -31,44 +31,40 @@ class Command(BaseCommand):
         self.thread_id = options.get("thread_id")
         if not self.thread_id:
             self.thread_id = 0
-        try:
-            with PidFile(piddir=".", pidname="export_queue_{}.pid".format(self.thread_id)):
-                try:
-                    self.machine_number = settings.AUDIT_MACHINE_NUMBER
-                # pylint: disable=broad-except
-                except Exception:
-                # pylint: enable=broad-except
-                    self.machine_number = 0
-                sleep(2 * (self.machine_number + self.thread_id))
-                if self.machine_number is not None and self.thread_id is not None:
-                    zombie_exports = AuditExporter.objects.filter(
-                        started__isnull=False,
-                        completed__isnull=True,
-                        machine=self.machine_number,
-                        thread=self.thread_id
+        with PidFile(piddir=".", pidname="export_queue_{}.pid".format(self.thread_id)):
+            try:
+                self.machine_number = settings.AUDIT_MACHINE_NUMBER
+            # pylint: disable=broad-except
+            except Exception:
+            # pylint: enable=broad-except
+                self.machine_number = 0
+            sleep(2 * (self.machine_number + self.thread_id))
+            if self.machine_number is not None and self.thread_id is not None:
+                zombie_exports = AuditExporter.objects.filter(
+                    started__isnull=False,
+                    completed__isnull=True,
+                    machine=self.machine_number,
+                    thread=self.thread_id
+                )
+                if zombie_exports.count() > 0:
+                    zombie_exports.update(
+                        started=None,
+                        percent_done=0,
+                        machine=None,
+                        thread=None,
                     )
-                    if zombie_exports.count() > 0:
-                        zombie_exports.update(
-                            started=None,
-                            percent_done=0,
-                            machine=None,
-                            thread=None,
-                        )
-                try:
-                    self.export = \
-                        AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("audit__pause",
-                                                                                                            "id")[0]
-                    self.audit = self.export.audit
-                # pylint: disable=broad-except
-                except Exception as e:
-                # pylint: enable=broad-except
-                    logger.exception(e)
-                    print("no audits to export at present")
-                    return
-        except Exception as e:
-            print(str(e))
-            return
-        self.process_export()
+            try:
+                self.export = \
+                    AuditExporter.objects.filter(completed__isnull=True, started__isnull=True, machine=None, thread=None).order_by("audit__pause",
+                                                                                                        "id")[0]
+                self.audit = self.export.audit
+            # pylint: disable=broad-except
+            except Exception as e:
+            # pylint: enable=broad-except
+                logger.exception(e)
+                print("no audits to export at present")
+                return
+            self.process_export()
 
     # pylint: disable=too-many-statements
     def process_export(self):
