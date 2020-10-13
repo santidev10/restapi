@@ -42,6 +42,7 @@ def generate_vetted_segment(segment_id, recipient=None):
             vetted_export = CustomSegmentVettedFileUpload.objects.create(segment=segment)
             vetted_export.download_url = results["download_url"]
             vetted_export.completed_at = timezone.now()
+            vetted_export.filename = s3_key
             vetted_export.save()
             segment.save()
             send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])

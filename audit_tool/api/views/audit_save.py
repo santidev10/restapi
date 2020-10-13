@@ -359,6 +359,14 @@ class AuditFileS3Exporter(S3Exporter):
         return key
 
     @classmethod
+    def export_file_to_s3(cls, filename, name):
+        cls._s3().upload_file(
+            Bucket=cls.bucket_name,
+            Key=cls.get_s3_key(name),
+            Filename=filename,
+        )
+
+    @classmethod
     def export_to_s3(cls, exported_file, name):
         cls._s3().put_object(
             Bucket=cls.bucket_name,
