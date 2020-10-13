@@ -40,6 +40,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     is_vetting_complete = BooleanField(read_only=True)
     is_featured = BooleanField(read_only=True)
     is_regenerating = BooleanField(read_only=True)
+    audit_id = IntegerField(allow_null=True, read_only=True)
     owner_id = CharField(max_length=50)
     pending = SerializerMethodField()
     segment_type = CharField()
