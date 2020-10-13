@@ -449,7 +449,7 @@ class AuditExportApiView(APIView):
                 if export.percent_done < 0:
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
-                print("export at {}".format(export.percent_done))
+                print("video export {} at {}".format(export.id, export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
@@ -746,7 +746,7 @@ class AuditExportApiView(APIView):
                     export.percent_done = 0
                 if export.percent_done > old_percent:
                     export.save(update_fields=['percent_done'])
-                print("export at {}, {}/{}".format(export.percent_done, num_done, count))
+                print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
