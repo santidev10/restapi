@@ -25,38 +25,40 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
 
     def _get_params(self, *_, **kwargs):
         params = {
-            "severity_filters": None,
-            "score_threshold": 4,
-            "content_categories": [],
-            "languages": [],
-            "countries": [],
-            "countries_include_na": False,
+            "ads_stats_include_na": False,
             "age_groups": [],
             "age_groups_include_na": False,
-            "sentiment": 1,
-            "gender": None,
-            "content_type": 1,
+            "average_cpv": None,
+            "average_cpm": None,
+            "content_categories": [],
             "content_quality": 1,
+            "content_type": 1,
+            "countries": [],
+            "countries_include_na": False,
+            "ctr": None,
+            "ctr_v": None,
+            "exclude_content_categories": [],
+            "exclusion_hit_threshold": 1,
+            "gender": None,
+            "ias_verified_date": "",
             "is_vetted": 1,
+            "inclusion_hit_threshold": 1,
+            "languages": [],
+            "last_30day_views": None,
+            "last_upload_date": "",
             "minimum_videos": None,
             "minimum_videos_include_na": None,
             "minimum_views": None,
             "minimum_views_include_na": None,
             "minimum_subscribers": None,
             "minimum_subscribers_include_na": False,
-            "ads_stats_include_na": False,
-            "last_upload_date": "",
-            "vetted_after": "",
             "mismatched_language": None,
+            "score_threshold": 4,
+            "sentiment": 1,
+            "severity_filters": None,
+            "vetted_after": "",
             "video_view_rate": None,
-            "average_cpv": None,
-            "average_cpm": None,
-            "ctr": None,
-            "ctr_v": None,
             "video_quartile_100_rate": None,
-            "last_30day_views": None,
-            "exclude_content_categories": [],
-            "ias_verified_date": ""
         }
         params.update(kwargs)
         return params
@@ -352,6 +354,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(params["source"], 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
+        self.assertEqual(audit.temp_stop, True)
         self.assertEqual(in_words.split("\n"), params["inclusion"])
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
         task_args = mock_generate.method_calls
