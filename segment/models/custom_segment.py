@@ -66,6 +66,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
+    params = JSONField(default=dict)
 
     @property
     def export_serializer(self):

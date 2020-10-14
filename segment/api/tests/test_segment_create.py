@@ -323,6 +323,36 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
+    def test_segment_saves_params(self, mock_generate):
+        """ Test that params saves successfully """
+        self.create_admin_user()
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_inclusion.csv"
+        payload = {
+            "title": "test saves params",
+            "segment_type": 0
+        }
+        payload = self._get_params(**payload)
+        form = dict(
+            inclusion_file=inclusion_file,
+            exclusion_file=exclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        segment = CustomSegment.objects.get(id=response.data["id"])
+        expected_params = {
+            "inclusion_file": inclusion_file.name,
+            "exclusion_file": exclusion_file.name,
+        }
+        saved_params = {
+            key: segment.params.get(key, None) for key in expected_params.keys()
+        }
+        self.assertEqual(expected_params, saved_params)
+
     def test_inclusion_exclusion_success(self, mock_generate):
         """ Test that saving with inclusion and exclusion list creates audit """
         user = self.create_admin_user()
