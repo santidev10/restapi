@@ -633,7 +633,10 @@ class AuditExportApiView(APIView):
                 except Exception:
                 # pylint: enable=broad-except
                     pass
-        channel_scores = self.get_scores_for_channels(channel_ids)
+        try:
+            channel_scores = self.get_scores_for_channels(channel_ids)
+        except Exception:
+            print("EXPORT: problem getting scores, connection issue")
         rows = [cols]
         count = channels.count()
         num_done = 0
