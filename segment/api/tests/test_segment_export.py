@@ -21,6 +21,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
+@patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
     def _get_url(self, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_EXPORT, kwargs=dict(pk=pk))
@@ -107,7 +108,6 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         segment, _ = self._create_segment(segment_params=dict(owner=user))
         with patch.object(S3Exporter, "exists", return_value=True), \
-             patch("segment.models.models.safe_bulk_create", new=patch_bulk_create), \
              patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
             response = self.client.get(self._get_url(segment.id))
             self.assertEqual(response.status_code, HTTP_200_OK)

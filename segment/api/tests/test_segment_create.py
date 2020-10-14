@@ -23,6 +23,7 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
+@patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
@@ -401,8 +402,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         payload = self._get_params(title="test", segment_type=1)
         form = dict(data=json.dumps(payload))
-        with patch("segment.models.models.safe_bulk_create", new=patch_bulk_create):
-            response = self.client.post(self._get_url(), form)
+        response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.CREATE.value)
         self.assertTrue(action.created_at > now)

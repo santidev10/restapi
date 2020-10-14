@@ -25,6 +25,7 @@ from utils.datetime import now_in_default_tz
 from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
+@patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_DELETE,
@@ -84,9 +85,8 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         now = now_in_default_tz()
         user = self.create_admin_user()
         ctl = CustomSegment.objects.create(owner=user, segment_type=0, title="test_1")
-        with patch("segment.models.models.safe_bulk_create", new=patch_bulk_create),\
-                patch.object(SegmentExporter, "delete_export"):
+        with patch.object(SegmentExporter, "delete_export"):
             response = self.client.delete(self._get_url("video", ctl.id))
-            self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.DELETE.value)
         self.assertTrue(action.created_at > now)
