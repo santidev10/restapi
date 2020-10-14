@@ -8,6 +8,7 @@ from performiq.api.views.adwords_auth import AdWordsAuthApiView
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.oauth_utils import load_client_settings
+from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
 
 class DV360AuthApiView(AdWordsAuthApiView):
 
@@ -82,4 +83,7 @@ class DV360AuthApiView(AdWordsAuthApiView):
                     "revoked_access": False,
                 }
             )
+
+            # get user's  partners and advertisers relations
+            sync_dv_partners.delay(force_emails=[oauth_account.email], sync_advertisers=True
         return Response(status=204)

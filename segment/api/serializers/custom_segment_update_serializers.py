@@ -5,8 +5,8 @@ from django.conf import settings
 from PIL import Image
 from rest_framework import serializers
 
+from .ctl_serializer import FeaturedImageUrlMixin
 from audit_tool.models import get_hash_name
-from segment.api.serializers.custom_segment_serializer import FeaturedImageUrlMixin
 from segment.models.custom_segment import CustomSegment
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.file_storage.s3_connector import delete_file

@@ -85,7 +85,7 @@ class Command(BaseCommand):
             with PidFile(piddir=".", pidname="audit_channel_meta_{}.pid".format(self.thread_id)):
                 try:
                     self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2,
-                                                               source=0).order_by("pause", "id")[self.machine_number]
+                                                               source__in=[0,2]).order_by("pause", "id")[self.machine_number]
                 # pylint: disable=broad-except
                 except Exception as e:
                 # pylint: enable=broad-except

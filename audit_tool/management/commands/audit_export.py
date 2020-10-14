@@ -55,14 +55,15 @@ class Command(BaseCommand):
                     )
             try:
                 self.export = \
-                    AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("audit__pause",
+                    AuditExporter.objects.filter(completed__isnull=True, started__isnull=True, machine=None, thread=None).order_by("audit__pause",
                                                                                                         "id")[0]
                 self.audit = self.export.audit
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
                 logger.exception(e)
-                raise Exception("no audits to export at present")
+                print("no audits to export at present")
+                return
             self.process_export()
 
     # pylint: disable=too-many-statements

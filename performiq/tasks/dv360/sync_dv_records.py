@@ -1,236 +1,292 @@
 import random
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from itertools import cycle
-from typing import Callable
-from typing import Type
 
+from django.db.models import Q
 from django.utils import timezone
-from googleapiclient.discovery import Resource
 from googleapiclient.errors import HttpError
-from rest_framework.serializers import Serializer
+from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from performiq.models.constants import EntityStatusType
 from performiq.models.constants import OAuthType
 from performiq.models.models import DV360Advertiser
 from performiq.models.models import DV360Partner
 from performiq.models.models import OAuthAccount
 from performiq.tasks.dv360.serializers.advertiser_serializer import AdvertiserSerializer
 from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerializer
-from performiq.utils.dv360 import CampaignAdapter, AdvertiserAdapter
+from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer
+from performiq.utils.dv360 import AdvertiserAdapter
+from performiq.utils.dv360 import CampaignAdapter
+from performiq.utils.dv360 import PartnerAdapter
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import DV360BaseAdapter
+from performiq.utils.dv360 import request_advertiser_campaigns
+from performiq.utils.dv360 import request_partner_advertisers
+from performiq.utils.dv360 import request_partners
+from performiq.utils.dv360 import serialize_dv360_list_response_items
+from saas import celery_app
 
 
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
-THREAD_CEILING = 5
+logger = logging.getLogger(__name__)
 
 
-def sync_dv_campaigns():
+@celery_app.task
+def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False):
     """
-    syncs advertisers' campaigns, threading each advertiser
-    list request through sync_dv_records
-    :return:
+    Updates partners for accounts that were either created
+    recently, or have not been recently updated
+    :param force_emails: force update on a list of emails belonging to OAuthAccounts
+    :param force_all: force update on all dv360 oauth accounts that haven't revoked access
+    :param sync_advertisers: syncs advertisers as well. This is currently the only way to
+        link advertisers to oauth accounts
     """
-    model_query = DV360Advertiser.objects.all()
-    # created_threshold = timezone.now() - timedelta(minutes=CREATED_THRESHOLD_MINUTES)
-    # updated_threshold = timezone.now() - timedelta(minutes=UPDATED_THRESHOLD_MINUTES)
-    sync_dv_records(
-        model_query=model_query,
-        model_id_filter="dv360_partners__advertisers__id__in",
-        oauth_accounts_prefetch="partner__oauth_accounts",
-        dv_model_account_relation=["partner", "oauth_accounts"],
-        request_function=request_advertiser_campaigns,
-        serializer_function_args={
-            "items_name": "campaigns",
-            "adapter_class": CampaignAdapter,
-            "serializer_class": CampaignSerializer,
-        }
-    )
-
-
-def sync_dv_advertisers():
-    """
-    syncs partners' advertisers, threading each partner
-    list request through sync_dv_records
-    :return:
-    """
-    model_query = DV360Partner.objects.all()
-    # created_threshold = timezone.now() - timedelta(minutes=CREATED_THRESHOLD_MINUTES)
-    # updated_threshold = timezone.now() - timedelta(minutes=UPDATED_THRESHOLD_MINUTES)
-    sync_dv_records(
-        model_query=model_query,
-        model_id_filter="dv360_partners__id__in",
-        oauth_accounts_prefetch="oauth_accounts",
-        dv_model_account_relation=["oauth_accounts"],
-        request_function=request_partner_advertisers,
-        serializer_function_args={
-            "items_name": "advertisers",
-            "adapter_class": AdvertiserAdapter,
-            "serializer_class": AdvertiserSerializer,
-        }
-    )
-
-
-def sync_dv_records(
-        model_query,
-        model_id_filter: str,
-        oauth_accounts_prefetch: str,
-        dv_model_account_relation: list,
-        request_function: Callable,
-        serializer_function_args: dict
-) -> None:
-    """
-    threads a given function. Creates a pool of Discovery Resources,
-    each from a distinct owning OAuthAccount's credentials, then
-    cycles through Resource and model instances, running the
-    passed func on its own thread, up to a limit of
-    THREAD_CEILING
-    :param model_query:
-    :param model_id_filter:
-    :param oauth_accounts_prefetch:
-    :param dv_model_account_relation:
-    :param request_function:
-    :param serializer_function_args:
-    :rtype: None
-    """
-    # get all distinct oauth accounts related to the dv360 objects that are being updated
-    model_object_ids = model_query.values_list("id", flat=True)
-    accounts = OAuthAccount.objects \
-        .filter(
-            oauth_type=OAuthType.DV360.value,
-            revoked_access=False,
-            **{model_id_filter: list(model_object_ids)}
-        ) \
-        .distinct()
-
-    # create resources and pack in context dict for cycling
-    executor_contexts = []
-    for account in accounts:
+    logger.info(f"starting dv partners sync...")
+    if force_emails:
+        query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, email__in=force_emails)
+    elif force_all:
+        query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, revoked_access=False)
+    else:
+        created_threshold = timezone.now() - timedelta(minutes=CREATED_THRESHOLD_MINUTES)
+        updated_threshold = timezone.now() - timedelta(minutes=UPDATED_THRESHOLD_MINUTES)
+        query = OAuthAccount.objects.filter(
+            Q(oauth_type=OAuthType.DV360.value) &
+            Q(revoked_access=False) &
+            (Q(created_at__gte=created_threshold) | Q(updated_at__lte=updated_threshold))
+        )
+    for account in query:
         credentials = load_credentials(account)
         resource = get_discovery_resource(credentials)
-        context = {
-            "account": account,
-            "resource": resource,
-        }
-        executor_contexts.append(context)
-    # prevents overuse of any one oauth credential, especially for small dv object sets
-    random.shuffle(executor_contexts)
-    resource_context_pool = cycle(executor_contexts)
-
-    futures_with_context = []
-    # with ThreadPoolExecutor(max_workers=max(len(executor_contexts), THREAD_CEILING)) as executor:
-    # TODO get this threading going
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        # spread threaded load as evenly as possible over available resources
-        for model_instance in model_query.prefetch_related(oauth_accounts_prefetch):
-            # traverse relation from instance to oauth accounts
-            # TODO update the relation, since oauth account can now own an advertiser
-            relation = model_instance
-            for relation_name in dv_model_account_relation:
-                relation = getattr(relation, relation_name)
-            instance_oauth_accounts = relation.all()
-            # cycle contexts until we have a resource whose account has access to the dv record
-            context = next(resource_context_pool)
-            account, resource = map(context.get, ("account", "resource"))
-            while account not in instance_oauth_accounts:
-                context = next(resource_context_pool)
-                account, resource = map(context.get, ("account", "resource"))
-            # unpack context after we get a resource with credentials from an owning account
-            print(f"submitting new thread for {account}")
-            future = executor.submit(request_function, model_instance, resource)
-            future_with_context = {
-                "future": future,
-                "account": account,
-                "instance": model_instance,
-            }
-            futures_with_context.append(future_with_context)
-
-    # serialize response data
-    print(f"serializing response data")
-    responses = []
-    for future_with_context in futures_with_context:
         try:
-            responses.append(future_with_context.get("future").result())
-        except HttpError as e:
-            print("caught HttpError!")
-            # doesn't have visibility to the advertiser
-            if e.resp.status == HTTP_403_FORBIDDEN:
-                # TODO update this to remove account ownership of the advertiser
-                account = future_with_context.get("account")
+            partners_response = request_partners(resource)
+        except HttpAccessTokenRefreshError:
+            account.revoked_access = True
+            account.save(update_fields=["revoked_access"])
+            continue
+        partner_serializers = serialize_dv360_list_response_items(
+            response=partners_response,
+            items_key="partners",
+            adapter_class=PartnerAdapter,
+            serializer_class=PartnerSerializer
+        )
+        partners = [serializer.save() for serializer in partner_serializers]
+        account.dv360_partners.set(partners)
+
+        # the only place we can sync an oauth accounts' advertisers is here
+        if not sync_advertisers:
+            continue
+
+        for partner in partners:
+            try:
+                advertisers_response = request_partner_advertisers(str(partner.id), resource)
+            except Exception as e:
+                raise e
+            advertiser_serializers = serialize_dv360_list_response_items(
+                response=advertisers_response,
+                items_key="advertisers",
+                adapter_class=AdvertiserAdapter,
+                serializer_class=AdvertiserSerializer,
+            )
+            advertisers = [serializer.save() for serializer in advertiser_serializers]
+            account.dv360_advertisers.set(advertisers)
+
+        account.updated_at = timezone.now()
+        account.save(update_fields=["updated_at"])
+
+
+@celery_app.task
+def sync_dv_advertisers():
+    """
+    syncs partners' advertisers, threading each partner list request
+    :return:
+    """
+    DVAdvertiserSynchronizer().run()
+
+
+@celery_app.task
+def sync_dv_campaigns():
+    """
+    syncs advertisers' campaigns, threading each advertiser list request
+    :return:
+    """
+    DVCampaignSynchronizer().run()
+
+
+class AbstractThreadedDVSynchronizer:
+
+    UPDATED_THRESHOLD_MINUTES = UPDATED_THRESHOLD_MINUTES
+    CREATED_THRESHOLD_MINUTES = CREATED_THRESHOLD_MINUTES
+    THREAD_CEILING = 5
+
+    future_contexts = []
+    responses = []
+
+    # required inheritor fields:
+    query = None
+    model_id_filter = None
+    response_items_key = None
+    adapter_class = None
+    serializer_class = None
+    request_function = None
+
+    @staticmethod
+    def get_request_function():
+        raise NotImplementedError
+
+    def run(self) -> None:
+        """
+        threads a given function. Creates a pool of Discovery Resources,
+        each from a distinct owning OAuthAccount's credentials, then
+        cycles through Resource and model instances, running the
+        passed func on its own thread, up to a limit of
+        THREAD_CEILING
+        :rtype: None
+        """
+        executor_contexts = self.get_executor_contexts()
+        resource_context_pool = cycle(executor_contexts)
+
+        max_workers = min(len(executor_contexts), self.THREAD_CEILING)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # spread threaded load as evenly as possible over available resources
+            for instance in self.query.prefetch_related("oauth_accounts"):
+                # traverse relation from instance to oauth accounts
+                instance_oauth_accounts = instance.oauth_accounts.all()
+                if not len(instance_oauth_accounts):
+                    continue
+                # cycle resources until we have a resource whose account has access
+                # to the dv record or until we've exhausted all resources
+                valid_oauth_account = False
+                for _ in range(len(executor_contexts)):
+                    context = next(resource_context_pool)
+                    account, credentials = map(context.get, ("account", "credentials"))
+                    if account in instance_oauth_accounts:
+                        valid_oauth_account = True
+                        break
+                if not valid_oauth_account:
+                    continue
+                # NOTE: sharing the same resource instance between threads results in a memory allocation error
+                resource = get_discovery_resource(credentials)
+                request_function = self.get_request_function()
+                logger.info(f"submitting new thread for instance: {instance}")
+                future = executor.submit(request_function, instance, resource)
+                self.future_contexts.append({
+                    "future": future,
+                    "account": account,
+                    "instance": instance,
+                })
+
+        self.unpack_responses()
+        self.save_response_data()
+
+    def get_executor_contexts(self) -> list:
+        """
+        get a list of contexts for the ThreadPoolExecutor
+        :return:
+        """
+        # get all distinct oauth accounts related to the dv360 objects that are being updated
+        instance_ids = self.query.values_list("id", flat=True)
+        filters = {
+            "oauth_type": OAuthType.DV360.value,
+            "revoked_access": False,
+            self.model_id_filter: list(instance_ids),
+        }
+        accounts = OAuthAccount.objects.filter(**filters).distinct()
+
+        # create resources and pack in context dict for cycling
+        executor_contexts = []
+        for account in accounts:
+            credentials = load_credentials(account)
+            context = {
+                "account": account,
+                "credentials": credentials,
+            }
+            executor_contexts.append(context)
+
+        # prevents overuse of any one oauth credential, especially for small dv object sets
+        random.shuffle(executor_contexts)
+        return executor_contexts
+
+    def unpack_responses(self):
+        """
+        unpack the list of futures from the futures_contexts list,
+        and handle any exceptions, like bad responses
+        :return:
+        """
+        # serialize response data
+        logger.info(f"unpacking dv response data, handling exceptions")
+        for context in self.future_contexts:
+            future, account, instance = map(context.get, ("future", "account", "instance"))
+            try:
+                self.responses.append(future.result())
+            except HttpAccessTokenRefreshError:
                 account.revoked_access = True
                 account.save(update_fields=["revoked_access"])
-        except Exception as e:
-            if "timeout" in str(e):
                 continue
-            print("caught broad exception:")
-            print(e)
-    print(f"saving responses")
-    for response in responses:
-        serializers = serialize_dv360_list_response_items(response=response, **serializer_function_args)
-        for serializer in serializers:
-            serializer.save()
+            except HttpError as e:
+                # account doesn't have visibility to the instance
+                if e.resp.status == HTTP_403_FORBIDDEN:
+                    instance.oauth_accounts.remove(account)
+                    continue
+                raise e
+            except Exception as e:
+                # request timeout
+                if "timeout" in str(e):
+                    continue
+                raise e
+
+    def save_response_data(self):
+        """
+        save campaigns from the campaign_responses
+        list after they have been unpacked
+        :return:
+        """
+        logger.info("saving dv responses")
+        # serialize the advertiser/campaign instances
+        for response in self.responses:
+            serializers = serialize_dv360_list_response_items(
+                response=response,
+                items_key=self.response_items_key,
+                adapter_class=self.adapter_class,
+                serializer_class=self.serializer_class,
+            )
+            # save the advertisers/campaigns
+            for serializer in serializers:
+                serializer.save()
 
 
-def serialize_dv360_list_response_items(
-        response: dict,
-        items_name: str,
-        adapter_class: Type[DV360BaseAdapter],
-        serializer_class: Type[Serializer]
-) -> list:
-    """
-    given a json response from a "list" method list response from dv,
-    persist the items with the given adapter and serializer
-    :param response: a dict response from a dv discovery resource
-    :param items_name: the name of the node enclosing the items
-    :param adapter_class: the adapter class to be used in adapting from response to our stored format
-    :param serializer_class: serializer to validate and save adapted data
-    :return list: list of serializers
-    """
-    items = response[items_name]
-    serializers = []
-    for item in items:
-        adapted = adapter_class().adapt(item)
-        serializer = serializer_class(data=adapted)
-        if not serializer.is_valid():
-            continue
-        serializers.append(serializer)
+class DVAdvertiserSynchronizer(AbstractThreadedDVSynchronizer):
 
-    return serializers
+    query = DV360Partner.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
+    model_id_filter = "dv360_partners__id__in"
+    response_items_key = "advertisers"
+    adapter_class = AdvertiserAdapter
+    serializer_class = AdvertiserSerializer
+
+    def run(self):
+        logger.info(f"starting dv advertisers sync...")
+        super().run()
+
+    @staticmethod
+    def get_request_function():
+        return request_partner_advertisers
 
 
-def request_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource) -> dict:
-    """
-    given a DV360Advertiser instance and discovery Resource
-    request an advertiser's list of campaigns, and return
-    the response
-    :param advertiser:
-    :param resource:
-    :return response:
-    """
-    print(f"request advertiser campaigns. Resource: {resource}. Advertiser: {advertiser}")
-    return resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()
-    # try:
-    #     response = resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()
-    # except Exception as e:
-    #     raise e
-    # return response
+class DVCampaignSynchronizer(AbstractThreadedDVSynchronizer):
 
+    query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
+    model_id_filter = "dv360_advertisers__id__in"
+    response_items_key = "campaigns"
+    adapter_class = CampaignAdapter
+    serializer_class = CampaignSerializer
 
-def request_partner_advertisers(partner: DV360Partner, resource: Resource) -> dict:
-    """
-    given a DV360Partner instance and discovery Resource
-    request an advertiser's list of campaigns, and
-    return the response
-    :param partner:
-    :param resource:
-    :return response:
-    """
-    try:
-        response = resource.advertisers().list(partnerId=str(partner.id)).execute()
-    except Exception as e:
-        raise e
-    return response
+    def run(self):
+        logger.info(f"starting dv campaign sync...")
+        super().run()
 
+    @staticmethod
+    def get_request_function():
+        return request_advertiser_campaigns
