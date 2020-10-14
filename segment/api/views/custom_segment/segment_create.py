@@ -10,7 +10,8 @@ from rest_framework.status import HTTP_201_CREATED
 from audit_tool.models import get_hash_name
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
-
+from segment.models.constants import SegmentActionEnum
+from segment.models.utils.segment_action import segment_action
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -25,6 +26,7 @@ class SegmentCreateApiView(CreateAPIView):
     )
     parser_classes = [MultiPartParser]
 
+    @segment_action(SegmentActionEnum.CREATE.value)
     def post(self, request, *args, **kwargs):
         """
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
