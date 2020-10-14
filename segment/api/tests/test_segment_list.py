@@ -61,6 +61,16 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(response.data["items"][0]["owner_id"], str(seg_1_params["owner"].id))
 
+    def test_size(self):
+        """ Test size query parameter """
+        user = self.create_admin_user()
+        for i in range(2):
+            CustomSegment.objects.create(owner=user, title=f"test_{next(int_iterator)}", segment_type=1)
+        response = self.client.get(self._get_url("channel") + "&size=1")
+        data = response.data
+        self.assertEqual(len(data["items"]), 1)
+        self.assertEqual(data["items_count"], 2)
+
     def test_owner_filter_list_vetted(self):
         """ Users should be able to see and download their own lists, even if vetted """
         user = self.create_test_user()
