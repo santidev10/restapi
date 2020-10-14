@@ -2,6 +2,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from segment.models import CustomSegment
+from segment.models.utils.segment_action import segment_action
+from segment.models.constants import SegmentActionEnum
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.utils.utils import CustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
@@ -17,6 +19,7 @@ class SegmentExport(APIView):
         ),
     )
 
+    @segment_action(SegmentActionEnum.DOWNLOAD.value)
     def get(self, request, pk, *_):
         segment = get_object(CustomSegment, f"Custom segment with id: {pk} not found.", id=pk)
         response = {}
