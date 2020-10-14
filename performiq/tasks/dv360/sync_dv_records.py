@@ -133,9 +133,6 @@ class AbstractThreadedDVSynchronizer:
     serializer_class = None
     request_function = None
 
-    class Meta:
-        abstract = True
-
     @staticmethod
     def get_request_function():
         raise NotImplementedError
