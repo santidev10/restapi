@@ -90,8 +90,9 @@ class SegmentListApiView(ListAPIView):
         queryset = super().get_queryset().filter(**base_filters)
         segment_type = self.request.query_params.get("segment_type", "")
         # Only filter for segment type if not sending both
-        if ("channel" in segment_type and "video" in segment_type) is False:
-            queryset = queryset.filter(segment_type=SegmentTypeEnum[segment_type.upper()].value)
+        if ("channel" in segment_type and "video" in segment_type) is False and segment_type:
+            segment_type = SegmentTypeEnum[segment_type.upper()].value
+            queryset = queryset.filter(segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)
         return queryset

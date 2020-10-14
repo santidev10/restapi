@@ -41,6 +41,12 @@ class ChannelConfig:
     LIST_SIZE = 100000
 
 
+class SegmentActionEnum(enum.IntEnum):
+    CREATE = 0
+    DELETE = 1
+    DOWNLOAD = 2
+
+
 class SegmentTypeEnum(enum.Enum):
     VIDEO = 0
     CHANNEL = 1
@@ -49,3 +55,4 @@ class SegmentTypeEnum(enum.Enum):
 class SegmentListType(enum.Enum):
     WHITELIST = 0
     BLACKLIST = 1
+

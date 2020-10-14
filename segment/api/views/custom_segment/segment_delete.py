@@ -4,6 +4,8 @@ from rest_framework.permissions import IsAdminUser
 
 from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegment
+from segment.models.constants import SegmentActionEnum
+from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import CustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
 
@@ -18,6 +20,7 @@ class SegmentDeleteApiView(DestroyAPIView):
         ),
     )
 
+    @segment_action(SegmentActionEnum.DELETE.value)
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
         if segment.audit_id:

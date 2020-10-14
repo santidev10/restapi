@@ -3,6 +3,7 @@ from time import sleep
 from unittest.mock import patch
 
 from django.urls import reverse
+from moto import mock_s3
 from rest_framework.status import HTTP_204_NO_CONTENT
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -16,9 +17,15 @@ from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreview
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import SegmentAction
+from segment.models.constants import SegmentActionEnum
+from segment.models.utils.segment_exporter import SegmentExporter
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.datetime import now_in_default_tz
+from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
+@patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_DELETE,
@@ -71,3 +78,15 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
             self._get_url("video", 1)
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    @mock_s3
+    def test_creates_delete_action(self):
+        """ Test creating CTL creates DELETE action """
+        now = now_in_default_tz()
+        user = self.create_admin_user()
+        ctl = CustomSegment.objects.create(owner=user, segment_type=0, title="test_1")
+        with patch.object(SegmentExporter, "delete_export"):
+            response = self.client.delete(self._get_url("video", ctl.id))
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+        action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.DELETE.value)
+        self.assertTrue(action.created_at > now)

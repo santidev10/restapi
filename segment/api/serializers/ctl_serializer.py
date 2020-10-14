@@ -15,7 +15,6 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
-from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
@@ -43,6 +42,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     is_regenerating = BooleanField(read_only=True)
     audit_id = IntegerField(allow_null=True, read_only=True)
     owner_id = CharField(max_length=50)
+    params = JSONField(read_only=True)
     pending = SerializerMethodField()
     segment_type = CharField()
     source_name = SerializerMethodField(read_only=True)
@@ -239,6 +239,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit
         audit = AuditProcessor.objects.create(audit_type=audit_type, temp_stop=True, params=params)
+        segment.params.update({
+            "inclusion_file": getattr(inclusion_file, "name", None),
+            "exclusion_file": getattr(exclusion_file, "name", None),
+        })
+        segment.save()
         return audit
 
 

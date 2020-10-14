@@ -12,51 +12,58 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import SegmentAction
+from segment.models.constants import SegmentActionEnum
 from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.datetime import now_in_default_tz
+from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
+@patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
 
     def _get_params(self, *_, **kwargs):
         params = {
-            "severity_filters": None,
-            "score_threshold": 4,
-            "content_categories": [],
-            "languages": [],
-            "countries": [],
-            "countries_include_na": False,
+            "ads_stats_include_na": False,
             "age_groups": [],
             "age_groups_include_na": False,
-            "sentiment": 1,
-            "gender": None,
-            "content_type": 1,
+            "average_cpv": None,
+            "average_cpm": None,
+            "content_categories": [],
             "content_quality": 1,
+            "content_type": 1,
+            "countries": [],
+            "countries_include_na": False,
+            "ctr": None,
+            "ctr_v": None,
+            "exclude_content_categories": [],
+            "exclusion_hit_threshold": 1,
+            "gender": None,
+            "ias_verified_date": "",
             "is_vetted": 1,
+            "inclusion_hit_threshold": 1,
+            "languages": [],
+            "last_30day_views": None,
+            "last_upload_date": "",
             "minimum_videos": None,
             "minimum_videos_include_na": None,
             "minimum_views": None,
             "minimum_views_include_na": None,
             "minimum_subscribers": None,
             "minimum_subscribers_include_na": False,
-            "ads_stats_include_na": False,
-            "last_upload_date": "",
-            "vetted_after": "",
             "mismatched_language": None,
+            "score_threshold": 4,
+            "sentiment": 1,
+            "severity_filters": None,
+            "vetted_after": "",
             "video_view_rate": None,
-            "average_cpv": None,
-            "average_cpm": None,
-            "ctr": None,
-            "ctr_v": None,
             "video_quartile_100_rate": None,
-            "last_30day_views": None,
-            "exclude_content_categories": [],
-            "ias_verified_date": ""
         }
         params.update(kwargs)
         return params
@@ -321,6 +328,36 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
+    def test_segment_saves_params(self, mock_generate):
+        """ Test that params saves successfully """
+        self.create_admin_user()
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_inclusion.csv"
+        payload = {
+            "title": "test saves params",
+            "segment_type": 0
+        }
+        payload = self._get_params(**payload)
+        form = dict(
+            inclusion_file=inclusion_file,
+            exclusion_file=exclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        segment = CustomSegment.objects.get(id=response.data["id"])
+        expected_params = {
+            "inclusion_file": inclusion_file.name,
+            "exclusion_file": exclusion_file.name,
+        }
+        saved_params = {
+            key: segment.params.get(key, None) for key in expected_params.keys()
+        }
+        self.assertEqual(expected_params, saved_params)
+
     def test_inclusion_exclusion_success(self, mock_generate):
         """ Test that saving with inclusion and exclusion list creates audit """
         user = self.create_admin_user()
@@ -352,8 +389,20 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(params["source"], 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
+        self.assertEqual(audit.temp_stop, True)
         self.assertEqual(in_words.split("\n"), params["inclusion"])
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
         task_args = mock_generate.method_calls
         self.assertEqual(task_args[0][1][0], response.data["id"])
         self.assertEqual(task_args[0][2]["with_audit"], True)
+
+    def test_creates_create_action(self, mock_generate):
+        """ Test creating CTL creates CREATE action """
+        now = now_in_default_tz()
+        user = self.create_admin_user()
+        payload = self._get_params(title="test", segment_type=1)
+        form = dict(data=json.dumps(payload))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.CREATE.value)
+        self.assertTrue(action.created_at > now)
