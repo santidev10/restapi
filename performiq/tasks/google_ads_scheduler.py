@@ -14,7 +14,11 @@ LOCK_PREFIX = "performiq_google_ads_update_"
 
 @celery_app.task
 def google_ads_update_scheduler():
+    """
+    Main scheduler task to start individual account update tasks
+    """
     queue_size = get_queue_size(Queue.PERFORMIQ)
+    # limit queue size to prevent queue growing uncontrollably
     limit = Schedulers.GoogleAdsUpdateScheduler.get_items_limit(queue_size)
     accounts = OAuthAccount.objects.filter(oauth_type=OAuthType.GOOGLE_ADS.value).order_by("updated_at")[:limit]
     for account in accounts:
