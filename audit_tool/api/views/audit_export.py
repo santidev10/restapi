@@ -636,6 +636,7 @@ class AuditExportApiView(APIView):
         try:
             channel_scores = self.get_scores_for_channels(channel_ids)
         except Exception:
+            channel_scores = {}
             print("EXPORT: problem getting scores, connection issue")
         rows = [cols]
         count = channels.count()
