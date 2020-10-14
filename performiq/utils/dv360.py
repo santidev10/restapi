@@ -1,13 +1,13 @@
-import random
-from time import sleep
 from django.conf import settings
 
 from googleapiclient.discovery import build, Resource
 from oauth2client.client import GoogleCredentials
 from rest_framework.serializers import Serializer
 
-from performiq.models.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
+from performiq.models.models import DV360Advertiser
+from performiq.models.models import DV360Partner
+from performiq.models.models import OAuthAccount
 
 from typing import Type
 
@@ -159,39 +159,30 @@ def request_partners(resource: Resource) -> dict:
     :param resource: Discovery Resource
     :return: dict response
     """
-    print(f"requesting partners. Resource: {resource}")
     return resource.partners().list().execute()
 
 
-def request_partner_advertisers(partner_id: str, resource: Resource) -> dict:
+def request_partner_advertisers(partner: DV360Partner, resource: Resource) -> dict:
     """
     NOTE: To be used by DVSynchronizer
     given a DV360Partner instance and discovery Resource
     request an advertiser's list of campaigns, and
     return the response
-    :param partner_id:
+    :param partner:
     :param resource:
     :return response:
     """
-    print(f"requesting partner advertisers. Resource: {resource}")
-    sleep_time = random.randint(5, 10)
-    print(f"sleeping for {sleep_time} secs.")
-    sleep(sleep_time)
-    return resource.advertisers().list(partnerId=partner_id).execute()
+    return resource.advertisers().list(partnerId=str(partner.id)).execute()
 
 
-def request_advertiser_campaigns(advertiser_id: str, resource: Resource) -> dict:
+def request_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource) -> dict:
     """
     NOTE: To be used by DVSynchronizer
     given a DV360Advertiser instance and discovery Resource
     request an advertiser's list of campaigns, and return
     the response
-    :param advertiser_id:
+    :param advertiser:
     :param resource:
     :return response:
     """
-    print(f"requesting advertiser campaigns. Resource: {resource}")
-    sleep_time = random.randint(5, 10)
-    print(f"sleeping for {sleep_time} secs.")
-    sleep(sleep_time)
-    return resource.advertisers().campaigns().list(advertiserId=advertiser_id).execute()
+    return resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()

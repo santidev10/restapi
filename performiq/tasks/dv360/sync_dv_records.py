@@ -1,4 +1,5 @@
 import random
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from itertools import cycle
@@ -9,6 +10,7 @@ from googleapiclient.errors import HttpError
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from performiq.models.constants import EntityStatusType
 from performiq.models.constants import OAuthType
 from performiq.models.models import DV360Advertiser
 from performiq.models.models import DV360Partner
@@ -30,6 +32,7 @@ from saas import celery_app
 
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task
@@ -42,8 +45,9 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
     :param sync_advertisers: syncs advertisers as well. This is currently the only way to
         link advertisers to oauth accounts
     """
+    logger.info(f"starting dv partners sync...")
     if force_emails:
-        query = OAuthAccount.objects.filter(email__in=force_emails)
+        query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, email__in=force_emails)
     elif force_all:
         query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, revoked_access=False)
     else:
@@ -72,9 +76,10 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
         partners = [serializer.save() for serializer in partner_serializers]
         account.dv360_partners.set(partners)
 
+        # the only place we can sync an oauth accounts' advertisers is here
         if not sync_advertisers:
             continue
-        # the only place we can sync an oauth accounts' advertisers is here
+
         for partner in partners:
             try:
                 advertisers_response = request_partner_advertisers(str(partner.id), resource)
@@ -113,8 +118,8 @@ def sync_dv_campaigns():
 
 class AbstractThreadedDVSynchronizer:
 
-    UPDATED_THRESHOLD_MINUTES = 30
-    CREATED_THRESHOLD_MINUTES = 2
+    UPDATED_THRESHOLD_MINUTES = UPDATED_THRESHOLD_MINUTES
+    CREATED_THRESHOLD_MINUTES = CREATED_THRESHOLD_MINUTES
     THREAD_CEILING = 5
 
     future_contexts = []
@@ -148,7 +153,6 @@ class AbstractThreadedDVSynchronizer:
         resource_context_pool = cycle(executor_contexts)
 
         max_workers = min(len(executor_contexts), self.THREAD_CEILING)
-        print(f"max workers: {max_workers}")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # spread threaded load as evenly as possible over available resources
             for instance in self.query.prefetch_related("oauth_accounts"):
@@ -169,9 +173,9 @@ class AbstractThreadedDVSynchronizer:
                     continue
                 # NOTE: sharing the same resource instance between threads results in a memory allocation error
                 resource = get_discovery_resource(credentials)
-                print(f"submitting new thread for {account}")
                 request_function = self.get_request_function()
-                future = executor.submit(request_function, str(instance.id), resource)
+                logger.info(f"submitting new thread for instance: {instance}")
+                future = executor.submit(request_function, instance, resource)
                 self.future_contexts.append({
                     "future": future,
                     "account": account,
@@ -216,7 +220,7 @@ class AbstractThreadedDVSynchronizer:
         :return:
         """
         # serialize response data
-        print(f"unpacking response data, handling exceptions")
+        logger.info(f"unpacking dv response data, handling exceptions")
         for context in self.future_contexts:
             future, account, instance = map(context.get, ("future", "account", "instance"))
             try:
@@ -243,7 +247,7 @@ class AbstractThreadedDVSynchronizer:
         list after they have been unpacked
         :return:
         """
-        print("saving responses")
+        logger.info("saving dv responses")
         # serialize the advertiser/campaign instances
         for response in self.responses:
             serializers = serialize_dv360_list_response_items(
@@ -252,18 +256,22 @@ class AbstractThreadedDVSynchronizer:
                 adapter_class=self.adapter_class,
                 serializer_class=self.serializer_class,
             )
-            # save the campaigns
+            # save the advertisers/campaigns
             for serializer in serializers:
                 serializer.save()
 
 
 class DVAdvertiserSynchronizer(AbstractThreadedDVSynchronizer):
 
-    query = DV360Partner.objects.all()
+    query = DV360Partner.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
     model_id_filter = "dv360_partners__id__in"
     response_items_key = "advertisers"
     adapter_class = AdvertiserAdapter
     serializer_class = AdvertiserSerializer
+
+    def run(self):
+        logger.info(f"starting dv advertisers sync...")
+        super().run()
 
     @staticmethod
     def get_request_function():
@@ -272,11 +280,15 @@ class DVAdvertiserSynchronizer(AbstractThreadedDVSynchronizer):
 
 class DVCampaignSynchronizer(AbstractThreadedDVSynchronizer):
 
-    query = DV360Advertiser.objects.all()
+    query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
     model_id_filter = "dv360_advertisers__id__in"
     response_items_key = "campaigns"
     adapter_class = CampaignAdapter
     serializer_class = CampaignSerializer
+
+    def run(self):
+        logger.info(f"starting dv campaign sync...")
+        super().run()
 
     @staticmethod
     def get_request_function():
