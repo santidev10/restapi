@@ -479,7 +479,7 @@ class AuditExportApiView(APIView):
                 # pylint: enable=broad-except
                     pass
 
-    def get_scores_for_channels(self, channel_ids, chunk_size=10000):
+    def get_scores_for_channels(self, channel_ids, chunk_size=5000):
         """
         Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
         """
