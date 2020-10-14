@@ -8,12 +8,15 @@ from django.utils import timezone
 from elasticsearch_dsl import Q
 from moto import mock_s3
 
+from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditAgeGroup
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
+from es_components.models import Channel
+from es_components.models import Video
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
@@ -406,3 +409,26 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertNotIn(excluded.main.id, rows)
         self.channel_manager.delete([doc.main.id for doc in docs])
         self.assertEqual(rows.count(columns), 1)
+
+    @mock_s3
+    def test_generate_with_audit_starts(self):
+        """ Test that ctl created with inclusion / exclusion keywords uploads source file for audit and starts """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(title=f"title_{next(int_iterator)}", segment_type=1)
+        audit = AuditProcessor.objects.create(source=2, params=dict(segment_id=segment.id))
+        doc = Channel(f"yt_channel_{next(int_iterator)}")
+        self.channel_manager.upsert([doc])
+        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[doc]]):
+            generate_segment(segment, Q(), 1, with_audit=True)
+
+        # Audit params should be updated after generate_segment is complete
+        audit.refresh_from_db()
+        audit_source_file = audit.params["seed_file"]
+        body = conn.Object(settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME, audit_source_file).get()["Body"]
+        rows = [row.decode("utf-8").strip() for row in body]
+        # audit.temp_stop should be changed from True to False, and seed_file for audit should contain urls generated
+        # from generate_segment task
+        self.assertEqual(audit.temp_stop, False)
+        self.assertEqual(f"https://www.youtube.com/channel/{doc.main.id}", rows[0])

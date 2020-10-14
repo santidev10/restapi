@@ -12,13 +12,13 @@ __all__ = [
 
 
 class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers",
+    columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers",
                "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
                "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
                "Vetting_Result", "Mismatched_Language", "Last_Vetted", "Vetted_By",
                "Country", "Monthly_Views",
                "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate",
-               "Views_30_Days",
+               "Views_30_Days", "IAS_Verified", "Last_Upload_Date",
                )
 
     Vetting_Result = SerializerMethodField("get_vetting_result")
@@ -32,12 +32,12 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
 
 
 class CustomSegmentVideoVettedExportSerializer(CustomSegmentVideoExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score",
+    columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Overall_Score",
                "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
                "Content_Type", "Content_Quality", "Vetting_Result", "Mismatched_Language",
                "Last_Vetted", "Vetted_By", "Country",
                "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate",
-               "Views_30_Days",
+               "Views_30_Days", "Upload_Date",
                )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)

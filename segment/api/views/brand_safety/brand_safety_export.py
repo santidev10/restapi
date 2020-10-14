@@ -1,5 +1,3 @@
-from distutils.util import strtobool
-
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
@@ -16,20 +14,11 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     )
 
     def get(self, request, pk, *_):
-        is_master = strtobool(request.query_params.get("is_master", False))
-        if is_master:
-            queryset = self.get_queryset()
-            try:
-                segment = queryset.get(pk=pk)
-                content_generator = segment.s3.get_export_file(segment.get_s3_key(from_db=True))
-            except queryset.model.DoesNotExist:
-                raise Http404
-        else:
-            try:
-                segment = CustomSegment.objects.get(id=pk)
-                content_generator = segment.s3.get_export_file(segment.get_s3_key())
-            except CustomSegment.DoesNotExist:
-                raise Http404
+        try:
+            segment = CustomSegment.objects.get(id=pk)
+            content_generator = segment.s3.get_export_file(segment.get_s3_key())
+        except CustomSegment.DoesNotExist:
+            raise Http404
         response = StreamingHttpResponse(
             content_generator,
             content_type=segment.export_content_type,

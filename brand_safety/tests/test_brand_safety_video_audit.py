@@ -136,12 +136,21 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             description=bad_words,
             tags=bad_words,
         )
+        data2 = dict(
+            id=f"video_{next(int_iterator)}",
+            title=None,
+            description=None,
+            tags=None,
+        )
         auditor = VideoAuditor()
         with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
             audit = auditor.audit_serialized(data)
+            audit2 = auditor.audit_serialized(data2)
         video_audit_score = getattr(audit, "brand_safety_score")
+        video_audit_score2 = getattr(audit2, "brand_safety_score")
         self.assertTrue(0 <= video_audit_score.overall_score <= 100)
         self.assertEqual(set(self.BS_WORDS), set(video_audit_score.hits))
+        self.assertEqual(video_audit_score2.overall_score, 100)
 
     def test_ignore_vetted_brand_safety(self):
         """ Test ignore_vetted_brand_safety parameter successfully runs audit without brand safety """

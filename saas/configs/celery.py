@@ -171,6 +171,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
         "schedule": crontab(hour=21, minute=0),
     },
+    "sync_dv_partners": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
+        "schedule": crontab(minute="*/10"),
+    },
+    "sync_dv_advertisers": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
+        "schedule": crontab(minute="*/10"),
+    },
+    "sync_dv_campaigns": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
+        "schedule": crontab(minute="*/10"),
+    }
 }
 
 
