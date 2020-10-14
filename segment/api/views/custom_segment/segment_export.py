@@ -18,6 +18,7 @@ class SegmentExport(APIView):
             user_has_permission("userprofile.vet_audit_admin")
         ),
     )
+
     @segment_action(SegmentActionEnum.DOWNLOAD.value)
     def get(self, request, pk, *_):
         segment = get_object(CustomSegment, f"Custom segment with id: {pk} not found.", id=pk)

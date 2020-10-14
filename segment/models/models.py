@@ -12,6 +12,6 @@ class SegmentAction(models.Model):
     @staticmethod
     def add(user, *action_types):
         to_create = [
-            SegmentAction(user, action=action) for action in action_types
+            SegmentAction(user=user, action=action) for action in action_types
         ]
         safe_bulk_create(SegmentAction, to_create)

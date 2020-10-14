@@ -12,10 +12,14 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import SegmentAction
+from segment.models.constants import SegmentActionEnum
 from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.datetime import now_in_default_tz
+from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
@@ -360,3 +364,15 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         task_args = mock_generate.method_calls
         self.assertEqual(task_args[0][1][0], response.data["id"])
         self.assertEqual(task_args[0][2]["with_audit"], True)
+
+    def test_creates_create_action(self, mock_generate):
+        """ Test creating CTL creates CREATE action """
+        now = now_in_default_tz()
+        user = self.create_admin_user()
+        payload = self._get_params(title="test", segment_type=1)
+        form = dict(data=json.dumps(payload))
+        with patch("segment.models.models.safe_bulk_create", new=patch_bulk_create):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.CREATE.value)
+        self.assertTrue(action.created_at > now)
