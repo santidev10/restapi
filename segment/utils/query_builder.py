@@ -82,6 +82,18 @@ class SegmentQueryBuilder:
             )
             must_queries.append(min_views_ct_queries)
 
+        minimum_duration = self._params.get("minimum_duration", None)
+        if segment_type == 0 and minimum_duration:
+            minimum_duration_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.GENERAL_DATA}.duration").gte(minimum_duration).get()
+            must_queries.append(minimum_duration_query)
+
+        maximum_duration = self._params.get("maximum_duration", None)
+        if segment_type == 0 and maximum_duration:
+            maximum_duration_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.GENERAL_DATA}.duration").lte(maximum_duration).get()
+            must_queries.append(maximum_duration_query)
+
         if segment_type == 1 and self._params.get("minimum_subscribers"):
             min_subs_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_subscribers",
