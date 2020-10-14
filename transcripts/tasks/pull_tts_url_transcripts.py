@@ -29,6 +29,7 @@ LOCK_NAME = "tts_url_transcripts"
 # pylint: disable=too-many-nested-blocks,too-many-statements,too-many-locals
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_tts_url_transcripts():
+    """ Task for Pulling ASR Transcripts """
     total_start = time.perf_counter()
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
@@ -163,8 +164,18 @@ def get_video_ids_query(vid_ids):
 
 # pylint: enable=too-many-nested-blocks,too-many-statements,too-many-locals
 
+
 def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categories=None, brand_safety_score=None,
                                   num_vids=10000):
+    """ Generates query for retrieving all Videos in ElasticSearch that don't have ASR transcripts.
+
+    Keyword arguments:
+    lang_codes -- Language Codes of Videos to filter from ElasticSearch
+    country_codes -- Country Codes of Videos to filter from ElasticSearch
+    iab_categories -- IAB Categories of Videos to filter from ElasticSearch
+    brand-safety_score -- Minimum Brand Safety Score of Videos to retrieve
+    num_vids -- Number of Videos to retrieve from Elasticsearch; default/max is 10,000
+    """
     forced_filters = VideoManager().forced_filters()
     s = Search(using="default")
     s = s.index(Video.Index.name)

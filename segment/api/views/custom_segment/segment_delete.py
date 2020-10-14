@@ -2,14 +2,16 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import DestroyAPIView
 from rest_framework.permissions import IsAdminUser
 
-from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
+from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegment
+from segment.models.constants import SegmentActionEnum
+from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import CustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
 
 
-class SegmentDeleteApiViewV2(DestroyAPIView):
-    serializer_class = CustomSegmentSerializer
+class SegmentDeleteApiView(DestroyAPIView):
+    serializer_class = CTLSerializer
 
     permission_classes = (
         or_permission_classes(
@@ -18,6 +20,7 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
         ),
     )
 
+    @segment_action(SegmentActionEnum.DELETE.value)
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
         if segment.audit_id:

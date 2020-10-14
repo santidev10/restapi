@@ -1,11 +1,15 @@
 from django.conf import settings
 
-from googleapiclient.discovery import build
+from googleapiclient.discovery import build, Resource
 from oauth2client.client import GoogleCredentials
+from rest_framework.serializers import Serializer
 
-from performiq.models.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
+from performiq.models.models import DV360Advertiser
+from performiq.models.models import DV360Partner
+from performiq.models.models import OAuthAccount
 
+from typing import Type
 
 API_VERSION = "v1"
 SERVICE_NAME = "displayvideo"
@@ -75,6 +79,33 @@ class DV360BaseAdapter:
         return ENTITY_STATUS_MAP_TO_ID.get(value)
 
 
+def serialize_dv360_list_response_items(
+        response: dict,
+        items_key: str,
+        adapter_class: Type[DV360BaseAdapter],
+        serializer_class: Type[Serializer]
+) -> list:
+    """
+    given a json response from a "list" method list response from dv,
+    persist the items with the given adapter and serializer
+    :param response: a dict response from a dv discovery resource
+    :param items_key: the name of the node enclosing the items
+    :param adapter_class: the adapter class to be used in adapting from response to our stored format
+    :param serializer_class: serializer to validate and save adapted data
+    :return list: list of serializers
+    """
+    items = response[items_key]
+    serializers = []
+    for item in items:
+        adapted = adapter_class().adapt(item)
+        serializer = serializer_class(data=adapted)
+        if not serializer.is_valid():
+            continue
+        serializers.append(serializer)
+
+    return serializers
+
+
 class PartnerAdapter(DV360BaseAdapter):
     """
     adapt from Google's representation to performiq.models.DV360Partner
@@ -119,3 +150,39 @@ class CampaignAdapter(DV360BaseAdapter):
         "displayName": "display_name",
         "entityStatus": "entity_status",
     }
+
+
+def request_partners(resource: Resource) -> dict:
+    """
+    given a Discovery Resource, request
+    the list of available partners
+    :param resource: Discovery Resource
+    :return: dict response
+    """
+    return resource.partners().list().execute()
+
+
+def request_partner_advertisers(partner: DV360Partner, resource: Resource) -> dict:
+    """
+    NOTE: To be used by DVSynchronizer
+    given a DV360Partner instance and discovery Resource
+    request an advertiser's list of campaigns, and
+    return the response
+    :param partner:
+    :param resource:
+    :return response:
+    """
+    return resource.advertisers().list(partnerId=str(partner.id)).execute()
+
+
+def request_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource) -> dict:
+    """
+    NOTE: To be used by DVSynchronizer
+    given a DV360Advertiser instance and discovery Resource
+    request an advertiser's list of campaigns, and return
+    the response
+    :param advertiser:
+    :param resource:
+    :return response:
+    """
+    return resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()

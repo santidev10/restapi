@@ -3,11 +3,14 @@ import logging
 import re
 from collections import defaultdict
 from datetime import timedelta
+import tempfile
+import os
 
 import requests
 from dateutil.parser import parse
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db.models import F
 from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
@@ -25,9 +28,12 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from audit_tool.utils.audit_utils import AuditUtils
+from segment.models import CustomSegment
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
+from utils.utils import chunks_generator
+
 
 logger = logging.getLogger(__name__)
 """
@@ -86,7 +92,7 @@ class Command(BaseCommand):
             # self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1,
-                                                           source=0).order_by("pause", "id")[self.machine_number]
+                                                           source__in=[0,2]).order_by("pause", "id")[self.machine_number]
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
@@ -98,6 +104,51 @@ class Command(BaseCommand):
         if self.thread_id > 6:
             if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
+
+    def update_ctl(self):
+        segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
+        export_file = segment.s3.get_export_lines_stream(segment.export.filename)
+        if self.audit.audit_type == 1:
+            audit_model = AuditVideoProcessor
+            model_fk_ref = "video"
+            url_separator = "?v="
+        elif self.audit.audit_type == 2:
+            audit_model = AuditChannelProcessor
+            model_fk_ref = "channel"
+            url_separator = "/channel/"
+        else:
+            return
+        clean_audits = audit_model.objects \
+            .filter(audit=self.audit, clean=True) \
+            .select_related(model_fk_ref) \
+            .annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
+        clean_ids = set(audit.item_id for audit in clean_audits)
+        temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
+        write_header = True
+        try:
+            for chunk in chunks_generator(export_file, size=2000):
+                chunk = list(chunk)
+                with open(temp_file, mode="a") as file:
+                    writer = csv.writer(file)
+                    if write_header is True:
+                        header = chunk.pop(0)
+                        writer.writerow(header)
+                        write_header = False
+                    rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
+                    writer.writerows(rows)
+            segment.s3.export_file_to_s3(temp_file, segment.export.filename)
+            aggregations = GenerateSegmentUtils(segment).get_aggregations_by_ids(clean_ids)
+            segment.statistics = {
+                "items_count": len(clean_ids),
+                **aggregations
+            }
+            segment.save()
+        # pylint: disable=broad-except
+        except Exception as err:
+            logger.exception(err)
+        # pylint: enable=broad-except
+        finally:
+            os.remove(temp_file)
 
     # pylint: disable=too-many-branches,too-many-statements
     def process_audit(self, num=2000):
@@ -144,10 +195,13 @@ class Command(BaseCommand):
                     if self.audit.params["audit_type_original"] == 2:
                         self.audit.audit_type = 2
                         self.audit.save(update_fields=["audit_type"])
-                AuditExporter.objects.create(
-                    audit=self.audit,
-                    owner_id=None
-                )
+                if self.audit.source == 0:
+                    AuditExporter.objects.create(
+                        audit=self.audit,
+                        owner_id=None
+                    )
+                elif self.audit.source==2:
+                    self.update_ctl()
                 raise Exception("Audit completed, all videos processed")
             raise Exception("not first thread but audit is done")
         videos = {}

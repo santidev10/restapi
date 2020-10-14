@@ -1,6 +1,8 @@
 from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
@@ -79,6 +81,18 @@ class SegmentQueryBuilder:
                 field_name="stats.views"
             )
             must_queries.append(min_views_ct_queries)
+
+        minimum_duration = self._params.get("minimum_duration", None)
+        if segment_type == 0 and minimum_duration:
+            minimum_duration_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.GENERAL_DATA}.duration").gte(minimum_duration).get()
+            must_queries.append(minimum_duration_query)
+
+        maximum_duration = self._params.get("maximum_duration", None)
+        if segment_type == 0 and maximum_duration:
+            maximum_duration_query = QueryBuilder().build().must().range() \
+                .field(f"{Sections.GENERAL_DATA}.duration").lte(maximum_duration).get()
+            must_queries.append(maximum_duration_query)
 
         if segment_type == 1 and self._params.get("minimum_subscribers"):
             min_subs_ct_queries = self.get_numeric_include_na_queries(
@@ -204,15 +218,23 @@ class SegmentQueryBuilder:
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
 
-        if self._params.get("content_type") is not None:
-            content_type_query = QueryBuilder().build().must()\
-                .term().field(f"{Sections.TASK_US_DATA}.content_type").value(self._params["content_type"]).get()
-            must_queries.append(content_type_query)
+        content_types = self._params.get("content_type", [])
+        # if we want any content type, then we don't need to filter
+        if content_types and set(content_types) != set(AuditContentType.to_str.keys()):
+            content_types_query = Q("bool")
+            for content_type in content_types:
+                content_types_query |= QueryBuilder().build().should().term() \
+                    .field(f"{Sections.TASK_US_DATA}.content_type").value(content_type).get()
+            must_queries.append(content_types_query)
 
-        if self._params.get("content_quality") is not None:
-            content_quality_query = QueryBuilder().build().must() \
-                .term().field(f"{Sections.TASK_US_DATA}.content_quality").value(self._params["content_quality"]).get()
-            must_queries.append(content_quality_query)
+        content_qualities = self._params.get("content_quality", [])
+        # if we want any content quality, then we don't need to filter
+        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str.keys()):
+            content_qualities_query = Q("bool")
+            for content_quality in content_qualities:
+                content_qualities_query |= QueryBuilder().build().should().term() \
+                    .field(f"{Sections.TASK_US_DATA}.content_quality").value(content_quality).get()
+            must_queries.append(content_qualities_query)
 
         ads_stats_queries = self._get_ads_stats_queries()
         if self._params.get("last_30day_views"):
