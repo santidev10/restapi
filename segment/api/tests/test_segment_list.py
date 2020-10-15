@@ -115,7 +115,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
-        self.assertEqual(data["download_url"], export.download_url)
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()
@@ -471,4 +470,3 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         data = response.data
         owned = data["items"][0]
         self.assertEqual(owned["owner_id"], str(user_1.id))
-        self.assertEqual(owned["download_url"], export.download_url)
