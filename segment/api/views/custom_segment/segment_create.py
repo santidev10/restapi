@@ -33,14 +33,14 @@ class SegmentCreateApiView(CreateAPIView):
         """
         request.upload_handlers = [TemporaryFileUploadHandler(request)]
         data = json.loads(request.data["data"])
-        validated_data = self._validate_data(request, data)
+        validated_data = self._validate_data(data)
         validated_data.update(request.FILES)
         segment = self._create(validated_data)
         res = CTLSerializer(segment).data
         res.update(validated_data)
         return Response(status=HTTP_201_CREATED, data=res)
 
-    def _validate_data(self, request, data):
+    def _validate_data(self, data):
         """
         Validate request data
         Raise ValidationError on invalid parameters
@@ -50,8 +50,6 @@ class SegmentCreateApiView(CreateAPIView):
         params_serializer = CTLParamsSerializer(data=data)
         params_serializer.is_valid(raise_exception=True)
         validated_data = params_serializer.validated_data
-        validated_data["title_hash"] = get_hash_name(data["title"].lower().strip())
-        validated_data["owner_id"] = request.user.id
         return validated_data
 
     def _create(self, data: dict):
@@ -70,7 +68,12 @@ class SegmentCreateApiView(CreateAPIView):
                 key: data.pop(key, None) for key in {"source_file", "inclusion_file", "exclusion_file"}
             },
         }
-        serializer = self.serializer_class(data=data, context=context)
+        create_data = data.copy()
+        create_data.update({
+            "title_hash": get_hash_name(create_data["title"].lower().strip()),
+            "owner_id": self.request.user.id
+        })
+        serializer = self.serializer_class(data=create_data, context=context)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
         return segment

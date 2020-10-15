@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import transaction
 from rest_framework.serializers import BooleanField
@@ -36,11 +37,12 @@ class FeaturedImageUrlMixin:
 
 
 class CTLSerializer(FeaturedImageUrlMixin, Serializer):
-    id = IntegerField(read_only=True)
-    is_vetting_complete = BooleanField(read_only=True)
-    is_featured = BooleanField(read_only=True)
-    is_regenerating = BooleanField(read_only=True)
     audit_id = IntegerField(allow_null=True, read_only=True)
+    id = IntegerField(read_only=True)
+    is_featured = BooleanField(read_only=True)
+    is_vetting_complete = BooleanField(read_only=True)
+    is_regenerating = BooleanField(read_only=True)
+    last_vetted_date = SerializerMethodField()
     owner_id = CharField(max_length=50)
     params = JSONField(read_only=True)
     pending = SerializerMethodField()
@@ -51,7 +53,20 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     title_hash = IntegerField(write_only=True)
     thumbnail_image_url = SerializerMethodField(read_only=True)
 
-    def get_pending(self, obj):
+    def get_last_vetted_date(self, obj: CustomSegment) -> str:
+        """
+        Get date the CTL was last vetted if vetting is enabled
+        """
+        try:
+            audit = AuditProcessor.objects.get(id=obj.audit_id)
+            last_vetted_date = obj.audit_utils.vetting_model.objects\
+                .filter(audit=audit, processed__isnull=False)\
+                .latest("processed").processed.date().strftime("%m/%d/%Y")
+        except ObjectDoesNotExist:
+            last_vetted_date = None
+        return last_vetted_date
+
+    def get_pending(self, obj: CustomSegment) -> bool:
         """
         Implicitly determine if the CTL export has been generated as a statistics value is added to the CTL row
         once an export is completed.
@@ -59,7 +74,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         pending = not bool(obj.statistics)
         return pending
 
-    def get_source_name(self, obj):
+    def get_source_name(self, obj: CustomSegment) -> str:
         """ Get name of uploaded source file """
         try:
             name = obj.source.name
@@ -67,20 +82,20 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             name = None
         return name
 
-    def validate_owner(self, owner_id):
+    def validate_owner(self, owner_id: int) -> UserProfile:
         try:
             user = UserProfile.objects.get(id=owner_id)
         except UserProfile.DoesNotExist:
             raise ValidationError("User with id: {} not found.".format(owner_id))
         return user
 
-    def validate_segment_type(self, segment_type):
+    def validate_segment_type(self, segment_type: int) -> int:
         segment_type = int(segment_type)
         if segment_type not in (0, 1):
             raise ValidationError("segment_type must be either 0 or 1.")
         return segment_type
 
-    def validate_title(self, title):
+    def validate_title(self, title: str) -> str:
         hashed = self.initial_data["title_hash"]
         owner_id = self.initial_data["owner_id"]
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
@@ -99,16 +114,15 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             export_query_params = instance.export.query.get("params", {})
             export_query_params.update(data)
             data = export_query_params
-            data["download_url"] = instance.export.download_url
         except CustomSegmentFileUpload.DoesNotExist:
-            data["download_url"] = None
+            pass
         return data
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> CustomSegment:
         """
         Handle CustomSegment obj creation and other required creation steps
-        :param validated_data:
-        :return:
+        :param validated_data: dict
+        :return: CustomSegment
         """
         try:
             with transaction.atomic():
@@ -122,7 +136,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise ValidationError(f"Exception trying to create segment: {error}.")
         return segment
 
-    def _start_segment_export_task(self, segment):
+    def _start_segment_export_task(self, segment: CustomSegment):
         """
         Handle CTL export generation task
         Only execute generate_custom_segment task if CTL was created without inclusion / exclusion lists.
@@ -138,11 +152,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             self._create_audit(segment)
         generate_custom_segment.delay(segment.id, **extra_kwargs)
 
-    def _create_query(self, segment):
+    def _create_query(self, segment: CustomSegment):
         """
         Create Elasticsearch query body with params for export generation
         :param segment: CustomSegment
-        :param validated_data: dict
         :return:
         """
         validated_ctl_params = self.context["ctl_params"]
@@ -154,14 +167,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         }
         CustomSegmentFileUpload.objects.create(query=query, segment=segment)
 
-    def _create_source_file(self, segment):
+    def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """
         Create CTL source file using user uploaded csv
         This prepares csv for CTL export generation and is used to only include channels / videos that are both filtered
         for and on the source csv
-        :param segment:
-        :param validated_data:
-        :return:
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -184,11 +194,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         )
         return source_upload
 
-    def _get_file_data(self, file_reader: TemporaryUploadedFile):
+    def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
         """
         Util method to extract rows from inclusion / exclusion csv upload
         :param file_reader: TemporaryUploadedFile in open read +rb state
-        :return:
+        :return: list
         """
         rows = []
         for row in file_reader:
@@ -197,7 +207,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                 rows.append(decoded)
         return rows
 
-    def _create_audit(self, segment):
+    def _create_audit(self, segment: CustomSegment) -> AuditProcessor:
         """
         Create AuditProcessor to leverage audit flow for CTL creation
         This will create an AuditProcessor that will handle detecting inclusion / exclusion words that were uploaded
@@ -206,7 +216,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             csv export for audit processes to filter again using inclusion / exclusion words to upload a final csv
             export for the list
         :param segment:
-        :param files:
         :return:
         """
         files = self.context["files"]
