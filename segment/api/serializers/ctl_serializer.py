@@ -38,7 +38,7 @@ class FeaturedImageUrlMixin:
 
 class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     audit_id = IntegerField(allow_null=True, read_only=True)
-    id = IntegerField(read_only=True)
+    id = IntegerField(required=False)
     is_featured = BooleanField(read_only=True)
     is_vetting_complete = BooleanField(read_only=True)
     is_regenerating = BooleanField(read_only=True)
@@ -120,36 +120,82 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def create(self, validated_data: dict) -> CustomSegment:
         """
-        Handle CustomSegment obj creation and other required creation steps
+        Handle CustomSegment obj creation
         :param validated_data: dict
         :return: CustomSegment
         """
         try:
-            with transaction.atomic():
-                segment = CustomSegment.objects.create(**validated_data)
-                self._create_query(segment)
-                self._create_source_file(segment)
-                self._start_segment_export_task(segment)
-        # pylint: disable=broad-except
+            segment = CustomSegment.objects.create(**validated_data)
+            self._create_export(segment)
+            # pylint: disable=broad-except
         except Exception as error:
             # pylint: enable=broad-except
             raise ValidationError(f"Exception trying to create segment: {error}.")
         return segment
 
+    def update(self, instance, validated_data: dict) -> CustomSegment:
+        """
+        Update CustomSegment
+        If any ctl params or files inclusion/exclusion keywords have changed, regenerate the export with updated params
+        :param instance: CustomSegment
+        :param validated_data: dict
+        :return:
+        """
+        old_params = instance.export.query.get("params", {})
+        new_params = self.context["ctl_params"]
+        should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
+        if should_regenerate:
+            self._create_export(instance)
+        return instance
+
+    def _check_should_regenerate(self, segment: CustomSegment, old_params: dict, new_params: dict) -> bool:
+        """
+        Check params and files for changes to determine if export file should be regenerated
+        :param segment:
+        :param old_params: dict -> Old ctl_params dict saved on related CustomSegmentFileUpload
+        :param new_params: dict -> New ctl_params dict from request body
+        :return:
+        """
+        files = self.context["files"]
+        inclusion_file = files.get("inclusion_file")
+        exclusion_file = files.get("exclusion_file")
+        should_regenerate = False
+        for key in new_params.keys():
+            if new_params[key] != old_params.get(key):
+                should_regenerate = True
+                return should_regenerate
+        inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
+        exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
+        try:
+            audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+            if set(inclusion_rows) != set(audit.params.get("inclusion", {})) \
+                    or set(exclusion_rows) != set(audit.params.get("exclusion", {})):
+                should_regenerate = True
+        except (KeyError, AuditProcessor.DoesNotExist):
+            pass
+        return should_regenerate
+
+    def _create_export(self, segment: CustomSegment) -> CustomSegment:
+        """
+        Method to handle invoking necessary methods for full CTL creation
+        These methods are used here because both create or update methods may call this method
+        """
+        with transaction.atomic():
+            self._create_query(segment)
+            self._create_source_file(segment)
+            self._start_segment_export_task(segment)
+        return segment
+
     def _start_segment_export_task(self, segment: CustomSegment):
         """
         Handle CTL export generation task
-        Only execute generate_custom_segment task if CTL was created without inclusion / exclusion lists.
-        CTL creation with inclusion / exclusion lists must be created through audit app first
-        :param segment: CustomSegment
-        :param files: dict
-        :return:
+        If CTL is created with inclusion / exclusion keyword lists, then ctl will be further processed by audit
         """
         extra_kwargs = {}
         files = self.context["files"]
         if files.get("inclusion_file") or files.get("exclusion_file"):
             extra_kwargs = dict(with_audit=True)
-            self._create_audit(segment)
+            self._create_or_update_audit(segment)
         generate_custom_segment.delay(segment.id, **extra_kwargs)
 
     def _create_query(self, segment: CustomSegment):
@@ -160,12 +206,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         validated_ctl_params = self.context["ctl_params"]
         query_builder = SegmentQueryBuilder(validated_ctl_params)
-        # Use query_builder.query_params to get mapped values used in Elasticsearch query
         query = {
-            "params": query_builder.query_params,
+            "params": validated_ctl_params,
             "body": query_builder.query_body.to_dict()
         }
-        CustomSegmentFileUpload.objects.create(query=query, segment=segment)
+        CustomSegmentFileUpload.objects.update_or_create(segment=segment, defaults=dict(query=query, segment=segment))
 
     def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """
@@ -175,7 +220,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         files = self.context["files"]
         request = self.context["request"]
-        source_file = files["source_file"]
+        source_file = files.get("source_file")
         if not source_file:
             return
         try:
@@ -186,28 +231,17 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
         key = segment.get_source_s3_key()
         segment.s3.export_object_to_s3(source_file, key)
-        source_upload = CustomSegmentSourceFileUpload.objects.create(
+        source_upload, _ = CustomSegmentSourceFileUpload.objects.update_or_create(
             segment=segment,
-            source_type=source_type,
-            filename=key,
-            name=getattr(source_file, "name", None),
+            defaults=dict(
+                source_type=source_type,
+                filename=key,
+                name=getattr(source_file, "name", None)
+            )
         )
         return source_upload
 
-    def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
-        """
-        Util method to extract rows from inclusion / exclusion csv upload
-        :param file_reader: TemporaryUploadedFile in open read +rb state
-        :return: list
-        """
-        rows = []
-        for row in file_reader:
-            decoded = row.decode("utf-8").lower().strip()
-            if decoded:
-                rows.append(decoded)
-        return rows
-
-    def _create_audit(self, segment: CustomSegment) -> AuditProcessor:
+    def _create_or_update_audit(self, segment: CustomSegment) -> AuditProcessor:
         """
         Create AuditProcessor to leverage audit flow for CTL creation
         This will create an AuditProcessor that will handle detecting inclusion / exclusion words that were uploaded
@@ -215,8 +249,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         After generate_custom_segment task is finished creating export with CTL filters, the process will upload the
             csv export for audit processes to filter again using inclusion / exclusion words to upload a final csv
             export for the list
-        :param segment:
-        :return:
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -247,13 +279,28 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit
-        audit = AuditProcessor.objects.create(audit_type=audit_type, temp_stop=True, params=params)
+        defaults = dict(audit_type=audit_type, temp_stop=True, params=params)
+        audit, _ = AuditProcessor.objects.update_or_create(id=segment.params.get("meta_audit_id"), defaults=defaults)
         segment.params.update({
             "inclusion_file": getattr(inclusion_file, "name", None),
             "exclusion_file": getattr(exclusion_file, "name", None),
+            "meta_audit_id": audit.id,
         })
         segment.save()
         return audit
+
+    def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
+        """
+        Util method to extract rows from inclusion / exclusion csv upload
+        :param file_reader: TemporaryUploadedFile in open read +rb state
+        :return: list
+        """
+        rows = []
+        for row in file_reader:
+            decoded = row.decode("utf-8").lower().strip()
+            if decoded:
+                rows.append(decoded)
+        return rows
 
 
 class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
