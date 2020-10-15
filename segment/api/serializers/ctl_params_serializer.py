@@ -87,7 +87,7 @@ class NullableNumeric(serializers.CharField):
         super().__init__(allow_null=True)
 
     def run_validation(self, data=None):
-        if data and data is not empty:
+        if data and data is not empty and isinstance(data, int) is False:
             formatted = data.replace(",", "")
             try:
                 data = int(formatted)

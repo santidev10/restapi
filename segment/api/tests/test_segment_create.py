@@ -406,3 +406,78 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.CREATE.value)
         self.assertTrue(action.created_at > now)
+
+    def test_regenerates_params_changed(self, mock_generate):
+        """ Test that CTL is regenerated if params have changed """
+        self.create_admin_user()
+        payload = self._get_params(title="test_regenerate_params", segment_type=1)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_params = created.export.query["params"]
+
+        updated_payload = self._get_params(id=created.id, minimum_views=1, segment_type=1)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+
+        updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
+        self.assertNotEqual(old_params, updated_params)
+        mock_generate.assert_called_once()
+
+    def test_regenerate_suitability_keywords_changed(self, mock_generate):
+        """ Test that CTL is regenerated if inclusion / exclusion keywords have changed """
+        self.create_admin_user()
+        payload = self._get_params(title="test_regenerate_keywords", segment_type=0)
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_exclusion.csv"
+        exclusion_file.write(b"a_word")
+        exclusion_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            exclusion_file=exclusion_file
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_audit_params = AuditProcessor.objects.get(id=created.params["meta_audit_id"]).params
+
+        updated_exclusion_file = BytesIO()
+        updated_exclusion_file.name = "test_exclusion.csv"
+        updated_exclusion_file.write(b"a_changed_word")
+        updated_exclusion_file.seek(0)
+        updated_payload = self._get_params(id=created.id, segment_type=0)
+        form2 = dict(
+            data=json.dumps(updated_payload),
+            exclusion_file=updated_exclusion_file
+        )
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.post(self._get_url(), form2)
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+
+        updated_audit_params = AuditProcessor.objects.get(id=created.params["meta_audit_id"]).params
+        self.assertNotEqual(old_audit_params["exclusion"], updated_audit_params["exclusion"])
+        mock_generate.assert_called_once()
+
+    def test_does_not_regenerate_same_params(self, mock_generate):
+        """ Test CTL export does not regenerate if changing simple column values"""
+        self.create_admin_user()
+        payload = self._get_params(title="test_no_regenerate", segment_type=1)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_params = created.export.query["params"]
+
+        updated_payload = self._get_params(id=created.id, title="updated_no_regenerate_title", segment_type=1)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate_again:
+            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+        updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
+        self.assertEqual(old_params, updated_params)
+        mock_generate_again.assert_not_called()
+

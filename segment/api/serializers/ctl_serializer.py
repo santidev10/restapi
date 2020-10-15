@@ -9,6 +9,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.exceptions import ValidationError
 
+from audit_tool.models import get_hash_name
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
@@ -43,14 +44,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     is_vetting_complete = BooleanField(read_only=True)
     is_regenerating = BooleanField(read_only=True)
     last_vetted_date = SerializerMethodField()
-    owner_id = CharField(max_length=50)
+    owner_id = CharField(read_only=True)
     params = JSONField(read_only=True)
     pending = SerializerMethodField()
     segment_type = CharField()
     source_name = SerializerMethodField(read_only=True)
     statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
-    title_hash = IntegerField(write_only=True)
     thumbnail_image_url = SerializerMethodField(read_only=True)
 
     def get_last_vetted_date(self, obj: CustomSegment) -> str:
@@ -96,8 +96,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         return segment_type
 
     def validate_title(self, title: str) -> str:
-        hashed = self.initial_data["title_hash"]
-        owner_id = self.initial_data["owner_id"]
+        hashed = get_hash_name(title.lower().strip())
+        owner_id = self.context["request"].user.id
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
@@ -125,7 +125,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :return: CustomSegment
         """
         try:
-            segment = CustomSegment.objects.create(**validated_data)
+            title_hash = get_hash_name(validated_data["title"].lower().strip())
+            segment = CustomSegment.objects.create(title_hash=title_hash, **validated_data)
             self._create_export(segment)
             # pylint: disable=broad-except
         except Exception as error:

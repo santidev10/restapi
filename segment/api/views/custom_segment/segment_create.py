@@ -7,7 +7,6 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 
-from audit_tool.models import get_hash_name
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models.constants import SegmentActionEnum
@@ -70,11 +69,6 @@ class SegmentCreateApiView(CreateAPIView):
         :return: CustomSegment
         """
         context = self._get_context(ctl_params)
-        # Copy data to not mutate context["ctl_params"] data dict
-        request_data.update({
-            "title_hash": get_hash_name(request_data["title"].lower().strip()),
-            "owner_id": self.request.user.id
-        })
         serializer = self._get_serializer(request_data, context)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
