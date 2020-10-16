@@ -11,6 +11,7 @@ from saas import celery_app
 from saas.configs.celery import TaskExpiration, TaskTimeout
 from utils.aws.s3_exporter import S3Exporter
 from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ def ingest_ias_channels():
                 # pylint: enable=broad-except
                 logger.error(e)
                 continue
+        unlock(LOCK_NAME)
     # pylint: disable=broad-except
     except Exception:
         # pylint: enable=broad-except
