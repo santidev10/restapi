@@ -416,8 +416,10 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(title=f"title_{next(int_iterator)}", segment_type=1)
+        segment = CustomSegment(title=f"title_{next(int_iterator)}", segment_type=1)
         audit = AuditProcessor.objects.create(source=2, params=dict(segment_id=segment.id))
+        segment.params["meta_audit_id"] = audit.id
+        segment.save()
         doc = Channel(f"yt_channel_{next(int_iterator)}")
         self.channel_manager.upsert([doc])
         with patch("segment.tasks.generate_segment.bulk_search", return_value=[[doc]]):
