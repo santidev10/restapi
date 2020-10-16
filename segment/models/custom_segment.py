@@ -26,6 +26,7 @@ from segment.api.export_serializers import CustomSegmentVideoVettedExportSeriali
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
 from segment.models.constants import VideoConfig
+from segment.models.constants import SegmentTypeEnum
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
@@ -67,6 +68,10 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
     params = JSONField(default=dict)
+
+    @property
+    def type(self):
+        return SegmentTypeEnum(self.segment_type).name.lower()
 
     @property
     def export_serializer(self):

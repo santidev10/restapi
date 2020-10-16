@@ -49,6 +49,35 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         user = get_user_model().objects.create(**user_data)
         return user
 
+    def test_success(self):
+        user = self.create_admin_user()
+        seg_1_params = dict(owner=user, segment_type=0, title="1")
+        seg_2_params = dict(owner=user, segment_type=1, title="2")
+        ctl_video, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
+        ctl_channel, _ = self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        ctlv = self.client.get(self._get_url("video")).data["items"][0]
+        ctlc = self.client.get(self._get_url("channel")).data["items"][0]
+        expected_fields = {
+            "audit_id",
+            "id",
+            "is_featured",
+            "is_vetting_complete",
+            "is_regenerating",
+            "last_vetted_date",
+            "owner_id",
+            "params",
+            "pending",
+            "segment_type",
+            "source_name",
+            "statistics",
+            "title",
+            "thumbnail_image_url"
+        }
+        self.assertEqual(ctlv["title"], ctl_video.title)
+        self.assertEqual(ctlc["title"], ctl_channel.title)
+        self.assertEqual(set(ctlv.keys()), expected_fields)
+        self.assertEqual(set(ctlc.keys()), expected_fields)
+
     def test_owner_filter_list(self):
         user = self.create_test_user()
         seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
@@ -86,7 +115,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
-        self.assertEqual(data["download_url"], export.download_url)
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()
@@ -442,4 +470,3 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         data = response.data
         owned = data["items"][0]
         self.assertEqual(owned["owner_id"], str(user_1.id))
-        self.assertEqual(owned["download_url"], export.download_url)
