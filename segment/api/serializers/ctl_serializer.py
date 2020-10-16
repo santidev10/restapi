@@ -126,7 +126,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         try:
             title_hash = get_hash_name(validated_data["title"].lower().strip())
-            segment = CustomSegment.objects.create(title_hash=title_hash, **validated_data)
+            segment = CustomSegment.objects.create(owner_id=self.context["request"].user.id, title_hash=title_hash,
+                                                   **validated_data)
             self._create_export(segment)
             # pylint: disable=broad-except
         except Exception as error:
