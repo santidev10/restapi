@@ -74,7 +74,9 @@ def ingest_ias_channels():
                 ingestor.copy_from(source_key, dest_key)
                 if settings.ARCHIVE_IAS:
                     ingestor.delete_obj(source_key)
-                IASHistory.objects.create(name=file_name, started=start_time, completed=timezone.now())
+                ias_history = IASHistory.objects.create(name=file_name, completed=timezone.now())
+                ias_history.started = start_time
+                ias_history.save(update_fields=["started"])
             # pylint: disable=broad-except
             except Exception as e:
                 # pylint: enable=broad-except
