@@ -272,6 +272,8 @@ class AuditExportApiView(APIView):
         except Exception:
         # pylint: enable=broad-except
             pass
+        if audit.params.get('get_tags'):
+            cols.extend('tags')
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
@@ -443,6 +445,8 @@ class AuditExportApiView(APIView):
             except Exception:
             # pylint: enable=broad-except
                 pass
+            if audit.params.get('get_tags'):
+                data.extend(v.keywords if v.keywords else "")
             rows.append(data)
             num_done += 1
             if export and num_done % 500 == 0:
