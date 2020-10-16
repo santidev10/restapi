@@ -162,10 +162,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         inclusion_file = files.get("inclusion_file")
         exclusion_file = files.get("exclusion_file")
         should_regenerate = False
-        for key in new_params.keys():
-            if new_params[key] != old_params.get(key):
-                should_regenerate = True
-                return should_regenerate
+        if new_params != old_params:
+            should_regenerate = True
+            return should_regenerate
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         try:
