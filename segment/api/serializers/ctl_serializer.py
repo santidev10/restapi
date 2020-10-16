@@ -143,7 +143,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param validated_data: dict
         :return:
         """
-        old_params = instance.export.query.get("params", {})
+        try:
+            old_params = instance.export.query.get("params", {})
+        except CustomSegmentFileUpload.DoesNotExist:
+            old_params = {}
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
         if should_regenerate:
