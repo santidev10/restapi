@@ -848,7 +848,6 @@ class IASHistory(Timestampable):
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
-    history = models.ForeignKey(IASHistory, db_index=True, null=True, default=None, on_delete=models.CASCADE)
 
     @staticmethod
     def get_or_create(channel_id, create=True):

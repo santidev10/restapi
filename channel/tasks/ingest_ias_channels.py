@@ -45,12 +45,12 @@ def ingest_ias_channels():
                                          upsert_sections=(Sections.MAIN, Sections.IAS_DATA, Sections.CUSTOM_PROPERTIES))
         contents = objects["Contents"]
         file_names = [content["Key"] for content in contents]
+        start_time = timezone.now()
         for file_name in file_names:
             if "archive" in file_name:
                 continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
-                ias_history, _ = IASHistory.objects.get_or_create(name=file_name)
                 new_cids = []
                 for byte in ias_content["Body"].iter_lines():
                     row = (byte.decode("utf-8")).split(",")
@@ -67,16 +67,16 @@ def ingest_ias_channels():
                     channel.ias_data.ias_verified = timezone.now()
                     ias_channel = IASChannel.get_or_create(channel_id=channel_id)
                     ias_channel.ias_verified = timezone.now()
-                    ias_channel.history = ias_history
-                    ias_channel.save(update_fields=["ias_verified", "history"])
+                    ias_channel.save(update_fields=["ias_verified"])
                 channel_manager.upsert(new_channels)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
                 ingestor.copy_from(source_key, dest_key)
                 if settings.ARCHIVE_IAS:
                     ingestor.delete_obj(source_key)
-                ias_history.completed = timezone.now()
-                ias_history.save(update_fields=["completed"])
+                ias_history = IASHistory.objects.create(name=file_name, completed=timezone.now())
+                ias_history.started = start_time
+                ias_history.save(update_fields=["started"])
             # pylint: disable=broad-except
             except Exception as e:
                 # pylint: enable=broad-except
