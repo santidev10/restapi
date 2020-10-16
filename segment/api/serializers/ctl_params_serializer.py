@@ -87,7 +87,7 @@ class NullableNumeric(serializers.CharField):
         super().__init__(allow_null=True)
 
     def run_validation(self, data=None):
-        if data and data is not empty:
+        if data and data is not empty and isinstance(data, int) is False:
             formatted = data.replace(",", "")
             try:
                 data = int(formatted)
@@ -127,11 +127,9 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr = AdsPerformanceRangeField()
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
-    exclusion_file = serializers.FileField(write_only=True, required=False)
     exclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
     gender = serializers.IntegerField(allow_null=True)
     ias_verified_date = EmptyCharDateField()
-    inclusion_file = serializers.FileField(write_only=True, required=False)
     inclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
     is_vetted = serializers.NullBooleanField(required=False)
     languages = NullableListField()
@@ -146,8 +144,6 @@ class CTLParamsSerializer(serializers.Serializer):
     segment_type = serializers.IntegerField(allow_null=True)
     sentiment = serializers.IntegerField()
     severity_filters = NullableDictField()
-    source_file = serializers.FileField(write_only=True, required=False)
-    title = serializers.CharField(required=False)
     vetted_after = EmptyCharDateField()
     video_quartile_100_rate = AdsPerformanceRangeField()
     video_view_rate = AdsPerformanceRangeField()
