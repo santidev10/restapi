@@ -116,6 +116,39 @@ class CoerceListMemberField(serializers.Field):
         return validated
 
 
+class CoerceTimeToSecondsField(serializers.Field):
+    """
+    Require either an int or string in the formats: hh:mm:ss, or mm:ss
+    """
+    def run_validation(self, data=None):
+        # if the field is not passed
+        if data is empty:
+            if self.required:
+                raise ValidationError("This field is required")
+            else:
+                return None
+        # if the value is null
+        if data is None:
+            if self.allow_null:
+                return None
+            else:
+                raise ValidationError("This field cannot be null")
+        # validate type and format
+        if not isinstance(data, str) and not isinstance(data, int):
+            raise ValidationError(f"An integer, or string in the formats: 'hh:mm:ss' or 'mm:ss' is required")
+        if isinstance(data, int):
+            return data
+        split = data.split(":")
+        if len(split) not in [2, 3]:
+            raise ValidationError(f"The string must follow the format: 'hh:mm:ss', or 'mm:ss'")
+        split = list(map(int, split))
+        if len(split) == 2:
+            minutes, seconds = split
+            return minutes * 60 + seconds
+        hours, minutes, seconds = split
+        return hours * 3600 + minutes * 60 + seconds
+
+
 class CTLParamsSerializer(serializers.Serializer):
     age_groups = NullableListField()
     average_cpm = AdsPerformanceRangeField()
@@ -135,8 +168,8 @@ class CTLParamsSerializer(serializers.Serializer):
     languages = NullableListField()
     last_30day_views = AdsPerformanceRangeField()
     last_upload_date = EmptyCharDateField()
-    maximum_duration = serializers.IntegerField(required=False, allow_null=True)
-    minimum_duration = serializers.IntegerField(required=False, allow_null=True)
+    maximum_duration = CoerceTimeToSecondsField(required=False, allow_null=True)
+    minimum_duration = CoerceTimeToSecondsField(required=False, allow_null=True)
     minimum_subscribers = NullableNumeric()
     minimum_videos = NullableNumeric()
     minimum_views = NullableNumeric()
