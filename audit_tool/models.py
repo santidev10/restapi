@@ -157,9 +157,11 @@ class AuditProcessor(models.Model):
 
     # pylint: disable=too-many-branches
     @staticmethod
-    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None,
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=None, cursor=None,
             limit=None):
-        all_audits = AuditProcessor.objects.filter(source=source)
+        all_audits = AuditProcessor.objects.all().exclude(source=1)
+        if source is not None:
+            all_audits = all_audits.filter(source=source)
         if audit_type:
             all_audits = all_audits.filter(audit_type=audit_type)
         if running is not None:
