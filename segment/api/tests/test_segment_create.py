@@ -448,7 +448,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
-        old_audit_params = AuditProcessor.objects.get(id=created.params["meta_audit_id"]).params
+        old_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
 
         updated_exclusion_file = BytesIO()
         updated_exclusion_file.name = "test_exclusion.csv"
@@ -463,8 +463,10 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             response2 = self.client.post(self._get_url(), form2)
         self.assertEqual(response2.status_code, HTTP_201_CREATED)
 
-        updated_audit_params = AuditProcessor.objects.get(id=created.params["meta_audit_id"]).params
-        self.assertNotEqual(old_audit_params["exclusion"], updated_audit_params["exclusion"])
+        created.refresh_from_db()
+        new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        self.assertNotEqual(old_audit.params["exclusion"], new_audit.params["exclusion"])
+        self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
 
     def test_does_not_regenerate_same_params(self, mock_generate):
@@ -576,4 +578,5 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         updated_exclusion_file.seek(0)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.params, new_audit.params)
-        self.assertEqual(set([word for word in updated_exclusion_file]), set(new_audit.params["exclusion"]))
+        self.assertEqual(set([word.decode("utf-8") for word in updated_exclusion_file]),
+                         set(new_audit.params["exclusion"]))

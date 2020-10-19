@@ -157,8 +157,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             updated_params = {"stopped": True}
             updated_attrs = {"completed": timezone.now(), "pause": 0}
         else:
-            updated_params = {"name": instance.name}
-            updated_attrs = {"name": instance.name.lower()}
+            updated_params = {"name": instance.title}
+            updated_attrs = {"name": instance.title.lower()}
         try:
             # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
             audit = AuditProcessor.objects.get(id=old_audit_id)
