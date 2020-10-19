@@ -125,9 +125,9 @@ class SegmentQueryBuilder:
                     .gte(self._params["sentiment"]).get()
             )
 
-        if self._params.get("gender") is not None:
+        if self._params.get("gender") is not None or len(self._params.get("gender", [])) > 0:
             must_queries.append(
-                QueryBuilder().build().must().term().field("task_us_data.gender").value(self._params["gender"]).get())
+                QueryBuilder().build().must().terms().field("task_us_data.gender").value(self._params["gender"]).get())
 
         if self._params.get("languages"):
             lang_code_field = "lang_code" if segment_type == 0 else "top_lang_code"
@@ -218,16 +218,17 @@ class SegmentQueryBuilder:
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
 
-        if self._params.get("vetting_status") is not None:
-            vetting_status = int(self._params["vetting_status"])
+        if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             _config = {
-                0: ("must_not", Sections.TASK_US_DATA),
-                1: ("must_not", f"{Sections.TASK_US_DATA}.brand_safety"),
-                2: ("must", f"{Sections.TASK_US_DATA}.brand_safety"),
+                "0": ("must_not", Sections.TASK_US_DATA),
+                "1": ("must_not", f"{Sections.TASK_US_DATA}.brand_safety"),
+                "2": ("must", f"{Sections.TASK_US_DATA}.brand_safety"),
             }
-            config = _config[vetting_status]
-            vetting_status_query = getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
-            must_queries.append(vetting_status_query)
+            vetting_status_queries = Q("bool")
+            for status in self._params["vetting_status"]:
+                config = _config[str(status)]
+                vetting_status_queries |= getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
+            must_queries.append(vetting_status_queries)
 
         content_types = self._params.get("content_type", [])
         # if we want any content type, then we don't need to filter

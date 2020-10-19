@@ -22,8 +22,8 @@ from audit_tool.models import AuditContentType
 
 class NullableDictField(serializers.DictField):
     """ Provide default dict for null / empty values """
-    def __init__(self):
-        super().__init__(allow_null=True, allow_empty=True)
+    def __init__(self, *_, **kwargs):
+        super().__init__(allow_null=True, allow_empty=True, **kwargs)
 
     def run_validation(self, data=None):
         super().run_validation(data)
@@ -161,7 +161,7 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
     exclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
-    gender = serializers.IntegerField(allow_null=True)
+    gender = NullableListField()
     ias_verified_date = EmptyCharDateField()
     inclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
     is_vetted = serializers.NullBooleanField(required=False)
@@ -176,9 +176,9 @@ class CTLParamsSerializer(serializers.Serializer):
     score_threshold = serializers.IntegerField()
     segment_type = serializers.IntegerField(allow_null=True)
     sentiment = serializers.IntegerField()
-    severity_filters = NullableDictField()
+    severity_filters = NullableDictField(required=False)
     vetted_after = EmptyCharDateField()
-    vetting_status = serializers.IntegerField(allow_null=True)
+    vetting_status = NullableListField()
     video_quartile_100_rate = AdsPerformanceRangeField()
     video_view_rate = AdsPerformanceRangeField()
 
