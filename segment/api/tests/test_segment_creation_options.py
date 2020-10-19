@@ -93,7 +93,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
-        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started.strftime("%Y-%m-%d"))
+        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started)
         self.assertEqual(response.data["video_items"], data.hits.total.value)
 
     def test_channel_success(self, es_mock):
@@ -119,7 +119,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
-        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started.strftime("%Y-%m-%d"))
+        self.assertEqual(response.data["options"].get("latest_ias"), self.ingestion_2.started)
         self.assertEqual(response.data["channel_items"], data.hits.total.value)
 
     def test_that_content_categories_are_iab_categories(self, es_mock):
