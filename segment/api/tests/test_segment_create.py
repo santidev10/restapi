@@ -65,7 +65,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "sentiment": 1,
             "severity_filters": None,
             "vetted_after": "",
-            "vetting_status": 0,
+            "vetting_status": [],
             "video_view_rate": None,
             "video_quartile_100_rate": None,
         }
@@ -390,9 +390,11 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
         params = audit.params
+        self.assertEqual(audit.name, payload["title"].lower())
         self.assertEqual(params["source"], 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
+        self.assertEqual(params["name"], payload["title"])
         self.assertEqual(audit.temp_stop, True)
         self.assertEqual(in_words.split("\n"), params["inclusion"])
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
@@ -531,3 +533,47 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         mock_generate.delay.assert_called_once()
+
+    def test_regenerate_creates_new_audit(self, mock_generate):
+        """ Test that regenerating CTL creates new audit and stops previous audit """
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=0)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user,
+                                               segment_type=payload["segment_type"])
+        audit = AuditProcessor.objects.create(source=2, audit_type=1, params=dict(segment_id=segment.id))
+        segment.params = dict(meta_audit_id=audit.id)
+        segment.save()
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="older.csv", source_type=0)
+
+        updated_exclusion_file = BytesIO()
+        updated_exclusion_file.name = "test_exclusion.csv"
+        updated_exclusion_file.write(b"a_word")
+        updated_exclusion_file.seek(0)
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        form = dict(
+            data=json.dumps(payload),
+            exclusion_file=updated_exclusion_file,
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_older_url"]), \
+             patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+        segment.refresh_from_db()
+        audit.refresh_from_db()
+
+        # old audit should be paused and completed
+        self.assertNotEqual(audit.completed, None)
+        self.assertEqual(audit.pause, 0)
+        self.assertEqual(audit.params["stopped"], True)
+
+        new_audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+        updated_exclusion_file.seek(0)
+        self.assertNotEqual(audit.id, new_audit.id)
+        self.assertNotEqual(audit.params, new_audit.params)
+        self.assertEqual(set([word for word in updated_exclusion_file]), set(new_audit.params["exclusion"]))

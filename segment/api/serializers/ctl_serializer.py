@@ -1,6 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
@@ -150,8 +151,22 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             old_params = {}
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
+        old_audit_id = instance.params.get("meta_audit_id")
         if should_regenerate:
             self._create_export(instance)
+            updated_params = {"stopped": True}
+            updated_attrs = {"completed": timezone.now(), "pause": 0}
+        else:
+            updated_params = {"name": instance.name}
+            updated_attrs = {"name": instance.name.lower()}
+        try:
+            # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
+            audit = AuditProcessor.objects.get(id=old_audit_id)
+            [setattr(audit, key, value) for key, value in updated_attrs.items()]
+            audit.params.update(updated_params)
+            audit.save()
+        except AuditProcessor.DoesNotExist:
+            pass
         return instance
 
     def _check_should_regenerate(self, segment: CustomSegment, old_params: dict, new_params: dict) -> bool:
@@ -173,9 +188,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             should_regenerate = True
             return should_regenerate
 
-        # Check source file. Source file must be checked even if one was not sent in the current request in the case
-        # of a source file being uploaded before and now without one, effectively changing the CTL to have no source
-        # file
+        # Check source file. Source file must be checked even if one was not sent in the current request in the case of
+        # a source file being uploaded before and now without one, effectively changing the CTL to have no source file
         try:
             old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
                        for url in segment.s3.get_extract_export_ids(segment.source.filename)]
@@ -222,7 +236,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         files = self.context["files"]
         if files.get("inclusion_file") or files.get("exclusion_file"):
             extra_kwargs = dict(with_audit=True)
-            self._create_or_update_audit(segment)
+            self._create_audit(segment)
         generate_custom_segment.delay(segment.id, **extra_kwargs)
 
     def _create_query(self, segment: CustomSegment):
@@ -268,7 +282,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         )
         return source_upload
 
-    def _create_or_update_audit(self, segment: CustomSegment) -> AuditProcessor:
+    def _create_audit(self, segment: CustomSegment) -> AuditProcessor:
         """
         Create AuditProcessor to leverage audit flow for CTL creation
         This will create an AuditProcessor that will handle detecting inclusion / exclusion words that were uploaded
@@ -285,6 +299,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         params = dict(
             source=2,
+            name=segment.title,
             segment_id=segment.id,
             user_id=request.user.id,
             inclusion=inclusion_rows,
@@ -292,22 +307,25 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             inclusion_hit_count=request.query_params.get("inclusion_hit_count", 1),
             exclusion_hit_count=request.query_params.get("exclusion_hit_count", 1),
         )
-        extra_params = {}
         if segment.segment_type == 0:
             # Video config
             audit_type = 1
+            extra_params = dict(
+                audit_type_original=audit_type
+            )
         else:
             # Channel config
             audit_type = 2
             extra_params = dict(
                 do_videos=False,
                 num_videos=0,
+                audit_type_original=audit_type
             )
         params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit
-        defaults = dict(audit_type=audit_type, temp_stop=True, params=params)
-        audit, _ = AuditProcessor.objects.update_or_create(id=segment.params.get("meta_audit_id"), defaults=defaults)
+        audit = AuditProcessor.objects.create(audit_type=audit_type, temp_stop=True, name=segment.title.lower(),
+                                              params=params)
         segment.params.update({
             "inclusion_file": getattr(inclusion_file, "name", None),
             "exclusion_file": getattr(exclusion_file, "name", None),
