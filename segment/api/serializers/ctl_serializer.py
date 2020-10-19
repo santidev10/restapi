@@ -1,16 +1,18 @@
+import datetime
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
-from rest_framework.exceptions import ValidationError
 
-from audit_tool.models import get_hash_name
 from audit_tool.models import AuditProcessor
+from audit_tool.models import get_hash_name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
@@ -114,6 +116,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             export_query_params = instance.export.query.get("params", {})
             export_query_params.update(data)
             data = export_query_params
+            # convert seconds to HH:MM:SS format for display
+            minimum_duration = data.get("minimum_duration", None)
+            if minimum_duration:
+                data["minimum_duration"] = str(datetime.timedelta(seconds=minimum_duration))
+            maximum_duration = data.get("maximum_duration", None)
+            if maximum_duration:
+                data["maximum_duration"] = str(datetime.timedelta(seconds=maximum_duration))
         except CustomSegmentFileUpload.DoesNotExist:
             pass
         return data
