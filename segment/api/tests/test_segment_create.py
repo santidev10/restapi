@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -10,8 +11,10 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.api.serializers.ctl_params_serializer import CTLParamsSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import CustomSegmentSourceFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from userprofile.permissions import Permissions
@@ -62,6 +65,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "sentiment": 1,
             "severity_filters": None,
             "vetted_after": "",
+            "vetting_status": 0,
             "video_view_rate": None,
             "video_quartile_100_rate": None,
         }
@@ -481,3 +485,49 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(old_params, updated_params)
         mock_generate_again.assert_not_called()
 
+    def test_regenerate_source_urls_changed(self, mock_generate):
+        """ Test that CTL is regenerated if source urls have changed """
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
+
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        source_file = BytesIO()
+        source_file.name = "test_source.csv"
+        source_file.write(b"a_source_url")
+        source_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            source_file=source_file
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=[]),\
+                patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+    def test_regenerate_source_urls_changed_to_none(self, mock_generate):
+        """ Test that CTL is regenerated if ctl was initially created with source file and now is being removed"""
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
+
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        form = dict(
+            data=json.dumps(payload),
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]),\
+                patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()

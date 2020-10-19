@@ -20,6 +20,7 @@ from segment.models.constants import SourceListType
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
+from utils.aws.s3_exporter import ReportNotFoundException
 
 
 class FeaturedImageUrlMixin:
@@ -161,13 +162,35 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param new_params: dict -> New ctl_params dict from request body
         :return:
         """
+        should_regenerate = False
         files = self.context["files"]
+        source_file = files.get("source_file")
         inclusion_file = files.get("inclusion_file")
         exclusion_file = files.get("exclusion_file")
-        should_regenerate = False
+
+        # Check ctl filters
         if new_params != old_params:
             should_regenerate = True
             return should_regenerate
+
+        # Check source file. Source file must be checked even if one was not sent in the current request in the case
+        # of a source file being uploaded before and now without one, effectively changing the CTL to have no source
+        # file
+        try:
+            old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                       for url in segment.s3.get_extract_export_ids(segment.source.filename)]
+        except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
+            old_ids = []
+        try:
+            new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                       for url in self._get_file_data(source_file)]
+        except TypeError:
+            new_ids = []
+        if set(old_ids) != set(new_ids):
+            should_regenerate = True
+            return should_regenerate
+
+        # Check inclusion / exclusion keywords
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         try:
@@ -304,6 +327,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             decoded = row.decode("utf-8").lower().strip()
             if decoded:
                 rows.append(decoded)
+        file_reader.seek(0)
         return rows
 
 
