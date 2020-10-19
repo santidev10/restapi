@@ -145,6 +145,7 @@ class CTLParamsSerializer(serializers.Serializer):
     sentiment = serializers.IntegerField()
     severity_filters = NullableDictField()
     vetted_after = EmptyCharDateField()
+    vetting_status = serializers.IntegerField(allow_null=True)
     video_quartile_100_rate = AdsPerformanceRangeField()
     video_view_rate = AdsPerformanceRangeField()
 

@@ -67,6 +67,7 @@ class SegmentCreateOptionsApiView(APIView):
                 }
             return values
 
+        # Try to get cached options that are also used in other parts of viewiq
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY).value
             countries = [
@@ -131,6 +132,11 @@ class SegmentCreateOptionsApiView(APIView):
             "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
             "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
-            "latest_ias": latest_ias_date,
+            "latest_ias": latest_ias_date.strftime("%Y-%m-%d"),
+            "vetting_status": [
+                {"id": 0, "name": "Non-Vetted"},
+                {"id": 1, "name": "Vetted Safe"},
+                {"id": 2, "name": "Vetted Risky"},
+            ]
         }
         return options

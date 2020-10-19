@@ -218,6 +218,17 @@ class SegmentQueryBuilder:
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
 
+        if self._params.get("vetting_status") is not None:
+            vetting_status = int(self._params["vetting_status"])
+            _config = {
+                0: ("must_not", Sections.TASK_US_DATA),
+                1: ("must_not", f"{Sections.TASK_US_DATA}.brand_safety"),
+                2: ("must", f"{Sections.TASK_US_DATA}.brand_safety"),
+            }
+            config = _config[vetting_status]
+            vetting_status_query = getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
+            must_queries.append(vetting_status_query)
+
         content_types = self._params.get("content_type", [])
         # if we want any content type, then we don't need to filter
         if content_types and set(content_types) != set(AuditContentType.to_str.keys()):
