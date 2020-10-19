@@ -62,7 +62,10 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "video_quartile_100_rate": None,
             "last_30day_views": None,
             "exclude_content_categories": [],
-            "ias_verified_date": ""
+            "ias_verified_date": "",
+            "minimum_duration": None,
+            "maximum_duration": None,
+            "vetting_status": None,
         }
         params.update(kwargs)
         return params
