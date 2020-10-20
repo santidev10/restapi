@@ -45,7 +45,6 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "countries_include_na": False,
             "ctr": None,
             "ctr_v": None,
-            "duration": "",
             "exclude_content_categories": [],
             "exclusion_hit_threshold": None,
             "gender": None,
@@ -55,6 +54,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "languages": [],
             "last_30day_views": None,
             "last_upload_date": "",
+            "min_duration": "",
+            "max_duration": "",
             "minimum_videos": None,
             "minimum_videos_include_na": None,
             "minimum_views": None,
@@ -394,7 +395,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
         params = audit.params
         self.assertEqual(audit.name, payload["title"].lower())
-        self.assertEqual(params["source"], 2)
+        self.assertEqual(audit.source, 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
         self.assertEqual(params["name"], payload["title"])
