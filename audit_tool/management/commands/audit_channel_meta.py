@@ -117,11 +117,21 @@ class Command(BaseCommand):
         if self.audit.name:
             if "campaign analysis" in self.audit.name.lower() or "campaign audit" in self.audit.name.lower():
                 self.placement_list = True
+        else:
+            if self.audit.params.get('name'):
+                try:
+                    self.audit.name = self.audit.params.get('name').lower()
+                    self.audit.save(update_fields=['name'])
+                except Exception as e:
+                    print(str(e))
         if not self.num_videos:
             self.num_videos = 50
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=["started"])
+        if self.audit.params.get('audit_type_original') is None:
+            self.audit.params['audit_type_original'] = 2
+            self.audit.save(update_fields=['params'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
         if not self.audit.params.get("done_source_list") and pending_channels.count() < self.MAX_SOURCE_CHANNELS_CAP:
             if self.thread_id == 0:
