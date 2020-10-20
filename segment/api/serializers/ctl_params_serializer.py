@@ -82,7 +82,7 @@ class EmptyCharDateField(serializers.CharField):
         return data
 
 
-class NullableNumeric(serializers.CharField):
+class NullableCharNumeric(serializers.CharField):
     def __init__(self):
         super().__init__(allow_null=True)
 
@@ -128,7 +128,7 @@ class CoerceTimeToSecondsField(serializers.Field):
             else:
                 return None
         # if the value is null
-        if not data:
+        if data is None or data == "":
             if self.allow_null:
                 return None
             else:
@@ -160,6 +160,7 @@ class CoerceTimeToSecondsField(serializers.Field):
             raise ValidationError(f"The time component: '{value}' must be less than or equal to {ceiling}")
         return value
 
+
 class CTLParamsSerializer(serializers.Serializer):
     age_groups = NullableListField()
     average_cpm = AdsPerformanceRangeField()
@@ -171,19 +172,21 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr = AdsPerformanceRangeField()
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
-    exclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
+    exclusion_hit_threshold = serializers.IntegerField(required=False, allow_null=True, default=1,
+                                                       validators=[MinValueValidator(1)])
     gender = NullableListField()
     ias_verified_date = EmptyCharDateField()
-    inclusion_hit_threshold = serializers.IntegerField(required=False, validators=[MinValueValidator(1)])
+    inclusion_hit_threshold = serializers.IntegerField(required=False, allow_null=True, default=1,
+                                                       validators=[MinValueValidator(1)])
     is_vetted = serializers.NullBooleanField(required=False)
     languages = NullableListField()
     last_30day_views = AdsPerformanceRangeField()
     last_upload_date = EmptyCharDateField()
     maximum_duration = CoerceTimeToSecondsField(required=False, allow_null=True)
     minimum_duration = CoerceTimeToSecondsField(required=False, allow_null=True)
-    minimum_subscribers = NullableNumeric()
-    minimum_videos = NullableNumeric()
-    minimum_views = NullableNumeric()
+    minimum_subscribers = NullableCharNumeric()
+    minimum_videos = NullableCharNumeric()
+    minimum_views = NullableCharNumeric()
     score_threshold = serializers.IntegerField()
     segment_type = serializers.IntegerField(allow_null=True)
     sentiment = serializers.IntegerField()

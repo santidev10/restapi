@@ -125,7 +125,7 @@ class SegmentQueryBuilder:
                     .gte(self._params["sentiment"]).get()
             )
 
-        if self._params.get("gender") is not None or len(self._params.get("gender", [])) > 0:
+        if self._params.get("gender") is not None and len(self._params.get("gender", [])) > 0:
             must_queries.append(
                 QueryBuilder().build().must().terms().field("task_us_data.gender").value(self._params["gender"]).get())
 
