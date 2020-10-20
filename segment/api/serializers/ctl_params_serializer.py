@@ -172,10 +172,12 @@ class CTLParamsSerializer(serializers.Serializer):
     ctr = AdsPerformanceRangeField()
     ctr_v = AdsPerformanceRangeField()
     exclude_content_categories = NullableListField()
-    exclusion_hit_threshold = serializers.IntegerField(allow_null=True, validators=[MinValueValidator(1)])
+    exclusion_hit_threshold = serializers.IntegerField(required=False, allow_null=True, default=1,
+                                                       validators=[MinValueValidator(1)])
     gender = NullableListField()
     ias_verified_date = EmptyCharDateField()
-    inclusion_hit_threshold = serializers.IntegerField(allow_null=True, validators=[MinValueValidator(1)])
+    inclusion_hit_threshold = serializers.IntegerField(required=False, allow_null=True, default=1,
+                                                       validators=[MinValueValidator(1)])
     is_vetted = serializers.NullBooleanField(required=False)
     languages = NullableListField()
     last_30day_views = AdsPerformanceRangeField()

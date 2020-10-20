@@ -403,6 +403,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
         self.assertEqual(params["inclusion_hit_count"], payload["inclusion_hit_threshold"])
         self.assertEqual(params["exclusion_hit_count"], payload["exclusion_hit_threshold"])
+        self.assertEqual(params["files"]["inclusion"], inclusion_file.name)
+        self.assertEqual(params["files"]["exclusion"], exclusion_file.name)
         task_args = mock_generate.method_calls
         self.assertEqual(task_args[0][1][0], response.data["id"])
         self.assertEqual(task_args[0][2]["with_audit"], True)

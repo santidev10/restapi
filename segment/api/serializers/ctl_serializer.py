@@ -315,6 +315,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             exclusion=exclusion_rows,
             inclusion_hit_count=self.context["ctl_params"]["inclusion_hit_threshold"] or 1,
             exclusion_hit_count=self.context["ctl_params"]["exclusion_hit_threshold"] or 1,
+            files={
+                "inclusion": getattr(inclusion_file, "name", None),
+                "exclusion": getattr(exclusion_file, "name", None),
+            }
         )
         if segment.segment_type == 0:
             # Video config
