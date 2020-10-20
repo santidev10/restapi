@@ -57,6 +57,8 @@ class AuditSaveApiView(APIView):
         override_blocklist = strtobool(
             query_params["override_blocklist"]) if "override_blocklist" in query_params else None
 
+        if not audit_id and not name:
+            raise ValidationError("name can not be empty for a new audit")
         if name:
             name = name.strip()
         if min_date:
