@@ -1,6 +1,5 @@
 import json
 from io import BytesIO
-from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -45,12 +44,13 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "countries_include_na": False,
             "ctr": None,
             "ctr_v": None,
+            "duration": "",
             "exclude_content_categories": [],
-            "exclusion_hit_threshold": 1,
+            "exclusion_hit_threshold": None,
             "gender": None,
             "ias_verified_date": "",
             "is_vetted": 1,
-            "inclusion_hit_threshold": 1,
+            "inclusion_hit_threshold": None,
             "languages": [],
             "last_30day_views": None,
             "last_upload_date": "",
@@ -367,7 +367,9 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         payload = {
             "title": "test inclusion",
-            "segment_type": 1
+            "segment_type": 1,
+            "inclusion_hit_threshold": 3,
+            "exclusion_hit_threshold": 4,
         }
         inclusion_file = BytesIO()
         inclusion_file.name = "test_inclusion.csv"
@@ -398,6 +400,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(audit.temp_stop, True)
         self.assertEqual(in_words.split("\n"), params["inclusion"])
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
+        self.assertEqual(params["inclusion_hit_count"], payload["inclusion_hit_threshold"])
+        self.assertEqual(params["exclusion_hit_count"], payload["exclusion_hit_threshold"])
         task_args = mock_generate.method_calls
         self.assertEqual(task_args[0][1][0], response.data["id"])
         self.assertEqual(task_args[0][2]["with_audit"], True)

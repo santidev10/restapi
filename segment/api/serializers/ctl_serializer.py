@@ -313,8 +313,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             user_id=request.user.id,
             inclusion=inclusion_rows,
             exclusion=exclusion_rows,
-            inclusion_hit_count=request.query_params.get("inclusion_hit_count", 1),
-            exclusion_hit_count=request.query_params.get("exclusion_hit_count", 1),
+            inclusion_hit_count=self.context["ctl_params"]["inclusion_hit_threshold"] or 1,
+            exclusion_hit_count=self.context["ctl_params"]["exclusion_hit_threshold"] or 1,
         )
         if segment.segment_type == 0:
             # Video config
