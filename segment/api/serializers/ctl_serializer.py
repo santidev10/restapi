@@ -307,7 +307,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         params = dict(
-            source=2,
             name=segment.title,
             segment_id=segment.id,
             user_id=request.user.id,
@@ -337,8 +336,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit
-        audit = AuditProcessor.objects.create(audit_type=audit_type, temp_stop=True, name=segment.title.lower(),
-                                              params=params)
+        audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, temp_stop=True,
+                                              name=segment.title.lower(), params=params)
         segment.params.update({
             "inclusion_file": getattr(inclusion_file, "name", None),
             "exclusion_file": getattr(exclusion_file, "name", None),

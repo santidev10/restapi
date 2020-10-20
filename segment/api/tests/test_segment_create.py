@@ -394,7 +394,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
         params = audit.params
         self.assertEqual(audit.name, payload["title"].lower())
-        self.assertEqual(params["source"], 2)
+        self.assertEqual(audit.source, 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
         self.assertEqual(params["name"], payload["title"])
