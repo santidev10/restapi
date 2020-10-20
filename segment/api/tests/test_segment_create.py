@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -10,8 +11,10 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.api.serializers.ctl_params_serializer import CTLParamsSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import CustomSegmentSourceFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from userprofile.permissions import Permissions
@@ -62,6 +65,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "sentiment": 1,
             "severity_filters": None,
             "vetted_after": "",
+            "vetting_status": [],
             "video_view_rate": None,
             "video_quartile_100_rate": None,
         }
@@ -386,9 +390,11 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         audit = AuditProcessor.objects.get(params__segment_id=response.data["id"])
         params = audit.params
+        self.assertEqual(audit.name, payload["title"].lower())
         self.assertEqual(params["source"], 2)
         self.assertEqual(params["user_id"], user.id)
         self.assertEqual(params["do_videos"], False)
+        self.assertEqual(params["name"], payload["title"])
         self.assertEqual(audit.temp_stop, True)
         self.assertEqual(in_words.split("\n"), params["inclusion"])
         self.assertEqual(ex_words.split("\n"), params["exclusion"])
@@ -406,3 +412,171 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.CREATE.value)
         self.assertTrue(action.created_at > now)
+
+    def test_regenerates_params_changed(self, mock_generate):
+        """ Test that CTL is regenerated if params have changed """
+        self.create_admin_user()
+        payload = self._get_params(title="test_regenerate_params", segment_type=1)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_params = created.export.query["params"]
+
+        updated_payload = self._get_params(id=created.id, minimum_views=1, segment_type=1)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+
+        updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
+        self.assertNotEqual(old_params, updated_params)
+        mock_generate.assert_called_once()
+
+    def test_regenerate_suitability_keywords_changed(self, mock_generate):
+        """ Test that CTL is regenerated if inclusion / exclusion keywords have changed """
+        self.create_admin_user()
+        payload = self._get_params(title="test_regenerate_keywords", segment_type=0)
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_exclusion.csv"
+        exclusion_file.write(b"a_word")
+        exclusion_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            exclusion_file=exclusion_file
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+
+        updated_exclusion_file = BytesIO()
+        updated_exclusion_file.name = "test_exclusion.csv"
+        updated_exclusion_file.write(b"a_changed_word")
+        updated_exclusion_file.seek(0)
+        updated_payload = self._get_params(id=created.id, segment_type=0)
+        form2 = dict(
+            data=json.dumps(updated_payload),
+            exclusion_file=updated_exclusion_file
+        )
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.post(self._get_url(), form2)
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+
+        created.refresh_from_db()
+        new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        self.assertNotEqual(old_audit.params["exclusion"], new_audit.params["exclusion"])
+        self.assertEqual(new_audit.params["segment_id"], created.id)
+        mock_generate.assert_called_once()
+
+    def test_does_not_regenerate_same_params(self, mock_generate):
+        """ Test CTL export does not regenerate if changing simple column values"""
+        self.create_admin_user()
+        payload = self._get_params(title="test_no_regenerate", segment_type=1)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_params = created.export.query["params"]
+
+        updated_payload = self._get_params(id=created.id, title="updated_no_regenerate_title", segment_type=1)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate_again:
+            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+        updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
+        self.assertEqual(old_params, updated_params)
+        mock_generate_again.assert_not_called()
+
+    def test_regenerate_source_urls_changed(self, mock_generate):
+        """ Test that CTL is regenerated if source urls have changed """
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
+
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        source_file = BytesIO()
+        source_file.name = "test_source.csv"
+        source_file.write(b"a_source_url")
+        source_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            source_file=source_file
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=[]),\
+                patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+    def test_regenerate_source_urls_changed_to_none(self, mock_generate):
+        """ Test that CTL is regenerated if ctl was initially created with source file and now is being removed"""
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
+
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        form = dict(
+            data=json.dumps(payload),
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]),\
+                patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+    def test_regenerate_creates_new_audit(self, mock_generate):
+        """ Test that regenerating CTL creates new audit and stops previous audit """
+        user = self.create_admin_user()
+        payload = self._get_params(segment_type=0)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user,
+                                               segment_type=payload["segment_type"])
+        audit = AuditProcessor.objects.create(source=2, audit_type=1, params=dict(segment_id=segment.id))
+        segment.params = dict(meta_audit_id=audit.id)
+        segment.save()
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="older.csv", source_type=0)
+
+        updated_exclusion_file = BytesIO()
+        updated_exclusion_file.name = "test_exclusion.csv"
+        updated_exclusion_file.write(b"a_word")
+        updated_exclusion_file.seek(0)
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        form = dict(
+            data=json.dumps(payload),
+            exclusion_file=updated_exclusion_file,
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_older_url"]), \
+             patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock_generate.delay.assert_called_once()
+
+        segment.refresh_from_db()
+        audit.refresh_from_db()
+
+        # old audit should be paused and completed
+        self.assertNotEqual(audit.completed, None)
+        self.assertEqual(audit.pause, 0)
+        self.assertEqual(audit.params["stopped"], True)
+
+        new_audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+        updated_exclusion_file.seek(0)
+        self.assertNotEqual(audit.id, new_audit.id)
+        self.assertNotEqual(audit.params, new_audit.params)
+        self.assertEqual(set([word.decode("utf-8") for word in updated_exclusion_file]),
+                         set(new_audit.params["exclusion"]))

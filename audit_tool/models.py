@@ -157,9 +157,11 @@ class AuditProcessor(models.Model):
 
     # pylint: disable=too-many-branches
     @staticmethod
-    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None,
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=None, cursor=None,
             limit=None):
-        all_audits = AuditProcessor.objects.filter(source=source)
+        all_audits = AuditProcessor.objects.all().exclude(source=1)
+        if source is not None:
+            all_audits = all_audits.filter(source=source)
         if audit_type:
             all_audits = all_audits.filter(audit_type=audit_type)
         if running is not None:
@@ -848,7 +850,6 @@ class IASHistory(Timestampable):
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
-    history = models.ForeignKey(IASHistory, db_index=True, null=True, default=None, on_delete=models.CASCADE)
 
     @staticmethod
     def get_or_create(channel_id, create=True):

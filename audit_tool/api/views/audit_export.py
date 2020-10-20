@@ -272,6 +272,8 @@ class AuditExportApiView(APIView):
         except Exception:
         # pylint: enable=broad-except
             pass
+        if audit.params.get('get_tags'):
+            cols.extend('tags')
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
@@ -281,6 +283,7 @@ class AuditExportApiView(APIView):
         if count > self.MAX_ROWS:
             count = self.MAX_ROWS
         num_done = 0
+        print("EXPORT {}: starting video processing".format(export.id))
         for avp in videos:
             vid = avp.video
             try:
@@ -442,6 +445,8 @@ class AuditExportApiView(APIView):
             except Exception:
             # pylint: enable=broad-except
                 pass
+            if audit.params.get('get_tags'):
+                data.extend(v.keywords if v.keywords else "")
             rows.append(data)
             num_done += 1
             if export and num_done % 500 == 0:
@@ -478,7 +483,7 @@ class AuditExportApiView(APIView):
                 # pylint: enable=broad-except
                     pass
 
-    def get_scores_for_channels(self, channel_ids, chunk_size=1000):
+    def get_scores_for_channels(self, channel_ids, chunk_size=5000):
         """
         Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
         """
@@ -633,11 +638,18 @@ class AuditExportApiView(APIView):
                 except Exception:
                 # pylint: enable=broad-except
                     pass
-        channel_scores = self.get_scores_for_channels(channel_ids)
+        print("EXPORT: getting channel scores: starting")
+        try:
+            channel_scores = self.get_scores_for_channels(channel_ids)
+            print("EXPORT: getting channel scores: done")
+        except Exception:
+            channel_scores = {}
+            print("EXPORT: problem getting scores, connection issue")
         rows = [cols]
         count = channels.count()
         num_done = 0
         # sections = (Sections.MONETIZATION,)
+        print("EXPORT: starting channel processing of export {}".format(export.id))
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta

@@ -29,6 +29,7 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from audit_tool.utils.audit_utils import AuditUtils
 from segment.models import CustomSegment
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
