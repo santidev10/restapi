@@ -30,7 +30,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
 
-    def _get_params(self, *_, **kwargs):
+    @staticmethod
+    def get_params(*_, **kwargs):
         params = {
             "ads_stats_include_na": False,
             "age_groups": [],
@@ -87,7 +88,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "list_type": "whitelist",
             "segment_type": 2
         }
-        params = self._get_params(**data)
+        params = self.get_params(**data)
         form = dict(data=json.dumps(params))
         response = self.client.post(
             self._get_url(), form
@@ -108,7 +109,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        data = self._get_params(**data)
+        data = self.get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(
             self._get_url(), form
@@ -127,7 +128,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        data = self._get_params(**data)
+        data = self.get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -144,7 +145,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        data = self._get_params(**data)
+        data = self.get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -165,7 +166,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        data = self._get_params(**data)
+        data = self.get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -192,7 +193,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "ctr_v": 0,
             "ctr": 0,
         }
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         form = dict(data=json.dumps(payload))
         response = self.client.post(self._get_url(), form)
         data = response.data
@@ -212,7 +213,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         form = dict(data=json.dumps(payload))
         with patch("segment.utils.query_builder.SegmentQueryBuilder.map_content_categories", return_value="test_category"):
             response = self.client.post(self._get_url(), form)
@@ -244,8 +245,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        payload_1 = self._get_params(**payload_1)
-        payload_2 = self._get_params(**payload_2)
+        payload_1 = self.get_params(**payload_1)
+        payload_2 = self.get_params(**payload_2)
         form_1 = dict(data=json.dumps(payload_1))
         form_2 = dict(data=json.dumps(payload_2))
         response_1 = self.client.post(self._get_url(), form_1)
@@ -264,7 +265,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         payload["title"] = "video"
         payload["segment_type"] = 0
         form = dict(data=json.dumps(payload))
@@ -298,7 +299,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         file = BytesIO()
         file.name = payload["title"]
         form = dict(
@@ -327,7 +328,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "content_type": 0,
             "content_quality": 0,
         }
-        data = self._get_params(**data)
+        data = self.get_params(**data)
         form = dict(data=json.dumps(data))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
@@ -343,7 +344,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "title": "test saves params",
             "segment_type": 0
         }
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         form = dict(
             inclusion_file=inclusion_file,
             exclusion_file=exclusion_file,
@@ -382,7 +383,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         ex_words = "\n".join(f"exclude_word_{i}" for i in range(10))
         exclusion_file.write(ex_words.encode("utf-8"))
         exclusion_file.seek(0)
-        payload = self._get_params(**payload)
+        payload = self.get_params(**payload)
         form = dict(
             inclusion_file=inclusion_file,
             exclusion_file=exclusion_file,
@@ -410,7 +411,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         """ Test creating CTL creates CREATE action """
         now = now_in_default_tz()
         user = self.create_admin_user()
-        payload = self._get_params(title="test", segment_type=1)
+        payload = self.get_params(title="test", segment_type=1)
         form = dict(data=json.dumps(payload))
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
@@ -420,14 +421,14 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerates_params_changed(self, mock_generate):
         """ Test that CTL is regenerated if params have changed """
         self.create_admin_user()
-        payload = self._get_params(title="test_regenerate_params", segment_type=1)
+        payload = self.get_params(title="test_regenerate_params", segment_type=1)
         response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
         old_params = created.export.query["params"]
 
-        updated_payload = self._get_params(id=created.id, minimum_views=1, segment_type=1)
+        updated_payload = self.get_params(id=created.id, minimum_views=1, segment_type=1)
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
             response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
         self.assertEqual(response2.status_code, HTTP_201_CREATED)
@@ -439,7 +440,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerate_suitability_keywords_changed(self, mock_generate):
         """ Test that CTL is regenerated if inclusion / exclusion keywords have changed """
         self.create_admin_user()
-        payload = self._get_params(title="test_regenerate_keywords", segment_type=0)
+        payload = self.get_params(title="test_regenerate_keywords", segment_type=0)
         exclusion_file = BytesIO()
         exclusion_file.name = "test_exclusion.csv"
         exclusion_file.write(b"a_word")
@@ -458,7 +459,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         updated_exclusion_file.name = "test_exclusion.csv"
         updated_exclusion_file.write(b"a_changed_word")
         updated_exclusion_file.seek(0)
-        updated_payload = self._get_params(id=created.id, segment_type=0)
+        updated_payload = self.get_params(id=created.id, segment_type=0)
         form2 = dict(
             data=json.dumps(updated_payload),
             exclusion_file=updated_exclusion_file
@@ -476,14 +477,14 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_does_not_regenerate_same_params(self, mock_generate):
         """ Test CTL export does not regenerate if changing simple column values"""
         self.create_admin_user()
-        payload = self._get_params(title="test_no_regenerate", segment_type=1)
+        payload = self.get_params(title="test_no_regenerate", segment_type=1)
         response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
         old_params = created.export.query["params"]
 
-        updated_payload = self._get_params(id=created.id, title="updated_no_regenerate_title", segment_type=1)
+        updated_payload = self.get_params(id=created.id, title="updated_no_regenerate_title", segment_type=1)
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate_again:
             response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
         self.assertEqual(response2.status_code, HTTP_201_CREATED)
@@ -496,7 +497,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerate_source_urls_changed(self, mock_generate):
         """ Test that CTL is regenerated if source urls have changed """
         user = self.create_admin_user()
-        payload = self._get_params(segment_type=1)
+        payload = self.get_params(segment_type=1)
         params = CTLParamsSerializer(data=payload)
         params.is_valid(raise_exception=True)
 
@@ -522,7 +523,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerate_source_urls_changed_to_none(self, mock_generate):
         """ Test that CTL is regenerated if ctl was initially created with source file and now is being removed"""
         user = self.create_admin_user()
-        payload = self._get_params(segment_type=1)
+        payload = self.get_params(segment_type=1)
         params = CTLParamsSerializer(data=payload)
         params.is_valid(raise_exception=True)
 
@@ -543,7 +544,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerate_creates_new_audit(self, mock_generate):
         """ Test that regenerating CTL creates new audit and stops previous audit """
         user = self.create_admin_user()
-        payload = self._get_params(segment_type=0)
+        payload = self.get_params(segment_type=0)
         params = CTLParamsSerializer(data=payload)
         params.is_valid(raise_exception=True)
 
