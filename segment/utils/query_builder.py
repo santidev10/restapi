@@ -1,5 +1,6 @@
 from elasticsearch_dsl import Q
 
+from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
@@ -232,8 +233,13 @@ class SegmentQueryBuilder:
 
         content_types = self._params.get("content_type", [])
         # if we want any content type, then we don't need to filter
-        if content_types and set(content_types) != set(AuditContentType.to_str.keys()):
+        if content_types and set(content_types) != set(AuditContentType.to_str_with_unknown.keys()):
             content_types_query = Q("bool")
+            # -1 is treated as include_na here
+            if CHOICE_UNKNOWN_KEY in content_types:
+                content_types.remove(CHOICE_UNKNOWN_KEY)
+                content_types_query |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.TASK_US_DATA}.content_type").get()
             for content_type in content_types:
                 content_types_query |= QueryBuilder().build().should().term() \
                     .field(f"{Sections.TASK_US_DATA}.content_type").value(content_type).get()
@@ -241,8 +247,13 @@ class SegmentQueryBuilder:
 
         content_qualities = self._params.get("content_quality", [])
         # if we want any content quality, then we don't need to filter
-        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str.keys()):
+        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str_with_unknown.keys()):
             content_qualities_query = Q("bool")
+            # -1 is treated as include_na here
+            if CHOICE_UNKNOWN_KEY in content_qualities:
+                content_qualities.remove(CHOICE_UNKNOWN_KEY)
+                content_qualities_query |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.TASK_US_DATA}.content_quality").get()
             for content_quality in content_qualities:
                 content_qualities_query |= QueryBuilder().build().should().term() \
                     .field(f"{Sections.TASK_US_DATA}.content_quality").value(content_quality).get()

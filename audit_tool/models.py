@@ -10,6 +10,7 @@ from django.db.models import ForeignKey
 from django.db.models import IntegerField
 from django.utils import timezone
 
+from audit_tool.constants import CHOICE_UNKNOWN
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.models import Timestampable
 
@@ -737,6 +738,7 @@ class AuditContentType(models.Model):
         (2, "Brands"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -826,6 +828,7 @@ class AuditContentQuality(models.Model):
         (2, "Premium"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)

@@ -4,6 +4,8 @@ from datetime import datetime
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 
+from audit_tool.constants import CHOICE_UNKNOWN_KEY
+from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
 from segment.models.persistent.base import BasePersistentSegment
@@ -119,7 +121,7 @@ def validate_all_in(members: list, container: list) -> list:
     return [validate_in(member, container) for member in members]
 
 
-def with_all(all_options=None, choice=None):
+def with_unknown(options=None, choice=None):
     """
     If choice is None, create dict mapping of id, name for list of two element tuple options
     Adds an id of -1 that will map to "All"
@@ -129,18 +131,18 @@ def with_all(all_options=None, choice=None):
         list as we want to include everything
      else:
         list of single of multiple element list for Elasticseach terms query
-    :param all_options: list [tuple(int, str)...] List of two element tuple choices
+    :param options: list [tuple(int, str)...] List of two element tuple choices
     :param choice: None | int | list Input that will be mapped into list of terms for Elasticsearch query
     :return:
     """
-    if all_options is None and choice is None:
+    if options is None and choice is None:
         return None
 
-    if all_options:
-        data = [{"id": _id, "name": name} for _id, name in all_options]
+    if options:
+        data = [{"id": _id, "name": name} for _id, name in options]
         data.append({
-            "id": -1,
-            "name": "All",
+            "id": CHOICE_UNKNOWN_KEY,
+            "name": CHOICE_UNKNOWN_NAME,
         })
         return data
 
