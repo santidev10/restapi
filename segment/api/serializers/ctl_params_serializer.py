@@ -145,17 +145,17 @@ class CoerceTimeToSecondsField(serializers.Field):
             if len(split) not in [2, 3]:
                 raise ValidationError(f"The string must follow the format: 'hh:mm:ss', 'mm:ss' or 'ss'")
             split = list(map(int, split))
-            split = list(map(self.validate_ceiling, split))
             if len(split) == 2:
+                list(map(self.validate_ceiling, split))
                 minutes, seconds = split
                 return minutes * 60 + seconds
+            list(map(self.validate_ceiling, split[1:]))
             hours, minutes, seconds = split
             return hours * 3600 + minutes * 60 + seconds
         return coerced_seconds
 
     @ staticmethod
-    def validate_ceiling(value: int):
-        ceiling = 59
+    def validate_ceiling(value: int, ceiling=60):
         if value > ceiling:
             raise ValidationError(f"The time component: '{value}' must be less than or equal to {ceiling}")
         return value
