@@ -1,5 +1,6 @@
 from elasticsearch_dsl import Q
 
+from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
@@ -125,9 +126,9 @@ class SegmentQueryBuilder:
                     .gte(self._params["sentiment"]).get()
             )
 
-        if self._params.get("gender") is not None:
+        if self._params.get("gender") is not None and len(self._params.get("gender", [])) > 0:
             must_queries.append(
-                QueryBuilder().build().must().term().field("task_us_data.gender").value(self._params["gender"]).get())
+                QueryBuilder().build().must().terms().field("task_us_data.gender").value(self._params["gender"]).get())
 
         if self._params.get("languages"):
             lang_code_field = "lang_code" if segment_type == 0 else "top_lang_code"
@@ -218,10 +219,27 @@ class SegmentQueryBuilder:
                 "task_us_data.mismatched_language").get()
             must_queries.append(mismatched_language_queries)
 
+        if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
+            _config = {
+                "0": ("must_not", Sections.TASK_US_DATA),
+                "1": ("must_not", f"{Sections.TASK_US_DATA}.brand_safety"),
+                "2": ("must", f"{Sections.TASK_US_DATA}.brand_safety"),
+            }
+            vetting_status_queries = Q("bool")
+            for status in self._params["vetting_status"]:
+                config = _config[str(status)]
+                vetting_status_queries |= getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
+            must_queries.append(vetting_status_queries)
+
         content_types = self._params.get("content_type", [])
         # if we want any content type, then we don't need to filter
-        if content_types and set(content_types) != set(AuditContentType.to_str.keys()):
+        if content_types and set(content_types) != set(AuditContentType.to_str_with_unknown.keys()):
             content_types_query = Q("bool")
+            # -1 is treated as include_na here
+            if CHOICE_UNKNOWN_KEY in content_types:
+                content_types.remove(CHOICE_UNKNOWN_KEY)
+                content_types_query |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.TASK_US_DATA}.content_type").get()
             for content_type in content_types:
                 content_types_query |= QueryBuilder().build().should().term() \
                     .field(f"{Sections.TASK_US_DATA}.content_type").value(content_type).get()
@@ -229,8 +247,13 @@ class SegmentQueryBuilder:
 
         content_qualities = self._params.get("content_quality", [])
         # if we want any content quality, then we don't need to filter
-        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str.keys()):
+        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str_with_unknown.keys()):
             content_qualities_query = Q("bool")
+            # -1 is treated as include_na here
+            if CHOICE_UNKNOWN_KEY in content_qualities:
+                content_qualities.remove(CHOICE_UNKNOWN_KEY)
+                content_qualities_query |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.TASK_US_DATA}.content_quality").get()
             for content_quality in content_qualities:
                 content_qualities_query |= QueryBuilder().build().should().term() \
                     .field(f"{Sections.TASK_US_DATA}.content_quality").value(content_quality).get()

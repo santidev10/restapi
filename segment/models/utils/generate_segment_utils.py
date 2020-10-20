@@ -200,7 +200,7 @@ class GenerateSegmentUtils:
         :param filename: str -> On disk fp of export file
         :return:
         """
-        audit = AuditProcessor.objects.get(params__segment_id=self.segment.id)
+        audit = AuditProcessor.objects.get(id=self.segment.params["meta_audit_id"])
         self._upload_audit_source_file(audit, filename)
         # Update audit.temp_stop to make it visible for processing
         audit.temp_stop = False

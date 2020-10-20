@@ -29,6 +29,7 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from audit_tool.utils.audit_utils import AuditUtils
 from segment.models import CustomSegment
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
@@ -128,7 +129,7 @@ class Command(BaseCommand):
         try:
             for chunk in chunks_generator(export_file, size=2000):
                 chunk = list(chunk)
-                with open(temp_file, mode="a") as file:
+                with open(temp_file, mode="a", newline="") as file:
                     writer = csv.writer(file)
                     if write_header is True:
                         header = chunk.pop(0)
@@ -136,6 +137,7 @@ class Command(BaseCommand):
                         write_header = False
                     rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
                     writer.writerows(rows)
+            # Replace segment export with the audited file
             segment.s3.export_file_to_s3(temp_file, segment.export.filename)
             aggregations = GenerateSegmentUtils(segment).get_aggregations_by_ids(clean_ids)
             segment.statistics = {
