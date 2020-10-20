@@ -128,7 +128,7 @@ class CoerceTimeToSecondsField(serializers.Field):
             else:
                 return None
         # if the value is null
-        if data is None:
+        if not data:
             if self.allow_null:
                 return None
             else:
