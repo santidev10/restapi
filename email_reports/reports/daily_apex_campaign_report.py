@@ -1,5 +1,6 @@
 import csv
 import logging
+import os
 from datetime import timedelta
 from io import StringIO
 
@@ -96,19 +97,20 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return None
 
         # TODO development
-        # with open("disney.csv", mode="w") as f:
-        #     writer = csv.writer(f)
-        #     writer.writerow(self.CSV_HEADER)
-        #     writer.writerows(self.get_rows_from_stats(stats))
+        os.remove("disney.csv")
+        with open("disney.csv", mode="w") as f:
+            writer = csv.writer(f)
+            writer.writerow(self.CSV_HEADER)
+            writer.writerows(self.get_rows_from_stats(stats))
 
-        csv_file = StringIO()
-        writer = csv.writer(csv_file)
-        writer.writerow(self.CSV_HEADER)
-        writer.writerows(self.get_rows_from_stats(stats))
-        return csv_file.getvalue()
+        # csv_file = StringIO()
+        # writer = csv.writer(csv_file)
+        # writer.writerow(self.CSV_HEADER)
+        # writer.writerows(self.get_rows_from_stats(stats))
+        # return csv_file.getvalue()
 
     @staticmethod
-    def __get_revenue(obj, campaign_prefix):
+    def _get_revenue(obj, campaign_prefix):
         goal_type_id = getattr(obj, f"{campaign_prefix}salesforce_placement__goal_type_id")
         ordered_rate = getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
 
@@ -169,7 +171,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 stats.creative_id,
                 creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
                 YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),
-                self.__get_revenue(stats, "ad_group__campaign__"),
+                self._get_revenue(stats, "ad_group__campaign__"),
                 *self._get_stats_metrics(stats)
             ])
         return rows
