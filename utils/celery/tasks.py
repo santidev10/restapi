@@ -57,7 +57,7 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
                 else:
                     result = None
             finally:
-                if is_acquired and redis_lock.owned():
+                if is_acquired:
                     redis_lock.release()
             return result
 

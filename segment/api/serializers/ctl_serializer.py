@@ -30,7 +30,6 @@ class FeaturedImageUrlMixin:
     """
     Returns a default image if not set
     """
-
     def get_featured_image_url(self, instance):
         return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
@@ -42,6 +41,11 @@ class FeaturedImageUrlMixin:
 
 
 class CTLSerializer(FeaturedImageUrlMixin, Serializer):
+    """
+    Serializer to handle creating and updating CustomSegments
+    During both creates / updates, the view request object, CTLParamsSerializer.validated_data, and files dict
+    must be passed as context for successful validation
+    """
     audit_id = IntegerField(allow_null=True, read_only=True)
     id = IntegerField(required=False)
     is_featured = BooleanField(read_only=True)
@@ -180,8 +184,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def _check_should_regenerate(self, segment: CustomSegment, old_params: dict, new_params: dict) -> bool:
         """
-        Check params and files for changes to determine if export file should be regenerated
-        :param segment:
+        Check params and files for changes to determine if export file should be regenerated during updates
+        :param segment: CustomSegment
         :param old_params: dict -> Old ctl_params dict saved on related CustomSegmentFileUpload
         :param new_params: dict -> New ctl_params dict from request body
         :return:
@@ -249,11 +253,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             self._create_audit(segment)
         generate_custom_segment.delay(segment.id, **extra_kwargs)
 
-    def _create_query(self, segment: CustomSegment):
+    def _create_query(self, segment: CustomSegment) -> None:
         """
-        Create or Elasticsearch query body with params for export generation
+        Create or update Elasticsearch query body with params for export generation
         This method may be used for both creating and partially updating params. First get or create
-            CustomSegmentSourceFileUpload to update it's query["body"] key and then create full query["body"] for
+            CustomSegmentSourceFileUpload to update its query["body"] key and then create full query["body"] for
             Elasticsearch query during export generation
         :param segment: CustomSegment
         :return:
@@ -273,7 +277,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         Create CTL source file using user uploaded csv
         This prepares csv for CTL export generation and is used to only include channels / videos that are both filtered
-        for and on the source csv
+            for and on the source csv
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -305,7 +309,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             during CTL creation
         After generate_custom_segment task is finished creating export with CTL filters, the process will upload the
             csv export for audit processes to filter again using inclusion / exclusion words to upload a final csv
-            export for the list
+            export for the list in the audit_tool.management.commands.audit_video_meta.Command.update_ctl method
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -342,7 +346,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             )
         params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
-        # to temp_stop=False once generate_custom_segment completes with finished source file for audit
+        # to temp_stop=False once generate_custom_segment completes with finished source file for audit. The audit
+        # update is done in the segment.models.utils.generate_segment_utils.GenerateSegmentUtils.start_audit method
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, temp_stop=True,
                                               name=segment.title.lower(), params=params)
         segment.params.update({
