@@ -9,29 +9,33 @@ from saas import celery_app
 from segment.models.constants import SegmentTypeEnum
 from segment.models import CustomSegment
 from utils.utils import chunks_generator
+from utils.celery.tasks import celery_lock
+
 
 LOCK_NAME = "segment.update_segment_statistics"
+EXPIRE = 3600 * 2
 
 
-@celery_app.task(expires=60 * 5, soft_time_limit=60 * 5)
-def update_segment_statistics(audit_ids=None):
+@celery_app.task(bind=True)
+@celery_lock(LOCK_NAME, expire=EXPIRE, max_retries=0)
+def update_segment_statistics(segment_ids=None):
     """
     Updates segment statistics values
     :return:
     """
-    audit_filter = {}
-    if audit_ids:
-        audit_filter["id__in"] = audit_ids
+    segment_filter = {}
+    if segment_ids is not None:
+        segment_filter["id__in"] = segment_ids
     else:
-        audit_filter["completed__isnull"] = True
-    vetting_audits_in_progress = AuditProcessor.objects.filter(
-        source=1,
-        **audit_filter
-    )
-    for audit in vetting_audits_in_progress:
+        segment_filter.update({
+            "is_vetting_complete": False,
+            "audit_id__isnull": False
+        })
+    to_update = CustomSegment.objects.filter(**segment_filter)
+    for segment in to_update:
         try:
-            segment = CustomSegment.objects.get(audit_id=audit.id)
-        except CustomSegment.DoesNotExist:
+            audit = AuditProcessor.objects.get(id=segment.audit_id)
+        except AuditProcessor.DoesNotExist:
             continue
         audit_model_ref = SegmentTypeEnum(segment.segment_type).name.lower()
         vetting_model = segment.audit_utils.vetting_model
@@ -67,4 +71,3 @@ def _get_es_counts(segment, item_ids):
         safe_res = es_manager.search(safe_query, limit=0).params(track_total_hits=True).execute()
         results["safe_count"] += safe_res.hits.total.value
     return results
-

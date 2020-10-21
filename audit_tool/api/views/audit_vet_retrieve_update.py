@@ -97,7 +97,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             audit.save()
             segment.save()
             generate_vetted_segment.delay(segment.id)
-            update_segment_statistics.delay([audit.id])
+            update_segment_statistics.delay([segment.id])
         return Response(status=HTTP_200_OK, data=res)
 
     def _validate_patch_params(self, audit_id, data):
