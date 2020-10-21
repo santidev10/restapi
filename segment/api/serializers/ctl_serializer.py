@@ -192,8 +192,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         inclusion_file = files.get("inclusion_file")
         exclusion_file = files.get("exclusion_file")
 
-        # Check ctl filters
-        if new_params != old_params:
+        # Check ctl filters for changes. Check each key as may be updating with partial dict of original params
+        matching_old_params = {key: old_params.get(key) for key in new_params.keys()}
+        if new_params != matching_old_params:
             should_regenerate = True
             return should_regenerate
 
@@ -250,17 +251,23 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def _create_query(self, segment: CustomSegment):
         """
-        Create Elasticsearch query body with params for export generation
+        Create or Elasticsearch query body with params for export generation
+        This method may be used for both creating and partially updating params. First get or create
+            CustomSegmentSourceFileUpload to update it's query["body"] key and then create full query["body"] for
+            Elasticsearch query during export generation
         :param segment: CustomSegment
         :return:
         """
         validated_ctl_params = self.context["ctl_params"]
-        query_builder = SegmentQueryBuilder(validated_ctl_params)
-        query = {
-            "params": validated_ctl_params,
-            "body": query_builder.query_body.to_dict()
-        }
-        CustomSegmentFileUpload.objects.update_or_create(segment=segment, defaults=dict(query=query, segment=segment))
+        # Default with empty query for creation
+        query = dict(params={}, body={})
+        related_file, _ = CustomSegmentFileUpload.objects\
+            .get_or_create(segment=segment, defaults=dict(query=query, segment=segment))
+        # Update params dict as validated_ctl_params may be a partial dict of full CTL params
+        related_file.query["params"].update(validated_ctl_params)
+        es_query_body = SegmentQueryBuilder(related_file.query["params"]).query_body.to_dict()
+        related_file.query["body"] = es_query_body
+        related_file.save()
 
     def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """

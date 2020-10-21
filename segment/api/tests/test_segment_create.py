@@ -3,6 +3,7 @@ from io import BytesIO
 from unittest.mock import patch
 
 from django.urls import reverse
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -433,8 +434,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
 
         updated_payload = self.get_params(id=created.id, minimum_views=1, segment_type=1)
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
-            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
-        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+            response2 = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_200_OK)
 
         updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
         self.assertNotEqual(old_params, updated_params)
@@ -468,8 +469,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             exclusion_file=updated_exclusion_file
         )
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
-            response2 = self.client.post(self._get_url(), form2)
-        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+            response2 = self.client.patch(self._get_url(), form2)
+        self.assertEqual(response2.status_code, HTTP_200_OK)
 
         created.refresh_from_db()
         new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
@@ -489,8 +490,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
 
         updated_payload = self.get_params(id=created.id, title="updated_no_regenerate_title", segment_type=1)
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate_again:
-            response2 = self.client.post(self._get_url(), dict(data=json.dumps(updated_payload)))
-        self.assertEqual(response2.status_code, HTTP_201_CREATED)
+            response2 = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response2.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
         updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
@@ -519,8 +520,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=[]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
+            response = self.client.patch(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
     def test_regenerate_source_urls_changed_to_none(self, mock_generate):
@@ -540,8 +541,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
+            response = self.client.patch(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
     def test_regenerate_creates_new_audit(self, mock_generate):
@@ -570,8 +571,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_older_url"]), \
              patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
+            response = self.client.patch(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
         segment.refresh_from_db()
@@ -588,3 +589,25 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertNotEqual(audit.params, new_audit.params)
         self.assertEqual(set([word.decode("utf-8") for word in updated_exclusion_file]),
                          set(new_audit.params["exclusion"]))
+
+    def test_update_partial_success(self, mock_generate):
+        """ Test updating with partial update values is successful """
+        self.create_admin_user()
+        payload = self.get_params(title="test_partial_update", segment_type=0)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_params = created.export.query["params"]
+
+        partial_params = dict(id=created.id, vetting_status=[0,1], segment_type=0)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.patch(self._get_url(), dict(data=json.dumps(partial_params)))
+        self.assertEqual(response2.status_code, HTTP_200_OK)
+
+        updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
+        self.assertNotEqual(old_params, updated_params)
+        # Assert that updating partially does not override the entire dict, but only updates partial keys
+        self.assertTrue(len(updated_params.keys()) > len(partial_params.keys()))
+        self.assertEqual(updated_params["vetting_status"], partial_params["vetting_status"])
+        mock_generate.assert_called_once()

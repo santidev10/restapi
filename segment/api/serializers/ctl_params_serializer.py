@@ -162,7 +162,11 @@ class CTLParamsSerializer(serializers.Serializer):
 
     def validate(self, data):
         validated_data = super().validate(data)
-        self._validate_categories(data)
+        # Only validate if content_categories was passed in
+        try:
+            self._validate_categories(data)
+        except KeyError:
+            pass
         return validated_data
 
     def validate_segment_type(self, data):
