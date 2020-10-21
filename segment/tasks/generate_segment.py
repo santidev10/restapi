@@ -108,7 +108,9 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
             # CTL export csv is finished, start audit for further filtering with inclusion_file / exclusion
             # file keywords
             generate_utils.start_audit(filename)
-            results = {}
+            results = {
+                "s3_key": s3_key,
+            }
         else:
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
             segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})

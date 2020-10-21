@@ -19,7 +19,7 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.utils.utils import with_all
+from segment.utils.utils import with_unknown
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
@@ -129,8 +129,8 @@ class SegmentCreateOptionsApiView(APIView):
                 {"id": True, "name": "Include Only Vetted"},
                 {"id": None, "name": "Include All"}
             ],
-            "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
-            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
+            "content_type_categories": with_unknown(options=AuditContentType.ID_CHOICES),
+            "content_quality_categories": with_unknown(options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
             "latest_ias": latest_ias_date,
             "vetting_status": [

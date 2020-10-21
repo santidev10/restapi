@@ -6,11 +6,12 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_200_OK
 
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
-from segment.models.constants import SegmentActionEnum
 from segment.models import CustomSegment
+from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -27,26 +28,60 @@ class SegmentCreateApiView(CreateAPIView):
     )
     parser_classes = [MultiPartParser]
 
+    def _prep_request(self, request):
+        request.upload_handlers = [TemporaryFileUploadHandler(request)]
+        data = json.loads(request.data["data"])
+        return request, data
+
     @segment_action(SegmentActionEnum.CREATE.value)
     def post(self, request, *args, **kwargs):
         """
-        Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
+        Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment task through CTLSerializer
         """
-        request.upload_handlers = [TemporaryFileUploadHandler(request)]
-        data = json.loads(request.data["data"])
+        request, data = self._prep_request(request)
         validated_params = self._validate_params(data)
-        segment = self._create_or_update(data, validated_params)
-        res = CTLSerializer(segment).data
-        res.update(validated_params)
+        serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
+        res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_201_CREATED, data=res)
 
-    def _validate_params(self, data):
+    def patch(self, request, *args, **kwargs):
+        """
+        Update CustomSegment, and update CustomSegmentFileUpload and execute generate_custom_segment task
+            if necessary through CTLSerializer. If any files or CTL filters change during update, the list will
+            be regenerated with updated values
+        """
+        request, data = self._prep_request(request)
+        segment = get_object(CustomSegment, id=data.get("id"))
+        # Keep track of data.keys as CTLParamsSerializer sets default values for some fields during creation.
+        # validated_params will need to be cleaned of these default values and only the keys send for updating should
+        # be included in context
+        data_keys = set(data.keys())
+        validated_params = self._validate_params(data, partial=True)
+        cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
+        serializer = self.serializer_class(segment, data=data, context=self._get_context(cleaned_params),
+                                           partial=True)
+        res = self._finalize(serializer, validated_params)
+        return Response(status=HTTP_200_OK, data=res)
+
+    def _finalize(self, serializer, validated_ctl_params):
+        """
+        Validate CTLSerializer and get response data
+        :param serializer: CTLSerializer
+        :param validated_ctl_params: CTLParamsSerializer validated data
+        :return: dict
+        """
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        serializer.data.update(validated_ctl_params)
+        return serializer.data
+
+    def _validate_params(self, data, partial=False):
         """
         Validate request data
         :param data: dict
         :return: dict
         """
-        params_serializer = CTLParamsSerializer(data=data)
+        params_serializer = CTLParamsSerializer(data=data, partial=partial)
         params_serializer.is_valid(raise_exception=True)
         validated_data = params_serializer.validated_data
         return validated_data
@@ -59,31 +94,3 @@ class SegmentCreateApiView(CreateAPIView):
         }
         return context
 
-    def _create_or_update(self, request_data, ctl_params: dict) -> CustomSegment:
-        """
-        Update or create the CTL depending on the presence of an "id" field in the request body with CTLSerializer
-        If updating, since we may need to regenerate CTL export with same logic as when creating it, same validation
-        and context values may be required for both creating and updating CTLs.
-        :param request_data: Original request body data
-        :param ctl_params: CTLParamsSerializer validated data
-        :return: CustomSegment
-        """
-        context = self._get_context(ctl_params)
-        serializer = self._get_serializer(request_data, context)
-        serializer.is_valid(raise_exception=True)
-        segment = serializer.save()
-        return segment
-
-    def _get_serializer(self, request_data, context) -> CTLSerializer:
-        """
-        Instantiate serializer with kwargs depending if updating or creating by presence of "id" key in request_data
-        :param request_data: dict -> Request body
-        :param context: self._get_context return value
-        :return: CTLSerializer
-        """
-        if "id" in request_data:
-            segment = get_object(CustomSegment, id=request_data["id"])
-            serializer = self.serializer_class(segment, data=request_data, context=context, partial=True)
-        else:
-            serializer = self.serializer_class(data=request_data, context=context)
-        return serializer
