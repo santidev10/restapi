@@ -133,10 +133,14 @@ class SegmentQueryBuilder:
         if self._params.get("languages"):
             lang_code_field = "lang_code" if segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
+            if self._params.get("languages_include_na"):
+                lang_queries |= QueryBuilder().build().must_not().exists() \
+                    .field(f"{Sections.GENERAL_DATA}.{lang_code_field}").get()
             for lang in self._params["languages"]:
-                lang_queries |= QueryBuilder().build().should().term().field(f"general_data.{lang_code_field}").value(
-                    lang).get()
+                lang_queries |= QueryBuilder().build().should().term() \
+                    .field(f"{Sections.GENERAL_DATA}.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
+
 
         if self._params.get("content_categories"):
             content_queries = Q("bool")
