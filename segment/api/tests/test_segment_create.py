@@ -53,6 +53,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
             "is_vetted": 1,
             "inclusion_hit_threshold": None,
             "languages": [],
+            "languages_include_na": False,
             "last_30day_views": None,
             "last_upload_date": "",
             "min_duration": "",

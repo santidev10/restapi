@@ -155,6 +155,7 @@ class CTLParamsSerializer(serializers.Serializer):
     ads_stats_include_na = NonRequiredBooleanField()
     age_groups_include_na = NonRequiredBooleanField()
     countries_include_na = NonRequiredBooleanField()
+    languages_include_na = NonRequiredBooleanField()
     minimum_subscribers_include_na = NonRequiredBooleanField()
     minimum_videos_include_na = NonRequiredBooleanField()
     minimum_views_include_na = NonRequiredBooleanField()
