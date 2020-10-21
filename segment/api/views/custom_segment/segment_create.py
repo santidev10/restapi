@@ -47,7 +47,7 @@ class SegmentCreateApiView(CreateAPIView):
     def patch(self, request, *args, **kwargs):
         """
         Update CustomSegment, and update CustomSegmentFileUpload and execute generate_custom_segment task
-            if necessary through CTLSerializer. If any files or CTL fitler change during update, the list will
+            if necessary through CTLSerializer. If any files or CTL filters change during update, the list will
             be regenerated with updated values
         """
         request, data = self._prep_request(request)

@@ -1,11 +1,3 @@
-"""
-Module to handle validating CTL parameters for retrieving estimates from Elasticsearch and CTL creation.
-
-Typical usage will be using CTLParamsSerializer to first provide default values and validate all possible params, then
-using this validated data with CustomSegmentSerializer, in which only some fields defined on the CustomSegmentSerializer
-will be used for actual creation but the rest of the data will be passed as context for other processes (e.g. creating
-source file, creating audit, invoking export task, etc.)
-"""
 from datetime import datetime
 
 from django.core.validators import MinValueValidator
@@ -84,6 +76,9 @@ class EmptyCharDateField(serializers.CharField):
 
 
 class NullableCharNumeric(serializers.CharField):
+    """
+    Validate integer values represented as comma formatted strings e.g. 1,000,000
+    """
     def __init__(self):
         super().__init__(allow_null=True)
 
@@ -118,6 +113,12 @@ class CoerceListMemberField(serializers.Field):
 
 
 class CTLParamsSerializer(serializers.Serializer):
+    """
+    Serializer to handle validating CTL parameters for retrieving estimates from Elasticsearch and CTL creation.
+
+    Typical usage will be using CTLParamsSerializer to validate CTL params through SegmentCreateApiView
+    or SegmentCreateOptionsApiView and passing as serializer context for creates / updates.
+    """
     age_groups = NullableListField()
     average_cpm = AdsPerformanceRangeField()
     average_cpv = AdsPerformanceRangeField()
@@ -160,7 +161,7 @@ class CTLParamsSerializer(serializers.Serializer):
     minimum_views_include_na = NonRequiredBooleanField()
     mismatched_language = NonRequiredBooleanField()
 
-    def validate(self, data):
+    def validate(self, data: dict) -> dict:
         validated_data = super().validate(data)
         # Only validate if content_categories was passed in
         try:
@@ -169,14 +170,14 @@ class CTLParamsSerializer(serializers.Serializer):
             pass
         return validated_data
 
-    def validate_segment_type(self, data):
+    def validate_segment_type(self, data: int) -> int:
         try:
             SegmentTypeEnum(data)
         except ValueError:
             raise ValidationError(f"Invalid list_type: {data}. 0 = video, 1 = channel.")
         return data
 
-    def _validate_categories(self, data):
+    def _validate_categories(self, data: dict) -> None:
         content_categories = data["content_categories"]
         exclude_content_categories = data["exclude_content_categories"]
         if content_categories or exclude_content_categories:
