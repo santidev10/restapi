@@ -47,7 +47,7 @@ class CoerceTimeToSecondsFieldValidationTestCase(TestCase):
 
     def test_invalid_string_format(self):
         instance = self.get_field_instance(required=True)
-        for data in ["1:2:3:4", "an invalid string", "five", "fifteen"]:
+        for data in ["1 day, 0:00:00", "1:2:3:4", "an invalid string", "five", "fifteen"]:
             with self.assertRaises(ValidationError):
                 instance.run_validation(data=data)
 
