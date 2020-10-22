@@ -185,7 +185,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if title != instance.title:
             instance.title = title
             instance.title_hash = get_hash_name(title)
-            instance.save()
+            instance.save(update_fields=["title", "title_hash"])
         if should_regenerate:
             self._create_export(instance)
             updated_params = {"stopped": True}
@@ -298,7 +298,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         related_file.query["params"].update(validated_ctl_params)
         es_query_body = SegmentQueryBuilder(related_file.query["params"]).query_body.to_dict()
         related_file.query["body"] = es_query_body
-        related_file.save()
+        related_file.save(update_fields=["query"])
 
     def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """
@@ -382,7 +382,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             "exclusion_file": getattr(exclusion_file, "name", None),
             "meta_audit_id": audit.id,
         })
-        segment.save()
+        segment.save(update_fields=["params"])
         return audit
 
     def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
