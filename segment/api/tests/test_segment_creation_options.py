@@ -16,7 +16,7 @@ from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
-from .test_segment_create import SegmentCreateApiViewTestCase
+from .test_segment_create_update import SegmentCreateApiViewTestCase
 
 
 @patch("segment.utils.query_builder.SegmentQueryBuilder.execute")

@@ -18,7 +18,7 @@ from utils.permissions import user_has_permission
 from utils.views import get_object
 
 
-class SegmentCreateApiView(CreateAPIView):
+class SegmentCreateUpdateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
         or_permission_classes(
