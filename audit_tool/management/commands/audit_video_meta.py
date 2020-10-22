@@ -130,11 +130,11 @@ class Command(BaseCommand):
             # Get original export file to filter using cleaned audit data
             export_filename = segment.export.filename
             export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
-
+            quote_char = '"'
             with open(export_fp, mode="r") as read_file, \
-                    open(temp_file, mode="w", newline="\n") as dest_file:
-                reader = csv.reader(read_file)
-                writer = csv.writer(dest_file)
+                    open(temp_file, mode="w") as dest_file:
+                reader = csv.reader(read_file, quotechar=quote_char)
+                writer = csv.writer(dest_file, quotechar=quote_char)
                 for chunk in chunks_generator(reader, size=2000):
                     chunk = list(chunk)
                     if write_header is True:
@@ -150,7 +150,7 @@ class Command(BaseCommand):
                 "items_count": len(clean_ids),
                 **aggregations
             }
-            segment.save()
+            segment.save(update_fields=["statistics"])
         # pylint: disable=broad-except
         except Exception as err:
             logger.exception(err)

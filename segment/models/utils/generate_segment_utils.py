@@ -123,7 +123,8 @@ class GenerateSegmentUtils:
             row = segment.export_serializer(item, context=serializer_context).data
             rows.append(row)
         with open(filename, mode=mode, newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
+            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore", quotechar='"',
+                                    quoting=csv.QUOTE_MINIMAL)
             if write_header is True:
                 writer.writeheader()
             writer.writerows(rows)

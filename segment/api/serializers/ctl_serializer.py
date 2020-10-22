@@ -206,6 +206,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     def _check_should_regenerate(self, segment: CustomSegment, old_params: dict, new_params: dict) -> bool:
         """
         Check params and files for changes to determine if export file should be regenerated during updates
+        Changes for files should only be checked if a file is sent in the request. For example if a CTL was created
+            with a source list but subsequent edits to the CTL do not include a source_file in the request, do not
+            check for changes for the file
         :param segment: CustomSegment
         :param old_params: dict -> Old ctl_params dict saved on related CustomSegmentFileUpload
         :param new_params: dict -> New ctl_params dict from request body
@@ -223,29 +226,32 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             should_regenerate = True
             return should_regenerate
 
-        # Check source file. Source file must be checked even if one was not sent in the current request in the case of
-        # a source file being uploaded before and now without one, effectively changing the CTL to have no source file
-        try:
-            old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
-                       for url in segment.s3.get_extract_export_ids(segment.source.filename)]
-        except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
-            old_ids = []
-        try:
-            new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
-                       for url in self._get_file_data(source_file)]
-        except TypeError:
-            new_ids = []
-        if set(old_ids) != set(new_ids):
-            should_regenerate = True
-            return should_regenerate
+        # Check source file for changes
+        if source_file is not None:
+            try:
+                old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                           for url in segment.s3.get_extract_export_ids(segment.source.filename)]
+            except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
+                old_ids = []
+            try:
+                new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                           for url in self._get_file_data(source_file)]
+            except TypeError:
+                new_ids = []
+            if set(old_ids) != set(new_ids):
+                should_regenerate = True
+                return should_regenerate
 
         # Check inclusion / exclusion keywords
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         try:
             audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
-            if set(inclusion_rows) != set(audit.params.get("inclusion", {})) \
-                    or set(exclusion_rows) != set(audit.params.get("exclusion", {})):
+            inclusion_changed = inclusion_file is not None \
+                                and set(inclusion_rows) != set(audit.params.get("inclusion", {}))
+            exclusion_changed = exclusion_file is not None \
+                                and set(exclusion_rows) != set(audit.params.get("exclusion", {}))
+            if inclusion_changed or exclusion_changed:
                 should_regenerate = True
         except (KeyError, AuditProcessor.DoesNotExist):
             pass
@@ -292,7 +298,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         related_file.query["params"].update(validated_ctl_params)
         es_query_body = SegmentQueryBuilder(related_file.query["params"]).query_body.to_dict()
         related_file.query["body"] = es_query_body
-        related_file.save()
+        related_file.save(update_fields=["query"])
 
     def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """
@@ -376,7 +382,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             "exclusion_file": getattr(exclusion_file, "name", None),
             "meta_audit_id": audit.id,
         })
-        segment.save()
+        segment.save(update_fields=["params"])
         return audit
 
     def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:

@@ -562,26 +562,88 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
-    def test_regenerate_source_urls_changed_to_none(self, mock_generate):
-        """ Test that CTL is regenerated if ctl was initially created with source file and now is being removed"""
+    def test_no_regenerate_editing_without_suitability_keywords(self, mock_generate):
+        """
+        Test that CTL is NOT regenerated if a CTL was created with inclusion / exclusion keywords but
+        subsequent editing does not send inclusion_file / exclusion_file in the request. Changes for keywords
+        should only be done if inclusion_file / exclusion_file is sent while editing
+        """
+        user = self.create_admin_user()
+        payload = self.get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+        segment = CustomSegment.objects.create(title="test_no_regenerate_source", owner=user,
+                                               segment_type=payload["segment_type"])
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        audit_params = dict(
+            segment_id=segment.id,
+            inclusion=["test_word"],
+        )
+        audit = AuditProcessor.objects.create(source=2, params=audit_params)
+        segment.params.update({"meta_audit_id": audit.id})
+        segment.save()
+        payload = self.get_params(id=segment.id, segment_type=segment.segment_type, title="updated_title")
+        # Not sending a inclusion_file in request will not check changes for it
+        form = dict(
+            data=json.dumps(payload),
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]), \
+             patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.patch(self._get_url(), form)
+        audit.refresh_from_db()
+        segment.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        # Title should change to "updated_title"
+        self.assertEqual(segment.title, payload["title"])
+        self.assertEqual(audit.params["name"], payload["title"])
+        self.assertEqual(audit.name, payload["title"].lower())
+        mock_generate.delay.assert_not_called()
+
+        # Test exclusion keywords should not be checked if no file is sent
+        audit.params.update({"exclusion": ["some exclusion"]})
+        audit.save()
+        payload.update({"title": "another changed title"})
+        form2 = dict(data=json.dumps(payload))
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]), \
+             patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
+            response = self.client.patch(self._get_url(), form2)
+        audit.refresh_from_db()
+        segment.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        # Title should change to "another changed title"
+        self.assertEqual(segment.title, payload["title"])
+        self.assertEqual(audit.params["name"], payload["title"])
+        self.assertEqual(audit.name, payload["title"].lower())
+        mock_generate.delay.assert_not_called()
+
+    def test_no_regenerate_editing_without_source(self, mock_generate):
+        """
+        Test that CTL is NOT regenerated if a CTL was created with a source but subsequent editing does not
+        send a source file in the request. Changes for source urls should only be done if a source file is sent
+        while editing
+        """
         user = self.create_admin_user()
         payload = self.get_params(segment_type=1)
         params = CTLParamsSerializer(data=payload)
         params.is_valid(raise_exception=True)
 
-        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        # Mock create CTL with initial source file
+        segment = CustomSegment.objects.create(title="test_no_regenerate_source", owner=user, segment_type=1)
         CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
         CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
 
-        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type, title="updated_title_no_regenerate"))
+        # Not sending a source_file in request will not check changes for it
         form = dict(
             data=json.dumps(payload),
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["an_old_url"]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
             response = self.client.patch(self._get_url(), form)
+        segment.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
-        mock_generate.delay.assert_called_once()
+        self.assertEqual(segment.title, payload["title"])
+        mock_generate.delay.assert_not_called()
 
     def test_regenerate_creates_new_audit(self, mock_generate):
         """ Test that regenerating CTL creates new audit and stops previous audit """
