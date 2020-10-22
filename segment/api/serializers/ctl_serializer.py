@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
@@ -25,6 +26,7 @@ from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
+from utils.datetime import seconds_to_hhmmss
 
 
 class FeaturedImageUrlMixin:
@@ -85,11 +87,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             ctl_params = obj.export.query.get("params", {})
             # convert seconds to HH:MM:SS format for display
             minimum_duration = ctl_params.get("minimum_duration", None)
-            if minimum_duration:
-                ctl_params["minimum_duration"] = str(datetime.timedelta(seconds=minimum_duration))
+            if minimum_duration is not None:
+                ctl_params["minimum_duration"] = seconds_to_hhmmss(minimum_duration)
             maximum_duration = ctl_params.get("maximum_duration", None)
-            if maximum_duration:
-                ctl_params["maximum_duration"] = str(datetime.timedelta(seconds=maximum_duration))
+            if maximum_duration is not None:
+                ctl_params["maximum_duration"] = seconds_to_hhmmss(maximum_duration)
         except CustomSegmentFileUpload.DoesNotExist:
             ctl_params = {}
         return ctl_params
