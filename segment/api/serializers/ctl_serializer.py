@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
+from rest_framework.serializers import Field
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
@@ -40,6 +41,19 @@ class FeaturedImageUrlMixin:
         return self.get_featured_image_url(instance)
 
 
+class SegmentTypeField(Field):
+    def to_internal_value(self, data):
+        try:
+            SegmentTypeEnum(data)
+        except ValueError:
+            raise ValidationError(f"Invalid segment_type: {data}")
+        return data
+
+    def to_representation(self, value):
+        segment_type = SegmentTypeEnum(value).name.lower()
+        return segment_type
+
+
 class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     """
     Serializer to handle creating and updating CustomSegments
@@ -47,6 +61,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     must be passed as context for successful validation
     """
     audit_id = IntegerField(allow_null=True, read_only=True)
+    ctl_params = SerializerMethodField()
     id = IntegerField(required=False)
     is_featured = BooleanField(read_only=True)
     is_vetting_complete = BooleanField(read_only=True)
@@ -55,11 +70,29 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     owner_id = CharField(read_only=True)
     params = JSONField(read_only=True)
     pending = SerializerMethodField()
-    segment_type = CharField()
+    segment_type = SegmentTypeField()
     source_name = SerializerMethodField(read_only=True)
     statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
+
+    def get_ctl_params(self, obj: CustomSegment) -> dict:
+        """
+        Serialize params that were used to create CTL that is stored in
+            related CustomSegmentFileUpload.query["params"]
+        """
+        try:
+            ctl_params = obj.export.query.get("params", {})
+            # convert seconds to HH:MM:SS format for display
+            minimum_duration = ctl_params.get("minimum_duration", None)
+            if minimum_duration:
+                ctl_params["minimum_duration"] = str(datetime.timedelta(seconds=minimum_duration))
+            maximum_duration = ctl_params.get("maximum_duration", None)
+            if maximum_duration:
+                ctl_params["maximum_duration"] = str(datetime.timedelta(seconds=maximum_duration))
+        except CustomSegmentFileUpload.DoesNotExist:
+            ctl_params = {}
+        return ctl_params
 
     def get_last_vetted_date(self, obj: CustomSegment) -> str:
         """
@@ -112,26 +145,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             segment_type_repr = SegmentTypeEnum(segment_type).name.lower()
             raise ValidationError("A {} target list with the title: {} already exists.".format(segment_type_repr, title))
         return title
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # adding this here instead of using a SerializerMethodField to preserve to-db serialization
-        data["segment_type"] = SegmentTypeEnum(instance.segment_type).name.lower()
-        try:
-            # instance data should overwrite export query params as it is the most up-to-date
-            export_query_params = instance.export.query.get("params", {})
-            export_query_params.update(data)
-            data = export_query_params
-            # convert seconds to HH:MM:SS format for display
-            minimum_duration = data.get("minimum_duration", None)
-            if minimum_duration:
-                data["minimum_duration"] = str(datetime.timedelta(seconds=minimum_duration))
-            maximum_duration = data.get("maximum_duration", None)
-            if maximum_duration:
-                data["maximum_duration"] = str(datetime.timedelta(seconds=maximum_duration))
-        except CustomSegmentFileUpload.DoesNotExist:
-            pass
-        return data
 
     def create(self, validated_data: dict) -> CustomSegment:
         """

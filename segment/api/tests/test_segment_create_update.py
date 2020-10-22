@@ -223,7 +223,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         data = response.data
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(query["params"]["minimum_views"], data["minimum_views"])
+        self.assertEqual(query["params"]["minimum_views"], data["ctl_params"]["minimum_views"])
 
     def test_reject_duplicate_title_create(self, *_):
         self.create_admin_user()
@@ -442,8 +442,8 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertNotEqual(old_params, updated_params)
         mock_generate.assert_called_once()
 
-    def test_regenerate_suitability_keywords_changed(self, mock_generate):
-        """ Test that CTL is regenerated if inclusion / exclusion keywords have changed """
+    def test_regenerate_exclusion_keywords_changed(self, mock_generate):
+        """ Test that CTL is regenerated if exclusion keywords have changed """
         self.create_admin_user()
         payload = self.get_params(title="test_regenerate_keywords", segment_type=0)
         exclusion_file = BytesIO()
@@ -476,6 +476,43 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         created.refresh_from_db()
         new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
         self.assertNotEqual(old_audit.params["exclusion"], new_audit.params["exclusion"])
+        self.assertEqual(new_audit.params["segment_id"], created.id)
+        mock_generate.assert_called_once()
+
+    def test_regenerate_inclusion_keywords_changed(self, mock_generate):
+        """ Test that CTL is regenerated if inclusion keywords have changed """
+        self.create_admin_user()
+        payload = self.get_params(title="test_regenerate_keywords", segment_type=1)
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        inclusion_file.write(b"an_inclusive_word")
+        inclusion_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            inclusion_file=inclusion_file
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=response.data["id"])
+        old_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+
+        updated_inclusion_file = BytesIO()
+        updated_inclusion_file.name = "test_new_inclusion.csv"
+        updated_inclusion_file.write(b"a_changed_word")
+        updated_inclusion_file.seek(0)
+        updated_payload = self.get_params(id=created.id, segment_type=payload["segment_type"])
+        form2 = dict(
+            data=json.dumps(updated_payload),
+            inclusion_file=updated_inclusion_file
+        )
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            response2 = self.client.patch(self._get_url(), form2)
+        self.assertEqual(response2.status_code, HTTP_200_OK)
+
+        created.refresh_from_db()
+        new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        self.assertNotEqual(old_audit.params["inclusion"], new_audit.params["inclusion"])
         self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
 
