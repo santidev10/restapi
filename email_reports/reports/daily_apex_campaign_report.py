@@ -97,7 +97,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return None
 
         # TODO development
-        os.remove("disney.csv")
+        try:
+            os.remove("disney.csv")
+        except FileNotFoundError:
+            pass
         with open("disney.csv", mode="w") as f:
             writer = csv.writer(f)
             writer.writerow(self.CSV_HEADER)
