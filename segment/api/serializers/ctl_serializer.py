@@ -180,13 +180,19 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
         old_audit_id = instance.params.get("meta_audit_id")
+        # always save updated title
+        title = validated_data.get("title", instance.title)
+        if title != instance.title:
+            instance.title = title
+            instance.title_hash = get_hash_name(title)
+            instance.save()
         if should_regenerate:
             self._create_export(instance)
             updated_params = {"stopped": True}
             updated_attrs = {"completed": timezone.now(), "pause": 0}
         else:
-            updated_params = {"name": instance.title}
-            updated_attrs = {"name": instance.title.lower()}
+            updated_params = {"name": title}
+            updated_attrs = {"name": title.lower()}
         try:
             # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
             audit = AuditProcessor.objects.get(id=old_audit_id)
