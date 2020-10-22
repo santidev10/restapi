@@ -183,7 +183,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if title != instance.title:
             instance.title = title
             instance.title_hash = get_hash_name(title)
-            instance.save()
+            instance.save(update_fields=["title", "title_hash"])
         if should_regenerate:
             self._create_export(instance)
             updated_params = {"stopped": True}
