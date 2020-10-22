@@ -711,3 +711,20 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertTrue(len(updated_params.keys()) > len(partial_params.keys()))
         self.assertEqual(updated_params["vetting_status"], partial_params["vetting_status"])
         mock_generate.assert_called_once()
+
+    def test_update_title(self, mock_generate):
+        """ Test updating title with partial update is successful """
+        self.create_admin_user()
+        payload = self.get_params(title="test_partial_update", segment_type=0)
+        post_response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(post_response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=post_response.data["id"])
+
+        partial_params = dict(id=created.id, title="new title", segment_type=0)
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            patch_response = self.client.patch(self._get_url(), dict(data=json.dumps(partial_params)))
+        self.assertEqual(patch_response.status_code, HTTP_200_OK)
+
+        updated = CustomSegment.objects.get(id=created.id)
+        self.assertEqual(updated.title, partial_params["title"])
