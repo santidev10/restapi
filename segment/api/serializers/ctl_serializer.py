@@ -180,9 +180,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         old_audit_id = instance.params.get("meta_audit_id")
         # always save updated title
         title = validated_data.get("title", instance.title)
-        instance.title = title
-        instance.title_hash = get_hash_name(title)
-        instance.save()
+        if title != instance.title:
+            instance.title = title
+            instance.title_hash = get_hash_name(title)
+            instance.save()
         if should_regenerate:
             self._create_export(instance)
             updated_params = {"stopped": True}
