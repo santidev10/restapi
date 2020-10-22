@@ -107,8 +107,8 @@ class Command(BaseCommand):
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def update_ctl(self):
+        """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
-        export_file = segment.s3.get_export_lines_stream(segment.export.filename)
         if self.audit.audit_type == 1:
             audit_model = AuditVideoProcessor
             model_fk_ref = "video"
@@ -127,10 +127,16 @@ class Command(BaseCommand):
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
         try:
-            for chunk in chunks_generator(export_file, size=2000):
-                chunk = list(chunk)
-                with open(temp_file, mode="a", newline="") as file:
-                    writer = csv.writer(file)
+            # Get original export file to filter using cleaned audit data
+            export_filename = segment.export.filename
+            export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
+
+            with open(export_fp, mode="r") as read_file, \
+                    open(temp_file, mode="w", newline="\n") as dest_file:
+                reader = csv.reader(read_file)
+                writer = csv.writer(dest_file)
+                for chunk in chunks_generator(reader, size=2000):
+                    chunk = list(chunk)
                     if write_header is True:
                         header = chunk.pop(0)
                         writer.writerow(header)
@@ -148,6 +154,8 @@ class Command(BaseCommand):
         # pylint: disable=broad-except
         except Exception as err:
             logger.exception(err)
+        else:
+            os.remove(export_fp)
         # pylint: enable=broad-except
         finally:
             os.remove(temp_file)
