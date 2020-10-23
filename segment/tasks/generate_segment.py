@@ -18,7 +18,7 @@ from segment.utils.utils import get_content_disposition
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
-SOURCE_SIZE_GET_LIMIT = 10000
+SOURCE_SIZE_GET_LIMIT = 100000
 
 logger = logging.getLogger(__name__)
 
