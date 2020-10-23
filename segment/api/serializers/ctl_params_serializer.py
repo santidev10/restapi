@@ -154,7 +154,6 @@ class CTLParamsSerializer(serializers.Serializer):
     video_view_rate = AdsPerformanceRangeField()
 
     ads_stats_include_na = NonRequiredBooleanField()
-    age_groups_include_na = NonRequiredBooleanField()
     countries_include_na = NonRequiredBooleanField()
     languages_include_na = NonRequiredBooleanField()
     minimum_subscribers_include_na = NonRequiredBooleanField()

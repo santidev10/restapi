@@ -109,19 +109,14 @@ class SegmentCreateOptionsApiView(APIView):
         except IASHistory.DoesNotExist:
             latest_ias_date = timezone.now() - timedelta(days=7)
         options = {
-            "age_groups": [
-                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
-                AuditAgeGroup.ID_CHOICES
-            ],
+            "age_groups": with_unknown(options=AuditAgeGroup.ID_CHOICES),
             "brand_safety_categories": [
                 {"id": _id, "name": category}
                 for _id, category
                 in BadWordCategory.get_category_mapping(vettable=True).items()
             ],
             "content_categories": AuditUtils.get_iab_categories(),
-            "gender": [
-                {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
-            ],
+            "gender": with_unknown(options=AuditGender.ID_CHOICES),
             "countries": countries,
             "languages": languages,
             "is_vetted": [
