@@ -728,3 +728,22 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
 
         updated = CustomSegment.objects.get(id=created.id)
         self.assertEqual(updated.title, partial_params["title"])
+
+    def test_empty_update_title_validation(self, mock_generate):
+        """
+        ensure an update where the CTL's name doesn't change does not
+        raise a validation error against its own name
+        """
+        self.create_admin_user()
+        payload = self.get_params(title="test_partial_update", segment_type=0)
+        post_response = self.client.post(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(post_response.status_code, HTTP_201_CREATED)
+
+        created = CustomSegment.objects.get(id=post_response.data["id"])
+
+        payload.update(dict(id=created.id))
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
+            patch_response = self.client.patch(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertNotEqual(patch_response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertNotIn("already exists", patch_response.content.decode("utf-8"))
+        self.assertEqual(patch_response.status_code, HTTP_200_OK)
