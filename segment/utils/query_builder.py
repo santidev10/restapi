@@ -13,6 +13,7 @@ from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from segment.models.constants import SegmentTypeEnum
 
 
 # pylint: disable=too-many-instance-attributes
@@ -36,7 +37,8 @@ class SegmentQueryBuilder:
         self._original_score_threshold = data.get("score_threshold")
         self._params = self._map_params(data)
 
-        self.es_manager = VideoManager(sections=self.SECTIONS) if data.get("segment_type") in {0, "video"} \
+        self.es_manager = VideoManager(sections=self.SECTIONS) \
+            if data.get("segment_type") in [SegmentTypeEnum.VIDEO.value, "video"] \
             else ChannelManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
         self.query_params = self._get_query_params()
@@ -51,7 +53,7 @@ class SegmentQueryBuilder:
         """
         :return: dict
         """
-        if segment_type == 0:
+        if segment_type == SegmentTypeEnum.VIDEO.value:
             published_at = "general_data.youtube_published_at"
         else:
             published_at = "stats.last_video_published_at"
@@ -88,18 +90,18 @@ class SegmentQueryBuilder:
             must_queries.append(min_views_ct_queries)
 
         minimum_duration = self._params.get("minimum_duration", None)
-        if segment_type == 0 and minimum_duration:
+        if segment_type == SegmentTypeEnum.VIDEO.value and minimum_duration:
             minimum_duration_query = QueryBuilder().build().must().range() \
                 .field(f"{Sections.GENERAL_DATA}.duration").gte(minimum_duration).get()
             must_queries.append(minimum_duration_query)
 
         maximum_duration = self._params.get("maximum_duration", None)
-        if segment_type == 0 and maximum_duration:
+        if segment_type == SegmentTypeEnum.VIDEO.value and maximum_duration:
             maximum_duration_query = QueryBuilder().build().must().range() \
                 .field(f"{Sections.GENERAL_DATA}.duration").lte(maximum_duration).get()
             must_queries.append(maximum_duration_query)
 
-        if segment_type == 1 and self._params.get("minimum_subscribers"):
+        if segment_type == SegmentTypeEnum.CHANNEL.value and self._params.get("minimum_subscribers"):
             min_subs_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_subscribers",
                 flag_name="minimum_subscribers_include_na",
@@ -107,7 +109,7 @@ class SegmentQueryBuilder:
             )
             must_queries.append(min_subs_ct_queries)
 
-        if segment_type == 1 and self._params.get("minimum_videos"):
+        if segment_type == SegmentTypeEnum.CHANNEL.value and self._params.get("minimum_videos"):
             min_vid_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_videos",
                 flag_name="minimum_videos_include_na",
@@ -158,7 +160,7 @@ class SegmentQueryBuilder:
             )
 
         if self._params.get("languages"):
-            lang_code_field = "lang_code" if segment_type == 0 else "top_lang_code"
+            lang_code_field = "lang_code" if segment_type == SegmentTypeEnum.VIDEO.value else "top_lang_code"
             lang_queries = Q("bool")
             if self._params.get("languages_include_na"):
                 lang_queries |= QueryBuilder().build().must_not().exists() \
