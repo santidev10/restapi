@@ -36,7 +36,6 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         params = {
             "ads_stats_include_na": False,
             "age_groups": [],
-            "age_groups_include_na": False,
             "average_cpv": None,
             "average_cpm": None,
             "content_categories": [],
