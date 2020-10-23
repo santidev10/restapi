@@ -161,3 +161,28 @@ def from_local_to_utc(utc_now, timezone_name, local_time, future=True):
 
 def date_to_chart_data_str(date_value):
     return f"{date_value} 23:59:59.999999Z"
+
+
+def left_zero_pad(number: int) -> str:
+    """
+    pads a string with a left side zero if len is less than two
+    :param number:
+    :return:
+    """
+    number = str(number)
+    if len(number) < 2:
+        number = f"0{number}"
+    return number
+
+
+def seconds_to_hhmmss(seconds: int) -> str:
+    """
+    converts seconds HHH:MM:SS format
+    :param seconds:
+    :return: str
+    """
+    hours, seconds = seconds // 3600, seconds % 3600
+    minutes, seconds = seconds // 60, seconds % 60
+    hms = [hours, minutes, seconds]
+    hms = list(map(left_zero_pad, hms))
+    return ":".join(hms)

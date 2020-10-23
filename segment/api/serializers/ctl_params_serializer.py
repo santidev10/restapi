@@ -1,11 +1,3 @@
-"""
-Module to handle validating CTL parameters for retrieving estimates from Elasticsearch and CTL creation.
-
-Typical usage will be using CTLParamsSerializer to first provide default values and validate all possible params, then
-using this validated data with CustomSegmentSerializer, in which only some fields defined on the CustomSegmentSerializer
-will be used for actual creation but the rest of the data will be passed as context for other processes (e.g. creating
-source file, creating audit, invoking export task, etc.)
-"""
 from datetime import datetime
 
 from django.core.validators import MinValueValidator
@@ -18,6 +10,7 @@ from segment.models.constants import SegmentTypeEnum
 from segment.utils.utils import validate_all_in
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from utils.serializers.fields.coerce_time_to_seconds_field import CoerceTimeToSecondsField
 
 
 class NullableDictField(serializers.DictField):
@@ -83,6 +76,9 @@ class EmptyCharDateField(serializers.CharField):
 
 
 class NullableCharNumeric(serializers.CharField):
+    """
+    Validate integer values represented as comma formatted strings e.g. 1,000,000
+    """
     def __init__(self):
         super().__init__(allow_null=True)
 
@@ -116,52 +112,13 @@ class CoerceListMemberField(serializers.Field):
         return validated
 
 
-class CoerceTimeToSecondsField(serializers.Field):
-    """
-    Require either an int or string in the formats: hh:mm:ss, or mm:ss
-    """
-    def run_validation(self, data=None):
-        # if the field is not passed
-        if data is empty:
-            if self.required:
-                raise ValidationError("This field is required")
-            else:
-                return None
-        # if the value is null
-        if data is None or data == "":
-            if self.allow_null:
-                return None
-            else:
-                raise ValidationError("This field cannot be null")
-        # validate type and format
-        if not isinstance(data, str) and not isinstance(data, int):
-            raise ValidationError(f"An integer, or string in the formats: 'hh:mm:ss', 'mm:ss' or 'ss' is required")
-        if isinstance(data, int):
-            return data
-        try:
-            coerced_seconds = int(data)
-        except ValueError:
-            split = data.split(":")
-            if len(split) not in [2, 3]:
-                raise ValidationError(f"The string must follow the format: 'hh:mm:ss', 'mm:ss' or 'ss'")
-            split = list(map(int, split))
-            if len(split) == 2:
-                list(map(self.validate_ceiling, split))
-                minutes, seconds = split
-                return minutes * 60 + seconds
-            list(map(self.validate_ceiling, split[1:]))
-            hours, minutes, seconds = split
-            return hours * 3600 + minutes * 60 + seconds
-        return coerced_seconds
-
-    @ staticmethod
-    def validate_ceiling(value: int, ceiling=60):
-        if value > ceiling:
-            raise ValidationError(f"The time component: '{value}' must be less than or equal to {ceiling}")
-        return value
-
-
 class CTLParamsSerializer(serializers.Serializer):
+    """
+    Serializer to handle validating CTL parameters for retrieving estimates from Elasticsearch and CTL creation.
+
+    Typical usage will be using CTLParamsSerializer to validate CTL params through SegmentCreateApiView
+    or SegmentCreateOptionsApiView and passing as serializer context for creates / updates.
+    """
     age_groups = NullableListField()
     average_cpm = AdsPerformanceRangeField()
     average_cpv = AdsPerformanceRangeField()
@@ -199,24 +156,29 @@ class CTLParamsSerializer(serializers.Serializer):
     ads_stats_include_na = NonRequiredBooleanField()
     age_groups_include_na = NonRequiredBooleanField()
     countries_include_na = NonRequiredBooleanField()
+    languages_include_na = NonRequiredBooleanField()
     minimum_subscribers_include_na = NonRequiredBooleanField()
     minimum_videos_include_na = NonRequiredBooleanField()
     minimum_views_include_na = NonRequiredBooleanField()
     mismatched_language = NonRequiredBooleanField()
 
-    def validate(self, data):
+    def validate(self, data: dict) -> dict:
         validated_data = super().validate(data)
-        self._validate_categories(data)
+        # Only validate if content_categories was passed in
+        try:
+            self._validate_categories(data)
+        except KeyError:
+            pass
         return validated_data
 
-    def validate_segment_type(self, data):
+    def validate_segment_type(self, data: int) -> int:
         try:
             SegmentTypeEnum(data)
         except ValueError:
             raise ValidationError(f"Invalid list_type: {data}. 0 = video, 1 = channel.")
         return data
 
-    def _validate_categories(self, data):
+    def _validate_categories(self, data: dict) -> None:
         content_categories = data["content_categories"]
         exclude_content_categories = data["exclude_content_categories"]
         if content_categories or exclude_content_categories:

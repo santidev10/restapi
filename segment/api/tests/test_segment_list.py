@@ -59,6 +59,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         ctlc = self.client.get(self._get_url("channel")).data["items"][0]
         expected_fields = {
             "audit_id",
+            "ctl_params",
             "id",
             "is_featured",
             "is_vetting_complete",

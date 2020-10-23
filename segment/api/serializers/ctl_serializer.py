@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
@@ -7,6 +8,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
+from rest_framework.serializers import Field
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
@@ -24,13 +26,13 @@ from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
+from utils.datetime import seconds_to_hhmmss
 
 
 class FeaturedImageUrlMixin:
     """
     Returns a default image if not set
     """
-
     def get_featured_image_url(self, instance):
         return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
@@ -41,8 +43,27 @@ class FeaturedImageUrlMixin:
         return self.get_featured_image_url(instance)
 
 
+class SegmentTypeField(Field):
+    def to_internal_value(self, data):
+        try:
+            SegmentTypeEnum(data)
+        except ValueError:
+            raise ValidationError(f"Invalid segment_type: {data}")
+        return data
+
+    def to_representation(self, value):
+        segment_type = SegmentTypeEnum(value).name.lower()
+        return segment_type
+
+
 class CTLSerializer(FeaturedImageUrlMixin, Serializer):
+    """
+    Serializer to handle creating and updating CustomSegments
+    During both creates / updates, the view request object, CTLParamsSerializer.validated_data, and files dict
+    must be passed as context for successful validation
+    """
     audit_id = IntegerField(allow_null=True, read_only=True)
+    ctl_params = SerializerMethodField()
     id = IntegerField(required=False)
     is_featured = BooleanField(read_only=True)
     is_vetting_complete = BooleanField(read_only=True)
@@ -51,11 +72,29 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     owner_id = CharField(read_only=True)
     params = JSONField(read_only=True)
     pending = SerializerMethodField()
-    segment_type = CharField()
+    segment_type = SegmentTypeField()
     source_name = SerializerMethodField(read_only=True)
     statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
+
+    def get_ctl_params(self, obj: CustomSegment) -> dict:
+        """
+        Serialize params that were used to create CTL that is stored in
+            related CustomSegmentFileUpload.query["params"]
+        """
+        try:
+            ctl_params = obj.export.query.get("params", {})
+            # convert seconds to HH:MM:SS format for display
+            minimum_duration = ctl_params.get("minimum_duration", None)
+            if minimum_duration is not None:
+                ctl_params["minimum_duration"] = seconds_to_hhmmss(minimum_duration)
+            maximum_duration = ctl_params.get("maximum_duration", None)
+            if maximum_duration is not None:
+                ctl_params["maximum_duration"] = seconds_to_hhmmss(maximum_duration)
+        except CustomSegmentFileUpload.DoesNotExist:
+            ctl_params = {}
+        return ctl_params
 
     def get_last_vetted_date(self, obj: CustomSegment) -> str:
         """
@@ -109,26 +148,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise ValidationError("A {} target list with the title: {} already exists.".format(segment_type_repr, title))
         return title
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # adding this here instead of using a SerializerMethodField to preserve to-db serialization
-        data["segment_type"] = SegmentTypeEnum(instance.segment_type).name.lower()
-        try:
-            # instance data should overwrite export query params as it is the most up-to-date
-            export_query_params = instance.export.query.get("params", {})
-            export_query_params.update(data)
-            data = export_query_params
-            # convert seconds to HH:MM:SS format for display
-            minimum_duration = data.get("minimum_duration", None)
-            if minimum_duration:
-                data["minimum_duration"] = str(datetime.timedelta(seconds=minimum_duration))
-            maximum_duration = data.get("maximum_duration", None)
-            if maximum_duration:
-                data["maximum_duration"] = str(datetime.timedelta(seconds=maximum_duration))
-        except CustomSegmentFileUpload.DoesNotExist:
-            pass
-        return data
-
     def create(self, validated_data: dict) -> CustomSegment:
         """
         Handle CustomSegment obj creation
@@ -161,13 +180,19 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
         old_audit_id = instance.params.get("meta_audit_id")
+        # always save updated title
+        title = validated_data.get("title", instance.title)
+        if title != instance.title:
+            instance.title = title
+            instance.title_hash = get_hash_name(title)
+            instance.save(update_fields=["title", "title_hash"])
         if should_regenerate:
             self._create_export(instance)
             updated_params = {"stopped": True}
             updated_attrs = {"completed": timezone.now(), "pause": 0}
         else:
-            updated_params = {"name": instance.title}
-            updated_attrs = {"name": instance.title.lower()}
+            updated_params = {"name": title}
+            updated_attrs = {"name": title.lower()}
         try:
             # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
             audit = AuditProcessor.objects.get(id=old_audit_id)
@@ -180,8 +205,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def _check_should_regenerate(self, segment: CustomSegment, old_params: dict, new_params: dict) -> bool:
         """
-        Check params and files for changes to determine if export file should be regenerated
-        :param segment:
+        Check params and files for changes to determine if export file should be regenerated during updates
+        Changes for files should only be checked if a file is sent in the request. For example if a CTL was created
+            with a source list but subsequent edits to the CTL do not include a source_file in the request, do not
+            check for changes for the file
+        :param segment: CustomSegment
         :param old_params: dict -> Old ctl_params dict saved on related CustomSegmentFileUpload
         :param new_params: dict -> New ctl_params dict from request body
         :return:
@@ -192,34 +220,38 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         inclusion_file = files.get("inclusion_file")
         exclusion_file = files.get("exclusion_file")
 
-        # Check ctl filters
-        if new_params != old_params:
+        # Check ctl filters for changes. Check each key as may be updating with partial dict of original params
+        matching_old_params = {key: old_params.get(key) for key in new_params.keys()}
+        if new_params != matching_old_params:
             should_regenerate = True
             return should_regenerate
 
-        # Check source file. Source file must be checked even if one was not sent in the current request in the case of
-        # a source file being uploaded before and now without one, effectively changing the CTL to have no source file
-        try:
-            old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
-                       for url in segment.s3.get_extract_export_ids(segment.source.filename)]
-        except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
-            old_ids = []
-        try:
-            new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
-                       for url in self._get_file_data(source_file)]
-        except TypeError:
-            new_ids = []
-        if set(old_ids) != set(new_ids):
-            should_regenerate = True
-            return should_regenerate
+        # Check source file for changes
+        if source_file is not None:
+            try:
+                old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                           for url in segment.s3.get_extract_export_ids(segment.source.filename)]
+            except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
+                old_ids = []
+            try:
+                new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                           for url in self._get_file_data(source_file)]
+            except TypeError:
+                new_ids = []
+            if set(old_ids) != set(new_ids):
+                should_regenerate = True
+                return should_regenerate
 
         # Check inclusion / exclusion keywords
         inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
         exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         try:
             audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
-            if set(inclusion_rows) != set(audit.params.get("inclusion", {})) \
-                    or set(exclusion_rows) != set(audit.params.get("exclusion", {})):
+            inclusion_changed = inclusion_file is not None \
+                                and set(inclusion_rows) != set(audit.params.get("inclusion", {}))
+            exclusion_changed = exclusion_file is not None \
+                                and set(exclusion_rows) != set(audit.params.get("exclusion", {}))
+            if inclusion_changed or exclusion_changed:
                 should_regenerate = True
         except (KeyError, AuditProcessor.DoesNotExist):
             pass
@@ -248,25 +280,31 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             self._create_audit(segment)
         generate_custom_segment.delay(segment.id, **extra_kwargs)
 
-    def _create_query(self, segment: CustomSegment):
+    def _create_query(self, segment: CustomSegment) -> None:
         """
-        Create Elasticsearch query body with params for export generation
+        Create or update Elasticsearch query body with params for export generation
+        This method may be used for both creating and partially updating params. First get or create
+            CustomSegmentSourceFileUpload to update its query["body"] key and then create full query["body"] for
+            Elasticsearch query during export generation
         :param segment: CustomSegment
         :return:
         """
         validated_ctl_params = self.context["ctl_params"]
-        query_builder = SegmentQueryBuilder(validated_ctl_params)
-        query = {
-            "params": validated_ctl_params,
-            "body": query_builder.query_body.to_dict()
-        }
-        CustomSegmentFileUpload.objects.update_or_create(segment=segment, defaults=dict(query=query, segment=segment))
+        # Default with empty query for creation
+        query = dict(params={}, body={})
+        related_file, _ = CustomSegmentFileUpload.objects\
+            .get_or_create(segment=segment, defaults=dict(query=query, segment=segment))
+        # Update params dict as validated_ctl_params may be a partial dict of full CTL params
+        related_file.query["params"].update(validated_ctl_params)
+        es_query_body = SegmentQueryBuilder(related_file.query["params"]).query_body.to_dict()
+        related_file.query["body"] = es_query_body
+        related_file.save(update_fields=["query"])
 
     def _create_source_file(self, segment: CustomSegment) -> CustomSegmentSourceFileUpload:
         """
         Create CTL source file using user uploaded csv
         This prepares csv for CTL export generation and is used to only include channels / videos that are both filtered
-        for and on the source csv
+            for and on the source csv
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -298,7 +336,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             during CTL creation
         After generate_custom_segment task is finished creating export with CTL filters, the process will upload the
             csv export for audit processes to filter again using inclusion / exclusion words to upload a final csv
-            export for the list
+            export for the list in the audit_tool.management.commands.audit_video_meta.Command.update_ctl method
         """
         files = self.context["files"]
         request = self.context["request"]
@@ -335,7 +373,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             )
         params.update(extra_params)
         # Audit is initially created with temp_stop=True to prevent from processing immediately. Audit will be updated
-        # to temp_stop=False once generate_custom_segment completes with finished source file for audit
+        # to temp_stop=False once generate_custom_segment completes with finished source file for audit. The audit
+        # update is done in the segment.models.utils.generate_segment_utils.GenerateSegmentUtils.start_audit method
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, temp_stop=True,
                                               name=segment.title.lower(), params=params)
         segment.params.update({
@@ -343,7 +382,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             "exclusion_file": getattr(exclusion_file, "name", None),
             "meta_audit_id": audit.id,
         })
-        segment.save()
+        segment.save(update_fields=["params"])
         return audit
 
     def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
