@@ -4,10 +4,15 @@ from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime
 from datetime import timezone
+import os
+import pickle
+import time
 
-import pytz
-from emoji import UNICODE_EMOJI
+from django.conf import settings
 from flashtext import KeywordProcessor
+from elasticsearch.helpers.errors import BulkIndexError
+from emoji import UNICODE_EMOJI
+import pytz
 
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -22,6 +27,8 @@ from .bad_word_processors_by_language import get_bad_word_processors_by_language
 
 
 KeywordHit = namedtuple("KeywordHit", "name location")
+PICKLED_LANGUAGE_PROCESSORS_FILEPATH = f"{settings.TEMPDIR}/picked_language_processors"
+LANGUAGES_PROCESSORS_EXPIRE = 1800
 
 
 class AuditUtils(object):
@@ -46,11 +53,37 @@ class AuditUtils(object):
             str(score): 0
             for score in set(BadWord.objects.values_list("negative_score", flat=True))
         }
-        self._bad_word_processors_by_language = get_bad_word_processors_by_language()
+        self._bad_word_processors_by_language = self.get_language_processors()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
         self._vetted_safe_score = self._get_vetted_score(safe=True)
         self._vetted_unsafe_score = self._get_vetted_score(safe=False)
+
+    @staticmethod
+    def get_language_processors(filepath=None) -> dict:
+        """
+        Get language processors with pickling
+        If pickled file is older than LANGUAGES_PROCESSORS_EXPIRE, then pickle and save with updated
+            language processors
+        :return: dict
+        """
+        filepath = filepath or PICKLED_LANGUAGE_PROCESSORS_FILEPATH
+        should_save = False
+        try:
+            created_at = os.path.getctime(filepath)
+            if created_at - time.time() <= LANGUAGES_PROCESSORS_EXPIRE:
+                picked_language_processor = open(filepath, mode="rb")
+                language_processors = pickle.load(picked_language_processor)
+            else:
+                should_save = True
+                language_processors = get_bad_word_processors_by_language()
+        except OSError:
+            language_processors = get_bad_word_processors_by_language()
+            should_save = True
+        if should_save:
+            with open(filepath, mode="wb") as handle:
+                pickle.dump(language_processors, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        return language_processors
 
     def _get_vetted_score(self, safe=True):
         if safe is True:
@@ -329,7 +362,6 @@ class AuditUtils(object):
         Check if each document should be upserted depending on config, as vetted videos should not always be updated
         :param es_manager: VideoManager | ChannelManager
         :param audits: list -> BrandSafetyVideo | BrandSafetyChannel audits
-        :param ignore_vetted: bool -> Determine if vetted items should be indexed
         :param chunk_size: int -> Size of each index batch
         :return: list
         """
@@ -337,5 +369,8 @@ class AuditUtils(object):
             audit.instantiate_es() for audit in audits
         ]
         for chunk in self.batch(to_upsert, chunk_size):
-            es_manager.upsert(chunk, refresh=False)
+            try:
+                es_manager.upsert(chunk, refresh=False)
+            except BulkIndexError:
+                pass
         return to_upsert
