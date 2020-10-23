@@ -140,12 +140,15 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def validate_title(self, title: str) -> str:
         hashed = get_hash_name(title.lower().strip())
-        owner_id = self.context["request"].user.id
+        # owner is instance owner if PATCH, or requesting user if POST
+        owner_id = getattr(self.instance, "owner_id", self.context["request"].user.id)
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
+        if isinstance(self.instance, CustomSegment):
+            segments = segments.exclude(id=self.instance.id)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
             segment_type_repr = SegmentTypeEnum(segment_type).name.lower()
-            raise ValidationError("A {} target list with the title: {} already exists.".format(segment_type_repr, title))
+            raise ValidationError(f"A {segment_type_repr} target list with the title: {title} already exists.")
         return title
 
     def create(self, validated_data: dict) -> CustomSegment:
