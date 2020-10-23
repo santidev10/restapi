@@ -1,9 +1,13 @@
 from elasticsearch_dsl import Q
+from elasticsearch_dsl.query import Bool
+from typing import Tuple
 
 from audit_tool.constants import CHOICE_UNKNOWN_KEY
+from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from audit_tool.models import AuditGender
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
@@ -111,6 +115,33 @@ class SegmentQueryBuilder:
             )
             must_queries.append(min_vid_ct_queries)
 
+        # handle all
+        for options, valid_options, field_name in [
+            [
+                self._params.get("gender", []),
+                AuditGender.to_str_with_unknown.keys(),
+                f"{Sections.TASK_US_DATA}.gender"],
+            [
+                self._params.get("age_groups", []),
+                AuditAgeGroup.to_str_with_unknown.keys(),
+                f"{Sections.TASK_US_DATA}.age_group"],
+            [
+                self._params.get("content_types", []),
+                AuditContentType.to_str_with_unknown.keys(),
+                f"{Sections.TASK_US_DATA}.content_type"],
+            [
+                self._params.get("content_quality", []),
+                AuditContentQuality.to_str_with_unknown.keys(),
+                f"{Sections.TASK_US_DATA}.content_quality"],
+        ]:
+            choice_unknown_query = self.get_query_for_choice_unknown_field(
+                options=options,
+                valid_options=valid_options,
+                field_name=field_name
+            )
+            if isinstance(choice_unknown_query, Bool):
+                must_queries.append(choice_unknown_query)
+
         if self._params.get("video_ids"):
             must_queries.append(QueryBuilder().build().must().terms().field("main.id")
                                 .value(self._params["video_ids"]).get())
@@ -126,10 +157,6 @@ class SegmentQueryBuilder:
                     .gte(self._params["sentiment"]).get()
             )
 
-        if self._params.get("gender") is not None and len(self._params.get("gender", [])) > 0:
-            must_queries.append(
-                QueryBuilder().build().must().terms().field("task_us_data.gender").value(self._params["gender"]).get())
-
         if self._params.get("languages"):
             lang_code_field = "lang_code" if segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
@@ -140,7 +167,6 @@ class SegmentQueryBuilder:
                 lang_queries |= QueryBuilder().build().should().term() \
                     .field(f"{Sections.GENERAL_DATA}.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
-
 
         if self._params.get("content_categories"):
             content_queries = Q("bool")
@@ -163,15 +189,6 @@ class SegmentQueryBuilder:
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(
                     country_code).get()
             must_queries.append(country_queries)
-
-        if self._params.get("age_groups"):
-            age_queries = Q("bool")
-            if self._params.get("age_groups_include_na"):
-                age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
-            for age_group_id in self._params["age_groups"]:
-                age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(
-                    age_group_id).get()
-            must_queries.append(age_queries)
 
         if self._params.get("severity_filters"):
             severity_queries = Q("bool")
@@ -235,34 +252,6 @@ class SegmentQueryBuilder:
                 vetting_status_queries |= getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
             must_queries.append(vetting_status_queries)
 
-        content_types = self._params.get("content_type", [])
-        # if we want any content type, then we don't need to filter
-        if content_types and set(content_types) != set(AuditContentType.to_str_with_unknown.keys()):
-            content_types_query = Q("bool")
-            # -1 is treated as include_na here
-            if CHOICE_UNKNOWN_KEY in content_types:
-                content_types.remove(CHOICE_UNKNOWN_KEY)
-                content_types_query |= QueryBuilder().build().must_not().exists() \
-                    .field(f"{Sections.TASK_US_DATA}.content_type").get()
-            for content_type in content_types:
-                content_types_query |= QueryBuilder().build().should().term() \
-                    .field(f"{Sections.TASK_US_DATA}.content_type").value(content_type).get()
-            must_queries.append(content_types_query)
-
-        content_qualities = self._params.get("content_quality", [])
-        # if we want any content quality, then we don't need to filter
-        if content_qualities and set(content_qualities) != set(AuditContentQuality.to_str_with_unknown.keys()):
-            content_qualities_query = Q("bool")
-            # -1 is treated as include_na here
-            if CHOICE_UNKNOWN_KEY in content_qualities:
-                content_qualities.remove(CHOICE_UNKNOWN_KEY)
-                content_qualities_query |= QueryBuilder().build().must_not().exists() \
-                    .field(f"{Sections.TASK_US_DATA}.content_quality").get()
-            for content_quality in content_qualities:
-                content_qualities_query |= QueryBuilder().build().should().term() \
-                    .field(f"{Sections.TASK_US_DATA}.content_quality").value(content_quality).get()
-            must_queries.append(content_qualities_query)
-
         ads_stats_queries = self._get_ads_stats_queries()
         if self._params.get("last_30day_views"):
             query = self._get_range_queries(["last_30day_views"], Sections.STATS)
@@ -281,6 +270,28 @@ class SegmentQueryBuilder:
             query &= QueryBuilder().build().must_not().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist")\
                 .value(True).get()
 
+        return query
+
+    @staticmethod
+    def get_query_for_choice_unknown_field(options: list, valid_options: list, field_name: str) -> Tuple[Bool, None]:
+        """
+        build a query for any field that uses a value of -1 (CHOICE_UNKNOWN_KEY) to include
+        values where the field does not exist, like the include_na option
+        :param options: the list of selected options
+        :param valid_options: the full list of available options (used to check if we need a query at all)
+        :param field_name: the name of the ES field to be queried
+        :return: Bool or None
+        """
+        # if all options are selected, then we don't need to filter
+        if not options or set(options) == set(valid_options):
+            return None
+        query = Q("bool")
+        # -1 (CHOICE_UNKNOWN_KEY) is treated as include_na here
+        if CHOICE_UNKNOWN_KEY in options:
+            options.remove(CHOICE_UNKNOWN_KEY)
+            query |= QueryBuilder().build().must_not().exists().field(field_name).get()
+        for option in options:
+            query |= QueryBuilder().build().should().term().field(field_name).value(option).get()
         return query
 
     # pylint: enable=too-many-branches,too-many-statements
