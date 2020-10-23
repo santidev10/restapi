@@ -34,6 +34,7 @@ from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
 from utils.utils import chunks_generator
+from segment.utils.utils import get_content_disposition
 
 
 logger = logging.getLogger(__name__)
@@ -144,7 +145,9 @@ class Command(BaseCommand):
                     rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
                     writer.writerows(rows)
             # Replace segment export with the audited file
-            segment.s3.export_file_to_s3(temp_file, segment.export.filename)
+            content_disposition = get_content_disposition(segment)
+            segment.s3.export_file_to_s3(temp_file, segment.export.filename,
+                                         extra_args=dict(ContentDisposition=content_disposition))
             aggregations = GenerateSegmentUtils(segment).get_aggregations_by_ids(clean_ids)
             segment.statistics = {
                 "items_count": len(clean_ids),
