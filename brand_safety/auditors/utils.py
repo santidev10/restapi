@@ -8,7 +8,6 @@ import pickle
 import time
 
 from django.conf import settings
-from elasticsearch.helpers.errors import BulkIndexError
 from emoji import UNICODE_EMOJI
 
 from brand_safety.models import BadWord
@@ -180,10 +179,6 @@ class AuditUtils(object):
 
         return brand_safety_regexp
 
-    def has_emoji(self, text):
-        has_emoji = bool(re.search(self._emoji_regex, text))
-        return has_emoji
-
     @staticmethod
     def increment_cursor(script_tracker, value):
         """
@@ -340,22 +335,3 @@ class AuditUtils(object):
         else:
             bs_data = self.vetted_safe_score
         return bs_data
-
-    def index_audit_results(self, es_manager, audits: list, chunk_size=2000) -> list:
-        """
-        Update audits with audited brand safety scores
-        Check if each document should be upserted depending on config, as vetted videos should not always be updated
-        :param es_manager: VideoManager | ChannelManager
-        :param audits: list -> BrandSafetyVideo | BrandSafetyChannel audits
-        :param chunk_size: int -> Size of each index batch
-        :return: list
-        """
-        to_upsert = [
-            audit.instantiate_es() for audit in audits
-        ]
-        for chunk in chunks_generator(to_upsert, chunk_size):
-            try:
-                es_manager.upsert(chunk, refresh=False)
-            except BulkIndexError:
-                pass
-        return to_upsert

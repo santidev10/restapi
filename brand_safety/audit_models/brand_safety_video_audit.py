@@ -42,9 +42,7 @@ class BrandSafetyVideoAudit(object):
             video.tags or "",
         ])
         transcript_text = video.transcript or ""
-        audit_metadata = {
-            "has_emoji": self.audit_utils.has_emoji(text + ", " + transcript_text)
-        }
+        audit_metadata = {}
         if not video.general_data.lang_code:
             audit_metadata["language"] = self.audit_utils.get_language(text)
         else:

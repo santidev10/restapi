@@ -60,10 +60,10 @@ class ChannelAuditor(BaseAuditor):
             return
 
         for handler in handlers:
-            result = handler(channel)
+            result = handler(channel, index=index)
             if result:
                 if index is True:
-                    self.channel_manager.upsert([result])
+                    self.index_audit_results(self.channel_manager, [result])
                 return result
 
     def _query_channel_videos(self, channel_id: str) -> list:
@@ -77,23 +77,22 @@ class ChannelAuditor(BaseAuditor):
         results = self.video_manager.search(query, limit=10000).execute().hits
         return results
 
-    def audit(self, channel: Channel, index_videos=True):
+    def audit(self, channel: Channel, index=True):
         """
         Audit single channel
         :param channel: Can either be channel id string or Channel instance
-        :param index_videos: bool -> Determines whether to index video audit and channel results
+        :param index: bool -> Determines whether to index video audit and channel results
         :return: dict -> brand safety section data to update with
         """
         if isinstance(channel, str):
             channel = self.get_data(channel)
         self._set_channel_data(channel)
-        channel.video_audits = self.video_auditor.process_for_channel(channel, channel.videos, index=index_videos)
+        channel.video_audits = self.video_auditor.process_for_channel(channel, channel.videos, index=index)
         channel_audit = BrandSafetyChannelAudit(channel, self.audit_utils,
                                                 ignore_vetted_brand_safety=self._config.get(
                                                     "ignore_vetted_brand_safety"))
         channel_audit.run()
-        audit_data = channel_audit.instantiate_es()
-        return audit_data
+        return channel_audit
 
     def _set_channel_data(self, channel):
         """

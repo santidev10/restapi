@@ -95,7 +95,7 @@ class VideoAuditor(BaseAuditor):
             video_audits = [self.audit_video(video) for video in with_data]
             all_audits.extend(video_audits)
             if index:
-                self.audit_utils.index_audit_results(self.video_manager, video_audits)
+                self.index_audit_results(self.video_manager, video_audits)
         return all_audits
 
     def process(self, video_ids: list, index=True, channel_mapping=None) -> None:
