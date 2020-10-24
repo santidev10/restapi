@@ -50,10 +50,27 @@ class AdsPerformanceRangeField(serializers.CharField):
 
     def validate_stats_field(self, val):
         bounds = val.replace(" ", "").split(",")
-        numeric_bounds = [bound for bound in bounds if bound.isnumeric()]
+        numeric_bounds = [bound for bound in list(map(self.is_number, bounds)) if bound is not False]
         if len(bounds) != 2 or len(numeric_bounds) not in range(1, 3):
-            val = None
+            msg = f"Range must be a numeric range string following the format 'x, y', 'x,', ',x'"
+            raise ValidationError(msg)
+        if len(numeric_bounds) == 2:
+            lower_bound, upper_bound = numeric_bounds
+            if lower_bound >= upper_bound:
+                msg = f"The lower bound ({lower_bound}) must be lower than the upper bound ({upper_bound})"
+                raise ValidationError(msg)
+
         return val
+
+    @staticmethod
+    def is_number(value: str):
+        if value.isnumeric():
+            return value
+        try:
+            float(value)
+        except ValueError:
+            return False
+        return value
 
 
 class EmptyCharDateField(serializers.CharField):

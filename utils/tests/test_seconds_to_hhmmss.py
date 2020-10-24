@@ -1,8 +1,5 @@
 from django.test.testcases import TestCase
-from rest_framework.exceptions import ValidationError
-from rest_framework.serializers import empty
 
-from utils.serializers.fields.coerce_time_to_seconds_field import CoerceTimeToSecondsField
 from utils.datetime import seconds_to_hhmmss
 
 
