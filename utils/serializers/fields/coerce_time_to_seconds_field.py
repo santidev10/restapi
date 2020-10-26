@@ -31,7 +31,10 @@ class CoerceTimeToSecondsField(serializers.Field):
             split = data.split(":")
             if len(split) not in [2, 3]:
                 raise ValidationError(f"The string must follow the format: 'hh:mm:ss', 'mm:ss' or 'ss'")
-            split = list(map(int, split))
+            try:
+                split = list(map(int, split))
+            except ValueError:
+                raise ValidationError(f"each time component must be a valid integer")
             if len(split) == 2:
                 list(map(self.validate_ceiling, split))
                 minutes, seconds = split

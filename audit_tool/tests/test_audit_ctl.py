@@ -15,6 +15,7 @@ from audit_tool.models import AuditChannelProcessor
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.utils.utils import get_content_disposition
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -30,7 +31,7 @@ class TestAuditCTL(ExtendedAPITestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
 
-        segment = CustomSegment.objects.create(owner=user, segment_type=0)
+        segment = CustomSegment.objects.create(owner=user, segment_type=0, title="test_video_ctl_audit")
         audit = AuditProcessor.objects.create(audit_type=1, source=2, params=dict(segment_id=segment.id))
         # Create mock generated export for audit to filter
         mock_urls = [f"https://www.youtube.com/watch?v={i}" for i in range(10)]
@@ -59,9 +60,12 @@ class TestAuditCTL(ExtendedAPITestCase):
         audit.refresh_from_db()
         updated_export = conn.Object(
             settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.filename
-        ).get()["Body"].read().decode("utf-8")
-        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in updated_export for v in expected_clean)
-        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in updated_export for v in unclean)
+        ).get()
+        expected_content_disposition = get_content_disposition(segment)
+        export_rows = updated_export["Body"].read().decode("utf-8")
+        self.assertEqual(updated_export["ContentDisposition"], expected_content_disposition)
+        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in export_rows for v in expected_clean)
+        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in export_rows for v in unclean)
         self.assertEqual(segment.statistics["clean_count"], mock_stats["clean_count"])
 
     @mock_s3
@@ -73,7 +77,7 @@ class TestAuditCTL(ExtendedAPITestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
 
-        segment = CustomSegment.objects.create(owner=user, segment_type=1)
+        segment = CustomSegment.objects.create(owner=user, segment_type=1, title="test_channel_ctl_audit")
         audit = AuditProcessor.objects.create(audit_type=2, source=2, params=dict(segment_id=segment.id))
         # Create mock generated export for audit to filter
         mock_urls = [f"https://www.youtube.com/channel/{i}" for i in range(5)]
@@ -102,7 +106,10 @@ class TestAuditCTL(ExtendedAPITestCase):
         audit.refresh_from_db()
         updated_export = conn.Object(
             settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.filename
-        ).get()["Body"].read().decode("utf-8")
-        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in updated_export for c in expected_clean)
-        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in updated_export for c in unclean)
+        ).get()
+        expected_content_disposition = get_content_disposition(segment)
+        export_rows = updated_export["Body"].read().decode("utf-8")
+        self.assertEqual(updated_export["ContentDisposition"], expected_content_disposition)
+        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in export_rows for c in expected_clean)
+        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in export_rows for c in unclean)
         self.assertEqual(segment.statistics["clean_channel_count"], mock_stats["clean_channel_count"])

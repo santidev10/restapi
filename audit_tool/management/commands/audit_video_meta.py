@@ -34,6 +34,7 @@ from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
 from utils.utils import chunks_generator
+from segment.utils.utils import get_content_disposition
 
 
 logger = logging.getLogger(__name__)
@@ -107,8 +108,8 @@ class Command(BaseCommand):
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def update_ctl(self):
+        """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
-        export_file = segment.s3.get_export_lines_stream(segment.export.filename)
         if self.audit.audit_type == 1:
             audit_model = AuditVideoProcessor
             model_fk_ref = "video"
@@ -127,10 +128,16 @@ class Command(BaseCommand):
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
         try:
-            for chunk in chunks_generator(export_file, size=2000):
-                chunk = list(chunk)
-                with open(temp_file, mode="a", newline="") as file:
-                    writer = csv.writer(file)
+            # Get original export file to filter using cleaned audit data
+            export_filename = segment.export.filename
+            export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
+            quote_char = '"'
+            with open(export_fp, mode="r") as read_file, \
+                    open(temp_file, mode="w") as dest_file:
+                reader = csv.reader(read_file, quotechar=quote_char)
+                writer = csv.writer(dest_file, quotechar=quote_char)
+                for chunk in chunks_generator(reader, size=2000):
+                    chunk = list(chunk)
                     if write_header is True:
                         header = chunk.pop(0)
                         writer.writerow(header)
@@ -138,16 +145,20 @@ class Command(BaseCommand):
                     rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
                     writer.writerows(rows)
             # Replace segment export with the audited file
-            segment.s3.export_file_to_s3(temp_file, segment.export.filename)
+            content_disposition = get_content_disposition(segment)
+            segment.s3.export_file_to_s3(temp_file, segment.export.filename,
+                                         extra_args=dict(ContentDisposition=content_disposition))
             aggregations = GenerateSegmentUtils(segment).get_aggregations_by_ids(clean_ids)
             segment.statistics = {
                 "items_count": len(clean_ids),
                 **aggregations
             }
-            segment.save()
+            segment.save(update_fields=["statistics"])
         # pylint: disable=broad-except
         except Exception as err:
             logger.exception(err)
+        else:
+            os.remove(export_fp)
         # pylint: enable=broad-except
         finally:
             os.remove(temp_file)
