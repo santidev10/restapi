@@ -13,6 +13,7 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -22,6 +23,14 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     url = reverse(AuditPathName.AUDIT_SAVE, [Namespace.AUDIT_TOOL])
     custom_segment_model = None
     custom_segment_export_model = None
+
+    @classmethod
+    def setUpClass(cls):
+        Permissions.sync_groups()
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
 
     def setUp(self):
         # Import and set models to avoid recursive ImportError
@@ -37,7 +46,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         with open(self.tmp_name, 'w+', encoding='utf-32') as f:
             f.write("testing")
             self.body['source_file'] = f
-            self.response = self.client.post(self.url + "?name=test&audit_type=0&language=en/", self.body)
+            self.response = self.client.post(self.url + '?name=test&audit_type=0&language=["en"]', self.body)
         self.audit = AuditProcessor.objects.get(id=self.response.data["id"])
         self.key = self.audit.params['seed_file']
 
@@ -77,6 +86,12 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         for row in reader:
             self.assertEqual(row[0], "testing")
 
+    def test_reject_audit_view_permission(self):
+        """ Users must have userprofile.view_audit permission """
+        self.create_test_user()
+        response = self.client.post(self.url, data={})
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
     def test_reject_permission(self):
         """ Users must have userprofile.audit_vet_admin permission """
         user = self.create_test_user()
@@ -89,7 +104,6 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     def test_enable_vetting_creates_audit(self):
         """ Saving audit instructions for the first time should create audit and vetting items """
         user = self.create_test_user()
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VIEW)
         user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
         segment = self.custom_segment_model.objects.create(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4(),
@@ -101,6 +115,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         }
         with patch("audit_tool.api.views.audit_save.generate_audit_items") as mock_generate:
             response = self.client.patch(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         segment.refresh_from_db()
         audit = AuditProcessor.objects.get(id=segment.audit_id)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -110,9 +125,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
 
     def test_update_audit_does_not_create(self):
         """ Updating audit instructions should not create new audit nor audit vetting items """
-        user = self.create_test_user()
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VIEW)
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(source=1, audit_type=2, params=dict(instructions="old instructions"))
         segment = self.custom_segment_model.objects.create(
             owner=user, title="test", segment_type=1, list_type=0,
@@ -125,6 +138,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         }
         with patch("audit_tool.api.views.audit_save.generate_audit_items") as mock_generate:
             response = self.client.patch(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         segment.refresh_from_db()
         audit.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
