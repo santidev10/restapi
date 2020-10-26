@@ -851,7 +851,6 @@ class IASHistory(Timestampable):
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
 
-
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
