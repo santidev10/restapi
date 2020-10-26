@@ -96,3 +96,10 @@ class IQCampaign(models.Model):
             'results': self.results,
         }
         return d
+
+class IQCampaignChannel(models.Model):
+    iq_campaign = models.ForeignKey(IQCampaign)
+    clean = models.NullBooleanField(default=None, db_index=True)
+    meta_data = JSONField(default=dict) # the performance data from csv or API
+    results = JSONField(default=dict)
+    channel_id = models.CharField(max_length=128, db_index=True)
