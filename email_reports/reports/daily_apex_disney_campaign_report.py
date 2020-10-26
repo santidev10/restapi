@@ -72,13 +72,14 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
                 video_views_50_quartile=Sum("video_views_50_quartile"),
                 video_views_75_quartile=Sum("video_views_75_quartile"),
                 video_views_100_quartile=Sum("video_views_100_quartile"),
+                ad__ad_group__videos_stats__creative__id=Max("ad__ad_group__videos_stats__creative__id"),
                 ad__ad_group__campaign__salesforce_placement__goal_type_id=Max(
                   "ad__ad_group__campaign__salesforce_placement__goal_type_id"
                 ),
                 ad__ad_group__campaign__salesforce_placement__ordered_rate=Max(
                     "ad__ad_group__campaign__salesforce_placement__ordered_rate"
                 ),
-            ad__ad_group__campaign__account__name=Max("ad__ad_group__campaign__account__name"),
+                ad__ad_group__campaign__account__name=Max("ad__ad_group__campaign__account__name"),
                 ad__ad_group__campaign__account__currency_code=Max("ad__ad_group__campaign__account__currency_code")
             ) \
             .order_by("date") \
@@ -87,15 +88,18 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
                          "ad__ad_group__name",
                          "ad__id",
                          "ad__creative_name",
+                         "ad__ad_group__videos_stats__creative__id",
                          named=True)
 
     def get_rows_from_stats(self, creative_statistics):
         rows = []
         creative_statistics = list(creative_statistics)
 
-        # creatives_info = self._get_creative_info([stats.creative_id for stats in creative_statistics])
-
         for stats in creative_statistics:
+            # Only show line items that are attached to salesforce placements
+            if not stats.ad__ad_group__campaign__salesforce_placement__goal_type_id:
+                continue
+
             ias_campaign_name = stats.ad__ad_group__campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.ad__ad_group__campaign__account__id,
@@ -104,11 +108,11 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
                 stats.ad__ad_group__campaign__name,
                 stats.ad__ad_group__id,
                 stats.ad__ad_group__name,
-                stats.ad__id,
-                stats.ad__creative_name, #creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
+                stats.ad__ad_group__videos_stats__creative__id,
+                stats.ad__creative_name,
                 stats.date.strftime(DATE_FORMAT),
                 "GBP",
-                self._get_revenue(stats, "ad__ad_group__campaign__"), # TODO change to get_revenue, like last one
+                self._get_revenue(stats, "ad__ad_group__campaign__"),
                 stats.impressions,
                 stats.clicks,
                 stats.video_views,
