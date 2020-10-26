@@ -77,29 +77,29 @@ class DV360Advertiser(DV360Base):
 class DV360Campaign(DV360Base):
     advertiser = models.ForeignKey(DV360Advertiser, on_delete=models.CASCADE, related_name="campaigns")
 
-class IQCampaign(models.Model):
-    created = models.DateTimeField(db_index=True, auto_now_add=True)
-    params = JSONField(default=dict)
-    results = JSONField(default=dict)
-    started = models.DateTimeField(default=None, null=True, db_index=True)
-    completed = models.DateTimeField(default=None, null=True, db_index=True)
-    # campaign is the campaign object above, google ads or dv360, null if its a csv
-    campaign = models.ForeignKey(Campaign, db_index=True, null=True, default=None)
-
-    def to_dict(self):
-        d = {
-            'created': self.created,
-            'started': self.started,
-            'completed': self.completed,
-            'campaign': self.campaign.to_dict() if self.campaign else None,
-            'params': self.params,
-            'results': self.results,
-        }
-        return d
-
-class IQCampaignChannel(models.Model):
-    iq_campaign = models.ForeignKey(IQCampaign)
-    clean = models.NullBooleanField(default=None, db_index=True)
-    meta_data = JSONField(default=dict) # the performance data from csv or API
-    results = JSONField(default=dict)
-    channel_id = models.CharField(max_length=128, db_index=True)
+# class IQCampaign(models.Model):
+#     created = models.DateTimeField(db_index=True, auto_now_add=True)
+#     params = JSONField(default=dict)
+#     results = JSONField(default=dict)
+#     started = models.DateTimeField(default=None, null=True, db_index=True)
+#     completed = models.DateTimeField(default=None, null=True, db_index=True)
+#     # campaign is the campaign object above, google ads or dv360, null if its a csv
+#     campaign = models.ForeignKey(Campaign, db_index=True, null=True, default=None)
+#
+#     def to_dict(self):
+#         d = {
+#             'created': self.created,
+#             'started': self.started,
+#             'completed': self.completed,
+#             'campaign': self.campaign.to_dict() if self.campaign else None,
+#             'params': self.params,
+#             'results': self.results,
+#         }
+#         return d
+#
+# class IQCampaignChannel(models.Model):
+#     iq_campaign = models.ForeignKey(IQCampaign)
+#     clean = models.NullBooleanField(default=None, db_index=True)
+#     meta_data = JSONField(default=dict) # the performance data from csv or API
+#     results = JSONField(default=dict)
+#     channel_id = models.CharField(max_length=128, db_index=True)
