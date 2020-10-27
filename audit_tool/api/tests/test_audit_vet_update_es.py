@@ -746,3 +746,40 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual({str(vettable.id)}, set(updated_channel.task_us_data.brand_safety))
+
+    def test_patch_ignore_non_existant_category(self, mock_generate_vetted):
+        """ Test ignore saving non existant brand safety categories (May have been removed) """
+        user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=1 for channels
+        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        channel = Channel(audit_item_yt_id)
+        self.channel_manager.upsert([channel])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            # BadWordCategory with 100000 does not exist and should be ignored
+            "brand_safety": [17, 100000],
+            "content_type": 1,
+            "content_quality": 1,
+            "gender": 1,
+            "iab_categories": [
+                "Auto Rentals", "Scooters", "Auto Rentals",
+            ],
+            "primary_category": "Automotive",
+            "is_monetizable": False,
+            "language": "ja",
+            "suitable": True
+        }
+        exists_and_vettable, _ = BadWordCategory.objects.update_or_create(
+            id=payload["brand_safety"][0], defaults=dict(vettable=True, name=f"test {next(int_iterator)}"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch(
+                "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_channel = self.channel_manager.get([channel.main.id])[0]
+        self.assertEqual(str(exists_and_vettable.id), updated_channel.task_us_data["brand_safety"][0])
