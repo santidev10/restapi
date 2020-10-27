@@ -7,7 +7,7 @@ from django.db.models import Max
 from django.db.models import Sum
 
 from aw_reporting.models import AdStatistic
-from email_reports.reports import DailyApexVisaCampaignEmailReport
+from email_reports.reports.daily_apex_visa_campaign_report import DailyApexVisaCampaignEmailReport
 from email_reports.reports.daily_apex_visa_campaign_report import DATE_FORMAT
 
 logger = logging.getLogger(__name__)
