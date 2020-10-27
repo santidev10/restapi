@@ -15,7 +15,6 @@ from utils.utils import chunks_generator
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
-SOURCE_SIZE_GET_LIMIT = 10000
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=
         If None and for channels, first retrieves is_monetizable then non-is_monetizable items
     :param segment: CustomSegment | PersistentSegment
     :param query_dict: dict
-    :param size: int
+    :param size: int -> Max row size of export
     :param sort: list -> Additional sort fields
     :param s3_key: str -> Name to use for S3 export filename
     :param options: list -> List of queries to sequentially apply to base query

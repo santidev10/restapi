@@ -1,6 +1,11 @@
-import datetime
-import time
+import csv
+import io
+import itertools
+import logging
+import os
+import tempfile
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import transaction
@@ -27,6 +32,8 @@ from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
 from utils.datetime import seconds_to_hhmmss
+
+logger = logging.getLogger(__name__)
 
 
 class FeaturedImageUrlMixin:
@@ -62,6 +69,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     During both creates / updates, the view request object, CTLParamsSerializer.validated_data, and files dict
     must be passed as context for successful validation
     """
+    SOURCE_LIST_MAX_SIZE = 200000
+
     audit_id = IntegerField(allow_null=True, read_only=True)
     ctl_params = SerializerMethodField()
     id = IntegerField(required=False)
@@ -320,17 +329,31 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         except ValueError:
             raise ValidationError(f"Invalid source_type. "
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
-        key = segment.get_source_s3_key()
-        segment.s3.export_object_to_s3(source_file, key)
-        source_upload, _ = CustomSegmentSourceFileUpload.objects.update_or_create(
-            segment=segment,
-            defaults=dict(
-                source_type=source_type,
-                filename=key,
-                name=getattr(source_file, "name", None)
+
+        final_source_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        try:
+            # Limit source file
+            with io.TextIOWrapper(source_file, encoding="utf-8") as source_text,\
+                    open(final_source_file, mode="w") as dest:
+                reader = csv.reader(source_text, delimiter=",")
+                rows = [row for row in itertools.islice(reader, self.SOURCE_LIST_MAX_SIZE)]
+                writer = csv.writer(dest)
+                writer.writerows(rows)
+
+            key = segment.get_source_s3_key()
+            segment.s3.export_file_to_s3(final_source_file, key)
+            source_upload, _ = CustomSegmentSourceFileUpload.objects.update_or_create(
+                segment=segment,
+                defaults=dict(
+                    source_type=source_type,
+                    filename=key,
+                    name=getattr(source_file, "name", None)
+                )
             )
-        )
-        return source_upload
+        except Exception:
+            logger.exception("Error creating CTL source file")
+        finally:
+            os.remove(final_source_file)
 
     def _create_audit(self, segment: CustomSegment) -> AuditProcessor:
         """

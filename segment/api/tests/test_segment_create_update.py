@@ -2,7 +2,10 @@ import json
 from io import BytesIO
 from unittest.mock import patch
 
+import boto3
+from django.conf import settings
 from django.urls import reverse
+from moto import mock_s3
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -11,6 +14,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers.ctl_params_serializer import CTLParamsSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
@@ -314,6 +318,35 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
         source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
+
+    @mock_s3
+    def test_create_with_source_limit(self, mock_generate):
+        """ Test that source list is limited to size """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_with_source_success_limit",
+            "segment_type": 1,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.write(b"\n".join([f"row_{i}".encode("utf-8") for i in range(300000)]))
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data["id"]).source
+        self.assertEqual(file.name, source.name)
+
+        exported_soure_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
+            .get()["Body"].read().decode('utf-8').split()
+        self.assertEqual(len(exported_soure_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
