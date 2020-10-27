@@ -112,9 +112,9 @@ class Comment(models.Model):
 
 class AuditProcessor(models.Model):
     AUDIT_TYPES = {
-        "0": "Recommendation Engine",
-        "1": "Video Meta Processor",
-        "2": "Channel Meta Processor",
+        "0": "Reco. Engine",
+        "1": "Video Meta",
+        "2": "Channel Meta",
     }
     SOURCE_TYPES = {
         "0": "Audit Tool",
