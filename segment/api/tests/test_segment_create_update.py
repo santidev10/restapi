@@ -727,6 +727,7 @@ class SegmentCreateApiViewTestCase(ExtendedAPITestCase):
 
         updated = CustomSegment.objects.get(id=created.id)
         self.assertEqual(updated.title, partial_params["title"])
+        self.assertNotEqual(created.updated_at, updated.updated_at)
 
     def test_empty_update_title_validation(self, mock_generate):
         """
