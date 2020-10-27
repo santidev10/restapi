@@ -1,4 +1,6 @@
 import mock
+import pickle
+
 from django.utils import timezone
 
 from audit_tool.models import AuditLanguage
@@ -16,6 +18,8 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
+# Raise OSError to prevent each unit test getting pickled language processors from other tests
+@mock.patch.object(pickle, "load", side_effect=OSError)
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
     channel_manager = ChannelManager(sections=SECTIONS)

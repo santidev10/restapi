@@ -18,7 +18,6 @@ from es_components.query_builder import QueryBuilder
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
-from utils.utils import chunks_generator
 
 from .bad_word_processors_by_language import get_bad_word_processors_by_language
 
@@ -35,8 +34,7 @@ def pickled_data(fp, expires):
             try:
                 created_at = os.path.getctime(fp)
                 if created_at - time.time() <= expires:
-                    pickled_data = open(fp, mode="rb")
-                    data = pickle.load(pickled_data)
+                    data = pickle.load(open(fp, mode="rb"))
                 else:
                     data = func(*_, **__)
                     should_save = True

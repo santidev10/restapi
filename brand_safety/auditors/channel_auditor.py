@@ -58,7 +58,6 @@ class ChannelAuditor(BaseAuditor):
             channel = self.get_data(channel_id)
         except IndexError:
             return
-
         for handler in handlers:
             result = handler(channel, index=index)
             if result:
@@ -92,7 +91,7 @@ class ChannelAuditor(BaseAuditor):
                                                 ignore_vetted_brand_safety=self._config.get(
                                                     "ignore_vetted_brand_safety"))
         channel_audit.run()
-        return channel_audit
+        return channel_audit.instantiate_es()
 
     def _set_channel_data(self, channel):
         """
