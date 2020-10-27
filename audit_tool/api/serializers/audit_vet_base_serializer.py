@@ -206,8 +206,9 @@ class AuditVetBaseSerializer(Serializer):
                 for item in BadWordCategory.objects.all()
             }
             try:
-                # Clean non vettable categories from being saved
-                categories = [mapping[val].id for val in set(values) if mapping[val].vettable is True]
+                # Clean removed or non vettable categories from being saved
+                categories = [mapping[val].id for val in set(values)
+                              if val in mapping and mapping[val].vettable is True]
             except KeyError as e:
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
