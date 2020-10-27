@@ -7,13 +7,13 @@ from django.conf import settings
 from elasticsearch_dsl import Q
 
 from es_components.constants import Sections
-from es_components.query_builder import QueryBuilder
 from es_components.managers import ChannelManager
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import SourceListType
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from utils.utils import chunks_generator
 
 
 BATCH_SIZE = 5000
@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-def generate_segment(segment, query, size, sort=None, s3_key=None, options=None, add_uuid=False, with_audit=False):
+def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
         If None and for channels, first retrieves is_monetizable then non-is_monetizable items
     :param segment: CustomSegment | PersistentSegment
-    :param query: dict
+    :param query_dict: dict
     :param size: int
     :param sort: list -> Additional sort fields
     :param add_uuid: Add uuid to document segments section
@@ -40,11 +40,9 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.default_serialization_context
     source_list = None
-    source_type = None
     # pylint: disable=broad-except
     try:
         source_list = generate_utils.get_source_list(segment)
-        source_type = segment.source.source_type
     except (AttributeError, CustomSegmentSourceFileUpload.DoesNotExist):
         pass
     except Exception:
@@ -62,20 +60,14 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
         if options is None:
             options = default_search_config["options"]
         try:
-            # Use query by ids along with filters to avoid requesting entire database with bulk_search
-            if source_list and len(source_list) <= SOURCE_SIZE_GET_LIMIT:
-                ids_query = QueryBuilder().build().must().terms().field('main.id').value(list(source_list)).get()
-                full_query = Q(query) + ids_query
-                es_generator = segment.es_manager.search(query=full_query.to_dict())
-                es_generator = [es_generator.execute().hits]
+            if source_list:
+                es_generator = with_source_generator(segment, source_list, query_dict, sort)
             else:
                 bulk_search_kwargs = dict(
-                    options=options, batch_size=5000, include_cursor_exclusions=True
+                    options=options, batch_size=BATCH_SIZE, include_cursor_exclusions=True
                 )
-                es_generator = bulk_search_with_source_generator(
-                    source_list, source_type,
-                    segment.es_manager.model, query, sort, default_search_config["cursor_field"],
-                    **bulk_search_kwargs)
+                es_generator = bulk_search(segment.es_manager.model, query_dict, sort,
+                                           default_search_config["cursor_field"], **bulk_search_kwargs)
 
             for batch in es_generator:
                 # Clean blocklist items
@@ -121,10 +113,17 @@ def generate_segment(segment, query, size, sort=None, s3_key=None, options=None,
                 "s3_key": s3_key,
             }
         return results
-
     finally:
         os.remove(filename)
 # pylint: enable=too-many-nested-blocks,too-many-statements
+
+
+def with_source_generator(segment, source_ids, query_dict, sort):
+    """ Retrieve documents with query and batched source_ids to account of 10k search limit """
+    for chunk in chunks_generator(source_ids, BATCH_SIZE):
+        with_ids = Q(query_dict) & segment.es_manager.ids_query(list(chunk))
+        batch = segment.es_manager.search(with_ids, limit=BATCH_SIZE, sort=sort).execute()
+        yield batch
 
 
 def bulk_search_with_source_generator(source_list, source_type, model, query, sort, cursor_field, **bulk_search_kwargs):
@@ -148,30 +147,6 @@ def bulk_search_with_source_generator(source_list, source_type, model, query, so
                 batch = [item for item in batch if item.main.id not in source_list]
         yield batch
 
-
-def _clean_blocklist(items, data_type=0):
-    """
-    Remove videos that have their channel blocklisted
-    :param items:
-    :param data_type: int -> 0 = videos, 1 = channels
-    :return:
-    """
-    channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
-    if data_type == 0:
-        channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None])
-        blocklist = {
-            channel.main.id: channel.custom_properties.blocklist
-            for channel in channels
-        }
-        non_blocklist = [
-            video for video in items if blocklist.get(video.channel.id) is not True
-            and video.custom_properties.blocklist is not True
-        ]
-    else:
-        non_blocklist = [
-            channel for channel in items if channel.custom_properties.blocklist is not True
-        ]
-    return non_blocklist
 
 
 class MaxItemsException(Exception):
