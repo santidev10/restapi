@@ -72,7 +72,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["DailyApexCampaignEmailReport"],
+            reports=["DailyApexVisaCampaignEmailReport", "DailyApexDisneyCampaignEmailReport"],
         ),
     },
     "recreate-demo-data": {
