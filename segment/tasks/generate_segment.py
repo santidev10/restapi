@@ -6,10 +6,7 @@ from collections import defaultdict
 from django.conf import settings
 from elasticsearch_dsl import Q
 
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
 from segment.models import CustomSegmentSourceFileUpload
-from segment.models.constants import SourceListType
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
@@ -33,7 +30,10 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=
     :param query_dict: dict
     :param size: int
     :param sort: list -> Additional sort fields
-    :param add_uuid: Add uuid to document segments section
+    :param s3_key: str -> Name to use for S3 export filename
+    :param options: list -> List of queries to sequentially apply to base query
+    :param add_uuid: bool -> Add uuid to document segments section
+    :param with_audit: bool -> Determines if CTL is being generated with meta audit
     :return:
     """
     generate_utils = GenerateSegmentUtils(segment)
@@ -118,35 +118,19 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=
 # pylint: enable=too-many-nested-blocks,too-many-statements
 
 
-def with_source_generator(segment, source_ids, query_dict, sort):
-    """ Retrieve documents with query and batched source_ids to account of 10k search limit """
+def with_source_generator(segment, source_ids: set, query_dict: dict, sort: list):
+    """
+    Retrieve documents with query dict and source_ids with batching to account for ES 10k search limit
+    :param segment: CustomSegment
+    :param source_ids: set
+    :param query_dict: dict
+    :param sort: list
+    :return: iter
+    """
     for chunk in chunks_generator(source_ids, BATCH_SIZE):
         with_ids = Q(query_dict) & segment.es_manager.ids_query(list(chunk))
         batch = segment.es_manager.search(with_ids, limit=BATCH_SIZE, sort=sort).execute()
         yield batch
-
-
-def bulk_search_with_source_generator(source_list, source_type, model, query, sort, cursor_field, **bulk_search_kwargs):
-    """
-    Wrapper to check source list for each batch in bulk search generator
-    :param source_list: iter: Source list upload
-    :param source_type: int
-    :param model: es_components.models.Model
-    :param query: ES Q object
-    :param sort: str
-    :param cursor_field: str
-    :param bulk_search_kwargs:
-    :return:
-    """
-    bulk_search_generator = bulk_search(model, query, sort, cursor_field, **bulk_search_kwargs)
-    for batch in bulk_search_generator:
-        if source_list:
-            if source_type == SourceListType.INCLUSION.value:
-                batch = [item for item in batch if item.main.id in source_list]
-            else:
-                batch = [item for item in batch if item.main.id not in source_list]
-        yield batch
-
 
 
 class MaxItemsException(Exception):
