@@ -128,7 +128,7 @@ class SegmentQueryBuilder:
                 AuditAgeGroup.to_str_with_unknown.keys(),
                 f"{Sections.TASK_US_DATA}.age_group"],
             [
-                self._params.get("content_types", []),
+                self._params.get("content_type", []),
                 AuditContentType.to_str_with_unknown.keys(),
                 f"{Sections.TASK_US_DATA}.content_type"],
             [

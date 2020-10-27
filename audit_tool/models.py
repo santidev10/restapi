@@ -112,14 +112,14 @@ class Comment(models.Model):
 
 class AuditProcessor(models.Model):
     AUDIT_TYPES = {
-        "0": "Recommendation Engine",
-        "1": "Video Meta Processor",
-        "2": "Channel Meta Processor",
+        "0": "Reco. Engine",
+        "1": "Video Meta",
+        "2": "Channel Meta",
     }
     SOURCE_TYPES = {
         "0": "Audit Tool",
-        "1": "Custom Target List Creator",
-        "2": "Custom Target List with Exclusion/Inclusions",
+        "1": "CTL Creator",
+        "2": "CTL Exclusion/Inclusions",
     }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -850,7 +850,6 @@ class IASHistory(Timestampable):
     name = models.CharField(max_length=100)
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
-
 
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
