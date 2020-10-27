@@ -119,7 +119,7 @@ class AuditProcessor(models.Model):
     SOURCE_TYPES = {
         "0": "Audit Tool",
         "1": "CTL Creator",
-        "2": "CTL Exclusion/Inclusions",
+        "2": "CTL with Keywords",
     }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
