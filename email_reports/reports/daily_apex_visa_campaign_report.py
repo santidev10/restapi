@@ -26,7 +26,7 @@ DATE_FORMAT = "%m/%d/%y"
 YOUTUBE_LINK_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 
-class DailyApexCampaignEmailReport(BaseEmailReport):
+class DailyApexVisaCampaignEmailReport(BaseEmailReport):
 
     CAMPAIGNS_FIELDS = ("id", "account__name", "account__currency_code", "salesforce_placement__ordered_rate",
                         "salesforce_placement__goal_type_id", "salesforce_placement__opportunity__ias_campaign_name")
@@ -36,11 +36,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                   "Creative", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
                   "Midpoint Views (Video)", "Complete Views (Video)")
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    # TODO development
-    # to = ["andrew.wong@channelfactory.com",]
     to = settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES
     cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
     attachment_filename = "daily_campaign_report.csv"
+    historical_filename = "apex_visa_historical.csv"
 
     def __init__(self, is_historical=False, *args, **kwargs):
         """
@@ -56,6 +55,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
     def send(self):
         if not isinstance(self.user, get_user_model()):
+            return
+
+        if self.is_historical:
+            self._write_historical()
             return
 
         csv_context = self._get_csv_file_context()
@@ -76,41 +79,55 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         msg.send(fail_silently=False)
 
     def _get_subject(self):
-        if self.is_historical:
-            return f"Historical Campaign Report for {self.today}"
         return f"Daily Campaign Report for {self.yesterday}"
 
     def _get_body(self):
-        if self.is_historical:
-            return f"Historical Campaign Report for {self.today}. \nPlease see attached file."
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
-    def _get_csv_file_context(self):
+    def _get_campaign_ids(self):
         account_ids = self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         campaigns = Campaign.objects.filter(account_id__in=account_ids) \
             .values_list("id", flat=True)
         campaigns_ids = list(campaigns)
+        return campaigns_ids
 
-        stats = self.get_stats(campaigns_ids)
+    def _write_historical(self):
+        """
+        write historical csv data locally to self.historical_filename
+        :return:
+        """
+        campaign_ids = self._get_campaign_ids()
+        stats = self.get_stats(campaign_ids)
+
+        if not stats.exists():
+            return
+
+        try:
+            os.remove(self.historical_filename)
+        except FileNotFoundError:
+            pass
+        with open(self.historical_filename, mode="w") as f:
+            writer = csv.writer(f)
+            writer.writerow(self.CSV_HEADER)
+            writer.writerows(self.get_rows_from_stats(stats))
+        print(f"wrote historical data to filename: {self.historical_filename}")
+
+    def _get_csv_file_context(self):
+        """
+        get csv data to be sent in daily email
+        :return:
+        """
+        campaign_ids = self._get_campaign_ids()
+        stats = self.get_stats(campaign_ids)
 
         if not stats.exists():
             return None
 
-        # TODO development
-        try:
-            os.remove("disney.csv")
-        except FileNotFoundError:
-            pass
-        with open("disney.csv", mode="w") as f:
-            writer = csv.writer(f)
-            writer.writerow(self.CSV_HEADER)
-            writer.writerows(self.get_rows_from_stats(stats))
-
-        # csv_file = StringIO()
-        # writer = csv.writer(csv_file)
-        # writer.writerow(self.CSV_HEADER)
-        # writer.writerows(self.get_rows_from_stats(stats))
-        # return csv_file.getvalue()
+        csv_file = StringIO()
+        writer = csv.writer(csv_file)
+        writer.writerow(self.CSV_HEADER)
+        writer.writerows(self.get_rows_from_stats(stats))
+        return csv_file.getvalue()
 
     @staticmethod
     def _get_revenue(obj, campaign_prefix):

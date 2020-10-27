@@ -15,8 +15,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
-from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
-from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
+from email_reports.reports.daily_apex_visa_campaign_report import DATE_FORMAT
+from email_reports.reports.daily_apex_visa_campaign_report import YOUTUBE_LINK_TEMPLATE
 from email_reports.tasks import send_daily_email_reports
 from es_components.constants import Sections
 from es_components.managers import VideoManager
@@ -65,11 +65,11 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         return campaign
 
     # pylint: disable=(too-many-statements
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
            "1@mail.cz")
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
            TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS)
     def test_send_email(self):
         user = get_user_model().objects.create(id=1, username="Paul", email="1@mail.cz")
@@ -128,7 +128,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
                                               video_views_100_quartile=15, video_views_50_quartile=25)
 
         with patch_now(now):
-            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+            send_daily_email_reports(reports=["DailyApexVisaCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
@@ -153,11 +153,11 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
     # pylint: enable=(too-many-statements
 
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
            "1@mail.cz")
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
            TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS)
     def test_send_email_selected_account(self):
         account = Account.objects.create(id=1, name=TEST_ACCOUNT_NAME, currency_code="USD")
@@ -189,7 +189,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
         with patch_now(now):
-            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+            send_daily_email_reports(reports=["DailyApexVisaCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
@@ -206,11 +206,11 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(csv_context.count(TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(TEST_ACCOUNT_NAME)), 0)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 1)
 
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
            "1@mail.cz")
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
-    @patch("email_reports.reports.daily_apex_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
+    @patch("email_reports.reports.daily_apex_visa_campaign_report.settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS",
            TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS)
     def test_send_email_without_selected_account(self):
         account = Account.objects.create(id=1, name=TEST_ACCOUNT_NAME, currency_code="USD")
@@ -239,5 +239,5 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
         with patch_now(now):
-            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+            send_daily_email_reports(reports=["DailyApexVisaCampaignEmailReport"], debug=False)
         self.assertEqual(len(mail.outbox), 0)

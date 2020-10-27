@@ -7,15 +7,13 @@ from django.db.models import Max
 from django.db.models import Sum
 
 from aw_reporting.models import AdStatistic
-from aw_reporting.models import VideoCreativeStatistic
-from email_reports.reports import DailyApexCampaignEmailReport
-from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
-from es_components.constants import Sections
+from email_reports.reports import DailyApexVisaCampaignEmailReport
+from email_reports.reports.daily_apex_visa_campaign_report import DATE_FORMAT
 
 logger = logging.getLogger(__name__)
 
 
-class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
+class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
 
     CAMPAIGNS_FIELDS = ("account__id", "salesforce_placement__opportunity__ias_campaign_name", "id", "name",
                         "salesforce_placement__goal_type_id", "salesforce_placement__ordered_rate",)
@@ -26,11 +24,10 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
                   "Clicks", "Video Views", "Video Views (25%)", "Video Views (50%)", "Video Views (75%)",
                   "Video Completions",)
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    to = ["andrew.wong@channelfactory.com",]
-    cc = []
-    # to = settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
-    # cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
-    attachment_filename = "report.csv"
+    to = settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
+    cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
+    attachment_filename = "daily_campaign_report.csv"
+    historical_filename = "apex_disney_historical.csv"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,8 +35,6 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
         self.yesterday = self.today - timedelta(days=10)
 
     def _get_subject(self):
-        if self.is_historical:
-            return f"Historical Disney Campaign Report for {self.today}"
         return f"Daily Disney Campaign Report for {self.yesterday}"
 
     def get_stats(self, campaign_ids):
@@ -50,10 +45,8 @@ class DailyApexDisneyCampaignEmailReport(DailyApexCampaignEmailReport):
         """
         filter_kwargs = {"ad__ad_group__campaign__id__in": campaign_ids, }
         if not self.is_historical:
-            filter_kwargs["date__gte"] = self.yesterday
-            # filter_kwargs["date"] = self.yesterday
+            filter_kwargs["date"] = self.yesterday
 
-        # return VideoCreativeStatistic.objects.values(
         return AdStatistic.objects.values(
                 "ad__id",
                 "ad__creative_name",
