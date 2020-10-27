@@ -768,6 +768,7 @@ class AuditAgeGroup(models.Model):
         # (8, "Group - Family Friendly"),  # parent=3
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -806,6 +807,7 @@ class AuditGender(models.Model):
         (2, "Male"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -848,7 +850,6 @@ class IASHistory(Timestampable):
     name = models.CharField(max_length=100)
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
-
 
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
