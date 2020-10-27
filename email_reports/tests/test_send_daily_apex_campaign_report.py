@@ -132,7 +132,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
-        self.assertEqual(len(mail.outbox[0].to), 2)
+        self.assertEqual(len(mail.outbox[0].to), len(TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES))
         self.assertEqual(mail.outbox[0].to, TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
         self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
@@ -193,7 +193,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
-        self.assertEqual(len(mail.outbox[0].to), 2)
+        self.assertEqual(len(mail.outbox[0].to), len(TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES))
         self.assertEqual(mail.outbox[0].to, TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
         self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
 

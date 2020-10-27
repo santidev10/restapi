@@ -23,16 +23,13 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
                   "Placement Name", "Creative ID", "Creative Name", "Date", "Currency", "Media Cost", "Impressions",
                   "Clicks", "Video Views", "Video Views (25%)", "Video Views (50%)", "Video Views (75%)",
                   "Video Completions",)
-    from_email = settings.EXPORTS_EMAIL_ADDRESS
-    to = settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
-    cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
     attachment_filename = "daily_campaign_report.csv"
     historical_filename = "apex_disney_historical.csv"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = get_user_model().objects.filter(email=settings.DAILY_APEX_DISNEY_CAMPAIGN_REPORT_CREATOR).first()
-        self.yesterday = self.today - timedelta(days=10)
+        self.to = settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
 
     def _get_subject(self):
         return f"Daily Disney Campaign Report for {self.yesterday}"

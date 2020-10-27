@@ -35,9 +35,6 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     CSV_HEADER = ("Date", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
                   "Creative", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
                   "Midpoint Views (Video)", "Complete Views (Video)")
-    from_email = settings.EXPORTS_EMAIL_ADDRESS
-    to = settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES
-    cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
     attachment_filename = "daily_campaign_report.csv"
     historical_filename = "apex_visa_historical.csv"
 
@@ -52,6 +49,9 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         self.yesterday = self.today - timedelta(days=1)
         self.is_historical = is_historical
         self.user = get_user_model().objects.filter(email=settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR).first()
+        self.from_email = settings.EXPORTS_EMAIL_ADDRESS
+        self.to = settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES
+        self.cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
     def send(self):
         if not isinstance(self.user, get_user_model()):
