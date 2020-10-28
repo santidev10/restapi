@@ -35,7 +35,7 @@ class VideoAuditor(BaseAuditor):
         """
         return self._channels_to_rescore
 
-    def audit_serialized(self, video_dict: dict):
+    def audit_serialized(self, video_dict: dict) -> BrandSafetyVideoAudit:
         """
         Audit single video with serialized data
         :param video_dict:
@@ -131,7 +131,7 @@ class VideoAuditor(BaseAuditor):
         }
         return channel_map
 
-    def _check_rescore_channels(self, channels: list) ->  None:
+    def _check_rescore_channels(self, channels: list) -> None:
         """
         Checks whether a new video's non vetted channel should be rescored
         If the video has a negative score, then it may have a large impact on its channels score

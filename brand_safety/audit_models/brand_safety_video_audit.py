@@ -108,7 +108,7 @@ class BrandSafetyVideoAudit(object):
         score = self.calculate_brand_safety_score(*all_hits)
         setattr(self, constants.BRAND_SAFETY_SCORE, score)
 
-    def calculate_brand_safety_score(self, *hits):
+    def calculate_brand_safety_score(self, *hits) -> BrandSafetyVideoScore:
         """
         Calculate brand safety score total and across categories
         This uses multipliers which depends on the location the word was found to determine a negative score
@@ -152,7 +152,7 @@ class BrandSafetyVideoAudit(object):
 
         return brand_safety_score
 
-    def instantiate_es(self):
+    def instantiate_es(self) -> Video:
         video = Video(self.doc.main.id)
         """
         Instantiate Elasticsearch video model with brand safety data
@@ -191,7 +191,7 @@ class BrandSafetyVideoAudit(object):
         return video
 
     @staticmethod
-    def instantiate_blocklist(item_id):
+    def instantiate_blocklist(item_id: str) -> Video:
         blocklist_item = Video(item_id)
         blocklist_item.populate_brand_safety(overall_score=0)
         return blocklist_item
