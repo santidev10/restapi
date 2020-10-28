@@ -1,4 +1,8 @@
+import mock
+import pickle
+
 from django.utils import timezone
+from elasticsearch_dsl import Index
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.channel_auditor import ChannelAuditor
@@ -15,6 +19,8 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
+# Raise OSError to prevent each unit test getting pickled language processors from other tests
+@mock.patch.object(pickle, "load", side_effect=OSError)
 class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES)
     channel_manager = ChannelManager(sections=SECTIONS)
@@ -37,7 +43,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
     def tearDownClass(cls):
         super().tearDownClass()
 
-    def test_special_characters(self):
+    def test_special_characters(self, mock_pickle):
         en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
         sv_lang = AuditLanguage.objects.get_or_create(language="sv")[0]
         bs_category = BadWordCategory.objects.create(name="test")
@@ -61,7 +67,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(english_hits, ["mma"])
         self.assertEqual(swedish_hits, [])
 
-    def test_audit_metadata(self):
+    def test_audit_metadata(self, mock_pickle):
         """ Test channel audit metadata detection """
         channel = Channel(f"channel_{next(int_iterator)}")
         channel.populate_general_data(
@@ -78,7 +84,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(0 < updated.brand_safety.overall_score < 100)
         self.assertTrue(set(all_hits).issubset(set(self.BS_WORDS)))
 
-    def test_audit_videos(self):
+    def test_audit_videos(self, mock_pickle):
         """ Test channel videos metadata detection """
         channel = Channel(f"channel_{next(int_iterator)}")
         videos = []
@@ -108,7 +114,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertTrue(0 < updated_channel.brand_safety.overall_score < 100)
                 self.assertTrue(set(all_hits).issubset(set(self.BS_WORDS)))
 
-    def test_blocklist(self):
+    def test_blocklist(self, mock_pickle):
         """ Test sets score for blocklisted items """
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
@@ -122,7 +128,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_vetted_safe(self):
+    def test_vetted_safe(self, mock_pickle):
         """ Test scoring vetted safe channels should receive all scores of 100 """
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
@@ -137,7 +143,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
         self.assertEqual(updated.brand_safety.overall_score, 100)
 
-    def test_vetted_unsafe(self):
+    def test_vetted_unsafe(self, mock_pickle):
         """ Test scoring vetted unsafe channels should receive all scores of 0 """
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
@@ -153,7 +159,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_ignore_vetted_brand_safety(self):
+    def test_ignore_vetted_brand_safety(self, mock_pickle):
         """ Test ignore_vetted_brand_safety parameter successfully runs audit without brand safety """
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")

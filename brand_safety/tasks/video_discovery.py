@@ -29,7 +29,7 @@ def video_discovery_scheduler():
 
         batch_limit = (Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size) * Schedulers.VideoDiscovery.TASK_BATCH_SIZE
         with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
-        no_score_ids = video_manager.search(with_no_score, limit=batch_limit).execute()
+        no_score_ids = video_manager.search(with_no_score, limit=min(10000, batch_limit)).execute()
         for batch in chunks_generator(no_score_ids, Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
             ids = [video.main.id for video in batch]
             task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
