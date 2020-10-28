@@ -6,6 +6,7 @@ from collections import defaultdict
 from django.conf import settings
 from elasticsearch_dsl import Q
 
+from audit_tool.models import AuditProcessor
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.bulk_search import bulk_search
@@ -94,7 +95,9 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=
             **aggregations,
         }
         s3_key = s3_key or segment.get_s3_key()
-        if with_audit is True:
+        # If with_audit is True and item_count is 0 for export, then it is unnecessary to start audit for ctl as there
+        # are no further items to filter
+        if with_audit is True and statistics["items_count"] > 0:
             segment.s3.export_file_to_s3(filename, s3_key)
             # CTL export csv is finished, start audit for further filtering with inclusion_file / exclusion
             # file keywords
@@ -103,6 +106,9 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, options=
                 "s3_key": s3_key,
             }
         else:
+            # Delete audit as it is no longer required since export has 0 items
+            AuditProcessor.objects.filter(id=segment.params.get("meta_audit_id")).delete()
+            segment.remove_meta_audit_params()
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
             segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
             download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)

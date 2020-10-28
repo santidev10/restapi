@@ -340,7 +340,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
         final_source_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
         if segment.segment_type == 0:
-            split_seq = "/watch?v="
+            split_seq = "?v="
             url_is_valid = lambda x: type(x) is str and len(x) == 11
         else:
             split_seq = "/channel/"
@@ -352,14 +352,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
                 for row in reader:
-                    if not url_is_valid(row[0].split(split_seq)[-1]):
-                        raise ValidationError(f"Invalid url: {row[0]}. Please check that urls in column A match this "
-                                              f"format: https://www.youtube.com{split_seq}YOUTUBE_ID")
-                    rows.append(row)
+                    if url_is_valid(row[0].split(split_seq)[-1]):
+                        rows.append(row)
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
-                    raise ValidationError("Error: Empty source urls.")
+                    raise ValidationError("Error: No valid source urls. Please check that urls in column A match this "
+                                          f"format: https://www.youtube.com{split_seq}YOUTUBE_ID")
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
@@ -401,9 +400,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # If a CTL was created with keywords and both are being removed during the update, then there is no need to
         # create an audit without keywords. Remove audit metadata from segment params
         if old_params.get("inclusion") and not inclusion_data and old_params.get("exclusion") and not exclusion_data:
-            remove_keys = ["meta_audit_id", "inclusion_file", "exclusion_file"]
-            [segment.params.pop(key, None) for key in remove_keys]
-            segment.save(update_fields=["params"])
+            segment.remove_meta_audit_params()
             return
 
         params = dict(

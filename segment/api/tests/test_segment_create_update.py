@@ -384,6 +384,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_with_source_success(self, mock_generate):
+        """ Test creates source with success with at least one valid url"""
         self.create_admin_user()
         payload = {
             "title": "test_create_with_source_success",
@@ -397,7 +398,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         }
         payload = self.get_params(**payload)
         file = BytesIO()
-        file.write(f"https://www.youtube.com/watch?v={str(next(int_iterator)).zfill(11)}".encode("utf-8"))
+        file.write(f"https://www.youtube.com/watch?v={str(next(int_iterator)).zfill(11)}\n".encode("utf-8"))
+        file.write("bad_url".encode("utf-8"))
         file.name = payload["title"]
         file.seek(0)
         form = dict(
@@ -1044,6 +1046,3 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
         self.assertFalse(segment.params)
-    #
-    # def test_validate_source_urls(self):
-    #     pass

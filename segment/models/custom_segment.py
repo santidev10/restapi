@@ -69,6 +69,11 @@ class CustomSegment(SegmentMixin, Timestampable):
     featured_image_url = models.TextField(default="")
     params = JSONField(default=dict)
 
+    def remove_meta_audit_params(self):
+        remove_keys = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        [self.params.pop(key, None) for key in remove_keys]
+        self.save(update_fields=["params"])
+
     @property
     def type(self):
         return SegmentTypeEnum(self.segment_type).name.lower()
