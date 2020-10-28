@@ -16,6 +16,7 @@ from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
+from .test_segment_create_update import SegmentCreateUpdateApiViewTestCase
 
 
 @patch("segment.utils.query_builder.SegmentQueryBuilder.execute")
@@ -30,40 +31,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
     def _get_params(self, *_, **kwargs):
-        params = {
-            "severity_filters": None,
-            "score_threshold": 4,
-            "content_categories": [],
-            "languages": [],
-            "countries": [],
-            "countries_include_na": False,
-            "age_groups": [],
-            "age_groups_include_na": False,
-            "sentiment": 1,
-            "gender": None,
-            "content_type": 1,
-            "content_quality": 1,
-            "is_vetted": 1,
-            "minimum_videos": None,
-            "minimum_videos_include_na": None,
-            "minimum_views": None,
-            "minimum_views_include_na": None,
-            "minimum_subscribers": None,
-            "minimum_subscribers_include_na": False,
-            "ads_stats_include_na": False,
-            "last_upload_date": "",
-            "vetted_after": "",
-            "mismatched_language": None,
-            "video_view_rate": None,
-            "average_cpv": None,
-            "average_cpm": None,
-            "ctr": None,
-            "ctr_v": None,
-            "video_quartile_100_rate": None,
-            "last_30day_views": None,
-            "exclude_content_categories": [],
-            "ias_verified_date": ""
-        }
+        params = SegmentCreateUpdateApiViewTestCase.get_params()
         params.update(kwargs)
         return params
 

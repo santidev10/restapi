@@ -19,7 +19,7 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.utils.utils import with_all
+from segment.utils.utils import with_unknown
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
@@ -67,6 +67,7 @@ class SegmentCreateOptionsApiView(APIView):
                 }
             return values
 
+        # Try to get cached options that are also used in other parts of viewiq
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY).value
             countries = [
@@ -108,19 +109,14 @@ class SegmentCreateOptionsApiView(APIView):
         except IASHistory.DoesNotExist:
             latest_ias_date = timezone.now() - timedelta(days=7)
         options = {
-            "age_groups": [
-                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in
-                AuditAgeGroup.ID_CHOICES
-            ],
+            "age_groups": with_unknown(options=AuditAgeGroup.ID_CHOICES),
             "brand_safety_categories": [
                 {"id": _id, "name": category}
                 for _id, category
                 in BadWordCategory.get_category_mapping(vettable=True).items()
             ],
             "content_categories": AuditUtils.get_iab_categories(),
-            "gender": [
-                {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
-            ],
+            "gender": with_unknown(options=AuditGender.ID_CHOICES),
             "countries": countries,
             "languages": languages,
             "is_vetted": [
@@ -128,9 +124,14 @@ class SegmentCreateOptionsApiView(APIView):
                 {"id": True, "name": "Include Only Vetted"},
                 {"id": None, "name": "Include All"}
             ],
-            "content_type_categories": with_all(all_options=AuditContentType.ID_CHOICES),
-            "content_quality_categories": with_all(all_options=AuditContentQuality.ID_CHOICES),
+            "content_type_categories": with_unknown(options=AuditContentType.ID_CHOICES),
+            "content_quality_categories": with_unknown(options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
             "latest_ias": latest_ias_date,
+            "vetting_status": [
+                {"id": 0, "name": "Non-Vetted"},
+                {"id": 1, "name": "Vetted Safe"},
+                {"id": 2, "name": "Vetted Risky"},
+            ]
         }
         return options

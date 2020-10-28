@@ -8,5 +8,5 @@ from .custom_segment.segment_export import SegmentExport
 from .custom_segment.segment_list import SegmentListApiView
 from .custom_segment.segment_preview import SegmentPreviewAPIView
 from .custom_segment.segment_update import CustomSegmentUpdateApiView
-from .custom_segment.segment_create import SegmentCreateApiView
+from .custom_segment.segment_create_update import SegmentCreateUpdateApiView
 

@@ -39,11 +39,11 @@ class S3Exporter(ABC):
             )
 
     @classmethod
-    def export_object_to_s3(cls, file_obj, file_key):
+    def export_object_to_s3(cls, file_obj, s3_key):
         S3Exporter._s3().upload_fileobj(
             Fileobj=file_obj,
             Bucket=cls.bucket_name,
-            Key=file_key,
+            Key=s3_key,
         )
 
     @classmethod
@@ -109,3 +109,8 @@ class S3Exporter(ABC):
         )
         result = S3Exporter._s3().copy_object(**params)
         return result
+
+    @classmethod
+    def download_file(cls, s3_key, fp):
+        S3Exporter._s3().download_file(cls.bucket_name, s3_key, fp)
+        return fp

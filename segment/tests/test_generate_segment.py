@@ -16,7 +16,6 @@ from audit_tool.models import AuditAgeGroup
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.models import Channel
-from es_components.models import Video
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
@@ -28,6 +27,7 @@ from segment.models import CustomSegment
 from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.tasks.generate_segment import generate_segment
 from utils.brand_safety import map_brand_safety_score
 from utils.unittests.int_iterator import int_iterator
@@ -416,8 +416,10 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(title=f"title_{next(int_iterator)}", segment_type=1)
+        segment = CustomSegment(title=f"title_{next(int_iterator)}", segment_type=1)
         audit = AuditProcessor.objects.create(source=2, params=dict(segment_id=segment.id))
+        segment.params["meta_audit_id"] = audit.id
+        segment.save()
         doc = Channel(f"yt_channel_{next(int_iterator)}")
         self.channel_manager.upsert([doc])
         with patch("segment.tasks.generate_segment.bulk_search", return_value=[[doc]]):
@@ -432,3 +434,31 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         # from generate_segment task
         self.assertEqual(audit.temp_stop, False)
         self.assertEqual(f"https://www.youtube.com/channel/{doc.main.id}", rows[0])
+
+    @mock_s3
+    def test_empty_ctl_no_audit(self):
+        """
+        Test that if CTL is created with meta audit but no items appear on export, audit is not started as there
+        are no items to further filter
+        """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment(title=f"title_{next(int_iterator)}", segment_type=0)
+        audit_id = next(int_iterator)
+        audit, _ = AuditProcessor.objects.get_or_create(id=audit_id, source=2,
+                                                        defaults=dict(params=dict(segment_id=segment.id)))
+        segment.params["meta_audit_id"] = audit.id
+        segment.save()
+        with patch("segment.tasks.generate_segment.bulk_search", return_value=[]),\
+                patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
+            result = generate_segment(segment, Q(), 1, with_audit=True)
+        segment.refresh_from_db()
+        expected_removed_ctl_params = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        # Audit should be deleted as no items on ctl for audit to process
+        self.assertFalse(AuditProcessor.objects.filter(id=audit_id).exists())
+        for key in expected_removed_ctl_params:
+            self.assertFalse(segment.params.get(key))
+        mock_start_audit.assert_not_called()
+        # If CTL was generated with 0 items, result should have statistics
+        self.assertEqual(result["statistics"]["items_count"], 0)

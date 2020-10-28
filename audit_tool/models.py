@@ -10,6 +10,7 @@ from django.db.models import ForeignKey
 from django.db.models import IntegerField
 from django.utils import timezone
 
+from audit_tool.constants import CHOICE_UNKNOWN
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.models import Timestampable
 
@@ -111,14 +112,14 @@ class Comment(models.Model):
 
 class AuditProcessor(models.Model):
     AUDIT_TYPES = {
-        "0": "Recommendation Engine",
-        "1": "Video Meta Processor",
-        "2": "Channel Meta Processor",
+        "0": "Reco. Engine",
+        "1": "Video Meta",
+        "2": "Channel Meta",
     }
     SOURCE_TYPES = {
         "0": "Audit Tool",
-        "1": "Custom Target List Creator",
-        "2": "Custom Target List with Exclusion/Inclusions",
+        "1": "CTL Creator",
+        "2": "CTL with Keywords",
     }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -157,9 +158,11 @@ class AuditProcessor(models.Model):
 
     # pylint: disable=too-many-branches
     @staticmethod
-    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None,
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=None, cursor=None,
             limit=None):
-        all_audits = AuditProcessor.objects.filter(source=source)
+        all_audits = AuditProcessor.objects.all().exclude(source=1)
+        if source is not None:
+            all_audits = all_audits.filter(source=source)
         if audit_type:
             all_audits = all_audits.filter(audit_type=audit_type)
         if running is not None:
@@ -735,6 +738,7 @@ class AuditContentType(models.Model):
         (2, "Brands"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -764,6 +768,7 @@ class AuditAgeGroup(models.Model):
         # (8, "Group - Family Friendly"),  # parent=3
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -802,6 +807,7 @@ class AuditGender(models.Model):
         (2, "Male"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -824,6 +830,7 @@ class AuditContentQuality(models.Model):
         (2, "Premium"),
     ]
     to_str = dict(ID_CHOICES)
+    to_str_with_unknown = dict(ID_CHOICES + [CHOICE_UNKNOWN])
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
@@ -844,11 +851,9 @@ class IASHistory(Timestampable):
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
 
-
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)
-    history = models.ForeignKey(IASHistory, db_index=True, null=True, default=None, on_delete=models.CASCADE)
 
     @staticmethod
     def get_or_create(channel_id, create=True):

@@ -14,7 +14,7 @@ from segment.api.views import SegmentExport
 from segment.api.views import SegmentListApiView
 from segment.api.views import SegmentPreviewAPIView
 from segment.models.persistent.constants import PersistentSegmentType
-from segment.api.views import SegmentCreateApiView
+from segment.api.views import SegmentCreateUpdateApiView
 
 
 segment_types = f"{PersistentSegmentType.CHANNEL}|{PersistentSegmentType.VIDEO}"
@@ -45,7 +45,7 @@ urlpatterns_v2 = [
         name=Name.SEGMENT_CREATION_OPTIONS),
 
     url(r"^segments/create/$",
-        SegmentCreateApiView.as_view(),
+        SegmentCreateUpdateApiView.as_view(),
         name=Name.SEGMENT_CREATE),
 
     url(r"^segments/list/$",

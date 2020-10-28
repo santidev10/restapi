@@ -26,7 +26,7 @@ class AuditListApiView(APIView):
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
-        source = int(query_params["source"]) if "source" in query_params else 0
+        source = int(query_params["source"]) if "source" in query_params else None
         try:
             cursor = int(query_params["cursor"]) if "cursor" in query_params else None
             limit = int(query_params["limit"]) if "limit" in query_params else None

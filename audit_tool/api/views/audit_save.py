@@ -18,16 +18,22 @@ from audit_tool.tasks.generate_audit_items import generate_audit_items
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
 from utils.aws.s3_exporter import S3Exporter
+from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        or_permission_classes(
+            user_has_permission("userprofile.view_audit"),
+            user_has_permission("userprofile.vet_audit_admin"),
+        ),
     )
     LANGUAGES_REVERSE = {}
 
     def post(self, request):
+        if not request.user.has_perm("userprofile.view_audit"):
+            raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         query_params = request.query_params
         user_id = request.user.id
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
@@ -57,6 +63,8 @@ class AuditSaveApiView(APIView):
         override_blocklist = strtobool(
             query_params["override_blocklist"]) if "override_blocklist" in query_params else None
 
+        if not audit_id and not name:
+            raise ValidationError("name can not be empty for a new audit")
         if name:
             name = name.strip()
         if min_date:
