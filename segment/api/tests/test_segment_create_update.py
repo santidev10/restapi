@@ -691,6 +691,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=[]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_object_to_s3"):
             response = self.client.patch(self._get_url(), form)
+        print(response.data)
         self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.delay.assert_called_once()
 
