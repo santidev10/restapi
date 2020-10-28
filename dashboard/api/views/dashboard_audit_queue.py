@@ -25,7 +25,7 @@ class DashboardAuditQueueAPIView(APIView):
         return Response(data=data)
 
     def get_active_audits(self, count=5):
-        audits = AuditProcessor.objects.filter(completed__isnull=True, source=0, temp_stop=False).order_by("pause", "id")
+        audits = AuditProcessor.objects.filter(completed__isnull=True, source__in=[0,2], temp_stop=False).order_by("pause", "id")
         res = []
         for audit in audits[:5]:
             res.append(audit.to_dict(get_details=False))
