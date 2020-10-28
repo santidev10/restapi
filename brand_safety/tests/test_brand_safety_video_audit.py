@@ -1,5 +1,8 @@
 import mock
+import pickle
+
 from django.utils import timezone
+from elasticsearch_dsl import Index
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.utils import AuditUtils
@@ -16,6 +19,8 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
+# Raise OSError to prevent each unit test getting pickled language processors from other tests
+@mock.patch.object(pickle, "load", side_effect=OSError)
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
     channel_manager = ChannelManager(sections=SECTIONS)
@@ -33,14 +38,14 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             BadWord(name=cls.BS_WORDS[0], language=langs[0], category=bs_category),
             BadWord(name=cls.BS_WORDS[1], language=langs[1], category=bs_category),
         ])
-        cls.video_auditor = VideoAuditor()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
 
-    def test_audit(self):
+    def test_audit(self, *_):
         """ Test audit word detection """
+        video_auditor = VideoAuditor()
         video = Video(f"v_{next(int_iterator)}")
         video.populate_general_data(
             title=self.BS_WORDS[0],
@@ -48,7 +53,8 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
-            self.video_auditor.process([video.main.id])
+            video_auditor.process([video.main.id])
+        Index(Video._index._name).refresh()
         updated = self.video_manager.get([video.main.id])[0]
         all_hits = []
         for category_id in updated.brand_safety.categories:
@@ -57,8 +63,9 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(0 < updated.brand_safety.overall_score < 100)
         self.assertTrue(set(all_hits).issubset(set(self.BS_WORDS)))
 
-    def test_blocklist(self):
+    def test_blocklist(self, *_):
         """ Test sets score for blocklisted items """
+        video_auditor = VideoAuditor()
         now = timezone.now()
         video = Video(f"v_{next(int_iterator)}")
         video.populate_custom_properties(blocklist=True)
@@ -67,12 +74,13 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[None]
         )
         self.video_manager.upsert([video])
-        self.video_auditor.process([video.main.id])
+        video_auditor.process([video.main.id])
         updated = self.video_manager.get([video.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_vetted_safe(self):
+    def test_vetted_safe(self, *_):
         """ Test scoring vetted safe videos should receive all scores of 100 """
+        video_auditor = VideoAuditor()
         now = timezone.now()
         video = Video(f"v_{next(int_iterator)}")
         video.populate_task_us_data(
@@ -80,14 +88,15 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[None]
         )
         self.video_manager.upsert([video])
-        self.video_auditor.process([video.main.id])
+        video_auditor.process([video.main.id])
         updated = self.video_manager.get([video.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
         self.assertEqual(updated.brand_safety.overall_score, 100)
 
-    def test_vetted_unsafe(self):
+    def test_vetted_unsafe(self, *_):
         """ Test scoring vetted unsafe videos should receive all scores of 0 """
+        video_auditor = VideoAuditor()
         now = timezone.now()
         video = Video(f"v_{next(int_iterator)}")
         bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
@@ -97,13 +106,13 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
-            self.video_auditor.process([video.main.id])
+            video_auditor.process([video.main.id])
         updated = self.video_manager.get([video.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_special_characters(self):
+    def test_special_characters(self, *_):
         en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
         sv_lang = AuditLanguage.objects.get_or_create(language="sv")[0]
         bs_category = BadWordCategory.objects.get_or_create(name="test")[0]
@@ -127,7 +136,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(english_hits, ["mma"])
         self.assertEqual(swedish_hits, [])
 
-    def test_audit_serialized(self):
+    def test_audit_serialized(self, *_):
         """ Test audit_serialized method functions properly and without errors """
         bad_words = ", ".join(self.BS_WORDS)
         data = dict(
@@ -152,7 +161,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(set(self.BS_WORDS), set(video_audit_score.hits))
         self.assertEqual(video_audit_score2.overall_score, 100)
 
-    def test_ignore_vetted_brand_safety(self):
+    def test_ignore_vetted_brand_safety(self, *_):
         """ Test ignore_vetted_brand_safety parameter successfully runs audit without brand safety """
         now = timezone.now()
         video = Video(f"v_{next(int_iterator)}")
@@ -168,9 +177,9 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         # ignore_vetted_brand_safety=True should not automatically set scores to 0 because of task_us_data.brand_safety
         self.assertTrue(updated.brand_safety.overall_score != 0)
 
-    def test_channel_rescore(self):
+    def test_channel_rescore(self, *_):
         """ Test that channels are collected if its video scores badly enough """
-        self.video_auditor.channels_to_rescore.clear()
+        video_auditor = VideoAuditor()
         channel = Channel(f"test_channel_id_{next(int_iterator)}")
         channel.populate_brand_safety(overall_score=100)
         video = Video(f"v_{next(int_iterator)}")
@@ -181,6 +190,6 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.channel_manager.upsert([channel])
         self.video_manager.upsert([video])
-        self.video_auditor.process([video.main.id])
-        rescore_channels = self.video_auditor.channels_to_rescore
+        video_auditor.process([video.main.id])
+        rescore_channels = video_auditor.channels_to_rescore
         self.assertEqual(set(rescore_channels), {channel.main.id})

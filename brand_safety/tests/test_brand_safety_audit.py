@@ -155,7 +155,8 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             BadWord(name="mma", language=langs[0], category=bs_category),
             BadWord(name="mma", language=langs[1], category=bs_category),
         ])
-        audit_utils = AuditUtils()
+        with patch("brand_safety.auditors.utils.pickle.load", side_effect=OSError):
+            audit_utils = AuditUtils()
         english_keywords_processor = audit_utils.bad_word_processors_by_language["en"]
         swedish_keywords_processor = audit_utils.bad_word_processors_by_language["sv"]
         english_hits = english_keywords_processor.extract_keywords(mma_video.general_data.description)

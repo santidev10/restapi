@@ -8,7 +8,7 @@ from es_components.models import Video
 
 class VideoAuditor(BaseAuditor):
     es_model = Video
-    VIDEO_BATCH_SIZE = 2000
+    VIDEO_BATCH_SIZE = 500
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
     def __init__(self, *args, ignore_vetted_brand_safety=False, **kwargs):
@@ -35,7 +35,7 @@ class VideoAuditor(BaseAuditor):
         """
         return self._channels_to_rescore
 
-    def audit_serialized(self, video_dict: dict):
+    def audit_serialized(self, video_dict: dict) -> BrandSafetyVideoAudit:
         """
         Audit single video with serialized data
         :param video_dict:
@@ -95,7 +95,7 @@ class VideoAuditor(BaseAuditor):
             video_audits = [self.audit_video(video) for video in with_data]
             all_audits.extend(video_audits)
             if index:
-                self.audit_utils.index_audit_results(self.video_manager, video_audits)
+                self.index_audit_results(self.video_manager, video_audits)
         return all_audits
 
     def process(self, video_ids: list, index=True, channel_mapping=None) -> None:
@@ -116,7 +116,8 @@ class VideoAuditor(BaseAuditor):
             ]
             self._check_rescore_channels(check_rescore_channels)
             if index is True:
-                self.audit_utils.index_audit_results(self.video_manager, video_audits)
+                to_index = [audit.instantiate_es() for audit in video_audits]
+                self.index_audit_results(self.video_manager, to_index, size=250)
 
     def _get_channel_mapping(self, channel_ids: set) -> dict:
         """
@@ -131,7 +132,7 @@ class VideoAuditor(BaseAuditor):
         }
         return channel_map
 
-    def _check_rescore_channels(self, channels: list) ->  None:
+    def _check_rescore_channels(self, channels: list) -> None:
         """
         Checks whether a new video's non vetted channel should be rescored
         If the video has a negative score, then it may have a large impact on its channels score

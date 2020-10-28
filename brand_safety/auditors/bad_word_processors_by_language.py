@@ -25,11 +25,11 @@ from brand_safety.models import BadWord
 from utils.utils import remove_tags_punctuation
 
 
-def get_bad_word_processors_by_language():
+def get_bad_word_processors_by_language() -> dict:
     """
     Generate dictionary of keyword processors by language
         Also provides an "all" key that contains every keyword
-    :return:
+    :return: dict
     """
     bad_words_by_language = defaultdict(KeywordProcessor)
     all_words = BadWord.objects.annotate(language_name=F("language__language"))

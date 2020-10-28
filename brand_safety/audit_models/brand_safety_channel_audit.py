@@ -44,7 +44,6 @@ class BrandSafetyChannelAudit(object):
         }
         text = ",".join(text_mapping.keys())
         audit_data = {
-            "has_emoji": self.audit_utils.has_emoji(text),
             "language": self.audit_utils.get_language(text),
             **text_mapping
         }
