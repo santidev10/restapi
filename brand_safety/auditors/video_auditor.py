@@ -8,7 +8,7 @@ from es_components.models import Video
 
 class VideoAuditor(BaseAuditor):
     es_model = Video
-    VIDEO_BATCH_SIZE = 2000
+    VIDEO_BATCH_SIZE = 500
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
     def __init__(self, *args, ignore_vetted_brand_safety=False, **kwargs):
@@ -116,7 +116,8 @@ class VideoAuditor(BaseAuditor):
             ]
             self._check_rescore_channels(check_rescore_channels)
             if index is True:
-                self.audit_utils.index_audit_results(self.video_manager, video_audits)
+                to_index = [audit.instantiate_es() for audit in video_audits]
+                self.index_audit_results(self.video_manager, to_index, size=250)
 
     def _get_channel_mapping(self, channel_ids: set) -> dict:
         """
