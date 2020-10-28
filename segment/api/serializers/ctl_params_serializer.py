@@ -50,6 +50,10 @@ class AdsPerformanceRangeField(serializers.CharField):
 
     def validate_stats_field(self, val):
         bounds = val.replace(" ", "").split(",")
+        # coerce ",", ", " to None
+        if not [bound for bound in bounds if bound]:
+            return None
+        # ensure bound is numeric
         numeric_bounds = [bound for bound in list(map(self.is_number, bounds)) if bound is not False]
         if len(bounds) != 2 or len(numeric_bounds) not in range(1, 3):
             msg = f"Range must be a numeric range string following the format 'x, y', 'x,', ',x'"
