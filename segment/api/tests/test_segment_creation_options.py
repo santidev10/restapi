@@ -16,7 +16,7 @@ from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
-from .test_segment_create_update import SegmentCreateApiViewTestCase
+from .test_segment_create_update import SegmentCreateUpdateApiViewTestCase
 
 
 @patch("segment.utils.query_builder.SegmentQueryBuilder.execute")
@@ -31,7 +31,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
     def _get_params(self, *_, **kwargs):
-        params = SegmentCreateApiViewTestCase.get_params()
+        params = SegmentCreateUpdateApiViewTestCase.get_params()
         params.update(kwargs)
         return params
 
