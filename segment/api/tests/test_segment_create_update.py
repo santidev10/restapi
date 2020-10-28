@@ -681,6 +681,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         payload.update(dict(id=segment.id, segment_type=segment.segment_type))
         source_file = BytesIO()
         source_file.name = "test_source.csv"
+        source_file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}\n".encode("utf-8"))
         source_file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}".encode("utf-8"))
         source_file.seek(0)
         form = dict(
