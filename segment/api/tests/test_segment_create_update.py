@@ -293,6 +293,96 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             ).exists())
             mock_generate.delay.assert_called_once()
 
+    def test_create_fail_source_video_invalid_format(self, mock_generate):
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_fail_source_video_invalid_format",
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.write(f"https://www.youtube.com/v/bad".encode("utf-8"))
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_create_fail_source_channel_invalid_format(self, mock_generate):
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_fail_source_channel_invalid_format",
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.write(f"https://www.youtube.com/chan/bad".encode("utf-8"))
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_create_fail_empty_source(self, mock_generate):
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_fail_empty_source",
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = "empty_source"
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_fail_exclusion_empty(self, mock_generate):
+        self.create_admin_user()
+        payload = {
+            "title": "test exclusion",
+            "segment_type": 1,
+            "exclusion_hit_threshold": 1,
+        }
+        exclusion_file = BytesIO()
+        exclusion_file.name = "test_exclusion.csv"
+        payload = self.get_params(**payload)
+        form = dict(
+            exclusion_file=exclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_fail_inclusion_empty(self, mock_generate):
+        self.create_admin_user()
+        payload = {
+            "title": "test_fail_inclusion_empty",
+            "segment_type": 0,
+            "inclusion_hit_threshold": 1,
+        }
+        inclusion_file = BytesIO()
+        inclusion_file.name = "test_inclusion.csv"
+        payload = self.get_params(**payload)
+        form = dict(
+            inclusion_file=inclusion_file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_create_with_source_success(self, mock_generate):
         self.create_admin_user()
         payload = {
@@ -307,7 +397,9 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         }
         payload = self.get_params(**payload)
         file = BytesIO()
+        file.write(f"https://www.youtube.com/watch?v={str(next(int_iterator)).zfill(11)}".encode("utf-8"))
         file.name = payload["title"]
+        file.seek(0)
         form = dict(
             source_file=file,
             data=json.dumps(payload)
@@ -332,7 +424,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         payload = self.get_params(**payload)
         file = BytesIO()
         file.name = payload["title"]
-        file.write(b"\n".join([f"row_{i}".encode("utf-8") for i in range(300000)]))
+        file.write(b"\n".join([f"https://www.youtube.com/channel/{str(i).zfill(24)}".encode("utf-8")
+                               for i in range(300000)]))
         file.seek(0)
         form = dict(
             source_file=file,
@@ -373,7 +466,11 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         inclusion_file = BytesIO()
         inclusion_file.name = "test_inclusion.csv"
+        inclusion_file.write(b"inclusion_word")
+        inclusion_file.seek(0)
         exclusion_file = BytesIO()
+        exclusion_file.write(b"exclusion_word")
+        exclusion_file.seek(0)
         exclusion_file.name = "test_inclusion.csv"
         payload = {
             "title": "test saves params",
@@ -582,7 +679,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         payload.update(dict(id=segment.id, segment_type=segment.segment_type))
         source_file = BytesIO()
         source_file.name = "test_source.csv"
-        source_file.write(b"a_source_url")
+        source_file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}".encode("utf-8"))
         source_file.seek(0)
         form = dict(
             data=json.dumps(payload),
@@ -947,3 +1044,6 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
         self.assertFalse(segment.params)
+    #
+    # def test_validate_source_urls(self):
+    #     pass

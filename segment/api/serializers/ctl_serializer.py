@@ -339,12 +339,27 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
 
         final_source_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        if segment.segment_type == 0:
+            split_seq = "/watch?v="
+            url_is_valid = lambda x: type(x) is str and len(x) == 11
+        else:
+            split_seq = "/channel/"
+            url_is_valid = lambda x: type(x) is str and len(x) == 24
         try:
             # Limit source file
+            rows = []
             with io.TextIOWrapper(source_file, encoding="utf-8") as source_text,\
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
-                rows = [row for row in itertools.islice(reader, self.SOURCE_LIST_MAX_SIZE)]
+                for row in reader:
+                    if not url_is_valid(row[0].split(split_seq)[-1]):
+                        raise ValidationError(f"Invalid url: {row[0]}. Please check that urls in column A match this "
+                                              f"format: https://www.youtube.com{split_seq}YOUTUBE_ID")
+                    rows.append(row)
+                    if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
+                        break
+                if not rows:
+                    raise ValidationError("Error: Empty source urls.")
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
@@ -358,8 +373,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     name=getattr(source_file, "name", None)
                 )
             )
-        except Exception:
+        except ValidationError:
+            raise
+        except Exception as err:
             logger.exception("Error creating CTL source file")
+            raise ValidationError(err)
         finally:
             os.remove(final_source_file)
 
@@ -432,10 +450,14 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     def _get_keyword_file_data(self, old_audit_params, keyword_type="inclusion"):
         """
         Method to help determine filename and file data
+        Raises ValidationError if keyword file is empty
         :param old_audit_params: dict -> Old meta audit params
         :param keyword_type: inclusion | exclusion
         :return: tuple
         """
+        keyword_errs = []
+        if keyword_errs:
+            raise ValidationError("\n".join(keyword_errs))
         files = self.context["files"]
         file = files.get(f"{keyword_type}_file")
         # If hit_threshold is None but file data was provided before, then implicitly removing file
@@ -446,6 +468,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if (not old_audit_params and file is not None) or (old_audit_params.get(keyword_type) and file):
             filename = file.name
             file_data = self._get_file_data(file)
+            if not file_data:
+                raise ValidationError(f"Error: empty {keyword_type} keywords file")
         # Creating brand new audit with no file or removing the file sets empty data
         elif (not file and not old_audit_params) or (old_audit_params.get(keyword_type) and hit_threshold is None):
             filename = None
