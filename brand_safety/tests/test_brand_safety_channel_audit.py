@@ -2,7 +2,6 @@ import mock
 import pickle
 
 from django.utils import timezone
-from elasticsearch_dsl import Index
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.channel_auditor import ChannelAuditor
@@ -37,7 +36,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             BadWord(name=cls.BS_WORDS[0], language=langs[0], category=bs_category),
             BadWord(name=cls.BS_WORDS[1], language=langs[1], category=bs_category),
         ])
-        cls.channel_auditor = ChannelAuditor()
+
 
     @classmethod
     def tearDownClass(cls):
@@ -69,13 +68,14 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_audit_metadata(self, mock_pickle):
         """ Test channel audit metadata detection """
+        channel_auditor = ChannelAuditor()
         channel = Channel(f"channel_{next(int_iterator)}")
         channel.populate_general_data(
             title=self.BS_WORDS[0],
             description=f"{self.BS_WORDS[1]} in description"
         )
         self.channel_manager.upsert([channel])
-        self.channel_auditor.process([channel.main.id])
+        channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         all_hits = []
         for category_id in updated.brand_safety.categories:
@@ -85,6 +85,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(set(all_hits).issubset(set(self.BS_WORDS)))
 
     def test_audit_videos(self, mock_pickle):
+        channel_auditor = ChannelAuditor()
         """ Test channel videos metadata detection """
         channel = Channel(f"channel_{next(int_iterator)}")
         videos = []
@@ -96,7 +97,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_manager.upsert([channel])
         self.video_manager.upsert(videos)
 
-        self.channel_auditor.process(channel.main.id)
+        channel_auditor.process(channel.main.id)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         updated_videos = self.video_manager.get([v.main.id for v in videos])
         all_hits = []
@@ -116,6 +117,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_blocklist(self, mock_pickle):
         """ Test sets score for blocklisted items """
+        channel_auditor = ChannelAuditor()
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
         channel.populate_custom_properties(blocklist=True)
@@ -124,12 +126,13 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[None]
         )
         self.channel_manager.upsert([channel])
-        self.channel_auditor.process([channel.main.id])
+        channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
     def test_vetted_safe(self, mock_pickle):
         """ Test scoring vetted safe channels should receive all scores of 100 """
+        channel_auditor = ChannelAuditor()
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
         channel.populate_task_us_data(
@@ -137,7 +140,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[None]
         )
         self.channel_manager.upsert([channel])
-        self.channel_auditor.process([channel.main.id])
+        channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
@@ -145,6 +148,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_vetted_unsafe(self, mock_pickle):
         """ Test scoring vetted unsafe channels should receive all scores of 0 """
+        channel_auditor = ChannelAuditor()
         now = timezone.now()
         channel = Channel(f"channel_{next(int_iterator)}")
         bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
@@ -153,7 +157,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[str(bs_category.id)]
         )
         self.channel_manager.upsert([channel])
-        self.channel_auditor.process([channel.main.id])
+        channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
