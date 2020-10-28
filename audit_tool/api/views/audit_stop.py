@@ -19,7 +19,7 @@ class AuditStopApiView(APIView):
             try:
                 audit = AuditProcessor.objects.get(id=audit_id, completed__isnull=True)
                 if audit.source == 2:
-                    raise ValidationError("can not stop a CTL audit.")
+                    return Response({'error': 'can not stop a CTL audit.'})
                 audit.params['stopped'] = True
                 audit.completed = timezone.now()
                 audit.pause = 0
