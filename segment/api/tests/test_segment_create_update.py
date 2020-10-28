@@ -667,6 +667,33 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(old_params, updated_params)
         mock_generate_again.assert_not_called()
 
+    def test_regenerate_source_urls_changed(self, mock_generate):
+        """ Test that CTL is regenerated if source urls have changed """
+        user = self.create_admin_user()
+        payload = self.get_params(segment_type=1)
+        params = CTLParamsSerializer(data=payload)
+        params.is_valid(raise_exception=True)
+
+        segment = CustomSegment.objects.create(title="test_regenerate_source", owner=user, segment_type=1)
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict(params=params.validated_data))
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, filename="old.csv", source_type=0)
+
+        payload.update(dict(id=segment.id, segment_type=segment.segment_type))
+        source_file = BytesIO()
+        source_file.name = "test_source.csv"
+        source_file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}\n".encode("utf-8"))
+        source_file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}".encode("utf-8"))
+        source_file.seek(0)
+        form = dict(
+            data=json.dumps(payload),
+            source_file=source_file
+        )
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["source_url"]),\
+                patch("segment.models.custom_segment.SegmentExporter.export_file_to_s3"):
+            response = self.client.patch(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        mock_generate.delay.assert_called_once()
+
     def test_no_regenerate_editing_without_suitability_keywords(self, mock_generate):
         """
         Test that CTL is NOT regenerated if a CTL was created with inclusion / exclusion keywords but
