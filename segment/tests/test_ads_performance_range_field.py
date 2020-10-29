@@ -31,3 +31,10 @@ class TestAdsPerformanceRangeField(TestCase):
             with self.subTest(data):
                 with self.assertRaises(ValidationError):
                     instance.run_validation(data=data)
+
+    def test_null_or_null_like_values_are_coerced_to_none(self):
+        instance = self.get_field_instance()
+        for data in [",", ", ", None]:
+            with self.subTest(data):
+                validated = instance.run_validation(data=data)
+                self.assertEqual(validated, None)
