@@ -24,7 +24,7 @@ class BaseAuditor:
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
-    def index_audit_results(self, es_manager, audit_results: list, size=500) -> None:
+    def index_audit_results(self, es_manager, audit_results: list) -> None:
         """
         Update audits with audited brand safety scores
         Check if each document should be upserted depending on config, as vetted videos should not always be updated
@@ -37,9 +37,12 @@ class BaseAuditor:
             refresh=False, raise_on_error=False,
             raise_on_exception=False, yield_ok=False
         )
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            for chunk in chunks_generator(audit_results, size):
-                executor.submit(es_manager.upsert, chunk, **upsert_params)
+        if len(audit_results) < 100:
+            es_manager.upsert(audit_results, **upsert_params)
+        else:
+            args = chunks_generator(audit_results, 100)
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                list(executor.submit(es_manager.upsert, list(arg), **upsert_params) for arg in args)
 
     def _blocklist_handler(self, doc, **__):
         """
