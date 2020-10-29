@@ -191,7 +191,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             old_params = {}
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
-        old_audit_id = instance.params.get("meta_audit_id")
+        old_meta_audit_id = instance.params.get("meta_audit_id")
         # always save updated title
         title = validated_data.get("title", instance.title)
         if title != instance.title:
@@ -199,6 +199,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             instance.title_hash = get_hash_name(title)
             instance.save(update_fields=["title", "title_hash", "updated_at"])
         if should_regenerate:
+            # Consider regeneration as new list and delete associated records used with old generated export
+            self._clean_ctl(instance)
             self._create_export(instance)
             updated_params = {"stopped": True}
             updated_attrs = {"completed": timezone.now(), "pause": 0}
@@ -207,7 +209,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             updated_attrs = {"name": title.lower()}
         try:
             # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
-            audit = AuditProcessor.objects.get(id=old_audit_id)
+            audit = AuditProcessor.objects.get(id=old_meta_audit_id)
             [setattr(audit, key, value) for key, value in updated_attrs.items()]
             audit.params.update(updated_params)
             audit.save()
@@ -490,6 +492,20 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                 rows.append(decoded)
         file_reader.seek(0)
         return rows
+
+    def _clean_ctl(self, segment: CustomSegment):
+        """ Util method for update method to help delete associated records with old CTL export """
+        set_false = ["is_vetting_complete", "is_featured", "is_regenerating"]
+        # Delete audit used for vetting
+        AuditProcessor.objects.filter(id__in=[segment.audit_id]).delete()
+        [setattr(segment, key, False) for key in set_false]
+        segment.audit_id = None
+        segment.statistics = {}
+        if hasattr(segment, "export"):
+            segment.export.delete()
+        if hasattr(segment, "vetted_export"):
+            segment.vetted_export.delete()
+        segment.save(update_fields=[*set_false, "audit_id", "statistics"])
 
 
 class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
