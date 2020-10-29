@@ -287,6 +287,10 @@ PASSWORD_RESET_TIMEOUT_DAYS = 1
 YOUTUBE_API_DEVELOPER_KEY = "AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI"
 YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = "AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4"
 
+# pylint: disable=wrong-import-position
+# from .configs.celery import *
+# pylint: enable=wrong-import-position
+
 CHANNEL_FACTORY_ACCOUNT_ID = 3386233102
 
 MCC_ACCOUNT_IDS = [
@@ -567,5 +571,3 @@ try:
     from .local_settings import *
 except ImportError:
     pass
-
-from .configs.celery import *
