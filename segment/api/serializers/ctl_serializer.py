@@ -426,8 +426,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             # Channel config
             audit_type = 2
             extra_params = dict(
-                do_videos=False,
-                num_videos=0,
+                do_videos=True,
+                num_videos=15,
                 audit_type_original=audit_type
             )
         params.update(extra_params)

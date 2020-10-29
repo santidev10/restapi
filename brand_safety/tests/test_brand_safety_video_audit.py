@@ -21,6 +21,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 # Raise OSError to prevent each unit test getting pickled language processors from other tests
 @mock.patch.object(pickle, "load", side_effect=OSError)
+@mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock)
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
     channel_manager = ChannelManager(sections=SECTIONS)
@@ -52,8 +53,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             description=f"{self.BS_WORDS[1]} in description"
         )
         self.video_manager.upsert([video])
-        with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
-            video_auditor.process([video.main.id])
+        video_auditor.process([video.main.id])
         Index(Video._index._name).refresh()
         updated = self.video_manager.get([video.main.id])[0]
         all_hits = []
@@ -105,8 +105,7 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             brand_safety=[str(bs_category.id)]
         )
         self.video_manager.upsert([video])
-        with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
-            video_auditor.process([video.main.id])
+        video_auditor.process([video.main.id])
         updated = self.video_manager.get([video.main.id])[0]
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
@@ -152,9 +151,8 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             tags=None,
         )
         auditor = VideoAuditor()
-        with mock.patch.object(BadWordCategory, "EXCLUDED", return_value=[], new_callable=mock.PropertyMock):
-            audit = auditor.audit_serialized(data)
-            audit2 = auditor.audit_serialized(data2)
+        audit = auditor.audit_serialized(data)
+        audit2 = auditor.audit_serialized(data2)
         video_audit_score = getattr(audit, "brand_safety_score")
         video_audit_score2 = getattr(audit2, "brand_safety_score")
         self.assertTrue(0 <= video_audit_score.overall_score <= 100)
