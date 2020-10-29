@@ -858,8 +858,6 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
         updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
         self.assertNotEqual(old_params, updated_params)
-        # Assert that updating partially does not override the entire dict, but only updates partial keys
-        self.assertTrue(len(updated_params.keys()) > len(partial_params.keys()))
         self.assertEqual(updated_params["vetting_status"], partial_params["vetting_status"])
         mock_generate.assert_called_once()
 
@@ -1082,7 +1080,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         mock_create_export.assert_called_once()
         self.assertEqual(segment.is_vetting_complete, False)
-        self.assertTrue(segment.statistics == segment.params == {})
+        self.assertEqual(segment.statistics, {})
         self.assertFalse(AuditProcessor.objects.filter(id=audit_id).exists())
         self.assertFalse(AuditChannelVet.objects.filter(id=audit_id).exists())
         # Source should still remain as it is required to build new export

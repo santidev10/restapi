@@ -500,13 +500,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         AuditProcessor.objects.filter(id__in=[segment.audit_id]).delete()
         [setattr(segment, key, False) for key in set_false]
         segment.audit_id = None
-        segment.params = {}
         segment.statistics = {}
         if hasattr(segment, "export"):
             segment.export.delete()
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
-        segment.save(update_fields=[*set_false, "audit_id", "params", "statistics"])
+        segment.save(update_fields=[*set_false, "audit_id", "statistics"])
 
 
 class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
