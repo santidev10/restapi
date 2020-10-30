@@ -289,7 +289,7 @@ def resolve_videos_info(ids: List[int],
 
                 params = dict(key=api_key,
                               id=ids_string,
-                              part="status,snippet,contentDetails",
+                              part="snippet,contentDetails",
                               maxResults=MAX_RESULTS)
 
                 response = requests.get(url=api_url,
