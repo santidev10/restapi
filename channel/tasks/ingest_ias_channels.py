@@ -38,7 +38,7 @@ class IASIngestor(S3Exporter):
 
 
 @celery_app.task(expires=TaskExpiration.INGEST_IAS, soft_time_limit=TaskTimeout.INGEST_IAS)
-def ingest_ias_channels():
+def ingest_ias_channels(target_file_name=None):
     try:
         lock(lock_name=LOCK_NAME, expire=TaskExpiration.INGEST_IAS)
         ingestor = IASIngestor()
@@ -49,8 +49,12 @@ def ingest_ias_channels():
         file_names = [content["Key"] for content in contents]
         start_time = timezone.now()
         for file_name in file_names:
-            if "archive" in file_name:
-                continue
+            if target_file_name:
+                if target_file_name not in file_name:
+                    continue
+            else:
+                if "archive" in file_name:
+                    continue
             try:
                 ias_content = ingestor._get_s3_object(name=file_name)
                 new_cids = []
@@ -60,9 +64,9 @@ def ingest_ias_channels():
                     if len(cid) != 24 or cid[:2] != "UC":
                         continue
                     new_cids.append(cid)
-                for chunk in chunks_generator(new_cids, size=10000):
-                    chunk = list(chunk)
-                    new_channels = channel_manager.get_or_create(chunk)
+                for channel_ids_chunk in chunks_generator(new_cids, size=10000):
+                    channel_ids_chunk = list(channel_ids_chunk)
+                    new_channels = channel_manager.get_or_create(channel_ids_chunk)
                     for channel in new_channels:
                         if not channel:
                             continue
