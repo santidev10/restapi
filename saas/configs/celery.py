@@ -1,7 +1,6 @@
 import os
 import re
 from datetime import timedelta
-from django.conf import settings
 
 from celery.schedules import crontab
 
@@ -171,7 +170,7 @@ CELERY_BEAT_SCHEDULE = {
     "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
         # defaults to twice per day, 0500, 1700 PST
-        "schedule": crontab(hour=settings.IAS_INGESTION_SCHEDULE_HOUR, minute=0),
+        "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
     "sync_dv_partners": {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",

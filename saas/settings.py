@@ -288,7 +288,7 @@ YOUTUBE_API_DEVELOPER_KEY = "AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI"
 YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = "AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4"
 
 # pylint: disable=wrong-import-position
-# from .configs.celery import *
+from .configs.celery import *
 # pylint: enable=wrong-import-position
 
 CHANNEL_FACTORY_ACCOUNT_ID = 3386233102
@@ -511,7 +511,6 @@ PROXY_PORT = ""
 
 IAS_ARCHIVE_FOLDER = "archive/"
 ARCHIVE_IAS = False
-IAS_INGESTION_SCHEDULE_HOUR = "0,12"
 
 PERFORMIQ_OAUTH_USER_AGENT = "Web application"
 PERFORMIQ_OAUTH_CLIENT_ID = "832846444492-s0tktc1j0klmt16pdemo9s8hf73t3cie.apps.googleusercontent.com"
