@@ -1,6 +1,5 @@
 import csv
 import io
-import itertools
 import logging
 import os
 import tempfile
@@ -485,12 +484,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param file_reader: TemporaryUploadedFile in open read +rb state
         :return: list
         """
-        rows = []
-        for row in file_reader:
-            decoded = row.decode("utf-8").lower().strip()
-            if decoded:
-                rows.append(decoded)
-        file_reader.seek(0)
+        with open(file_reader.file.name, mode="r") as file:
+            reader = csv.reader(file, delimiter=",")
+            rows = [row[0].strip() for row in reader]
         return rows
 
     def _clean_ctl(self, segment: CustomSegment):
