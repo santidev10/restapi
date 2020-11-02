@@ -41,7 +41,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     """
     export_content_type = "application/CSV"
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS,
-                Sections.TASK_US_DATA, Sections.ADS_STATS, Sections.CUSTOM_PROPERTIES,)
+                Sections.TASK_US_DATA, Sections.ADS_STATS, Sections.CUSTOM_PROPERTIES, Sections.IAS_DATA,)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
     is_vetting = False
@@ -51,8 +51,8 @@ class CustomSegment(SegmentMixin, Timestampable):
         (1, BLACKLIST)
     )
     SEGMENT_TYPE_CHOICES = (
-        (0, VIDEO),
-        (1, CHANNEL)
+        (SegmentTypeEnum.VIDEO.value, VIDEO),
+        (SegmentTypeEnum.CHANNEL.value, CHANNEL)
     )
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
@@ -81,7 +81,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     @property
     def export_serializer(self):
         """ Get export serializer depending on channel or video segment """
-        if self.segment_type in (0, "video"):
+        if self.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
             serializer = self._get_video_serializer()
         else:
             serializer = self._get_channel_serializer()
@@ -112,7 +112,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         try:
             self._config
         except AttributeError:
-            if self.segment_type == 0:
+            if self.segment_type == SegmentTypeEnum.VIDEO.value:
                 self._config = VideoConfig
             else:
                 self._config = ChannelConfig
@@ -120,7 +120,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     @property
     def es_manager(self):
-        if self.segment_type == 0:
+        if self.segment_type == SegmentTypeEnum.VIDEO.value:
             sections = self.SECTIONS + (Sections.CHANNEL,)
             es_manager = VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
         else:
