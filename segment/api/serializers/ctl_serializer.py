@@ -1,6 +1,5 @@
 import csv
 import io
-import itertools
 import logging
 import os
 import tempfile
@@ -19,6 +18,7 @@ from rest_framework.serializers import JSONField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
+from audit_tool.api.views import AuditSaveApiView
 from audit_tool.models import AuditProcessor
 from audit_tool.models import get_hash_name
 from segment.models import CustomSegment
@@ -231,8 +231,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         should_regenerate = False
         files = self.context["files"]
         source_file = files.get("source_file")
-        inclusion_file = files.get("inclusion_file")
-        exclusion_file = files.get("exclusion_file")
 
         # Check ctl filters for changes. Check each key as may be updating with partial dict of original params
         matching_old_params = {key: old_params.get(key) for key in new_params.keys()}
@@ -249,21 +247,22 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                 old_ids = []
             try:
                 new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
-                           for url in self._get_file_data(source_file)]
+                           for url in self._get_source_file_data(source_file)]
             except TypeError:
                 new_ids = []
             if set(old_ids) != set(new_ids):
                 should_regenerate = True
                 return should_regenerate
-
-        # Check inclusion / exclusion keywords
-        inclusion_rows = self._get_file_data(inclusion_file) if inclusion_file else []
-        exclusion_rows = self._get_file_data(exclusion_file) if exclusion_file else []
         try:
             audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+
+            # Check inclusion / exclusion keywords
+            inclusion_filename, inclusion_rows = self._get_inclusion_keywords(audit.params)
+            exclusion_filename, exclusion_data, _ = self._get_exclusion_keywords(audit.params)
+
             # Check if updating with new files with changes
-            inclusion_changed = inclusion_file is not None and set(inclusion_rows) != set(audit.params.get("inclusion", {}))
-            exclusion_changed = exclusion_file is not None and set(exclusion_rows) != set(audit.params.get("exclusion", {}))
+            inclusion_changed = inclusion_filename is not None and set(inclusion_rows) != set(audit.params.get("inclusion", {}))
+            exclusion_changed = exclusion_filename is not None and self._check_exclusion_changed(audit.params.get("exclusion", []), exclusion_data)
             # Check if files were removed. If existing audit has keywords but the request sends thresholds as None, then
             # it is considered removed and should_regenerate
             inclusion_file_removed = audit.params.get("inclusion") is not None and new_params["inclusion_hit_threshold"] is None
@@ -273,6 +272,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         except (KeyError, AuditProcessor.DoesNotExist):
             pass
         return should_regenerate
+
+    def _check_exclusion_changed(self, old_audit_exclusion_data, new_exclusion_data):
+        old_rows = set([",".join(row) for row in old_audit_exclusion_data])
+        new_rows = set([",".join(row) for row in new_exclusion_data])
+        return old_rows != new_rows
 
     def _create_export(self, segment: CustomSegment) -> CustomSegment:
         """
@@ -396,12 +400,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         except AuditProcessor.DoesNotExist:
             old_params = {}
         request = self.context["request"]
-        inclusion_filename, inclusion_data = self._get_keyword_file_data(old_params, keyword_type="inclusion")
-        exclusion_filename, exclusion_data = self._get_keyword_file_data(old_params, keyword_type="exclusion")
+        inclusion_filename, inclusion_rows = self._get_inclusion_keywords(old_params)
+        exclusion_filename, exclusion_rows, exclusion_categories = self._get_exclusion_keywords(old_params)
 
         # If a CTL was created with keywords and both are being removed during the update, then there is no need to
         # create an audit without keywords. Remove audit metadata from segment params
-        if old_params.get("inclusion") and not inclusion_data and old_params.get("exclusion") and not exclusion_data:
+        if old_params.get("inclusion") and not inclusion_rows and old_params.get("exclusion") and not exclusion_rows:
             segment.remove_meta_audit_params()
             return
 
@@ -409,8 +413,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             name=segment.title,
             segment_id=segment.id,
             user_id=request.user.id,
-            inclusion=inclusion_data,
-            exclusion=exclusion_data,
+            inclusion=inclusion_rows,
+            exclusion=exclusion_rows,
+            exclusion_category=exclusion_categories,
             inclusion_hit_count=self.context["ctl_params"]["inclusion_hit_threshold"] or 1,
             exclusion_hit_count=self.context["ctl_params"]["exclusion_hit_threshold"] or 1,
             files={
@@ -446,6 +451,23 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         segment.save(update_fields=["params"])
         return audit
 
+    def _get_inclusion_keywords(self, old_audit_params):
+        """ Helper method to get inclusion data as return value for _get_keyword_file_data changes if exclusion """
+        filename, file_data = self._get_keyword_file_data(old_audit_params, keyword_type="inclusion")
+        return filename, file_data
+
+    def _get_exclusion_keywords(self, old_audit_params):
+        """ Helper method to get exclusion data as return value for _get_keyword_file_data changes if exclusion """
+        filename, file_data = self._get_keyword_file_data(old_audit_params, keyword_type="exclusion")
+        # If exclusion file provided, exclusion_data is tuple result from
+        # AuditSaveApiView.load_exclusion_keywords method
+        try:
+            exclusion_rows = file_data[0]
+            exclusion_categories = file_data[1]
+        except IndexError:
+            exclusion_rows = exclusion_categories = []
+        return filename, exclusion_rows, exclusion_categories
+
     def _get_keyword_file_data(self, old_audit_params, keyword_type="inclusion"):
         """
         Method to help determine filename and file data
@@ -454,11 +476,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param keyword_type: inclusion | exclusion
         :return: tuple
         """
-        keyword_errs = []
-        if keyword_errs:
-            raise ValidationError("\n".join(keyword_errs))
+        if keyword_type == "inclusion":
+            keyword_extractor = AuditSaveApiView().load_keywords
+        else:
+            keyword_extractor = AuditSaveApiView().load_exclusion_keywords
         files = self.context["files"]
         file = files.get(f"{keyword_type}_file")
+
         # If hit_threshold is None but file data was provided before, then implicitly removing file
         # e.g. CTL was created with inclusion_file and hit_threshold of 1 and updating with hit_threshold = None, then
         # remove the file
@@ -466,8 +490,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # Creating brand new audit or updating existing keywords, use provided file data
         if (not old_audit_params and file is not None) or (old_audit_params.get(keyword_type) and file):
             filename = file.name
-            file_data = self._get_file_data(file)
-            if not file_data:
+            file_data = keyword_extractor(file)
+            if not file_data[0]:
                 raise ValidationError(f"Error: empty {keyword_type} keywords file")
         # Creating brand new audit with no file or removing the file sets empty data
         elif (not file and not old_audit_params) or (old_audit_params.get(keyword_type) and hit_threshold is None):
@@ -476,8 +500,23 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # Not modifying the file, use old audit params if possible
         else:
             filename = old_audit_params["files"].get(keyword_type)
-            file_data = old_audit_params.get(keyword_type)
+            if keyword_type == "inclusion":
+                file_data = old_audit_params.get(keyword_type)
+            else:
+                # Exclusion data should be tuple as AuditSaveApiView.load_exclusion_keywords returns tuple
+                file_data = (old_audit_params.get(keyword_type), old_audit_params.get("exclusion_categories"))
+        # Reset file for other processes
+        try:
+            file.seek(0)
+        except AttributeError:
+            pass
         return filename, file_data
+
+    def _get_source_file_data(self, file_reader: TemporaryUploadedFile) -> list:
+        with open(file_reader.file.name, mode="r") as file:
+            reader = csv.reader(file, delimiter=",")
+            rows = [row[0].strip() for row in reader]
+        return rows
 
     def _get_file_data(self, file_reader: TemporaryUploadedFile) -> list:
         """
@@ -485,12 +524,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param file_reader: TemporaryUploadedFile in open read +rb state
         :return: list
         """
-        rows = []
-        for row in file_reader:
-            decoded = row.decode("utf-8").lower().strip()
-            if decoded:
-                rows.append(decoded)
-        file_reader.seek(0)
+        with open(file_reader.file.name, mode="r") as file:
+            reader = csv.reader(file, delimiter=",")
+            rows = [row[0].strip() for row in reader]
         return rows
 
     def _clean_ctl(self, segment: CustomSegment):
