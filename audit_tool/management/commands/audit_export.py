@@ -146,9 +146,9 @@ class Command(BaseCommand):
         if count == 0:
             return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
-        subject = "Audit '{}' Completed".format(self.audit.params["name"])
+        subject = "Audit '{}' Completed".format(self.audit.params.get("name"))
         body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params["name"], "{:,}".format(count)) \
+                   .format(self.audit.params.get("name"), "{:,}".format(count)) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         export_owner = self.export.owner

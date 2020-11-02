@@ -8,13 +8,14 @@ from segment.api.views import CustomSegmentListApiView
 from segment.api.views import CustomSegmentUpdateApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
-from segment.api.views import SegmentCreateApiViewV3
-from segment.api.views import SegmentCreationOptionsApiView
-from segment.api.views import SegmentDeleteApiViewV2
+from segment.api.views import SegmentCreateOptionsApiView
+from segment.api.views import SegmentDeleteApiView
 from segment.api.views import SegmentExport
-from segment.api.views import SegmentListCreateApiViewV2
+from segment.api.views import SegmentListApiView
 from segment.api.views import SegmentPreviewAPIView
 from segment.models.persistent.constants import PersistentSegmentType
+from segment.api.views import SegmentCreateUpdateApiView
+
 
 segment_types = f"{PersistentSegmentType.CHANNEL}|{PersistentSegmentType.VIDEO}"
 
@@ -32,34 +33,35 @@ urlpatterns = [
     url(r"^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/preview/$".format(segment_types),
         SegmentPreviewAPIView.as_view(),
         name=Name.PERSISTENT_SEGMENT_PREVIEW),
-    url(r"custom_segments/(?P<pk>\d+)/$",
-        CustomSegmentUpdateApiView.as_view(),
-        name=Name.CUSTOM_SEGMENT_UPDATE),
 ]
 
 urlpatterns_v2 = [
-    url(r"^segments/(?P<segment_type>{})/$".format(segment_types),
-        SegmentListCreateApiViewV2.as_view(),
-        name=Name.SEGMENT_LIST),
-    url(r"^segments/(?P<segment_type>{})/(?P<pk>\d+)/$".format(segment_types),
-        SegmentDeleteApiViewV2.as_view(),
-        name=Name.SEGMENT_DELETE),
-    url(r"^segments/options/(?P<segment_type>{})/$".format(segment_types),
-        SegmentCreationOptionsApiView.as_view(),
+    url(r"segments/(?P<pk>\d+)/$",
+        CustomSegmentUpdateApiView.as_view(),
+        name=Name.CUSTOM_SEGMENT_UPDATE),
+
+    url(r"^segments/options/$",
+        SegmentCreateOptionsApiView.as_view(),
         name=Name.SEGMENT_CREATION_OPTIONS),
+
+    url(r"^segments/create/$",
+        SegmentCreateUpdateApiView.as_view(),
+        name=Name.SEGMENT_CREATE),
+
+    url(r"^segments/list/$",
+        SegmentListApiView.as_view(),
+        name=Name.SEGMENT_LIST),
+
+    url(r"^segments/(?P<segment_type>{})/(?P<pk>\d+)/$".format(segment_types),
+        SegmentDeleteApiView.as_view(),
+        name=Name.SEGMENT_DELETE),
+
     url(r"^segments/export/(?P<pk>\d+)/$",
         SegmentExport.as_view(),
         name=Name.SEGMENT_EXPORT),
+
     url(r"^segments/(?P<segment_type>{})/(?P<pk>.+)/preview/$".format(segment_types),
         SegmentPreviewAPIView.as_view(),
         name=Name.SEGMENT_PREVIEW),
 ]
 
-urlpatterns_v3 = [
-    url(r"^segments/$",
-        SegmentCreateApiViewV3.as_view(),
-        name=Name.SEGMENT_CREATE),
-    url(r"^segments/options/$",
-        SegmentCreationOptionsApiView.as_view(),
-        name=Name.SEGMENT_CREATION_OPTIONS),
-]

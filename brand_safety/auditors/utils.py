@@ -2,12 +2,13 @@ import csv
 import re
 from collections import defaultdict
 from collections import namedtuple
-from datetime import datetime
-from datetime import timezone
+import functools
+import os
+import pickle
+import time
 
-import pytz
+from django.conf import settings
 from emoji import UNICODE_EMOJI
-from flashtext import KeywordProcessor
 
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -24,12 +25,35 @@ from .bad_word_processors_by_language import get_bad_word_processors_by_language
 KeywordHit = namedtuple("KeywordHit", "name location")
 
 
+def pickled_data(fp, expires):
+    """ Decorator to get / save pickled data for expensive operations """
+    def decorator_get_pickled(func):
+        @functools.wraps(func)
+        def wrapper(*_, **__):
+            should_save = False
+            try:
+                created_at = os.path.getctime(fp)
+                if created_at - time.time() <= expires:
+                    data = pickle.load(open(fp, mode="rb"))
+                else:
+                    data = func(*_, **__)
+                    should_save = True
+            except OSError:
+                data = func(*_, **__)
+                should_save = True
+            if should_save:
+                with open(fp, mode="wb") as file:
+                    pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+            return data
+        return wrapper
+    return decorator_get_pickled
+
+
 class AuditUtils(object):
     def __init__(self):
         """
-        Many of these configurations are shared amongst Video and Channel audit objects, so it is more efficient to
-        initialize
-        these values once and use as reference values
+        Many of these attributes are shared amongst Video and Channel audit objects, so it is more efficient to
+        initialize these values once and use as reference values to copy from
         """
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g.
@@ -42,31 +66,15 @@ class AuditUtils(object):
             str(category_id): 100
             for category_id in self.bad_word_categories
         }
-        self._default_severity_counts = {
-            str(score): 0
-            for score in set(BadWord.objects.values_list("negative_score", flat=True))
-        }
-        self._bad_word_processors_by_language = get_bad_word_processors_by_language()
+        self._default_severity_counts = self._get_default_severity_counts()
+        self._bad_word_processors_by_language = self.get_language_processors()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
         self._vetted_safe_score = self._get_vetted_score(safe=True)
         self._vetted_unsafe_score = self._get_vetted_score(safe=False)
 
-    def _get_vetted_score(self, safe=True):
-        if safe is True:
-            overall_score = 100
-        else:
-            overall_score = 0
-        scores = {
-            "overall_score": overall_score,
-            "categories": {
-                category_id: {
-                    "category_score": overall_score
-                } for category_id in self.bad_word_categories
-            }
-        }
-        return scores
-
+    # properties copying single underscore attributes are used by many audits and must be copied
+    # as to not mutate each other's values
     @property
     def vetted_safe_score(self):
         return self._vetted_safe_score.copy()
@@ -115,24 +123,48 @@ class AuditUtils(object):
         ]
         return hits
 
-    @staticmethod
-    def is_working_hours(start=5, end=17):
+    @pickled_data(f"{settings.TEMPDIR}/pickled_language_processors", 1800)
+    def get_language_processors(self) -> dict:
         """
-        Check if current hour is within working hours
-        :param start:
-        :param end:
+        Get language processors with pickling
+        :return: dict
+        """
+        language_processors = get_bad_word_processors_by_language()
+        return language_processors
+    
+    @pickled_data(f"{settings.TEMPDIR}/pickled_severity_counts", 1800)
+    def _get_default_severity_counts(self) -> dict:
+        """
+        Get severity counts with pickling
+        :return: dict
+        """
+        default_severity_counts = {
+            str(score): 0
+            for score in set(BadWord.objects.values_list("negative_score", flat=True))
+        }
+        return default_severity_counts
+
+    def _get_vetted_score(self, safe=True) -> dict:
+        """
+        Get default vetting score depending on safe parameter
+        If something is considered safe, then all scores should be raised to 100
+        Else set to 0
+        :param safe: bool -> If the channel or video is considered safe
         :return:
         """
-        pst_tz = pytz.timezone("US/Pacific")
-        utc_dt = datetime.now(timezone.utc)
-        pst_now_hour = utc_dt.astimezone(pst_tz).hour
-        if start <= pst_now_hour <= end:
-            return True
-        return False
-
-    def update_config(self):
-        self._score_mapping = self.get_brand_safety_score_mapping()
-        self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
+        if safe is True:
+            overall_score = 100
+        else:
+            overall_score = 0
+        scores = {
+            "overall_score": overall_score,
+            "categories": {
+                category_id: {
+                    "category_score": overall_score
+                } for category_id in self.bad_word_categories
+            }
+        }
+        return scores
 
     def get_brand_safety_regexp(self):
         """
@@ -144,17 +176,6 @@ class AuditUtils(object):
         brand_safety_regexp = self.compile_regexp(bad_words_names)
 
         return brand_safety_regexp
-
-    def has_emoji(self, text):
-        has_emoji = bool(re.search(self._emoji_regex, text))
-        return has_emoji
-
-    @staticmethod
-    def get_trie_keyword_processor(words):
-        keyword_processor = KeywordProcessor()
-        for word in words:
-            keyword_processor.add_keyword(word)
-        return keyword_processor
 
     @staticmethod
     def increment_cursor(script_tracker, value):
@@ -226,13 +247,7 @@ class AuditUtils(object):
         return keyword_regexp
 
     @staticmethod
-    def compile_emoji_regexp():
-        regexp = re.compile(
-            "({})".format("|".join([r"{}".format(re.escape(unicode)) for unicode in UNICODE_EMOJI]))
-        )
-        return regexp
-
-    @staticmethod
+    @pickled_data(f"{settings.TEMPDIR}/pickled_bs_score_mapping", 1800)
     def get_brand_safety_score_mapping():
         """
         Map brand safety BadWord rows to their score
@@ -247,15 +262,11 @@ class AuditUtils(object):
         return score_mapping
 
     @staticmethod
-    def get_bad_words():
-        """
-        Get brand safety words
-            Kid's content brand safety words are not included in brand safety score calculations
-        :return:
-        """
-        bad_words = BadWord.objects \
-            .values_list("name", flat=True)
-        return bad_words
+    def compile_emoji_regexp():
+        regexp = re.compile(
+            "({})".format("|".join([r"{}".format(re.escape(unicode)) for unicode in UNICODE_EMOJI]))
+        )
+        return regexp
 
     @staticmethod
     def get_language(text):
@@ -322,20 +333,3 @@ class AuditUtils(object):
         else:
             bs_data = self.vetted_safe_score
         return bs_data
-
-    def index_audit_results(self, es_manager, audits: list, chunk_size=2000) -> list:
-        """
-        Update audits with audited brand safety scores
-        Check if each document should be upserted depending on config, as vetted videos should not always be updated
-        :param es_manager: VideoManager | ChannelManager
-        :param audits: list -> BrandSafetyVideo | BrandSafetyChannel audits
-        :param ignore_vetted: bool -> Determine if vetted items should be indexed
-        :param chunk_size: int -> Size of each index batch
-        :return: list
-        """
-        to_upsert = [
-            audit.instantiate_es() for audit in audits
-        ]
-        for chunk in self.batch(to_upsert, chunk_size):
-            es_manager.upsert(chunk, refresh=False)
-        return to_upsert

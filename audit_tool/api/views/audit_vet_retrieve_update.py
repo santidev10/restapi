@@ -15,6 +15,7 @@ from audit_tool.validators import AuditToolValidator
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
+from segment.tasks import update_segment_statistics
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.views import get_object
@@ -96,6 +97,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             audit.save()
             segment.save()
             generate_vetted_segment.delay(segment.id)
+            update_segment_statistics.delay([segment.id])
         return Response(status=HTTP_200_OK, data=res)
 
     def _validate_patch_params(self, audit_id, data):

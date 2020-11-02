@@ -11,6 +11,7 @@ OAUTH_CHOICES = [
     (OAuthType.DV360.value, "Google DV360 Oauth"),
 ]
 
+
 class EntityStatusType(IntEnum):
     ENTITY_STATUS_UNSPECIFIED = 0
     ENTITY_STATUS_ACTIVE = 1

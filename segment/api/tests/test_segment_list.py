@@ -22,7 +22,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
+class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -33,8 +33,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         CustomSegment.objects.all().delete()
 
     def _get_url(self, segment_type):
-        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
-                       kwargs=dict(segment_type=segment_type))
+        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST) + f"?segment_type={segment_type}"
 
     def _create_segment(self, segment_params=None, export_params=None):
         segment_params = segment_params if segment_params else {}
@@ -50,6 +49,36 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         user = get_user_model().objects.create(**user_data)
         return user
 
+    def test_success(self):
+        user = self.create_admin_user()
+        seg_1_params = dict(owner=user, segment_type=0, title="1")
+        seg_2_params = dict(owner=user, segment_type=1, title="2")
+        ctl_video, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
+        ctl_channel, _ = self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        ctlv = self.client.get(self._get_url("video")).data["items"][0]
+        ctlc = self.client.get(self._get_url("channel")).data["items"][0]
+        expected_fields = {
+            "audit_id",
+            "ctl_params",
+            "id",
+            "is_featured",
+            "is_vetting_complete",
+            "is_regenerating",
+            "last_vetted_date",
+            "owner_id",
+            "params",
+            "pending",
+            "segment_type",
+            "source_name",
+            "statistics",
+            "title",
+            "thumbnail_image_url"
+        }
+        self.assertEqual(ctlv["title"], ctl_video.title)
+        self.assertEqual(ctlc["title"], ctl_channel.title)
+        self.assertEqual(set(ctlv.keys()), expected_fields)
+        self.assertEqual(set(ctlc.keys()), expected_fields)
+
     def test_owner_filter_list(self):
         user = self.create_test_user()
         seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
@@ -61,6 +90,16 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(response.data["items"][0]["owner_id"], str(seg_1_params["owner"].id))
+
+    def test_size(self):
+        """ Test size query parameter """
+        user = self.create_admin_user()
+        for i in range(2):
+            CustomSegment.objects.create(owner=user, title=f"test_{next(int_iterator)}", segment_type=1)
+        response = self.client.get(self._get_url("channel") + "&size=1")
+        data = response.data
+        self.assertEqual(len(data["items"]), 1)
+        self.assertEqual(data["items_count"], 2)
 
     def test_owner_filter_list_vetted(self):
         """ Users should be able to see and download their own lists, even if vetted """
@@ -77,7 +116,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
-        self.assertEqual(data["download_url"], export.download_url)
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()
@@ -88,8 +126,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         expected_segments_count = 1
         query_prams = QueryDict(
             "list_type={}".format("whitelist")).urlencode()
-        response = self.client.get(
-            "{}?{}".format(self._get_url("video"), query_prams))
+        response = self.client.get("{}&{}".format(self._get_url("video"), query_prams))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), expected_segments_count)
 
@@ -102,7 +139,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         query_prams = QueryDict(
             "sort_by={}".format("created_at")).urlencode()
         response = self.client.get(
-            "{}?{}".format(self._get_url("video"), query_prams))
+            "{}&{}".format(self._get_url("video"), query_prams))
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
@@ -152,7 +189,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         query_prams = QueryDict(
             "ascending=1&sort_by={}".format("items")).urlencode()
         response = self.client.get(
-            "{}?{}".format(self._get_url("video"), query_prams))
+            "{}&{}".format(self._get_url("video"), query_prams))
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
@@ -166,7 +203,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         query_prams = QueryDict(
             "sort_by={}".format("title")).urlencode()
         response = self.client.get(
-            "{}?{}".format(self._get_url("video"), query_prams))
+            "{}&{}".format(self._get_url("video"), query_prams))
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
@@ -184,14 +221,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_1.id)
         self.assertEqual(data["items"][1]["id"], seg_2.id)
-
-    def test_default_thumbnail_images_list(self):
-        user = self.create_test_user()
-        segment = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
-        CustomSegmentFileUpload.objects.create(segment=segment, query={})
-        response = self.client.get(self._get_url("video"))
-        data = response.data
-        self.assertEqual(len(data["items"][0]["statistics"]["top_three_items"]), 3)
 
     def test_channel_segment_statistics_fields(self):
         user = self.create_test_user()
@@ -351,7 +380,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         CustomSegmentFileUpload.objects.create(segment=s3, query=s3_params)
 
         query_params = QueryDict("general_data.top_lang_code=ga,ru").urlencode()
-        response = self.client.get(f"{self._get_url('channel')}?{query_params}")
+        response = self.client.get(f"{self._get_url('channel')}&{query_params}")
         self.assertEqual({s2.id, s3.id}, {int(item["id"]) for item in response.data["items"]})
 
     def test_owner_list_no_vetting(self):
@@ -442,4 +471,3 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data
         owned = data["items"][0]
         self.assertEqual(owned["owner_id"], str(user_1.id))
-        self.assertEqual(owned["download_url"], export.download_url)

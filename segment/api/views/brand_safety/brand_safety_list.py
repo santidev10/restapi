@@ -3,9 +3,10 @@ import operator
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
-from segment.api.serializers.custom_segment_serializer import CustomSegmentWithoutDownloadUrlSerializer
+from segment.api.serializers import CTLSerializer
+from segment.api.serializers import CustomSegmentWithoutDownloadUrlSerializer
 from segment.models import CustomSegment
+from segment.models.constants import SegmentTypeEnum
 from utils.permissions import user_has_permission
 
 MINIMUM_ITEMS_COUNT = 100
@@ -19,7 +20,6 @@ class CustomSegmentListApiView(APIView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, *kwargs)
         self.data = {}
-        self.segment_type_map = CustomSegment.segment_type_to_id
 
     def get(self, request, segment_type):
         """
@@ -62,11 +62,11 @@ class CustomSegmentListApiView(APIView):
 
     def get_custom_segment_serializer_class(self):
         if self.request.user.has_perm('userprofile.download_audit'):
-            return CustomSegmentSerializer
+            return CTLSerializer
         return CustomSegmentWithoutDownloadUrlSerializer
 
     def get_segment_type_id(self, segment_type):
         """
         maps string segment_type to segment id eg: 'channel' to 1
         """
-        return self.segment_type_map[segment_type]
+        return SegmentTypeEnum[segment_type.upper()].value

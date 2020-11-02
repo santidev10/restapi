@@ -26,6 +26,7 @@ from segment.api.export_serializers import CustomSegmentVideoVettedExportSeriali
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
 from segment.models.constants import VideoConfig
+from segment.models.constants import SegmentTypeEnum
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
@@ -50,22 +51,10 @@ class CustomSegment(SegmentMixin, Timestampable):
         (1, BLACKLIST)
     )
     SEGMENT_TYPE_CHOICES = (
-        (0, VIDEO),
-        (1, CHANNEL)
+        (SegmentTypeEnum.VIDEO.value, VIDEO),
+        (SegmentTypeEnum.CHANNEL.value, CHANNEL)
     )
-    segment_type_to_id = {
-        segment_type: _id for _id, segment_type in dict(SEGMENT_TYPE_CHOICES).items()
-    }
-    list_type_to_id = {
-        list_type: _id for _id, list_type in dict(LIST_TYPE_CHOICES).items()
-    }
-    segment_id_to_type = {
-        _id: segment_type for segment_type, _id in segment_type_to_id.items()
-    }
-    list_id_to_type = {
-        _id: list_type for list_type, _id in list_type_to_id.items()
-    }
-
+    # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
     statistics = JSONField(default=dict)
@@ -78,11 +67,21 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
+    params = JSONField(default=dict)
+
+    def remove_meta_audit_params(self):
+        remove_keys = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        [self.params.pop(key, None) for key in remove_keys]
+        self.save(update_fields=["params"])
+
+    @property
+    def type(self):
+        return SegmentTypeEnum(self.segment_type).name.lower()
 
     @property
     def export_serializer(self):
         """ Get export serializer depending on channel or video segment """
-        if self.segment_type in (0, "video"):
+        if self.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
             serializer = self._get_video_serializer()
         else:
             serializer = self._get_channel_serializer()
@@ -113,7 +112,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         try:
             self._config
         except AttributeError:
-            if self.segment_type == 0:
+            if self.segment_type == SegmentTypeEnum.VIDEO.value:
                 self._config = VideoConfig
             else:
                 self._config = ChannelConfig
@@ -121,18 +120,13 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     @property
     def es_manager(self):
-        if self.segment_type == 0:
+        if self.segment_type == SegmentTypeEnum.VIDEO.value:
             sections = self.SECTIONS + (Sections.CHANNEL,)
             es_manager = VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
         else:
-            es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            sections = self.SECTIONS + (Sections.IAS_DATA,)
+            es_manager = ChannelManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
         return es_manager
-
-    @property
-    def data_type(self):
-        """ Maps segment integer type (0 = video, 1 = channel) to string"""
-        data_type = self.segment_id_to_type[self.segment_type]
-        return data_type
 
     @property
     def audit_utils(self):

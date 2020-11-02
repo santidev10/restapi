@@ -54,28 +54,6 @@ class CustomSegmentFileUpload(Model):
         """
         return Q(self.query)
 
-    @staticmethod
-    def enqueue(*_, **kwargs):
-        """
-        Interface to create new export entry
-        :param _:
-        :param kwargs: Model field values
-        :return: CustomSegmentFileUpload
-        """
-        enqueue_item = CustomSegmentFileUpload.objects.create(**kwargs)
-        return enqueue_item
-
-    @staticmethod
-    def dequeue():
-        """
-        Interface to return first export entry to be processed
-        :return: CustomSegmentFileUpload
-        """
-        dequeue_item = CustomSegmentFileUpload.objects.filter(completed_at=None).order_by("created_at").first()
-        if not dequeue_item:
-            raise CustomSegmentFileUploadQueueEmptyException
-        return dequeue_item
-
     def parse_download_url(self):
         try:
             s3_key = unquote(self.download_url.split(".com/")[1].split("?X-Amz-Algorithm")[0])
