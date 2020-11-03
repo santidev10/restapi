@@ -39,6 +39,7 @@ def video_discovery_scheduler():
                 ids = [video.main.id for video in chunk]
                 task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
             group(task_signatures).apply_async()
+            batch_count += len(task_signatures)
             if batch_count >= batch_limit or batch_count >= Schedulers.VideoDiscovery.MAX_QUEUE_SIZE:
                 break
 
