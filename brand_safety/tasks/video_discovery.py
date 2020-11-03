@@ -4,11 +4,15 @@ from brand_safety.auditors.video_auditor import VideoAuditor
 from brand_safety.tasks.constants import Schedulers
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.constants import VIEWS_FIELD
 from es_components.managers import VideoManager
+from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
+from segment.utils.bulk_search import bulk_search
 from utils.celery.tasks import celery_lock
 from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
@@ -22,18 +26,21 @@ def video_discovery_scheduler():
 
     if queue_size <= Schedulers.VideoDiscovery.get_minimum_threshold():
         base_query = video_manager.forced_filters()
-        task_signatures = []
-
         rescore_ids = get_rescore_ids(video_manager, base_query)
-        task_signatures.append(video_update.si(rescore_ids, rescore=True).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+        video_update.apply_async(args=[rescore_ids], kwargs=dict(rescore=True), queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY)
 
-        batch_limit = (Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size) * Schedulers.VideoDiscovery.TASK_BATCH_SIZE
+        batch_limit = (Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size)
+        batch_count = 0
         with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
-        no_score_ids = video_manager.search(with_no_score, limit=min(10000, batch_limit)).execute()
-        for batch in chunks_generator(no_score_ids, Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
-            ids = [video.main.id for video in batch]
-            task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
-        group(task_signatures).apply_async()
+        sort = [{VIEWS_FIELD: {"order": SortDirections.DESCENDING}}]
+        for batch in bulk_search(Video, with_no_score, sort, VIEWS_FIELD, include_cursor_exclusions=True):
+            task_signatures = []
+            for chunk in chunks_generator(batch, size=Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
+                ids = [video.main.id for video in chunk]
+                task_signatures.append(video_update.si(ids).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+            group(task_signatures).apply_async()
+            if batch_count >= batch_limit or batch_count >= Schedulers.VideoDiscovery.MAX_QUEUE_SIZE:
+                break
 
 
 @celery_app.task
