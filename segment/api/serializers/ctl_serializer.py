@@ -358,13 +358,17 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
                 for row in reader:
-                    if url_is_valid(row[0].split(split_seq)[-1]):
-                        rows.append(row)
+                    try:
+                        if url_is_valid(row[0].split(split_seq)[-1]):
+                            rows.append(row)
+                    # Catch empty rows at end of csv
+                    except IndexError:
+                        continue
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
-                    raise ValidationError("Error: No valid source urls. Please check that urls in column A match this "
-                                          f"format: https://www.youtube.com{split_seq}YOUTUBE_ID")
+                    raise ValidationError("Error: No valid source urls. Please check that urls in column A are valid"
+                                          "YouTube urls.")
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
