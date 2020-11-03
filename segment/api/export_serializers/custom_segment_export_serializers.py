@@ -21,7 +21,7 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality",
         "Num_Videos", "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views",
         "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
-        "IAS_Verified", "Last_Upload_Date",
+        "Last_Upload_Date",
     )
 
     URL = SerializerMethodField("get_url")
@@ -50,7 +50,6 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Avg_CTR_v = FloatField(source="ads_stats.ctr_v")
     Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
     Views_30_Days = FloatField(source="stats.last_30day_views")
-    IAS_Verified = DateTimeField(source="ias_data.ias_verified", format="%Y-%m-%d", default="")
     Last_Upload_Date = DateTimeField(source="stats.last_video_published_at", format="%Y-%m-%d", default="")
 
     def update(self, instance, validated_data):
@@ -66,7 +65,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelE
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
         "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Last_Vetted",
         "Country", "Sentiment", "Monthly_Views", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v",
-        "Video_100_Completion_Rate", "Views_30_Days", "IAS_Verified", "Last_Upload_Date",
+        "Video_100_Completion_Rate", "Views_30_Days", "Last_Upload_Date",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)

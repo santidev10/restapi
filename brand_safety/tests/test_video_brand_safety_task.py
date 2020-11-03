@@ -40,17 +40,19 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         )
         doc_included_rescore_true = Video(
             id=f"test_video_{next(int_iterator)}",
-            brand_safety={"rescore": True}
+            brand_safety={"rescore": True, "overall_score": 5}
         )
         doc_included_has_no_bs = Video(
             id=f"test_video_{next(int_iterator)}",
+            general_data=dict(title="no_bs")
         )
         self.video_manager.upsert([doc_excluded_has_bs, doc_excluded_rescore_false,
                                    doc_included_rescore_true, doc_included_has_no_bs])
         with patch.object(VideoManager, "forced_filters", return_value=Q({"bool": {}})),\
                 patch.object(VideoManager, "search") as mock_search,\
                 patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=0),\
-                patch("brand_safety.tasks.video_discovery.VideoAuditor") as mock_audit:
+                patch("brand_safety.tasks.video_discovery.VideoAuditor") as mock_audit,\
+                patch("brand_safety.tasks.video_discovery.bulk_search") as mock_bulk_search:
             instance = mock_audit.return_value
             instance.channels_to_rescore = rescore_channel_ids
             video_discovery_scheduler()
@@ -61,16 +63,29 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             videos = search.execute()
             response_ids = [v.main.id for v in videos]
             channels = self.channel_manager.get(rescore_channel_ids, skip_none=True)
+        # These videos should not be retrived for scoring
         self.assertTrue(doc_excluded_has_bs.main.id not in response_ids)
         self.assertTrue(doc_excluded_rescore_false.main.id not in response_ids)
+
+        # Check that query used to retrieve rescore items functions correctly
         self.assertTrue(doc_included_rescore_true.main.id in response_ids)
-        self.assertTrue(doc_included_has_no_bs.main.id in response_ids)
+
+        # Check that videos with no score retrieved with bulk search functions correctly
+        search = self.video_manager._search()
+        search.query = query
+        bulk_search_query = mock_bulk_search.call_args.args[1]
+        search.query = bulk_search_query
+        no_score_vid_ids = [v.main.id for v in search.execute()]
+        self.assertTrue(doc_included_has_no_bs.main.id in no_score_vid_ids)
 
         rescore_flags = [c.brand_safety.rescore for c in channels]
         self.assertEqual([True for _ in channels], rescore_flags)
 
     def test_scheduler_runs(self):
         """ Test Video discovery scheduler task runs when queue is below threshold """
+        no_score = Video(next(int_iterator))
+        no_score.populate_general_data(title="no_score_vid")
+        self.video_manager.upsert([no_score])
         threshold = Schedulers.VideoDiscovery.get_minimum_threshold() - 1
         with patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=threshold),\
             patch("brand_safety.tasks.video_discovery.group") as group_mock:

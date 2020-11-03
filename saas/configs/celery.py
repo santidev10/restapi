@@ -169,7 +169,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
-        "schedule": crontab(hour="0,12", minute=0), # twice per day, 0500, 1700 PST
+        # defaults to twice per day, 0500, 1700 PST
+        "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
     "sync_dv_partners": {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",

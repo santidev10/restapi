@@ -1,4 +1,5 @@
 from rest_framework.serializers import BooleanField
+from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import SerializerMethodField
 
 from .custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
@@ -21,6 +22,7 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
                "Views_30_Days", "IAS_Verified", "Last_Upload_Date",
                )
 
+    IAS_Verified = DateTimeField(source="ias_data.ias_verified", format="%Y-%m-%d", default="")
     Vetting_Result = SerializerMethodField("get_vetting_result")
     Vetted_By = SerializerMethodField("get_vetted_by")
 

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import boto3
 from django.conf import settings
+from django.utils import timezone
 from django.urls import reverse
 from moto import mock_s3
 from rest_framework.status import HTTP_200_OK
@@ -12,6 +13,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditChannelVet
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.api.serializers.ctl_serializer import CTLSerializer
@@ -19,6 +21,7 @@ from segment.api.serializers.ctl_params_serializer import CTLParamsSerializer
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
+from segment.models import CustomSegmentVettedFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from userprofile.permissions import Permissions
@@ -498,7 +501,10 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(expected_params, saved_params)
 
     def test_inclusion_exclusion_success(self, mock_generate):
-        """ Test that saving with inclusion and exclusion list creates audit """
+        """
+        Test that saving with inclusion and exclusion list creates audit.
+        Should correctly use first column for keywords
+        """
         user = self.create_admin_user()
         payload = {
             "title": "test inclusion",
@@ -514,7 +520,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
         exclusion_file = BytesIO()
         exclusion_file.name = "test_exclusion.csv"
-        ex_words = "\n".join(f"exclude_word_{i}" for i in range(10))
+        ex_words = "\n".join(f"exclude_word_{i}, test_exclusion_category" for i in range(10))
         exclusion_file.write(ex_words.encode("utf-8"))
         exclusion_file.seek(0)
         payload = self.get_params(**payload)
@@ -530,11 +536,12 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(audit.name, payload["title"].lower())
         self.assertEqual(audit.source, 2)
         self.assertEqual(params["user_id"], user.id)
-        self.assertEqual(params["do_videos"], False)
+        self.assertEqual(params["do_videos"], True)
+        self.assertEqual(params["num_videos"], 15)
         self.assertEqual(params["name"], payload["title"])
         self.assertEqual(audit.temp_stop, True)
-        self.assertEqual(in_words.split("\n"), params["inclusion"])
-        self.assertEqual(ex_words.split("\n"), params["exclusion"])
+        self.assertEqual([row.strip() for row in in_words.split("\n")], params["inclusion"])
+        self.assertEqual([row.split(",")[0].strip() for row in ex_words.split("\n")], [row[0] for row in params["exclusion"]])
         self.assertEqual(params["inclusion_hit_count"], payload["inclusion_hit_threshold"])
         self.assertEqual(params["exclusion_hit_count"], payload["exclusion_hit_threshold"])
         self.assertEqual(params["files"]["inclusion"], inclusion_file.name)
@@ -834,8 +841,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         updated_exclusion_file.seek(0)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.params, new_audit.params)
-        self.assertEqual(set([word.decode("utf-8") for word in updated_exclusion_file]),
-                         set(new_audit.params["exclusion"]))
+        updated_words = [row[0] for row in new_audit.params["exclusion"]]
+        self.assertEqual(set([word.decode("utf-8") for word in updated_exclusion_file]), set(updated_words))
 
     def test_update_partial_success(self, mock_generate):
         """ Test updating with partial update values is successful """
@@ -854,8 +861,6 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
         updated_params = CustomSegment.objects.get(id=created.id).export.query["params"]
         self.assertNotEqual(old_params, updated_params)
-        # Assert that updating partially does not override the entire dict, but only updates partial keys
-        self.assertTrue(len(updated_params.keys()) > len(partial_params.keys()))
         self.assertEqual(updated_params["vetting_status"], partial_params["vetting_status"])
         mock_generate.assert_called_once()
 
@@ -912,7 +917,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         audit_params = dict(
             segment_id=segment.id,
             inclusion=["inclusion", "word"],
-            exclusion=["an", "exclusion"],
+            exclusion=[["an","",""], ["exclusion","",""]],
             files={
                 "inclusion": "test_inclusion.csv",
                 "exclusion": "test_exclusion.csv",
@@ -1047,3 +1052,41 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
         self.assertFalse(segment.params)
+
+    def test_regneration_deletes_records(self, mock_generate):
+        """
+        Regeneration of a CTL is considered creating a brand new ctl, and all associated records should be
+            removed
+        """
+        now = timezone.now()
+        user = self.create_admin_user()
+        audit_id = next(int_iterator)
+        audit = AuditProcessor.objects.create(id=audit_id, source=1)
+        segment = CustomSegment.objects.create(
+            title=f"test_regenerate_remove_related",
+            segment_type=1, owner=user, audit_id=audit.id,
+            statistics={"items_count": 1}, params={"meta_audit_id": None},
+            is_vetting_complete=True,
+        )
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        CustomSegmentSourceFileUpload.objects.create(segment=segment, source_type=1)
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
+        ids = [f"channel_{next(int_iterator)}" for _ in range(5)]
+        for _id in ids:
+            audit_item = segment.audit_utils.model.objects.create(channel_id=_id)
+            segment.audit_utils.vetting_model.objects.create(channel=audit_item, audit=audit, processed=now)
+
+        updated_payload = self.get_params(id=segment.id, minimum_views=1, segment_type=1)
+        with patch.object(CTLSerializer, "_create_export") as mock_create_export:
+            response = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        segment.refresh_from_db()
+        mock_create_export.assert_called_once()
+        self.assertEqual(segment.is_vetting_complete, False)
+        self.assertEqual(segment.statistics, {})
+        self.assertFalse(AuditProcessor.objects.filter(id=audit_id).exists())
+        self.assertFalse(AuditChannelVet.objects.filter(id=audit_id).exists())
+        # Source should still remain as it is required to build new export
+        self.assertTrue(hasattr(segment, "source"))
+        self.assertFalse(hasattr(segment, "export"))
+        self.assertFalse(hasattr(segment, "vetted_export"))
