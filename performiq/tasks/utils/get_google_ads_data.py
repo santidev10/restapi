@@ -56,6 +56,7 @@ def get_google_ads_data(iq_campaign: IQCampaign):
     predicates = [
         {"field": "AdNetworkType1", "operator": "EQUALS", "values": ["YOUTUBE_WATCH"]},
         {"field": "CampaignId", "operator": "EQUALS", "values": [campaign.id]},
+        {"field": "Impressions", "operator": "GREATER_THAN", "values": 100},
     ]
     fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS

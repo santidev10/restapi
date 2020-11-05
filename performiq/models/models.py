@@ -111,7 +111,7 @@ class IQCampaign(models.Model):
 
 
 class IQCampaignChannel(models.Model):
-    iq_campaign = models.ForeignKey(IQCampaign, models.CASCADE)
+    iq_campaign = models.ForeignKey(IQCampaign, on_delete=models.CASCADE, related_name="channels")
     clean = models.NullBooleanField(default=None, db_index=True)
     meta_data = JSONField(default=dict) # the performance data from csv or API
     results = JSONField(default=dict)

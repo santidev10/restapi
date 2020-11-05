@@ -37,6 +37,7 @@ from utils.db.functions import safe_bulk_create
 PERFORMANCE_RESULT_KEY = "performance"
 CONTEXTUAL_RESULT_KEY = "contextual"
 SUITABILITY_RESULT_KEY = "suitability"
+ANALYZE_SECTIONS = {PERFORMANCE_RESULT_KEY, CONTEXTUAL_RESULT_KEY, SUITABILITY_RESULT_KEY}
 
 
 class IQChannelResult:
@@ -47,8 +48,11 @@ class IQChannelResult:
     def add_result(self, results_key, data):
         self.results[results_key] = data
 
-    def fail(self):
+    def fail(self, section=None):
         self.iq_channel.clean = False
+        if section and section in ANALYZE_SECTIONS:
+            self.iq_channel.results[section]["pass"] = False
+
 
 
 class Coercers:
@@ -62,7 +66,7 @@ class Coercers:
 
     @staticmethod
     def cost(val):
-        return val / 10**6
+        return float(val) / 10**6
 
     @staticmethod
     def integer(val):
@@ -86,8 +90,8 @@ coerce_fields = {
     CampaignDataFields.IMPRESSIONS: Coercers.integer,
     CampaignDataFields.VIDEO_VIEWS: Coercers.integer,
     CampaignDataFields.CTR: Coercers.percentage,
-    CampaignDataFields.CPM: Coercers.float,
-    CampaignDataFields.CPV: Coercers.float,
+    CampaignDataFields.CPM: Coercers.cost,
+    CampaignDataFields.CPV: Coercers.cost,
     CampaignDataFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
 }
 
@@ -117,6 +121,9 @@ def analyze(iq_campaign_id):
 
 
 class PerformanceAnalyzer:
+    PERFORMANCE_FIELDS = {CampaignDataFields.CPV, CampaignDataFields.CPM, CampaignDataFields.CTR,
+                          CampaignDataFields.VIDEO_VIEW_RATE, CampaignDataFields.ACTIVE_VIEW_VIEWABILITY}
+
     def __init__(self, iq_campaign, iq_results: Dict[str, IQChannelResult]):
         self.iq_campaign = iq_campaign
         self.analyze_params = self.iq_campaign.params
@@ -137,11 +144,35 @@ class PerformanceAnalyzer:
                                   / self._analyzed_channels_count) * 100
         except ZeroDivisionError:
             overall_score = 0
+        averages = self._calculate_averages()
         self._results["overall_score"] = overall_score
+        self._results["cpm"]["avg"] = averages["cpm_avg"]
+        self._results["cpv"]["avg"] = averages["cpv_avg"]
         return self._results
 
+    def _calculate_averages(self):
+        # index [0] is sum, index[1] is count of items
+        cpm = [0, 0]
+        cpv = [0, 0]
+        for r in self.iq_results.values():
+            cpm_val = r.iq_channel.meta_data.get(CampaignDataFields.CPM)
+            cpv_val = r.iq_channel.meta_data.get(CampaignDataFields.CPV)
+            if cpm_val:
+                cpm[0] = cpm[0] + Coercers.cost(cpm_val)
+                cpm[1] = cpm[1] + 1
+            if cpv_val:
+                cpv[0] = cpv[0] + Coercers.cost(cpv_val)
+                cpv[1] = cpv[1] + 1
+        averages = dict(
+            cpm_avg=cpm[0] / cpm[1],
+            cpv_avg=cpv[0] / cpv[1],
+        )
+        return averages
+
     def _analyze(self):
-        total_results = defaultdict(lambda: dict(failed=0, passed=0))
+        total_results = {
+            key: dict(failed=0, passed=0) for key in self.PERFORMANCE_FIELDS
+        }
         for iq_result in self.iq_results.values():
             iq_channel = iq_result.iq_channel
             curr_result = {}
@@ -161,7 +192,6 @@ class PerformanceAnalyzer:
                         self._failed_channels.add(iq_channel.channel_id)
                         self.iq_results[iq_channel.channel_id].fail()
                     curr_result[metric_name] = metric_value
-                    total_results[metric_name]["threshold"] = threshold
                     analyzed = True
                 except TypeError:
                     continue
@@ -217,10 +247,6 @@ class ContextualAnalyzer:
     def results(self):
         passed_count = self._analyzed_channels_count - len(self._failed_channels)
         result = {
-            "content_categories": self.analyze_params.get("content_categories", []),
-            "languages": self.analyze_params.get("languages", []),
-            "content_quality": self.analyze_params.get("content_quality", []),
-            "content_type": self.analyze_params.get("content_type", []),
             "overall_score": get_overall_score(passed_count, self._analyzed_channels_count),
             **self._result_counts
         }
@@ -234,7 +260,7 @@ class ContextualAnalyzer:
             analyzed = True
             count_field = params_field + "_counts"
             # Get value of current field e.g. channel.general_data.primary_category
-            attr_value = attrgetter(es_field)(channel)
+            attr_value = str(attrgetter(es_field)(channel))
             self._result_counts[count_field][attr_value] += 1
             # Check if current value is in campaign params e.g. If channel language is in params["languages"]
             if attr_value not in self.analyze_params[params_field]:
@@ -293,8 +319,11 @@ def get_overall_score(passed, total):
 
 
 def create_data(iq_campaign, api_data):
+    init_results = {
+        key: {} for key in ANALYZE_SECTIONS
+    }
     to_create = [
-        IQCampaignChannel(iq_campaign_id=iq_campaign.id,
+        IQCampaignChannel(iq_campaign_id=iq_campaign.id, results=init_results,
                           channel_id=data[CampaignDataFields.CHANNEL_ID], meta_data=data)
         for data in api_data
     ]
