@@ -40,6 +40,12 @@ data_mapping = {
 
 
 def get_google_ads_data(iq_campaign: IQCampaign):
+    """
+    Retrieve Placement Report for Campaign from Adwords API
+    Returns dictionary of mapped keys to raw API data values. This is done so that data from multiple
+        sources e.g. Google Ads, DV360 can be accessed with unified keys as API field names may differ.
+        Preserve raw API data as it may be needed in it's raw form during processing
+    """
     campaign_id = iq_campaign.campaign_id
     campaign = Campaign.objects.get(id=campaign_id)
     account = campaign.account
@@ -54,14 +60,13 @@ def get_google_ads_data(iq_campaign: IQCampaign):
     fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
     report = placement_performance_report(client, predicates=predicates, fields=fields)
-    # mapped_data = {}
-    mapped_data = []
+    all_data = []
     for row in report:
         if "channel" not in row.DisplayName:
             continue
+        # Create new dictionary of mapped keys to raw API data values
         data = {
             mapped_key: getattr(row, report_field, None) for report_field, mapped_key in data_mapping.items()
         }
-        # mapped_data[data[CampaignDataFields.CHANNEL_ID]] = data
-        mapped_data.append(data)
-    return mapped_data
+        all_data.append(data)
+    return all_data
