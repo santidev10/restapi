@@ -47,7 +47,7 @@ def update_mcc_campaigns_task(mcc_id: int, oauth_account_id: int):
     """
     ouath_account = OAuthAccount.objects.get(id=oauth_account_id)
     client = get_client(client_customer_id=mcc_id, refresh_token=ouath_account.refresh_token)
-    cids = get_all_customers(client)[-10:]
+    cids = get_all_customers(client)[-20:]
     for cid_account_data in cids:
         cid_account_id = int(cid_account_data["customerId"])
         cid_account, _ = Account.objects.get_or_create(id=cid_account_id, oauth_account_id=oauth_account_id)

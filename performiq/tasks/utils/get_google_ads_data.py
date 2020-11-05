@@ -1,16 +1,5 @@
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELDS
 from aw_reporting.adwords_reports import placement_performance_report
-from es_components.models import Channel
-from es_components.managers import ChannelManager
-from es_components.constants import SortDirections
-from es_components.constants import SUBSCRIBERS_FIELD
-from performiq.tasks import google_ads_update_scheduler
-from performiq.analyzers.base_analyzer import GoogleAdsAnalyzer
-from performiq.tasks.google_ads_scheduler import google_ads_update_scheduler
-from performiq.tasks import update_campaigns_task
-from performiq.utils.adwords_report import get_campaign_report
-from performiq.models import OAuthAccount
-from performiq.models import Campaign
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 # from performiq.models.constants import CampaignData
