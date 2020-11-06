@@ -47,7 +47,7 @@ def get_google_ads_data(iq_campaign: IQCampaign):
         {"field": "CampaignId", "operator": "EQUALS", "values": [campaign.id]},
         {"field": "Impressions", "operator": "GREATER_THAN", "values": 100},
     ]
-    fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv",
+    fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv", "VideoViewRate",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
     report = placement_performance_report(client, predicates=predicates, fields=fields)
     all_data = []

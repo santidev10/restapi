@@ -8,6 +8,7 @@ from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 from performiq.models.constants import CampaignDataFields
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data
+from performiq.tasks.generate_exports import generate_exports
 from utils.utils import chunks_generator
 
 
@@ -32,7 +33,7 @@ def analyze(iq_campaign_id):
         "suitability_results": suitability_analyzer.results,
         "params": iq_campaign.params
     }
-    pass
+    generate_exports(iq_campaign)
 
 
 def process_channels(iq_channels, analyzers):
