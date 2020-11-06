@@ -60,7 +60,7 @@ class AdsPerformanceRangeField(serializers.CharField):
             raise ValidationError(msg)
         if len(numeric_bounds) == 2:
             lower_bound, upper_bound = numeric_bounds
-            if lower_bound >= upper_bound:
+            if float(lower_bound) >= float(upper_bound):
                 msg = f"The lower bound ({lower_bound}) must be lower than the upper bound ({upper_bound})"
                 raise ValidationError(msg)
 

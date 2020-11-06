@@ -13,7 +13,11 @@ class TestAdsPerformanceRangeField(TestCase):
 
     def test_accepted_values(self):
         instance = self.get_field_instance()
-        for data in ["1,14", "12, ", ", 14", "0.14,", "0.34, 1.16"]:
+        # keep 7.77, 10.2 in order to check that the comparison is performed on casted float values,
+        # rather than on a string. This value fails string comparison because the comparison
+        # is performed on unicode point number on the first part of the string, so:
+        # ord("7") which produces 55 is greater than ord("1"), which produces 49
+        for data in ["1,14", "12, ", ", 14", "0.14,", "0.34, 1.16", "7.77, 10.2"]:
             with self.subTest(data):
                 validated = instance.run_validation(data=data)
                 self.assertEqual(data, validated)
