@@ -12,3 +12,4 @@ class PerformIQPathName:
         CONNECTION = "dv360_account_connection"
 
     CAMPAIGNS = "campaigns"
+    MAP_CSV_FIELDS = "map_csv_fields"
