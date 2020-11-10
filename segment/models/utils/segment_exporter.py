@@ -50,6 +50,12 @@ class SegmentExporter(S3Exporter):
         export.download_url = download_url
         export.save()
 
+    def get_export_lines_stream(self, s3_key):
+        export_content = self._get_s3_object(s3_key, get_key=False)
+        for byte in export_content["Body"].iter_lines():
+            row = byte.decode("utf-8").split(",")
+            yield row
+
     def get_extract_export_ids(self, s3_key=None):
         """
         Parse and extract Channel or video ids from csv export
@@ -75,9 +81,9 @@ class SegmentExporter(S3Exporter):
     def parse_url(self, url, item_type="0"):
         item_type = str(item_type)
         config = {
-            "0": "/watch?v=",
+            "0": "?v=",
             "1": "/channel/",
-            "video": "/watch?v=",
+            "video": "?v=",
             "channel": "/channel/",
         }
         item_id = url.split(config[item_type])[-1]

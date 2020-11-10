@@ -11,7 +11,7 @@ class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=2)
     TASK_BATCH_SIZE = 2
-    MAX_QUEUE_SIZE = 5
+    MAX_QUEUE_SIZE = 15
     # Minimum percentage before task queue should be refilled
     TASK_REQUEUE_THRESHOLD = .20
 
@@ -47,4 +47,5 @@ class Schedulers:
 
     class VideoDiscovery(BaseScheduler):
         NAME = "brand_safety_video_discovery"
-        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 1000))
+        TASK_BATCH_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_BATCH_SIZE", 2000))
+        MAX_QUEUE_SIZE = int(os.getenv("BRAND_SAFETY_VIDEO_PRIORITY_QUEUE_SIZE", BaseScheduler.MAX_QUEUE_SIZE))

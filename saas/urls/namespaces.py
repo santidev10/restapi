@@ -6,6 +6,7 @@ class Namespace:
     SEGMENT = "segment_api_urls"
     SEGMENT_V2 = "segment_api_urls_v2"
     SEGMENT_V3 = "segment_api_urls_v3"
+    SEGMENT_V4 = "segment_api_urls_v4"
     USER_PROFILE = "userprofile_api_urls"
     VIDEO = "video_api_urls"
     CHANNEL = "channel_api_urls"

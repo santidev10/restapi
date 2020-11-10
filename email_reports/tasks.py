@@ -10,7 +10,8 @@ from aw_reporting.models import Account
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
-from email_reports.reports import DailyApexCampaignEmailReport
+from email_reports.reports import DailyApexVisaCampaignEmailReport
+from email_reports.reports import DailyApexDisneyCampaignEmailReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import FlightDeliveredReport
 from email_reports.reports import TechFeeCapExceeded
@@ -57,13 +58,14 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
 
 
 EMAIL_REPORT_CLASSES = (
-    DailyApexCampaignEmailReport,
+    CampaignOverPacing,
     CampaignUnderMargin,
+    CampaignUnderPacing,
+    DailyApexDisneyCampaignEmailReport,
+    DailyApexVisaCampaignEmailReport,
+    ESMonitoringEmailReport,
     FlightDeliveredReport,
     TechFeeCapExceeded,
-    CampaignUnderPacing,
-    CampaignOverPacing,
-    ESMonitoringEmailReport,
 )
 
 

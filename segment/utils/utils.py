@@ -4,6 +4,8 @@ from datetime import datetime
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 
+from audit_tool.constants import CHOICE_UNKNOWN_KEY
+from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
 from segment.models.persistent.base import BasePersistentSegment
@@ -106,35 +108,52 @@ def validate_boolean(value):
     raise ValueError(f"The value: '{value}' is not a valid boolean.")
 
 
-def with_all(all_options=None, choice=None):
+def validate_in(member, container: list):
+    if member not in container:
+        valid_values = ", ".join(map(str, container))
+        raise ValueError(f"The value: '{member}' must be one of the following: {valid_values}")
+    return member
+
+
+def validate_all_in(members: list, container: list) -> list:
+    if not isinstance(members, list):
+        raise ValueError(f"'{str(members)}' should be a list.")
+    return [validate_in(member, container) for member in members]
+
+
+def with_unknown(options=None, choice=None):
     """
     If choice is None, create dict mapping of id, name for list of two element tuple options
     Adds an id of -1 that will map to "All"
 
     If choice is not None, then implies that we should map choice to either:
      if choice == -1:
-        None as we want to include everything
+        list as we want to include everything
      else:
         list of single of multiple element list for Elasticseach terms query
-    :param all_options: list [tuple(int, str)...] List of two element tuple choices
-    :param choice: None | int Input that will be mapped into list of terms for Elasticsearch query
+    :param options: list [tuple(int, str)...] List of two element tuple choices
+    :param choice: None | int | list Input that will be mapped into list of terms for Elasticsearch query
     :return:
     """
-    if all_options is None and choice is None:
-        data = None
-    elif all_options:
-        data = [{"id": _id, "name": name} for _id, name in all_options]
+    if options is None and choice is None:
+        return None
+
+    if options:
+        data = [{"id": _id, "name": name} for _id, name in options]
         data.append({
-            "id": -1,
-            "name": "All",
+            "id": CHOICE_UNKNOWN_KEY,
+            "name": CHOICE_UNKNOWN_NAME,
         })
-    else:
-        choice = int(choice)
-        if choice == -1:
-            data = None
-        else:
-            data = choice
-    return data
+        return data
+
+    if isinstance(choice, list):
+        return choice
+
+    choice = int(choice)
+    if choice == -1:
+        return []
+
+    return choice
 
 
 def get_content_disposition(segment, is_vetting=False, ext="csv"):

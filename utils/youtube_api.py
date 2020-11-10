@@ -13,11 +13,15 @@ from apiclient import discovery
 from django.conf import settings
 from django.core.cache import cache
 from oauth2client.client import GoogleCredentials
+from rest_framework.status import HTTP_200_OK
+
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
 GOOGLE_CREDENTIALS_TOKEN_URI = "https://accounts.google.com/o/oauth2/token"
 GOOGLE_CREDENTIALS_USER_AGENT = "my-user-agent/1.0"
+MAX_RESULTS = 50
 
 
 class YoutubeAPIConnectorException(Exception):
@@ -279,43 +283,46 @@ def resolve_videos_info(ids: List[int],
                 unresolved_ids.append(video_id)
 
         if unresolved_ids:
-            ids_string = ",".join(unresolved_ids)
+            for unresolved_ids_chunk in chunks_generator(unresolved_ids, MAX_RESULTS):
 
-            max_results = len(ids)
+                ids_string = ",".join(unresolved_ids_chunk)
 
-            params = dict(key=api_key,
-                          id=ids_string,
-                          part="snippet,contentDetails",
-                          maxResults=max_results)
+                params = dict(key=api_key,
+                              id=ids_string,
+                              part="snippet,contentDetails",
+                              maxResults=MAX_RESULTS)
 
-            response = requests.get(url=api_url,
-                                    params=params,
-                                    timeout=request_timeout)
+                response = requests.get(url=api_url,
+                                        params=params,
+                                        timeout=request_timeout)
+                if response.status_code != HTTP_200_OK:
+                    logger.error(f"Bad response code while resolving video info: {response.status_code}! Check Apex "
+                                 f"Visa Report!")
 
-            items = response.json().get("items", [])
+                items = response.json().get("items", [])
 
-            for item in items:
-                video_id = item.get("id")
-                snippet = item.get("snippet", {})
+                for item in items:
+                    video_id = item.get("id")
+                    snippet = item.get("snippet", {})
 
-                title = snippet.get("title")
+                    title = snippet.get("title")
 
-                thumbnails = snippet.get("thumbnails", {})
-                thumbnail_image_url = thumbnails.get("default", {}).get("url")
+                    thumbnails = snippet.get("thumbnails", {})
+                    thumbnail_image_url = thumbnails.get("default", {}).get("url")
 
-                iso_duration = item.get("contentDetails", {}).get("duration")
-                duration = isodate.parse_duration(iso_duration).total_seconds() if iso_duration else 0
+                    iso_duration = item.get("contentDetails", {}).get("duration")
+                    duration = isodate.parse_duration(iso_duration).total_seconds() if iso_duration else 0
 
-                info = dict(
-                    general_data=dict(
-                        title=title,
-                        thumbnail_image_url=thumbnail_image_url,
-                        duration=duration,
+                    info = dict(
+                        general_data=dict(
+                            title=title,
+                            thumbnail_image_url=thumbnail_image_url,
+                            duration=duration,
+                        )
                     )
-                )
 
-                cache.set(cache_key_template.format(video_id), info, cache_timeout)
-                details[video_id] = info
+                    cache.set(cache_key_template.format(video_id), info, cache_timeout)
+                    details[video_id] = info
     except BaseException as e:
         logger.error(e)
 

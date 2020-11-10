@@ -15,6 +15,7 @@ from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.tasks.generate_segment import generate_segment
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +285,7 @@ class SegmentListGenerator:
             if len(all_items) >= size:
                 break
 
-        for batch in AuditUtils.batch([item.main.id for item in all_items], self.SEGMENT_BATCH_SIZE):
+        for batch in chunks_generator([item.main.id for item in all_items], self.SEGMENT_BATCH_SIZE):
             segment.add_to_segment(doc_ids=batch)
         return all_items
 

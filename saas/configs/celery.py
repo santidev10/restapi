@@ -72,7 +72,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["DailyApexCampaignEmailReport"],
+            reports=["DailyApexVisaCampaignEmailReport", "DailyApexDisneyCampaignEmailReport"],
         ),
     },
     "recreate-demo-data": {
@@ -169,8 +169,21 @@ CELERY_BEAT_SCHEDULE = {
     },
     "daily_ingest_ias_channels": {
         "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
-        "schedule": crontab(hour=21, minute=0),
+        # defaults to twice per day, 0500, 1700 PST
+        "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
+    "sync_dv_partners": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
+        "schedule": crontab(minute="*/10"),
+    },
+    "sync_dv_advertisers": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
+        "schedule": crontab(minute="*/10"),
+    },
+    "sync_dv_campaigns": {
+        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
+        "schedule": crontab(minute="*/10"),
+    }
 }
 
 
@@ -228,7 +241,7 @@ class TaskExpiration:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(hours=2).total_seconds()
-    INGEST_IAS = timedelta(hours=12).total_seconds()
+    INGEST_IAS = timedelta(hours=11).total_seconds()
 
 
 class TaskTimeout:
@@ -246,4 +259,4 @@ class TaskTimeout:
     FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()
     INDUSTRY_PERFORMANCE_CACHING = timedelta(minutes=30).total_seconds()
     PACING_REPORT_FILTERS = timedelta(minutes=2).total_seconds()
-    INGEST_IAS = timedelta(hours=12).total_seconds()
+    INGEST_IAS = timedelta(hours=11).total_seconds()
