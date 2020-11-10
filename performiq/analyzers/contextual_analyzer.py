@@ -34,7 +34,7 @@ class ContextualAnalyzer(BaseAnalyzer):
     def results(self):
         passed_count = self._analyzed_channels_count - len(self._failed_channels)
         result = {
-            "overall_score": self.get_overall_score(passed_count, self._analyzed_channels_count),
+            "overall_score": self.get_score(passed_count, self._analyzed_channels_count),
             **self._result_counts
         }
         return result
@@ -42,7 +42,9 @@ class ContextualAnalyzer(BaseAnalyzer):
     def __call__(self, channel: Channel):
         contextual_failed = False
         analyzed = False
-        result = {}
+        result = {
+            "passed": True
+        }
         for es_field, params_field in self.ES_FIELD_RESULTS_MAPPING.items():
             analyzed = True
             count_field = params_field + "_counts"
@@ -54,6 +56,7 @@ class ContextualAnalyzer(BaseAnalyzer):
                 contextual_failed = True
             result[params_field] = attr_value
         if contextual_failed is True:
+            result["passed"] = False
             self.iq_results[channel.main.id].fail()
             self._failed_channels.add(channel.main.id)
         if analyzed is True:

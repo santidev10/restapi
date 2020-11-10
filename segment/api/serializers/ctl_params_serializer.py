@@ -50,7 +50,7 @@ class AdsPerformanceRangeField(serializers.CharField):
 
     def validate_stats_field(self, val):
         # If val is int, imply val is lower bound
-        if isinstance(val, int):
+        if type(val) in {int, float}:
             val = str(val) + ","
         bounds = val.replace(" ", "").split(",")
         # coerce ",", ", " to None

@@ -27,19 +27,34 @@ class PerformanceAnalyzer(BaseAnalyzer):
 
     def __call__(self):
         self._results = self._analyze()
-        try:
-            overall_score = round((self._analyzed_channels_count - len(self._failed_channels))
-                                  / self._analyzed_channels_count) * 100
-        except ZeroDivisionError:
-            overall_score = 0
+        overall_score = self.get_score(self._analyzed_channels_count - len(self._failed_channels),
+                                       self._analyzed_channels_count)
         averages = self._calculate_averages()
         self._results["overall_score"] = overall_score
         self._results["cpm"]["avg"] = averages["cpm_avg"]
         self._results["cpv"]["avg"] = averages["cpv_avg"]
         return self._results
 
+    def _add_performance(self, results: dict):
+        """
+        Add performance key to results for each metric defined in IQCampaign.params
+        :param results: dict -> Results gathered in _analyze method
+        """
+        for metric_name, result in results.items():
+            if metric_name in self.iq_campaign.params:
+                passed, failed = result.get("passed", 0), result.get("failed", 0)
+                # If no passed and failed, then none were processed
+                performance = self.get_score(passed, passed + failed)
+            else:
+                # Threshold value was not saved for current IQCampaign
+                performance = None
+            results[metric_name]["performance"] = performance
+
     def _calculate_averages(self):
-        # index [0] is sum, index[1] is count of items
+        """
+        Calculate averages of metrics using all results
+        """
+        # Lists to keep track of metrics. index [0] is sum, index[1] is count of items
         cpm = [0, 0]
         cpv = [0, 0]
         for r in self.iq_results.values():
@@ -58,18 +73,28 @@ class PerformanceAnalyzer(BaseAnalyzer):
         return averages
 
     def _analyze(self):
+        """
+        Analyze for performance using thresholds defined in IQCampaign.params
+        Count of passed and failed items will be tracked for each field in PERFORMANCE_FIELDS
+        Each datum in self.iq_results will be coerced into values for comparison with threshold values as data
+            is saved with raw data from api's or csv
+        After gathering all results, add performance score using _add_performance method
+        """
         total_results = {
             key: dict(failed=0, passed=0) for key in self.PERFORMANCE_FIELDS
         }
         for iq_result in self.iq_results.values():
             iq_channel = iq_result.iq_channel
-            curr_result = {}
-            # Get the Coercer method to map raw values from the api for comparisons
+            curr_result = {
+                "passed": True
+            }
+            # Get the Coercer method to map raw values for comparisons
             data = {
                 # Default to using the raw value if method not defined for key
                 key: COERCE_FIELD_FUNCS.get(key, Coercers.raw)(val) for key, val in iq_channel.meta_data.copy().items()
             }
             analyzed = False
+            # Compare each metric in data (e.g. video_view_rate) with IQCampaign.params threshold values
             for metric_name, threshold in self.analyze_params.items():
                 metric_value = data.get(metric_name, None)
                 try:
@@ -77,15 +102,18 @@ class PerformanceAnalyzer(BaseAnalyzer):
                         total_results[metric_name]["passed"] += 1
                     else:
                         total_results[metric_name]["failed"] += 1
+                        curr_result["passed"] = False
                         self._failed_channels.add(iq_channel.channel_id)
                         self.iq_results[iq_channel.channel_id].fail()
                     curr_result[metric_name] = metric_value
+                    # Flag to ensure we have at least processed one metric in current iq_result being processed
                     analyzed = True
                 except TypeError:
                     continue
             iq_result.add_result(AnalyzeSection.PERFORMANCE_RESULT_KEY, curr_result)
             if analyzed is True:
                 self._analyzed_channels_count += 1
+        self._add_performance(total_results)
         return dict(total_results)
 
     def passes(self, value, threshold, direction="+"):

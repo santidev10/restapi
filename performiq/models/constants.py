@@ -49,30 +49,9 @@ class CampaignDataFields:
     CTR = "ctr"
     CPM = "cpm"
     CPV = "cpv"
+    ADVERTISER_ID = "advertiser_id"
 
 
-class CampaignData:
-    def __init__(self, raw_data, fields_mapping, data_type=OAuthType.GOOGLE_ADS):
-        config = {
-            OAuthType.GOOGLE_ADS: self.gads
-        }
-        self._raw_data = raw_data
-        self._fields_mapping = fields_mapping
-        self._data_type = data_type
-        self._data = config[data_type]()
-
-    @property
-    def data(self):
-        return self._data
-
-    def gads(self):
-        gads_data = namedtuple("CampaignData", self._fields_mapping.values())
-        mapped_data = {
-            mapped_key: getattr(self._raw_data, field, None) for field, mapped_key in self._fields_mapping.items()
-        }
-        data = gads_data(**mapped_data)
-        return data
-
-
-    def to_dict(self):
-        pass
+class EXPORT_RESULTS_KEYS:
+    RECOMMENDED_EXPORT_FILENAME = "recommended_export_filename"
+    WASTAGE_EXPORT_FILENAME = "wastage_export_filename"

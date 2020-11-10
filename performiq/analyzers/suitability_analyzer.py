@@ -21,16 +21,17 @@ class SuitabilityAnalyzer(BaseAnalyzer):
     @property
     def results(self):
         total_count = self._result_counts["passed"] + self._result_counts["failed"]
-        self._result_counts["overall_score"] = self.get_overall_score(self._result_counts["passed"], total_count)
+        self._result_counts["overall_score"] = self.get_score(self._result_counts["passed"], total_count)
         return self._result_counts
 
     def __call__(self, channel: Channel):
         suitability_failed = False
-        result = {"overall_score": None}
+        result = {"overall_score": None, "passed": True}
         try:
             if channel.brand_safety.overall_score > self.analyze_params["suitability"]:
                 self._result_counts["passed"] += 1
             else:
+                result["passed"] = False
                 self._result_counts["failed"] += 1
                 self._failed_channels.add(channel.main.id)
                 self.iq_results[channel.main.id].fail()
