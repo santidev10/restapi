@@ -3,109 +3,148 @@ import io
 import time
 import pprint
 
-from six.moves.urllib.request import urlopen
 from django.conf import settings
+
+from six.moves.urllib.request import urlopen
+from googleapiclient import discovery
 from contextlib import closing
 from performiq.utils.dv360 import load_credentials
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.models import OAuthAccount
-from googleapiclient import discovery
-import httplib2
-from oauth2client import client
-from oauth2client import file as oauthFile
-from oauth2client import tools
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import http_client
-from googleapiclient import http as googleHttp
-from google.oauth2 import service_account
+from performiq.models import IQCampaignChannel
+from performiq.models import Campaign
+from performiq.models.constants import OAuthType
+from performiq.models.constants import CampaignDataFields
+from utils.exception import backoff
 
-from google.oauth2.credentials import Credentials
+"""
+CANNOT GET:
+METRIC_CLIENT_COST_VIEWABLE_ECPM_ADVERTISER_CURRENCY = CampaignDataFields.CPM
+METRIC_CTR = CampaignDataFields.CTR
+METRIC_ACTIVE_VIEW_PERCENT_VISIBLE_ON_COMPLETE = CampaignDataFields.VIDEO_QUARTILE_100_RATE,
+METRIC_ACTIVE_VIEW_PCT_VIEWABLE_IMPRESSIONS = CampaignDataField.ACTIVE_VIEW_VIEWABILITY
+"""
 
-
-def get_data():
-    account = OAuthAccount.objects.get(id=7)
-    credentials = Credentials(
-        account.token,
-        refresh_token=account.refresh_token,
-        token_uri="https://accounts.google.com/o/oauth2/token",
-        client_id=settings.PERFORMIQ_OAUTH_CLIENT_ID,
-        client_secret=settings.PERFORMIQ_OAUTH_CLIENT_SECRET,
-    )
-    service = discovery.build("doubleclickbidmanager", "v1.1", credentials=credentials)
-    operation = service.queries().createquery(body=r).execute()
-    query_request = service.queries().getquery(queryId=operation["queryId"])
-    response = get_query_completion(query_request)
-    report_url = response["metadata"]["googleCloudStoragePathForLatestReport"]
-    with open("output", "wb") as file,\
-            closing(urlopen(report_url)) as url:
-        file.write(url.read())
-
-
-
-r = {
-    "params": {
-        "type": "TYPE_GENERAL",
-        "metrics": [
-            "METRIC_IMPRESSIONS",
-            "METRIC_CLICKS",
-            "METRIC_CTR",
-        ],
-        "groupBys": [
-            "FILTER_ADVERTISER",
-            "FILTER_ADVERTISER_CURRENCY",
-            "FILTER_YOUTUBE_CHANNEL",
-        ],
-        "filters": [
-            {
-                "type": "FILTER_ADVERTISER",
-                "value": "1878225"
-            },
-            # {
-            #     "type": "FILTER_MEDIA_PLAN",
-            #     "value": "4146448"
-            # }
-        ],
-    },
-    "metadata": {
-        "title": "DV360 Automation API-generated report",
-        "dataRange": "LAST_90_DAYS",
-        "format": "csv"
-    },
-    "schedule": {
-        "frequency": "ONE_TIME"
-    }
+KEY_MAPPING = {
+    "FILTER_ADVERTISER": CampaignDataFields.ADVERTISER_ID,
+    "FILTER_ADVERTISER_CURRENCY": "advertiser_currency",
+    "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS": CampaignDataFields.CHANNEL_ID,
+    "METRIC_TRUEVIEW_VIEW_RATE": CampaignDataFields.VIDEO_VIEW_RATE,
+    "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY": CampaignDataFields.CPM,
+    "METRIC_TRUEVIEW_CPV_ADVERTISER": CampaignDataFields.CPV,
 }
 
-def get_query_completion(getquery_request):
-    response = getquery_request.execute()
-    pprint.pprint(response)
-    while True:
-        if not response["metadata"]["running"]:
-            break
-        print("The operation has not completed.")
-        time.sleep(5)
-        response = getquery_request.execute()
+
+def get_dv360_data(iq_campaign, **kwargs):
+    dv360_campaign = Campaign.objects.get(id=iq_campaign.campaign.id, oauth_type=OAuthType.DV360.value)
+    account = OAuthAccount.objects.get(id=kwargs["oauth_account_id"])
+    credentials = load_credentials(account)
+    resource = get_discovery_resource(credentials)
+    insertion_order_ids = get_insertion_orders(resource, dv360_campaign.id)[:1]
+
+    # report_response = get_metrics(credentials, dv360_campaign.advertiser.id, insertion_order_ids)
+    # report_url = report_response["metadata"]["googleCloudStoragePathForLatestReport"]
+    # with open("output", "wb") as file,\
+    #         closing(urlopen(report_url)) as url:
+    #     file.write(url.read())
+    report_response = {
+        "params": {
+            "groupBys": [
+                "FILTER_ADVERTISER",
+                "FILTER_ADVERTISER_CURRENCY",
+                "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS"
+            ],
+            "metrics": [
+                "METRIC_TRUEVIEW_VIEW_RATE",
+                "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
+                "METRIC_TRUEVIEW_CPV_ADVERTISER"
+            ],
+            "type": "TYPE_TRUEVIEW"
+        },
+    }
+    mapped_data = process_csv(report_response)
+    return mapped_data
+    # process_csv(report_response["params"])
+    #
+
+
+def get_metrics(credentials, advertiser_id, insertion_order_ids):
+    service = discovery.build("doubleclickbidmanager", "v1.1", credentials=credentials)
+    insertion_order_filters = [{
+        "type": "FILTER_INSERTION_ORDER",
+        "value": _id
+    } for _id in insertion_order_ids]
+    report_request = {
+        "params": {
+            "type": "TYPE_TRUEVIEW",
+            "metrics": [
+                "METRIC_TRUEVIEW_VIEW_RATE",
+                "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
+                "METRIC_TRUEVIEW_CPV_ADVERTISER",
+            ],
+            "groupBys": [
+                "FILTER_ADVERTISER",
+                "FILTER_ADVERTISER_CURRENCY",
+                "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS",
+            ],
+            "filters": [
+                {
+                    "type": "FILTER_ADVERTISER",
+                    "value": advertiser_id,
+                },
+                *insertion_order_filters,
+            ],
+        },
+        "metadata": {
+            "title": "DV360 Automation API-generated report",
+            "dataRange": "LAST_90_DAYS",
+            "format": "csv"
+        },
+        "schedule": {
+            "frequency": "ONE_TIME"
+        }
+    }
+    operation = service.queries().createquery(body=report_request).execute()
+    query_request = service.queries().getquery(queryId=operation["queryId"])
+    response = get_dv360_query_completion(query_request)
     return response
 
 
-# res = resource.advertisers().creatives().list(advertiserId="6047131").execute()
-    # task = {
-    #     # "version": "",
-    #     "advertiserId": "6047131",
-    #     "parentEntityFilter": {
-    #         "fileType": "FILE_TYPE_CAMPAIGN",
-    #         "filterType": "FILTER_TYPE_NONE"
-    #     }
-    # }
-    # operation = service.sdfdownloadtasks().create(body=task).execute()
-    # operationName = operation["name"]
-    # getRequest = service.sdfdownloadtasks().operations().get(name=operationName)
-    # operation = getRequest.execute()
-    # resourceName = operation["response"]["resourceName"]
-    # downloadRequest = service.media().download_media(resourceName=operation["response"]["resourceName"])
-    # outStream = io.FileIO("test2", mode="wb")
-    # downloader = googleHttp.MediaIoBaseDownload(outStream, downloadRequest)
-    # download_finished = False
-    # while download_finished is False:
-    #     _, download_finished = downloader.next_chunk()
-    # return resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()
+@backoff(max_backoff=3600 * 5, exceptions=(ValueError,))
+def get_dv360_query_completion(query_request):
+    response = query_request.execute()
+    pprint.pprint(response)
+    if response["metadata"]["running"] is True and response["metadata"].get("googleCloudStoragePathForLatestReport") is None:
+        raise ValueError
+    return response
+
+
+def get_insertion_orders(resource, dv360_campaign_id):
+    res = resource.advertisers().insertionOrders().list(advertiserId="1878225", filter=f"campaignId={dv360_campaign_id}").execute()
+    insertion_order_ids = [item["insertionOrderId"] for item in res.get("insertionOrders", [])]
+    return insertion_order_ids
+
+
+def process_csv(query):
+    columns = query["params"]["groupBys"] + query["params"]["metrics"]
+    fp = "output"
+    header_skipped = False
+    all_rows = []
+    with open(fp, mode="r") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if header_skipped is False:
+                row = next(reader)
+                header_skipped = True
+            if len(row) <= 0 or not row[0]:
+                break
+            formatted = {}
+            # Construct dict for each row as entire csv is not formatted with columns
+            for index, column_name in enumerate(columns):
+                db_field_name = KEY_MAPPING[column_name]
+                if db_field_name == CampaignDataFields.CHANNEL_ID:
+                    # Youtube Placment URL does not need to be preserved
+                    row[index] = row[index].split("/channel/")[-1]
+                formatted[db_field_name] = row[index]
+            all_rows.append(formatted)
+    return all_rows
