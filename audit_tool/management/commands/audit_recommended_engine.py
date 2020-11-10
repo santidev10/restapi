@@ -354,8 +354,11 @@ class Command(BaseCommand):
             if not db_video_meta.language or self.get_lang_by_id(db_video_meta.language_id) not in self.language:
                 return False
         if self.category:
-            if int(db_video_meta.category.category) not in self.category:
-                return False
+            try:
+                if int(db_video_meta.category.category) not in self.category:
+                    return False
+            except Exception:
+                pass
         if self.related_audits:
             if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits,
                                                   clean=True).exists():
