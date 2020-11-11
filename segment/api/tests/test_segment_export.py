@@ -113,3 +113,11 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
         action = SegmentAction.objects.get(user=user, action=SegmentActionEnum.DOWNLOAD.value)
         self.assertTrue(action.created_at > now)
+
+    def test_admin_version_export(self):
+        user = self.create_admin_user()
+        print('user is staff: {}'.format(user.is_staff))
+
+    def test_user_version_export(self):
+        user = self.create_test_user()
+        print('user is staff: {}'.format(user.is_staff))

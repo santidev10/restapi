@@ -1,6 +1,7 @@
 import io
 from uuid import uuid4
 from mock import patch
+import csv
 
 import boto3
 from django.conf import settings
@@ -22,6 +23,8 @@ from es_components.tests.utils import ESTestCase
 from segment.api.export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.export_serializers import \
     CustomSegmentChannelWithMonetizationExportSerializer
+from segment.api.export_serializers import AdminCustomSegmentChannelExportSerializer
+from segment.api.export_serializers import AdminCustomSegmentVideoExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoExportSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SourceListType
@@ -62,6 +65,92 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(set(header), CustomSegmentChannelWithMonetizationExportSerializer.columns)
 
     @mock_s3
+    def test_generate_user_channel_headers(self):
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        header = [row.decode("utf-8") for row in body][0]
+        self.assertTrue(set(header), CustomSegmentChannelExportSerializer.columns)
+
+    @mock_s3
+    def test_csv_admin_channel_headers(self):
+        user = self.create_admin_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_admin_s3_key()
+        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"].read()
+        lines = lines.decode('utf-8').split()
+        header = tuple(lines[0].split(','))
+        self.assertEqual(header, AdminCustomSegmentChannelExportSerializer.columns)
+
+    @mock_s3
+    def test_csv_user_channel_headers(self):
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_s3_key()
+        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"].read()
+        lines = lines.decode('utf-8').split()
+        header = tuple(lines[0].split(','))
+        self.assertEqual(header, CustomSegmentChannelExportSerializer.columns)
+
+    @mock_s3
+    def test_csv_admin_channel_data(self):
+        user = self.create_admin_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_admin_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        lines = body.read().decode('utf-8').splitlines(True)
+        first = lines[1].split(',')
+        self.assertTrue(first)
+        self.assertEqual(len(first), len(AdminCustomSegmentChannelExportSerializer.columns))
+
+    @mock_s3
+    def test_csv_user_channel_data(self):
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        lines = body.read().decode('utf-8').splitlines(True)
+        first = lines[1].split(',')
+        self.assertTrue(first)
+        self.assertEqual(len(first), len(CustomSegmentChannelExportSerializer.columns))
+
+    @mock_s3
     def test_generate_channel_non_monetized_headers(self):
         user = self.create_test_user()
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -92,6 +181,40 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         header = [row.decode("utf-8") for row in body][0]
         self.assertTrue(set(header), CustomSegmentVideoExportSerializer.columns)
+
+    @mock_s3
+    def test_csv_user_video_headers(self):
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, owner=user,
+        )
+        self.video_manager.upsert([self.video_manager.model(f"video_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_s3_key()
+        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"].read()
+        lines = lines.decode('utf-8').split()
+        header = tuple(lines[0].split(','))
+        self.assertEqual(header, CustomSegmentVideoExportSerializer.columns)
+
+    @mock_s3
+    def test_csv_admin_video_headers(self):
+        user = self.create_admin_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, owner=user,
+        )
+        self.video_manager.upsert([self.video_manager.model(f"video_{next(int_iterator)}")])
+        generate_segment(segment, Q(), 1)
+        export_key = segment.get_admin_s3_key()
+        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"].read()
+        lines = lines.decode('utf-8').split()
+        header = tuple(lines[0].split(','))
+        self.assertEqual(header, AdminCustomSegmentVideoExportSerializer.columns)
 
     @mock_s3
     def test_generate_without_source(self):
@@ -173,7 +296,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment_type=0, uuid=uuid4(), list_type=0
         )
         generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_s3_key()
+        export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
 
@@ -270,7 +393,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
         generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_s3_key()
+        export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
         for included in inclusion:
