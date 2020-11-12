@@ -115,42 +115,6 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(header, CustomSegmentChannelExportSerializer.columns)
 
     @mock_s3
-    def test_csv_admin_channel_data(self):
-        user = self.create_admin_user()
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(
-            title=f"title_{next(int_iterator)}",
-            segment_type=1, owner=user,
-        )
-        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
-        generate_segment(segment, Q(), 1)
-        export_key = segment.get_admin_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        lines = body.read().decode('utf-8').splitlines(True)
-        first = lines[1].split(',')
-        self.assertTrue(first)
-        self.assertEqual(len(first), len(AdminCustomSegmentChannelExportSerializer.columns))
-
-    @mock_s3
-    def test_csv_user_channel_data(self):
-        user = self.create_test_user()
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(
-            title=f"title_{next(int_iterator)}",
-            segment_type=1, owner=user,
-        )
-        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
-        generate_segment(segment, Q(), 1)
-        export_key = segment.get_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        lines = body.read().decode('utf-8').splitlines(True)
-        first = lines[1].split(',')
-        self.assertTrue(first)
-        self.assertEqual(len(first), len(CustomSegmentChannelExportSerializer.columns))
-
-    @mock_s3
     def test_generate_channel_non_monetized_headers(self):
         user = self.create_test_user()
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -262,7 +226,29 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(segment.title, file["ContentDisposition"])
 
     @mock_s3
-    def test_generate_video_export_data(self):
+    def test_generate_admin_filename(self):
+        """" Test export filename should be segment title """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        # Prepare docs to build segment
+        docs = []
+        for _ in range(5):
+            _id = next(int_iterator)
+            doc = VideoManager.model(f"id_{_id}")
+            doc.populate_general_data(title=f"title_{_id}", age_restricted=False)
+            docs.append(doc)
+        self.video_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, uuid=uuid4(), list_type=0
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_admin_s3_key()
+        file = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()
+        self.assertIn(segment.title, file["ContentDisposition"])
+
+    @mock_s3
+    def test_generate_admin_video_export_data(self):
         """ Test video export contains all data """
         bs_category = BadWordCategory.objects.first()
         content_type = AuditContentType.objects.first()
@@ -313,7 +299,58 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.video_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
-    def test_generate_channel_export_data(self):
+    def test_generate_user_video_export_data(self):
+        """ Test video export contains all data """
+        bs_category = BadWordCategory.objects.first()
+        content_type = AuditContentType.objects.first()
+        content_quality = AuditContentQuality.objects.first()
+        age_group = AuditAgeGroup.objects.first()
+        gender = AuditGender.objects.first()
+
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        _id = next(int_iterator)
+        doc = VideoManager.model(f"id_{_id}")
+        doc.populate_general_data(
+            title=f"title_{_id}", age_restricted=False, lang_code="en", iab_categories=["Test"],
+            country_code="US",
+        )
+        doc.populate_stats(views=99)
+        doc.populate_brand_safety(overall_score=55)
+        doc.populate_task_us_data(
+            brand_safety=[bs_category.id],
+            age_group=age_group.id,
+            gender=gender.id,
+            content_type=content_type.id,
+            content_quality=content_quality.id,
+            last_vetted_at=timezone.now(),
+            mismatched_language=True,
+        )
+        docs = [doc]
+        self.video_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, uuid=uuid4(), list_type=0
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        rows = ",".join([row.decode("utf-8") for row in body])
+
+        self.assertIn(doc.general_data.title, rows)
+        self.assertIn(doc.general_data.country_code, rows)
+        self.assertIn(str(doc.stats.views), rows)
+        self.assertIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
+        self.assertIn(bs_category.name, rows)
+        self.assertNotIn(age_group.age_group, rows)
+        self.assertNotIn(gender.gender, rows)
+        self.assertIn(content_type.content_type, rows)
+        self.assertIn(content_quality.quality, rows)
+        self.assertIn(f"https://www.youtube.com/watch?v={doc.main.id}", rows)
+        self.video_manager.delete([doc.main.id for doc in docs])
+
+    @mock_s3
+    def test_generate_channel_admin_export_data(self):
         """ Test channel export contains all data """
         bs_category = BadWordCategory.objects.first()
         content_type = AuditContentType.objects.first()
@@ -358,6 +395,57 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(bs_category.name, rows)
         self.assertIn(age_group.age_group, rows)
         self.assertIn(gender.gender, rows)
+        self.assertIn(content_type.content_type, rows)
+        self.assertIn(content_quality.quality, rows)
+        self.assertIn(f"https://www.youtube.com/channel/{doc.main.id}", rows)
+        self.video_manager.delete([doc.main.id for doc in docs])
+
+    @mock_s3
+    def test_generate_channel_user_export_data(self):
+        """ Test channel export contains all data """
+        bs_category = BadWordCategory.objects.first()
+        content_type = AuditContentType.objects.first()
+        content_quality = AuditContentQuality.objects.first()
+        age_group = AuditAgeGroup.objects.first()
+        gender = AuditGender.objects.first()
+
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        _id = next(int_iterator)
+        doc = ChannelManager.model(f"id_{_id}")
+        doc.populate_general_data(
+            title=f"title_{_id}", top_lang_code="es", iab_categories=["Test_Again"],
+            country_code="CA",
+        )
+        doc.populate_stats(subscribers=888)
+        doc.populate_brand_safety(overall_score=44)
+        doc.populate_task_us_data(
+            brand_safety=[bs_category.id],
+            age_group=age_group.id,
+            gender=gender.id,
+            content_type=content_type.id,
+            content_quality=content_quality.id,
+            last_vetted_at=timezone.now(),
+            mismatched_language=True,
+        )
+        docs = [doc]
+        self.channel_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, uuid=uuid4(), list_type=0
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
+        rows = ",".join([row.decode("utf-8") for row in body])
+
+        self.assertIn(doc.general_data.title, rows)
+        self.assertIn(doc.general_data.country_code, rows)
+        self.assertIn(str(doc.stats.subscribers), rows)
+        self.assertIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
+        self.assertIn(bs_category.name, rows)
+        self.assertNotIn(age_group.age_group, rows)
+        self.assertNotIn(gender.gender, rows)
         self.assertIn(content_type.content_type, rows)
         self.assertIn(content_quality.quality, rows)
         self.assertIn(f"https://www.youtube.com/channel/{doc.main.id}", rows)
@@ -450,21 +538,41 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         """
         test that segment.get_s3_key retrieves existing s3 key if available
         """
-        user = self.create_admin_user()
+        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             title=f"title_{next(int_iterator)}",
             segment_type=1, owner=user,
         )
-        old_s3_key = segment.get_admin_s3_key()
+        old_s3_key = segment.get_s3_key()
         new_s3_key = 'new_s3_key.csv'
         CustomSegmentFileUpload.objects.create(
             segment=segment,
             query={"params": {"some": "params"}},
             download_url="some-download-url.com/asdf/asdf/asdf.csv",
-            filename=new_s3_key
+            filename=new_s3_key,
         )
-        self.assertEqual(new_s3_key, segment.get_admin_s3_key())
+        self.assertEqual(new_s3_key, segment.get_s3_key())
         self.assertNotEqual(new_s3_key, old_s3_key)
+
+    def test_export_admin_s3_key_retrieval(self):
+        """
+        test that segment.get_admin_s3_key retrieves existing admin s3 key if available
+        """
+        user = self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user,
+        )
+        old_admin_s3_key = segment.get_admin_s3_key()
+        new_admin_s3_key = 'new_admin_s3_key.csv'
+        CustomSegmentFileUpload.objects.create(
+            segment=segment,
+            query={"params": {"some": "params"}},
+            download_url="some-download-url.com/asdf/asdf/asdf.csv",
+            admin_filename=new_admin_s3_key,
+        )
+        self.assertEqual(new_admin_s3_key, segment.get_admin_s3_key())
+        self.assertNotEqual(new_admin_s3_key, old_admin_s3_key)
 
     def test_source_s3_key_retrieval(self):
         """
@@ -522,7 +630,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         )
         with patch("segment.tasks.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
             generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_admin_s3_key()
+        export_key = segment.get_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         columns = ",".join(segment.export_serializer.columns)
         rows = ",".join([row.decode("utf-8") for row in body])
