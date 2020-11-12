@@ -351,7 +351,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_generate_channel_admin_export_data(self):
-        """ Test channel export contains all data """
+        """ Test channel admin export contains all data """
         bs_category = BadWordCategory.objects.first()
         content_type = AuditContentType.objects.first()
         content_quality = AuditContentQuality.objects.first()
@@ -402,7 +402,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_generate_channel_user_export_data(self):
-        """ Test channel export contains all data """
+        """ Test channel user export contains correct data """
         bs_category = BadWordCategory.objects.first()
         content_type = AuditContentType.objects.first()
         content_quality = AuditContentQuality.objects.first()
@@ -417,8 +417,8 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             title=f"title_{_id}", top_lang_code="es", iab_categories=["Test_Again"],
             country_code="CA",
         )
-        doc.populate_stats(subscribers=888)
-        doc.populate_brand_safety(overall_score=44)
+        doc.populate_stats(subscribers=898)
+        doc.populate_brand_safety(overall_score=54)
         doc.populate_task_us_data(
             brand_safety=[bs_category.id],
             age_group=age_group.id,
@@ -426,7 +426,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             content_type=content_type.id,
             content_quality=content_quality.id,
             last_vetted_at=timezone.now(),
-            mismatched_language=True,
+            mismatched_language=False,
         )
         docs = [doc]
         self.channel_manager.upsert(docs)
