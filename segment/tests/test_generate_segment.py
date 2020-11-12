@@ -347,7 +347,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment_type=1, uuid=uuid4(), list_type=0
         )
         generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_s3_key()
+        export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
 
@@ -437,7 +437,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
         generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_s3_key()
+        export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
         for included in inclusion:
@@ -455,7 +455,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             title=f"title_{next(int_iterator)}",
             segment_type=1, owner=user,
         )
-        old_s3_key = segment.get_s3_key()
+        old_s3_key = segment.get_admin_s3_key()
         new_s3_key = 'new_s3_key.csv'
         CustomSegmentFileUpload.objects.create(
             segment=segment,
@@ -463,7 +463,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             download_url="some-download-url.com/asdf/asdf/asdf.csv",
             filename=new_s3_key
         )
-        self.assertEqual(new_s3_key, segment.get_s3_key())
+        self.assertEqual(new_s3_key, segment.get_admin_s3_key())
         self.assertNotEqual(new_s3_key, old_s3_key)
 
     def test_source_s3_key_retrieval(self):
@@ -522,7 +522,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         )
         with patch("segment.tasks.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
             generate_segment(segment, Q(), len(docs))
-        export_key = segment.get_s3_key()
+        export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         columns = ",".join(segment.export_serializer.columns)
         rows = ",".join([row.decode("utf-8") for row in body])
