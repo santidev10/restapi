@@ -1,5 +1,6 @@
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELDS
 from aw_reporting.adwords_reports import placement_performance_report
+from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
 from performiq.models.constants import CampaignDataFields
 from performiq.oauth_utils import get_client
@@ -43,9 +44,11 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
     for row in report:
         if "channel" not in row.DisplayName:
             continue
-        # Create new dictionary of mapped keys to raw API data values
-        data = {
-            mapped_key: getattr(row, report_field, None) for report_field, mapped_key in ADWORDS_API_FIELD_MAPPING.items()
-        }
+        data = {}
+        # Create new dictionary of mapped keys to mapped API data values
+        for report_field, mapped_key in ADWORDS_API_FIELD_MAPPING.items():
+            coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+            api_value = coercer(getattr(row, report_field, None))
+            data[mapped_key] = coercer(api_value) if coercer is not None else api_value
         all_data.append(data)
     return all_data

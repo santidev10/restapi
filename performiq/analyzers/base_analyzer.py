@@ -20,13 +20,16 @@ class IQChannelResult:
 
 
 class BaseAnalyzer:
-    def __call__(self, *args, **kwargs):
+    def analyze(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def get_results(self, *args, **kwargs):
         raise NotImplementedError
 
     @staticmethod
     def get_score(passed, total):
         try:
-            score = passed // total * 100
+            score = round(passed / total * 100, 2)
         except ZeroDivisionError:
             score = 0
         return score

@@ -2,22 +2,22 @@ from typing import Dict
 
 from .base_analyzer import IQChannelResult
 from .base_analyzer import BaseAnalyzer
-from .constants import COERCE_FIELD_FUNCS
 from .constants import AnalyzeSection
-from .utils import Coercers
 from performiq.models.constants import CampaignDataFields
 
 
 class PerformanceAnalyzer(BaseAnalyzer):
+    """
+    Analyzes channels based on ad performance metrics
+    Once called, this will attempt to analyze all channels given in iq_results parameter
+    """
     PERFORMANCE_FIELDS = {CampaignDataFields.CPV, CampaignDataFields.CPM, CampaignDataFields.CTR,
                           CampaignDataFields.VIDEO_VIEW_RATE, CampaignDataFields.ACTIVE_VIEW_VIEWABILITY}
 
     def __init__(self, iq_campaign, iq_results: Dict[str, IQChannelResult]):
         self.iq_campaign = iq_campaign
-        self.analyze_params = self.iq_campaign.params
-        self.iq_campaign = iq_campaign
         self.iq_results = iq_results
-        self._results = None
+        self._performance_results = None
         # If channel fails in any metric, it fails entirely
         # This will be set by _init_channel_results in the call method as we first need to retrieve API
         # data to set channel ids
@@ -25,15 +25,14 @@ class PerformanceAnalyzer(BaseAnalyzer):
         # Keep track of actual channels analyzed as a channel may not have sufficient data to analyze
         self._analyzed_channels_count = 0
 
-    def __call__(self):
-        self._results = self._analyze()
+    def get_results(self):
         overall_score = self.get_score(self._analyzed_channels_count - len(self._failed_channels),
                                        self._analyzed_channels_count)
         averages = self._calculate_averages()
-        self._results["overall_score"] = overall_score
-        self._results["cpm"]["avg"] = averages["cpm_avg"]
-        self._results["cpv"]["avg"] = averages["cpv_avg"]
-        return self._results
+        self._performance_results["overall_score"] = overall_score
+        self._performance_results["cpm"]["avg"] = averages["cpm_avg"]
+        self._performance_results["cpv"]["avg"] = averages["cpv_avg"]
+        return self._performance_results
 
     def _add_performance(self, results: dict):
         """
@@ -58,21 +57,21 @@ class PerformanceAnalyzer(BaseAnalyzer):
         cpm = [0, 0]
         cpv = [0, 0]
         for r in self.iq_results.values():
-            cpm_val = r.iq_channel.meta_data.get(CampaignDataFields.CPM)
-            cpv_val = r.iq_channel.meta_data.get(CampaignDataFields.CPV)
+            cpm_val = r.iq_channel.meta_data.get(CampaignDataFields.CPM, 0)
+            cpv_val = r.iq_channel.meta_data.get(CampaignDataFields.CPV, 0)
             if cpm_val:
-                cpm[0] = cpm[0] + Coercers.cost(cpm_val)
+                cpm[0] = cpm[0] + cpm_val
                 cpm[1] = cpm[1] + 1
             if cpv_val:
-                cpv[0] = cpv[0] + Coercers.cost(cpv_val)
+                cpv[0] = cpv[0] + cpv_val
                 cpv[1] = cpv[1] + 1
         averages = dict(
-            cpm_avg=cpm[0] / cpm[1],
-            cpv_avg=cpv[0] / cpv[1],
+            cpm_avg=cpm[0] / cpm[1] or 1,
+            cpv_avg=cpv[0] / cpv[1] or 1,
         )
         return averages
 
-    def _analyze(self):
+    def analyze(self):
         """
         Analyze for performance using thresholds defined in IQCampaign.params
         Count of passed and failed items will be tracked for each field in PERFORMANCE_FIELDS
@@ -88,14 +87,10 @@ class PerformanceAnalyzer(BaseAnalyzer):
             curr_result = {
                 "passed": True
             }
-            # Get the Coercer method to map raw values for comparisons
-            data = {
-                # Default to using the raw value if method not defined for key
-                key: COERCE_FIELD_FUNCS.get(key, Coercers.raw)(val) for key, val in iq_channel.meta_data.copy().items()
-            }
+            data = iq_channel.meta_data.copy()
             analyzed = False
             # Compare each metric in data (e.g. video_view_rate) with IQCampaign.params threshold values
-            for metric_name, threshold in self.analyze_params.items():
+            for metric_name, threshold in self.iq_campaign.params.items():
                 metric_value = data.get(metric_name, None)
                 try:
                     if self.passes(metric_value, threshold):
@@ -112,10 +107,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
             iq_result.add_result(AnalyzeSection.PERFORMANCE_RESULT_KEY, curr_result)
             if analyzed is True:
                 self._analyzed_channels_count += 1
-            if iq_channel.channel_id == 'UCIuMyNYjibnRVr0gtWKtITw':
-                print('here')
         self._add_performance(total_results)
-        return dict(total_results)
+        self._performance_results = dict(total_results)
 
     def passes(self, value, threshold, direction="+"):
         if direction == "+":

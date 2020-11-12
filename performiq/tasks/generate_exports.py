@@ -39,16 +39,23 @@ def generate_exports(iq_campaign: IQCampaign):
     # Prepare paths to generate exports
     recommended_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     wastage_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    recommended_s3_key = with_cleanup(create_recommended_export, iq_campaign, exporter, recommended_fp)
-    wastage_s3_key = with_cleanup(create_wastage_export, iq_campaign, exporter, wastage_fp)
+    recommended_s3_key, total_recommended = with_cleanup(create_recommended_export, iq_campaign, exporter, recommended_fp)
+    wastage_s3_key, total_wastage = with_cleanup(create_wastage_export, iq_campaign, exporter, wastage_fp)
+
     iq_campaign.results["exports"] = {
         EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
-        EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key
+        EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
+        "statistics": {
+            "wastage_channels_percent": "",
+            "wastage_spend": "",
+            "wastage_count": total_wastage,
+            "recommended_count": total_recommended,
+        }
     }
     iq_campaign.save(update_fields=["results"])
 
 
-def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Exporter, filepath: str) -> str:
+def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Exporter, filepath: str) -> tuple:
     """
     Generate and export csv file of all placement ids that passed analyze as well as additional placement with
         similar qualities
@@ -79,7 +86,7 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
 
     display_filename = f"{iq_campaign.campaign.name}_recommended_{now_in_default_tz().date()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
-    return s3_key
+    return s3_key, len(clean_ids)
 
 
 def create_wastage_export(iq_campaign, exporter, filepath):
@@ -104,7 +111,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
 
     display_filename = f"{iq_campaign.campaign.name}_wastage_{now_in_default_tz().date()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
-    return s3_key
+    return s3_key, len(rows)
 
 
 def get_failed_repr(passed):

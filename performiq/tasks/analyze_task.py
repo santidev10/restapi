@@ -25,51 +25,71 @@ GET_DATA_FUNCS = {
 
 def analyze(oauth_account_id, iq_campaign_id):
     iq_campaign = IQCampaign.objects.get(id=iq_campaign_id)
-    # get_data_func = GET_DATA_FUNCS[iq_campaign.campaign.oauth_type]
-    # api_data = get_data_func(iq_campaign, oauth_account_id=oauth_account_id)
-    #
-    # # iq_channels = create_data(iq_campaign, api_data)[:30]
+    get_data_func = GET_DATA_FUNCS[iq_campaign.campaign.oauth_type]
+    raw_data = get_data_func(iq_campaign, oauth_account_id=oauth_account_id)
+
+    iq_channels = create_data(iq_campaign, raw_data)
     # iq_channels = IQCampaignChannel.objects.filter(iq_campaign=iq_campaign)
-    #
-    # iq_results = {
-    #     item.channel_id: IQChannelResult(item) for item in iq_channels
-    # }
-    # performance_analyzer = PerformanceAnalyzer(iq_campaign, iq_results)
-    # performance_results = performance_analyzer()
-    #
-    # contextual_analyzer = ContextualAnalyzer(iq_campaign, iq_results)
-    # suitability_analyzer = SuitabilityAnalyzer(iq_campaign, iq_results)
-    # analyzers = [contextual_analyzer, suitability_analyzer]
-    # process_channels(iq_results, analyzers)
+
+    # Prepare dict results for each analyzer to add results to
+    iq_results = {
+        item.channel_id: IQChannelResult(item) for item in iq_channels
+    }
+    performance_analyzer = PerformanceAnalyzer(iq_campaign, iq_results)
+    performance_analyzer.analyze()
+
+    contextual_analyzer = ContextualAnalyzer(iq_campaign, iq_results)
+    suitability_analyzer = SuitabilityAnalyzer(iq_campaign, iq_results)
+    analyzers = [contextual_analyzer, suitability_analyzer]
+    process_channels(iq_results, analyzers)
     # IQCampaignChannel.objects.bulk_update((r.iq_channel for r in iq_results.values()), fields=["clean", "results"])
-    # pass
-    # all_results = {
-    #     "performance_results": performance_results,
-    #     "contextual_results": contextual_analyzer.results,
-    #     "suitability_results": suitability_analyzer.results,
-    #     "params": iq_campaign.params
-    # }
+    statistics = get_statistics(iq_results.values())
+    all_results = {
+        "params": iq_campaign.params,
+        "performance_results": performance_analyzer.get_results(),
+        "contextual_results": contextual_analyzer.get_results(),
+        "suitability_results": suitability_analyzer.get_results(),
+        "statistics": statistics,
+    }
+    iq_campaign.results.update(all_results)
+    iq_campaign.save(update_fields=["results"])
     generate_exports(iq_campaign)
 
 
 def process_channels(iq_results: Dict[str, IQChannelResult], analyzers: list):
+    """
+    Handle applying analyzers to each channel retrieved using iq_results
+    Each analyzer will mutate result of channel being analyzed stored in iq_results
+    :param iq_results: dict
+    :param analyzers: list -> List of analzyers to apply to each channel
+    :return: dict
+    """
     channel_manager = ChannelManager(["general_data", "task_us_data", "brand_safety"])
     for batch in chunks_generator(iq_results.keys(), size=5000):
         channels = channel_manager.get(batch, skip_none=True)
         for channel in channels:
-            # Each analyzer will mutate channel results
-            [analyzer(channel) for analyzer in analyzers]
+            # Each analyzer will mutate channel results in iq_results
+            [analyzer(channel).analyze() for analyzer in analyzers]
     return iq_results
 
 
-def create_data(iq_campaign: IQCampaign, api_data: list):
+def create_data(iq_campaign: IQCampaign, raw_data: list):
     init_results = {
         key: {} for key in ANALYZE_SECTIONS
     }
     to_create = [
         IQCampaignChannel(iq_campaign_id=iq_campaign.id, results=init_results,
                           channel_id=data[CampaignDataFields.CHANNEL_ID], meta_data=data)
-        for data in api_data
+        for data in raw_data
     ]
-    safe_bulk_create(IQCampaignChannel, to_create)
+    # safe_bulk_create(IQCampaignChannel, to_create)
     return to_create
+
+
+def get_statistics(iq_results):
+    wastage_channels = [r.iq_channel for r in iq_results]
+    statistics = {
+        "wastage_channels_percent": len(wastage_channels) / len(iq_results) or 1,
+        "wastage_spend": sum(iq_channel.meta_data[CampaignDataFields.COST] for iq_channel in wastage_channels),
+    }
+    return statistics

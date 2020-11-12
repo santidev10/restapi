@@ -1,17 +1,10 @@
 import csv
-import io
-import time
-import pprint
 
-from django.conf import settings
-
-from six.moves.urllib.request import urlopen
 from googleapiclient import discovery
-from contextlib import closing
+from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from performiq.utils.dv360 import load_credentials
 from performiq.utils.dv360 import get_discovery_resource
 from performiq.models import OAuthAccount
-from performiq.models import IQCampaignChannel
 from performiq.models import Campaign
 from performiq.models.constants import OAuthType
 from performiq.models.constants import CampaignDataFields
@@ -32,6 +25,7 @@ KEY_MAPPING = {
     "METRIC_TRUEVIEW_VIEW_RATE": CampaignDataFields.VIDEO_VIEW_RATE,
     "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY": CampaignDataFields.CPM,
     "METRIC_TRUEVIEW_CPV_ADVERTISER": CampaignDataFields.CPV,
+    "METRIC_CLIENT_COST_ADVERTISER_CURRENCY": CampaignDataFields.COST,
 }
 
 
@@ -57,7 +51,8 @@ def get_dv360_data(iq_campaign, **kwargs):
             "metrics": [
                 "METRIC_TRUEVIEW_VIEW_RATE",
                 "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
-                "METRIC_TRUEVIEW_CPV_ADVERTISER"
+                "METRIC_TRUEVIEW_CPV_ADVERTISER",
+                "METRIC_CLIENT_COST_ADVERTISER_CURRENCY"
             ],
             "type": "TYPE_TRUEVIEW"
         },
@@ -81,6 +76,7 @@ def get_metrics(credentials, advertiser_id, insertion_order_ids):
                 "METRIC_TRUEVIEW_VIEW_RATE",
                 "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
                 "METRIC_TRUEVIEW_CPV_ADVERTISER",
+                "METRIC_CLIENT_COST_ADVERTISER_CURRENCY",
             ],
             "groupBys": [
                 "FILTER_ADVERTISER",
@@ -113,14 +109,15 @@ def get_metrics(credentials, advertiser_id, insertion_order_ids):
 @backoff(max_backoff=3600 * 5, exceptions=(ValueError,))
 def get_dv360_query_completion(query_request):
     response = query_request.execute()
-    pprint.pprint(response)
-    if response["metadata"]["running"] is True and response["metadata"].get("googleCloudStoragePathForLatestReport") is None:
+    if response["metadata"]["running"] is True and response["metadata"].get("googleCloudStoragePathForLatestReport") \
+            is None:
         raise ValueError
     return response
 
 
 def get_insertion_orders(resource, dv360_campaign_id):
-    res = resource.advertisers().insertionOrders().list(advertiserId="1878225", filter=f"campaignId={dv360_campaign_id}").execute()
+    res = resource.advertisers().insertionOrders().list(advertiserId="1878225",
+                                                        filter=f"campaignId={dv360_campaign_id}").execute()
     insertion_order_ids = [item["insertionOrderId"] for item in res.get("insertionOrders", [])]
     return insertion_order_ids
 
@@ -141,10 +138,13 @@ def process_csv(query):
             formatted = {}
             # Construct dict for each row as entire csv is not formatted with columns
             for index, column_name in enumerate(columns):
-                db_field_name = KEY_MAPPING[column_name]
-                if db_field_name == CampaignDataFields.CHANNEL_ID:
+                mapped_data_key = KEY_MAPPING[column_name]
+                if mapped_data_key == CampaignDataFields.CHANNEL_ID:
                     # Youtube Placment URL does not need to be preserved
                     row[index] = row[index].split("/channel/")[-1]
-                formatted[db_field_name] = row[index]
+                api_value = row[index]
+                coercer = COERCE_FIELD_FUNCS.get(mapped_data_key)
+                mapped_value = coercer(api_value) if coercer is not None else api_value
+                formatted[mapped_data_key] = mapped_value
             all_rows.append(formatted)
     return all_rows

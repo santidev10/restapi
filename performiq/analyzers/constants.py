@@ -18,6 +18,7 @@ COERCE_FIELD_FUNCS = {
     CampaignDataFields.CTR: Coercers.percentage,
     CampaignDataFields.CPM: Coercers.cost,
     CampaignDataFields.CPV: Coercers.cost,
+    CampaignDataFields.COST: Coercers.cost,
     CampaignDataFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
     CampaignDataFields.VIDEO_VIEW_RATE: Coercers.percentage,
 }
