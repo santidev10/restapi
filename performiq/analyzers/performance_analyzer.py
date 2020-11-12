@@ -104,7 +104,6 @@ class PerformanceAnalyzer(BaseAnalyzer):
                         total_results[metric_name]["failed"] += 1
                         curr_result["passed"] = False
                         self._failed_channels.add(iq_channel.channel_id)
-                        self.iq_results[iq_channel.channel_id].fail()
                     curr_result[metric_name] = metric_value
                     # Flag to ensure we have at least processed one metric in current iq_result being processed
                     analyzed = True
@@ -113,6 +112,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
             iq_result.add_result(AnalyzeSection.PERFORMANCE_RESULT_KEY, curr_result)
             if analyzed is True:
                 self._analyzed_channels_count += 1
+            if iq_channel.channel_id == 'UCIuMyNYjibnRVr0gtWKtITw':
+                print('here')
         self._add_performance(total_results)
         return dict(total_results)
 

@@ -34,7 +34,6 @@ class SuitabilityAnalyzer(BaseAnalyzer):
                 result["passed"] = False
                 self._result_counts["failed"] += 1
                 self._failed_channels.add(channel.main.id)
-                self.iq_results[channel.main.id].fail()
                 suitability_failed = True
             result["overall_score"] = channel.brand_safety.overall_score
         except TypeError:

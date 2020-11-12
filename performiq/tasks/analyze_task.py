@@ -1,3 +1,5 @@
+from typing import Dict
+
 from es_components.managers import ChannelManager
 from performiq.analyzers import IQChannelResult
 from performiq.analyzers import PerformanceAnalyzer
@@ -27,44 +29,40 @@ def analyze(oauth_account_id, iq_campaign_id):
     # api_data = get_data_func(iq_campaign, oauth_account_id=oauth_account_id)
     #
     # # iq_channels = create_data(iq_campaign, api_data)[:30]
-    iq_channels = IQCampaignChannel.objects.filter(iq_campaign=iq_campaign)
-
-    iq_results = {
-        item.channel_id: IQChannelResult(item) for item in iq_channels
-    }
-    performance_analyzer = PerformanceAnalyzer(iq_campaign, iq_results)
-    performance_results = performance_analyzer()
-
-    contextual_analyzer = ContextualAnalyzer(iq_campaign, iq_results)
+    # iq_channels = IQCampaignChannel.objects.filter(iq_campaign=iq_campaign)
+    #
+    # iq_results = {
+    #     item.channel_id: IQChannelResult(item) for item in iq_channels
+    # }
+    # performance_analyzer = PerformanceAnalyzer(iq_campaign, iq_results)
+    # performance_results = performance_analyzer()
+    #
+    # contextual_analyzer = ContextualAnalyzer(iq_campaign, iq_results)
     # suitability_analyzer = SuitabilityAnalyzer(iq_campaign, iq_results)
     # analyzers = [contextual_analyzer, suitability_analyzer]
-    # placement_results = process_channels(iq_channels, analyzers)
-    # failed = [channel_id for channel_id in placement_results if placement_results[channel_id] is False]
-    # IQCampaignChannel.objects.filter(channel_id__in=failed).update(clean=False)
+    # process_channels(iq_results, analyzers)
+    # IQCampaignChannel.objects.bulk_update((r.iq_channel for r in iq_results.values()), fields=["clean", "results"])
+    # pass
     # all_results = {
     #     "performance_results": performance_results,
     #     "contextual_results": contextual_analyzer.results,
     #     "suitability_results": suitability_analyzer.results,
     #     "params": iq_campaign.params
     # }
-    # generate_exports(iq_campaign)
+    generate_exports(iq_campaign)
 
 
-def process_channels(iq_channels, analyzers):
-    placement_results = {}
-    placement_ids_generator = (item.channel_id for item in iq_channels)
+def process_channels(iq_results: Dict[str, IQChannelResult], analyzers: list):
     channel_manager = ChannelManager(["general_data", "task_us_data", "brand_safety"])
-    for batch in chunks_generator(placement_ids_generator, size=5000):
+    for batch in chunks_generator(iq_results.keys(), size=5000):
         channels = channel_manager.get(batch, skip_none=True)
         for channel in channels:
-            # Each analyzer call returns True if the channel fails, else if the channel passes False
-            analyzer_results = [analyzer(channel) for analyzer in analyzers]
-            passed = all(fail is False for fail in analyzer_results)
-            placement_results[channel.main.id] = passed
-    return placement_results
+            # Each analyzer will mutate channel results
+            [analyzer(channel) for analyzer in analyzers]
+    return iq_results
 
 
-def create_data(iq_campaign, api_data):
+def create_data(iq_campaign: IQCampaign, api_data: list):
     init_results = {
         key: {} for key in ANALYZE_SECTIONS
     }

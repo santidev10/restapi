@@ -6,7 +6,6 @@ class IQChannelResult:
     """ Class to represent the result of analyzing a single Youtube channel placement """
     def __init__(self, iq_channel: IQCampaignChannel):
         self.iq_channel = iq_channel
-        self.results = {}
 
     def add_result(self, analyzer: str, data: dict):
         """
@@ -15,17 +14,9 @@ class IQChannelResult:
         :param data: should be the return value of PerformanceAnalyzer, ContextualAnalyzer, or SuitabilityAnalyzer
         """
         if analyzer in ANALYZE_SECTIONS:
-            self.results[analyzer] = data
-
-    def fail(self, analyzer=None):
-        """
-        Mark result as failed
-        :param analyzer: should be one of these values: performance, contextual, suitability
-        :return:
-        """
-        if analyzer and analyzer in ANALYZE_SECTIONS:
+            self.iq_channel.results[analyzer] = data
+        if data["passed"] is False:
             self.iq_channel.clean = False
-            self.iq_channel.results[analyzer]["pass"] = False
 
 
 class BaseAnalyzer:

@@ -57,7 +57,6 @@ class ContextualAnalyzer(BaseAnalyzer):
             result[params_field] = attr_value
         if contextual_failed is True:
             result["passed"] = False
-            self.iq_results[channel.main.id].fail()
             self._failed_channels.add(channel.main.id)
         if analyzed is True:
             self._analyzed_channels_count += 1
