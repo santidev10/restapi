@@ -13,6 +13,7 @@ from performiq.models.constants import OAuthType
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data
 from performiq.tasks.utils.get_dv360_data import get_dv360_data
 from performiq.tasks.generate_exports import generate_exports
+from saas import celery_app
 from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator
 
@@ -23,26 +24,28 @@ GET_DATA_FUNCS = {
 }
 
 
+@celery_app.task
 def analyze(oauth_account_id, iq_campaign_id):
     iq_campaign = IQCampaign.objects.get(id=iq_campaign_id)
     get_data_func = GET_DATA_FUNCS[iq_campaign.campaign.oauth_type]
     raw_data = get_data_func(iq_campaign, oauth_account_id=oauth_account_id)
-
     iq_channels = create_data(iq_campaign, raw_data)
-    # iq_channels = IQCampaignChannel.objects.filter(iq_campaign=iq_campaign)
 
     # Prepare dict results for each analyzer to add results to
     iq_results = {
         item.channel_id: IQChannelResult(item) for item in iq_channels
     }
     performance_analyzer = PerformanceAnalyzer(iq_campaign, iq_results)
-    performance_analyzer.analyze()
-
     contextual_analyzer = ContextualAnalyzer(iq_campaign, iq_results)
     suitability_analyzer = SuitabilityAnalyzer(iq_campaign, iq_results)
+
+    # PerformanceAnalyzer is analyzed separately since we have all available data (i.e. Either api data or from csv)
+    # ContextualAnalyzer and SuitabilityAnalyzer rely on retrieving documents from Elasticsearch
+    # which is done in batches
+    performance_analyzer.analyze()
     analyzers = [contextual_analyzer, suitability_analyzer]
     process_channels(iq_results, analyzers)
-    # IQCampaignChannel.objects.bulk_update((r.iq_channel for r in iq_results.values()), fields=["clean", "results"])
+    IQCampaignChannel.objects.bulk_update((r.iq_channel for r in iq_results.values()), fields=["clean", "results"])
     statistics = get_statistics(iq_results.values())
     all_results = {
         "params": iq_campaign.params,
@@ -82,7 +85,7 @@ def create_data(iq_campaign: IQCampaign, raw_data: list):
                           channel_id=data[CampaignDataFields.CHANNEL_ID], meta_data=data)
         for data in raw_data
     ]
-    # safe_bulk_create(IQCampaignChannel, to_create)
+    safe_bulk_create(IQCampaignChannel, to_create)
     return to_create
 
 
@@ -93,3 +96,4 @@ def get_statistics(iq_results):
         "wastage_spend": sum(iq_channel.meta_data[CampaignDataFields.COST] for iq_channel in wastage_channels),
     }
     return statistics
+

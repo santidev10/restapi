@@ -55,3 +55,9 @@ class CampaignDataFields:
 class EXPORT_RESULTS_KEYS:
     RECOMMENDED_EXPORT_FILENAME = "recommended_export_filename"
     WASTAGE_EXPORT_FILENAME = "wastage_export_filename"
+
+
+class DataSourceType(IntEnum):
+    GOOGLE_ADS = 0
+    DV360 = 1
+    CSV = 2
