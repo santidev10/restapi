@@ -122,16 +122,17 @@ class AbstractThreadedDVSynchronizer:
     CREATED_THRESHOLD_MINUTES = CREATED_THRESHOLD_MINUTES
     THREAD_CEILING = 5
 
-    future_contexts = []
-    responses = []
-
     # required inheritor fields:
-    query = None
     model_id_filter = None
     response_items_key = None
     adapter_class = None
     serializer_class = None
     request_function = None
+
+    def __init__(self):
+        self.query = None
+        self.future_contexts = []
+        self.responses = []
 
     @staticmethod
     def get_request_function():
@@ -147,6 +148,9 @@ class AbstractThreadedDVSynchronizer:
         :rtype: None
         """
         executor_contexts = self.get_executor_contexts()
+        if not len(executor_contexts):
+            logger.info(f"No available OAuthAccounts to work with for {self.__class__.__name__}")
+            return
         resource_context_pool = cycle(executor_contexts)
 
         max_workers = min(len(executor_contexts), self.THREAD_CEILING)
@@ -260,11 +264,14 @@ class AbstractThreadedDVSynchronizer:
 
 class DVAdvertiserSynchronizer(AbstractThreadedDVSynchronizer):
 
-    query = DV360Partner.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
     model_id_filter = "dv360_partners__id__in"
     response_items_key = "advertisers"
     adapter_class = AdvertiserAdapter
     serializer_class = AdvertiserSerializer
+
+    def __init__(self):
+        super().__init__()
+        self.query = DV360Partner.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
 
     def run(self):
         logger.info(f"starting dv advertisers sync...")
@@ -277,11 +284,14 @@ class DVAdvertiserSynchronizer(AbstractThreadedDVSynchronizer):
 
 class DVCampaignSynchronizer(AbstractThreadedDVSynchronizer):
 
-    query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
     model_id_filter = "dv360_advertisers__id__in"
     response_items_key = "campaigns"
     adapter_class = CampaignAdapter
     serializer_class = CampaignSerializer
+
+    def __init__(self):
+        super().__init__()
+        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
 
     def run(self):
         logger.info(f"starting dv campaign sync...")
