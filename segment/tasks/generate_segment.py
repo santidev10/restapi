@@ -108,7 +108,6 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             segment.s3.export_file_to_s3(admin_filename, admin_s3_key)
             # CTL export csv is finished, start audit for further filtering with inclusion_file / exclusion
             # file keywords
-            generate_utils.start_audit(filename)
             generate_utils.start_audit(admin_filename)
             results = {
                 "s3_key": s3_key,
