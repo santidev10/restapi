@@ -1,3 +1,4 @@
+from googleads.errors import GoogleAdsServerFault
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
@@ -132,6 +133,13 @@ class AdWordsAuthApiView(APIView):
             if ex_token_error in str(e):
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=ex_token_error))
+        except GoogleAdsServerFault as e:
+            for error in e.errors:
+                authentication_error = "AuthenticationError.CUSTOMER_NOT_FOUND"
+                if authentication_error in error.errorString:
+                    error_message = "Authentication error. Are you sure you have access to google ads?"
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data=dict(error=error_message))
         else:
             if mcc_accounts:
                 first = mcc_accounts[0]
@@ -144,6 +152,7 @@ class AdWordsAuthApiView(APIView):
             else:
                 response = "You have no accounts to sync."
                 status = HTTP_400_BAD_REQUEST
+            # TODO async this?
             update_campaigns_task(oauth_account.id)
             return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
