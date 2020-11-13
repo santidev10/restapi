@@ -59,8 +59,6 @@ def get_dv360_data(iq_campaign, **kwargs):
     }
     mapped_data = process_csv(report_response)
     return mapped_data
-    # process_csv(report_response["params"])
-    #
 
 
 def get_metrics(credentials, advertiser_id, insertion_order_ids):

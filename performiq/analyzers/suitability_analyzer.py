@@ -8,9 +8,9 @@ from performiq.models import IQCampaign
 
 
 class SuitabilityAnalyzer(BaseAnalyzer):
-    def __init__(self, iq_campaign: IQCampaign, iq_results: Dict[str, IQChannelResult]):
+    def __init__(self, iq_campaign: IQCampaign, iq_channel_results: Dict[str, IQChannelResult]):
         self.iq_campaign = iq_campaign
-        self.iq_results = iq_results
+        self.iq_channel_results = iq_channel_results
         self.analyze_params = iq_campaign.params
         self._failed_channels = set()
         self._result_counts = dict(
@@ -37,5 +37,6 @@ class SuitabilityAnalyzer(BaseAnalyzer):
             curr_channel_result["overall_score"] = channel.brand_safety.overall_score
         except TypeError:
             return
-        self.iq_results[channel.main.id].add_result(AnalyzeSection.SUITABILITY_RESULT_KEY, curr_channel_result)
+        # Add the suitability analysis result for the current channel being processed
+        self.iq_channel_results[channel.main.id].add_result(AnalyzeSection.SUITABILITY_RESULT_KEY, curr_channel_result)
         return suitability_failed

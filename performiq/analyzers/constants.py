@@ -1,3 +1,5 @@
+import enum
+
 from .utils import Coercers
 from performiq.models.constants import CampaignDataFields
 
@@ -22,3 +24,9 @@ COERCE_FIELD_FUNCS = {
     CampaignDataFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
     CampaignDataFields.VIDEO_VIEW_RATE: Coercers.percentage,
 }
+
+
+class DataSourceType(enum.IntEnum):
+    GOOGLE_ADS = 0
+    DV360 = 1
+    CSV = 2
