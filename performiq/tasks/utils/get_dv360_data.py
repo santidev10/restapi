@@ -1,22 +1,18 @@
 import csv
+import logging
+import os
+import tempfile
 
-from googleapiclient import discovery
+from django.conf import settings
+
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
-from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import get_discovery_resource
 from performiq.models import OAuthAccount
 from performiq.models import Campaign
+from performiq.models import IQCampaign
 from performiq.models.constants import OAuthType
 from performiq.models.constants import CampaignDataFields
-from utils.exception import backoff
+from utils.dv360_api import DV360Connector
 
-"""
-CANNOT GET:
-METRIC_CLIENT_COST_VIEWABLE_ECPM_ADVERTISER_CURRENCY = CampaignDataFields.CPM
-METRIC_CTR = CampaignDataFields.CTR
-METRIC_ACTIVE_VIEW_PERCENT_VISIBLE_ON_COMPLETE = CampaignDataFields.VIDEO_QUARTILE_100_RATE,
-METRIC_ACTIVE_VIEW_PCT_VIEWABLE_IMPRESSIONS = CampaignDataField.ACTIVE_VIEW_VIEWABILITY
-"""
 
 KEY_MAPPING = {
     "FILTER_ADVERTISER": CampaignDataFields.ADVERTISER_ID,
@@ -28,104 +24,65 @@ KEY_MAPPING = {
     "METRIC_CLIENT_COST_ADVERTISER_CURRENCY": CampaignDataFields.COST,
 }
 
+logger = logging.getLogger(__name__)
 
-def get_dv360_data(iq_campaign, **kwargs):
-    dv360_campaign = Campaign.objects.get(id=iq_campaign.campaign.id, oauth_type=OAuthType.DV360.value)
-    account = OAuthAccount.objects.get(id=kwargs["oauth_account_id"])
-    credentials = load_credentials(account)
-    resource = get_discovery_resource(credentials)
-    insertion_order_ids = get_insertion_orders(resource, dv360_campaign.id)[:1]
 
-    # report_response = get_metrics(credentials, dv360_campaign.advertiser.id, insertion_order_ids)
-    # report_url = report_response["metadata"]["googleCloudStoragePathForLatestReport"]
-    # with open("output", "wb") as file,\
-    #         closing(urlopen(report_url)) as url:
-    #     file.write(url.read())
-    report_response = {
-        "params": {
-            "groupBys": [
-                "FILTER_ADVERTISER",
-                "FILTER_ADVERTISER_CURRENCY",
-                "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS"
+def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
+    report_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    try:
+        dv360_campaign = Campaign.objects.get(id=iq_campaign.campaign.id, oauth_type=OAuthType.DV360.value)
+        oauth_account = OAuthAccount.objects.get(id=kwargs["oauth_account_id"])
+        connector = DV360Connector(access_token=oauth_account.token, refresh_token=oauth_account.refresh_token)
+        insertion_orders = connector.get_insertion_orders(advertiserId="1878225",
+                                                          filter=f"campaignId={dv360_campaign.id}")
+        insertion_order_filters = [{
+            "type": "FILTER_INSERTION_ORDER",
+            "value": item["insertionOrderId"]
+        } for item in insertion_orders]
+        report_query = dict(
+            report_fp=report_fp,
+            report_type="TYPE_TRUEVIEW",
+            filters=[
+                {
+                    "type": "FILTER_ADVERTISER",
+                    "value": dv360_campaign.advertiser.id,
+                },
+                *insertion_order_filters,
             ],
-            "metrics": [
-                "METRIC_TRUEVIEW_VIEW_RATE",
-                "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
-                "METRIC_TRUEVIEW_CPV_ADVERTISER",
-                "METRIC_CLIENT_COST_ADVERTISER_CURRENCY"
-            ],
-            "type": "TYPE_TRUEVIEW"
-        },
-    }
-    mapped_data = process_csv(report_response)
-    return mapped_data
-
-
-def get_metrics(credentials, advertiser_id, insertion_order_ids):
-    service = discovery.build("doubleclickbidmanager", "v1.1", credentials=credentials)
-    insertion_order_filters = [{
-        "type": "FILTER_INSERTION_ORDER",
-        "value": _id
-    } for _id in insertion_order_ids]
-    report_request = {
-        "params": {
-            "type": "TYPE_TRUEVIEW",
-            "metrics": [
+            metrics=[
                 "METRIC_TRUEVIEW_VIEW_RATE",
                 "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
                 "METRIC_TRUEVIEW_CPV_ADVERTISER",
                 "METRIC_CLIENT_COST_ADVERTISER_CURRENCY",
             ],
-            "groupBys": [
+            group_by=[
                 "FILTER_ADVERTISER",
                 "FILTER_ADVERTISER_CURRENCY",
                 "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS",
             ],
-            "filters": [
-                {
-                    "type": "FILTER_ADVERTISER",
-                    "value": advertiser_id,
-                },
-                *insertion_order_filters,
-            ],
-        },
-        "metadata": {
-            "title": "DV360 Automation API-generated report",
-            "dataRange": "LAST_90_DAYS",
-            "format": "csv"
-        },
-        "schedule": {
-            "frequency": "ONE_TIME"
-        }
-    }
-    operation = service.queries().createquery(body=report_request).execute()
-    query_request = service.queries().getquery(queryId=operation["queryId"])
-    response = get_dv360_query_completion(query_request)
-    return response
+            date_range="LAST_90_DAYS",
+        )
+        result = connector.download_metrics_report(**report_query)
+        csv_generator = report_csv_generator(report_fp, result)
+        return csv_generator
+    except Exception:
+        logger.exception(f"Error retrieving DV360 Metrics report for IQCampaign id: {iq_campaign.id}")
 
 
-@backoff(max_backoff=3600 * 5, exceptions=(ValueError,))
-def get_dv360_query_completion(query_request):
-    response = query_request.execute()
-    if response["metadata"]["running"] is True and response["metadata"].get("googleCloudStoragePathForLatestReport") \
-            is None:
-        raise ValueError
-    return response
-
-
-def get_insertion_orders(resource, dv360_campaign_id):
-    res = resource.advertisers().insertionOrders().list(advertiserId="1878225",
-                                                        filter=f"campaignId={dv360_campaign_id}").execute()
-    insertion_order_ids = [item["insertionOrderId"] for item in res.get("insertionOrders", [])]
-    return insertion_order_ids
-
-
-def process_csv(query):
-    columns = query["params"]["groupBys"] + query["params"]["metrics"]
-    fp = "output"
+def report_csv_generator(report_fp, report_result) -> iter:
+    """
+    Maps DV360 metrics report data to formatted dict key values using KEY_MAPPING
+    DV360 metrics report structure is split into two parts by a new line, actual data and report metadata
+    This function will only yield metric data until the newline is encountered
+    Data that is yielded will be coerced into primitives using COERCE_FIELD_FUNCS
+        depending on the report field (e.g. cpm -> float)
+    :param report_fp: Downloaded report filepath
+    :param report_result: API Response for report request
+    :return: Generator for mapped data
+    """
+    columns = report_result["params"]["groupBys"] + report_result["params"]["metrics"]
     header_skipped = False
-    all_rows = []
-    with open(fp, mode="r") as file:
+    with open(report_fp, mode="r") as file:
         reader = csv.reader(file)
         for row in reader:
             if header_skipped is False:
@@ -138,11 +95,16 @@ def process_csv(query):
             for index, column_name in enumerate(columns):
                 mapped_data_key = KEY_MAPPING[column_name]
                 if mapped_data_key == CampaignDataFields.CHANNEL_ID:
-                    # Youtube Placment URL does not need to be preserved
                     row[index] = row[index].split("/channel/")[-1]
                 api_value = row[index]
                 coercer = COERCE_FIELD_FUNCS.get(mapped_data_key)
                 mapped_value = coercer(api_value) if coercer is not None else api_value
                 formatted[mapped_data_key] = mapped_value
-            all_rows.append(formatted)
-    return all_rows
+            yield formatted
+    # Clean up mkstemp file after generator is exhausted
+    try:
+        os.remove(report_fp)
+    except OSError:
+        pass
+    #         all_rows.append(formatted)
+    # return all_rows

@@ -40,15 +40,16 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
     fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv", "VideoViewRate",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
     report = placement_performance_report(client, predicates=predicates, fields=fields)
-    all_data = []
+    # all_data = []
     for row in report:
         if "channel" not in row.DisplayName:
             continue
-        data = {}
+        formatted = {}
         # Create new dictionary of mapped keys to mapped API data values
         for report_field, mapped_key in ADWORDS_API_FIELD_MAPPING.items():
             coercer = COERCE_FIELD_FUNCS.get(mapped_key)
             api_value = coercer(getattr(row, report_field, None))
-            data[mapped_key] = coercer(api_value) if coercer is not None else api_value
-        all_data.append(data)
-    return all_data
+            formatted[mapped_key] = coercer(api_value) if coercer is not None else api_value
+        yield formatted
+    #     all_data.append(data)
+    # return all_data
