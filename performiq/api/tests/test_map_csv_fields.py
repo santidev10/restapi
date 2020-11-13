@@ -1,13 +1,18 @@
-import os
 import csv
+import os
 import string
-from utils.unittests.test_case import ExtendedAPITestCase
+
+import boto3
 from django.urls import reverse
-from saas.urls.namespaces import Namespace
+from django.conf import settings
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+
 from performiq.api.urls.names import PerformIQPathName
 from performiq.utils.constants import CSVFieldTypeEnum
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_200_OK
+from saas.urls.namespaces import Namespace
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
@@ -66,8 +71,11 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             self.assertIn("one row besides the header row must be present", json.get("csv_file", [])[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    @mock_s3
     def test_success(self):
         self.create_admin_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
         for write_header in [True, False]:
             with self.subTest(write_header):
                 filename = self._create_csv("csv_file.csv", write_header=write_header)
@@ -77,6 +85,7 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
                     json = response.json()
                     self.assertIn("mapping", json)
                     self.assertIn("column_options", json)
+                    self.assertIn("s3_key", json)
                     mapping = json.get("mapping", {})
                     # check keys always present
                     keys = mapping.keys()

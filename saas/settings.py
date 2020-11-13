@@ -435,6 +435,7 @@ AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 AMAZON_S3_IAS_BUCKET_NAME = "cf-ias"
+AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME = "performiq-custom-campaign-uploads"
 
 MAX_AVATAR_SIZE_MB = 10.
 

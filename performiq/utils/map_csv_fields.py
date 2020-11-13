@@ -133,6 +133,7 @@ class CSVColumnMapper:
 
 
     def __init__(self, csv_file: InMemoryUploadedFile):
+        csv_file.seek(0)
         self.csv_file = csv_file
         self._init_csv_data()
         self._map_csv_fields()
