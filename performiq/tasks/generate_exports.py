@@ -42,17 +42,6 @@ def generate_exports(iq_campaign: IQCampaign):
     recommended_s3_key, total_recommended = with_cleanup(create_recommended_export, iq_campaign, exporter, recommended_fp)
     wastage_s3_key, total_wastage = with_cleanup(create_wastage_export, iq_campaign, exporter, wastage_fp)
 
-    # iq_campaign.results["exports"] = {
-    #     EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
-    #     EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
-    #     "statistics": {
-    #         "wastage_channels_percent": "",
-    #         "wastage_spend": "",
-    #         "wastage_count": total_wastage,
-    #         "recommended_count": total_recommended,
-    #     }
-    # }
-    # iq_campaign.save(update_fields=["results"])
     results = {
         EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
         EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
@@ -88,7 +77,7 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     with open(filepath, mode="w") as file:
         writer = csv.writer(file)
         writer.writerow(["URL"])
-        writer.writerows([channel_id] for channel_id in clean_ids)
+        writer.writerows([f"https://www.youtube.com/channel/{channel_id}"] for channel_id in clean_ids)
 
     display_filename = f"{iq_campaign.campaign.name}_recommended_{now_in_default_tz().date()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)

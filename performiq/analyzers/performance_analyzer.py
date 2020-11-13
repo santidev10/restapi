@@ -99,11 +99,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
                     else:
                         total_results[metric_name]["failed"] += 1
                         curr_result["passed"] = False
-                        self._failed_channels_count += 1
                     # Store the actual metric value
                     curr_result[metric_name] = metric_value
                 except TypeError:
                     continue
+            if not curr_result["passed"]:
+                self._failed_channels_count += 1
             # Add the performance analysis result for the current channel being processed
             iq_result.add_result(AnalyzeSection.PERFORMANCE_RESULT_KEY, curr_result)
         self._add_performance_percentage_result(total_results)
