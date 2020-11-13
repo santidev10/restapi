@@ -1,10 +1,10 @@
 from django.test import testcases
 from django.core.exceptions import ValidationError
-from performiq.api.views.map_csv_fields import is_cpm_validator
-from performiq.api.views.map_csv_fields import is_cpv_validator
-from performiq.api.views.map_csv_fields import is_currency_validator
-from performiq.api.views.map_csv_fields import is_integer_validator
-from performiq.api.views.map_csv_fields import is_rate_validator
+from performiq.utils.map_csv_fields import is_cpm_validator
+from performiq.utils.map_csv_fields import is_cpv_validator
+from performiq.utils.map_csv_fields import is_currency_validator
+from performiq.utils.map_csv_fields import is_integer_validator
+from performiq.utils.map_csv_fields import is_rate_validator
 
 
 class MapCSVFieldsValidatorTestCase(testcases.TestCase):
