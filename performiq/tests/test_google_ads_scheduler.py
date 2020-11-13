@@ -7,7 +7,6 @@ from performiq.tasks.google_ads_scheduler import google_ads_update_scheduler
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-
 class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
     def test_lock_no_schedule(self):
         """ Test that scheduler should not schedule account update if it is already updating """
