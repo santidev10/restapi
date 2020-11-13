@@ -1,9 +1,10 @@
 import csv
 import string
 from io import StringIO
+from typing import Type
 
 from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import URLValidator
 
 from performiq.api.serializers.map_csv_fields_serializer import CSVFileField
@@ -132,7 +133,7 @@ class CSVColumnMapper:
     ]
 
 
-    def __init__(self, csv_file: InMemoryUploadedFile):
+    def __init__(self, csv_file: Type[UploadedFile]):
         csv_file.seek(0)
         self.csv_file = csv_file
         self._init_csv_data()
@@ -156,17 +157,19 @@ class CSVColumnMapper:
         labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in letters]
         return dict(zip(letters, labels))
 
-
     def _init_csv_data(self):
         """
         initialize data needed from csv for rest of script
         :param csv_file:
         :return:
         """
-        file = self.csv_file.read().decode("utf-8-sig", errors="ignore")
-        io_string = StringIO(file)
+        # reset file position, grab first chunk to make header guess from
+        self.csv_file.seek(0)
+        for chunk in self.csv_file.chunks():
+            decoded = chunk.decode("utf-8-sig", errors="ignore")
+            io_string = StringIO(decoded)
+            break
         reader = csv.reader(io_string, delimiter=",", quotechar="\"")
-
         self.header_row = next(reader)
         self.csv_has_header_row = True if CSVFileField.is_header_row(self.header_row) else False
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row

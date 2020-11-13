@@ -1,5 +1,7 @@
 import uuid
+from typing import Type
 from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -22,22 +24,36 @@ class PerformIQMapCSVFieldsAPIView(APIView):
     serializer_class = MapCSVFieldsSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Guess csv field mapping, and return the guess map. Upload the csv to s3 and return the s3 key
+        :param request:
+        :param args:
+        :param kwargs:
+        :return: Response
+        """
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
         csv_file = validated_data.get("csv_file")
 
-        # upload to s3
-        s3_key = PerformiqCustomCampaignUploadS3Exporter.get_s3_key()
-        PerformiqCustomCampaignUploadS3Exporter.export_to_s3(csv_file, s3_key)
-
         mapper = CSVColumnMapper(csv_file)
         data = {
             "mapping": mapper.get_mapping(),
             "column_options": mapper.get_column_options(),
-            "s3_key": s3_key,
+            "s3_key": self._export_to_s3(csv_file),
         }
         return Response(status=HTTP_200_OK, data=data)
+
+    def _export_to_s3(self, csv_file: Type[UploadedFile]) -> str:
+        """
+        export a given uploaded CSV file to s3
+        :param csv_file:
+        :return:
+        """
+        csv_file.seek(0)
+        s3_key = PerformiqCustomCampaignUploadS3Exporter.get_s3_key()
+        PerformiqCustomCampaignUploadS3Exporter.export_to_s3(csv_file, s3_key)
+        return s3_key
 
 
 class PerformiqCustomCampaignUploadS3Exporter(S3Exporter):
