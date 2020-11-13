@@ -12,6 +12,10 @@ from rest_framework.status import HTTP_200_OK
 
 class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
 
+    empty_header_row = ["", "", ""]
+    header_row = ["view rate", "imps.", "url", "views", "cpv", "cost", "cpm"]
+    data_row = [34.4, 100203, "youtube.com/video/3asdf32", 43245, 0.024, 500, 3.43]
+
     def tearDown(self) -> None:
         for filename in ["csv_file.csv", "csv_file"]:
             try:
@@ -30,11 +34,11 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         with open(filename, mode="w") as f:
             writer = csv.writer(f)
             if write_empty_header:
-                writer.writerow(["", "", ""])
+                writer.writerow(self.empty_header_row)
             if write_header:
-                writer.writerow(["view rate", "imps.", "url", "views", "cpv", "cost", "cpm"])
+                writer.writerow(self.header_row)
             if write_data:
-                writer.writerow([34.4, 100203, "youtube.com/video/3asdf32", 43245, 0.024, 500, 3.43])
+                writer.writerow(self.data_row)
         return filename
 
     def test_bad_extension(self):
@@ -43,14 +47,6 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
             self.assertIn("The file extension must be '.csv'", response.json().get("csv_file")[0])
-            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_missing_header(self):
-        self.create_admin_user()
-        filename = self._create_csv("csv_file.csv", write_header=False)
-        with open(filename) as file:
-            response = self.client.post(self._get_url(), {"csv_file": file})
-            self.assertIn("Header row invalid.", response.json().get("csv_file")[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_no_data(self):
@@ -72,21 +68,30 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
 
     def test_success(self):
         self.create_admin_user()
-        filename = self._create_csv("csv_file.csv")
-        with open(filename) as file:
-            response = self.client.post(self._get_url(), {"csv_file": file})
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            json = response.json()
-            self.assertIn("mapping", json)
-            self.assertIn("column_options", json)
-            mapping = json.get("mapping")
-            # check keys always present
-            keys = mapping.keys()
-            valid_headers = [header.value for header in CSVFieldTypeEnum]
-            self.assertEqual(set(keys), set(valid_headers))
-            # check that letters are part of a set
-            values = mapping.values()
-            letters = list(string.ascii_uppercase)[:len(values)]
-            for value in values:
-                with self.subTest(value):
-                    self.assertIn(value, letters)
+        for write_header in [True, False]:
+            with self.subTest(write_header):
+                filename = self._create_csv("csv_file.csv", write_header=write_header)
+                with open(filename) as file:
+                    response = self.client.post(self._get_url(), {"csv_file": file})
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    json = response.json()
+                    self.assertIn("mapping", json)
+                    self.assertIn("column_options", json)
+                    mapping = json.get("mapping", {})
+                    # check keys always present
+                    keys = mapping.keys()
+                    valid_headers = [header.value for header in CSVFieldTypeEnum]
+                    self.assertEqual(set(keys), set(valid_headers))
+                    # check that letters are part of a set
+                    mapping_values = mapping.values()
+                    letters = list(string.ascii_uppercase)[:len(mapping_values)]
+                    for value in mapping_values:
+                        with self.subTest(value):
+                            self.assertIn(value, letters)
+                    # check column options depending on presence of header row
+                    for value in json.get("column_options", {}).values():
+                        with self.subTest(value):
+                            if write_header:
+                                self.assertIn(value, self.header_row)
+                            else:
+                                self.assertIn("column", value)

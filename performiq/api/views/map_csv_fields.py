@@ -3,6 +3,7 @@ import string
 from io import StringIO
 
 from django.core.validators import URLValidator
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -12,6 +13,7 @@ from rest_framework.views import APIView
 from django.core.exceptions import ValidationError
 
 from performiq.api.serializers.map_csv_fields_serializer import MapCSVFieldsSerializer
+from performiq.api.serializers.map_csv_fields_serializer import CSVFileField
 from performiq.utils.constants import CSVFieldTypeEnum
 
 
@@ -93,6 +95,10 @@ def is_rate_validator(value):
 
 
 def is_url_validator(value):
+    if isinstance(value, str):
+        for substr in ["www", "http", ".com"]:
+            if substr in value:
+                return value
     validator = URLValidator()
     validator(value)
     return value
@@ -108,7 +114,7 @@ class PerformIQMapCSVFieldsAPIView(APIView):
 
     serializer_class = MapCSVFieldsSerializer
 
-    header_guess_names = {
+    alt_header_names = {
         CSVFieldTypeEnum.URL.value: ["url", "link", "www", "http"],
         CSVFieldTypeEnum.IMPRESSIONS.value: ["impression", "impres", "imp"],
         CSVFieldTypeEnum.VIEWS.value: ["views",],
@@ -128,31 +134,34 @@ class PerformIQMapCSVFieldsAPIView(APIView):
         CSVFieldTypeEnum.VIDEO_PLAYED_VIEW_RATE.value: is_rate_validator,
     }
 
+    # listed highest certainty first
+    headers_by_certainty = [
+        CSVFieldTypeEnum.URL.value,
+        CSVFieldTypeEnum.AVERAGE_CPV.value,
+        CSVFieldTypeEnum.AVERAGE_CPM.value,
+        CSVFieldTypeEnum.VIDEO_PLAYED_VIEW_RATE.value,
+        # very uncertain guesses below
+        CSVFieldTypeEnum.COST.value,
+        CSVFieldTypeEnum.IMPRESSIONS.value,
+        CSVFieldTypeEnum.VIEWS.value,
+    ]
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
         csv_file = validated_data.get("csv_file")
-        fields_map = self._map_csv_fields(csv_file)
-        default_map = self._get_default_map()
+        self._init_csv_data(csv_file)
+        self._map_csv_fields()
         data = {
-            "mapping": fields_map,
-            "column_options": default_map
+            "mapping": self.header_map,
+            "column_options": self._get_column_options(),
         }
         return Response(status=HTTP_200_OK, data=data)
 
-    def _get_default_map(self) -> dict:
+    def _init_csv_data(self, csv_file: InMemoryUploadedFile):
         """
-        Get the default column: name ordered dict
-        :return:
-        """
-        default_headers = [header.value for header in CSVFieldTypeEnum]
-        letters = list(string.ascii_uppercase)[:len(default_headers)]
-        return dict(zip(letters, default_headers))
-
-    def _map_csv_fields(self, csv_file) -> dict:
-        """
-        map csv columns to a best guess for a header
+        initialize data needed from csv for rest of script
         :param csv_file:
         :return:
         """
@@ -160,26 +169,150 @@ class PerformIQMapCSVFieldsAPIView(APIView):
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=",", quotechar="\"")
 
-        header_row = next(reader)
-        data_row = next(reader)
-        header_data_map = dict(zip(header_row, data_row))
-        header_map = {header.value: None for header in CSVFieldTypeEnum}
-        available_headers = [header.value for header in CSVFieldTypeEnum]
-        column_letters = list(string.ascii_uppercase)
+        self.header_row = next(reader)
+        self.csv_has_header_row = True if CSVFileField.is_header_row(self.header_row) else False
+        self.data_row = next(reader) if self.csv_has_header_row else self.header_row
+        self.header_map = {header.value: None for header in CSVFieldTypeEnum}
+        self.available_headers = [header.value for header in CSVFieldTypeEnum]
+        column_letters = list(string.ascii_uppercase)[:len(self.available_headers)]
+
+        # initialize header/data guess maps
+        self.header_guess_map = {letter: [] for letter in column_letters}
+        self.data_guess_map = {letter: [] for letter in column_letters}
+
+        header_data_map = dict(zip(self.header_row, self.data_row))
         for header, data in header_data_map.items():
             column_letter = column_letters.pop(0)
-            header_guess = self._get_header_guess(header)
-            if header_guess and header_guess in available_headers:
-                header_map[header_guess] = column_letter
-                available_headers.remove(header_guess)
-                continue
-            data_guess = self._get_data_guess(data)
-            if data_guess and data_guess in available_headers:
-                header_map[data_guess] = column_letter
-                available_headers.remove(data_guess)
-                continue
+            if self.csv_has_header_row:
+                header_guess = self._get_header_guess(header)
+                self.header_guess_map[column_letter] = header_guess
+            data_guesses = self._get_data_guesses(data)
+            self.data_guess_map[column_letter] = data_guesses
 
-        return header_map
+    def _get_column_options(self) -> dict:
+        """
+        Get the default column_letter_key:label dict. If no headers are present use "column A", etc.
+        if headers are present, use the declared header values
+        :return:
+        """
+        letters = list(string.ascii_uppercase)[:len(self.header_row)]
+        labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in letters]
+        return dict(zip(letters, labels))
+
+
+    def _map_csv_fields(self):
+        """
+        map csv columns to a best guess for a header. Map using csv header names, if present
+        :param csv_file:
+        :return: None
+        """
+
+        # do header name based guess assignment
+        if self.csv_has_header_row:
+            self._assign_header_guesses_by_header_name()
+        # do data value based guess assignment
+        self._assign_unique_guess_headers()
+        self.data_guess_map = self._remove_unavailable_headers(self.data_guess_map)
+        self._assign_headers_by_certainty(self.data_guess_map)
+
+    def _assign_header_guesses_by_header_name(self):
+        """
+        assign header guesses based on header name
+        :return:
+        """
+        for letter, header_guess in self.header_guess_map.items():
+            if not header_guess:
+                continue
+            if header_guess not in self.available_headers:
+                continue
+            self.header_map[header_guess] = letter
+            self.available_headers.remove(header_guess)
+
+    def _assign_headers_by_certainty(self, guess_map):
+        """
+        assign guess headers by certainty of the guess
+        :return:
+        """
+        for header in self.headers_by_certainty:
+            if header not in self.available_headers:
+                continue
+            self._assign_header_by_certainty(header, guess_map)
+            guess_map = self._remove_unavailable_headers(guess_map)
+
+    def _assign_header_by_certainty(self, header, guess_map):
+        """
+        assign a guess header by certainty
+        assign if
+        :param header:
+        :param guess_map:
+        :return:
+        """
+        if header not in self.available_headers:
+            return
+        member_map = {letter: guesses for letter, guesses in guess_map.items() if header in guesses}
+        # assign header if it was not guessed for any other column
+        if len(member_map) == 1:
+            letter = next(iter(member_map))
+            self.header_map[header] = letter
+            self.available_headers.remove(header)
+            return
+
+        # narrow possible columns by reducing to columns with the lowest number of guesses
+        by_count = {letter: len(guesses) for letter, guesses in member_map.items()}
+        counts = by_count.values()
+        lowest_count = sorted(counts)[0]
+        reduced_map = {letter: guesses for letter, guesses in member_map.items() if len(guesses) == lowest_count}
+
+        # set first item in reduced group
+        letter = next(iter(reduced_map))
+        self.header_map[header] = letter
+        self.available_headers.remove(header)
+
+    def _assign_unique_guess_headers(self):
+        """
+        assign guess headers if it's the only guess in the whole guess map
+        :return:
+        """
+        for letter, guesses in self.data_guess_map.items():
+            if len(guesses) != 1 \
+                    or guesses[0] not in self.available_headers \
+                    or self._in_other_guesses(letter, guesses[0], self.data_guess_map):
+                continue
+            guess = guesses[0]
+            self.header_map[guess] = letter
+            self.available_headers.remove(guess)
+
+    def _remove_unavailable_headers(self, guess_map: dict):
+        """
+        for a given guess map, remove letter column keys that have already been mapped
+        :param guess_map: expects a map that's an instance attr
+        :return:
+        """
+        new_map = {}
+        # mapped to letter
+        inverse_header_map = {value: key for key, value in self.header_map.items()}
+        for letter, guesses in guess_map.items():
+            letter_assigned = inverse_header_map.get(letter, None)
+            if letter_assigned:
+                continue
+            intersection = list(set(guesses) & set(self.available_headers))
+            new_map[letter] = intersection
+        return new_map
+
+    def _in_other_guesses(self, member_letter, member, guesses_map):
+        """
+        check if guess is in other column guesses for a given guess map
+        :param member_letter:
+        :param member:
+        :param guesses_map:
+        :return:
+        """
+        new_map = guesses_map.copy()
+        new_map.pop(member_letter, None)
+        for letter, guesses in new_map.items():
+            if member in guesses:
+                return True
+        return False
 
     def _get_header_guess(self, value: str) -> str:
         """
@@ -188,20 +321,22 @@ class PerformIQMapCSVFieldsAPIView(APIView):
         :return:
         """
         value = value.lower()
-        for header_name, alt_names in self.header_guess_names.items():
+        for header, alt_names in self.alt_header_names.items():
             for alt_name in alt_names:
                 if alt_name in value:
-                    return header_name
+                    return header
 
-    def _get_data_guess(self, value) -> str:
+    def _get_data_guesses(self, value) -> list:
         """
         attempt to guess the header for a given column data value
         :param value:
         :return:
         """
+        guesses = []
         for header_name, func in self.data_guess_functions.items():
             try:
                 func(value)
-            except ValidationError:
+            except ValidationError as e:
                 continue
-            return header_name
+            guesses.append(header_name)
+        return guesses

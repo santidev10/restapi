@@ -21,10 +21,11 @@ class CSVFileField(serializers.FileField):
             self._validate_header_row(header_row)
         except csv.Error:
             raise ValidationError("Unable to parse the CSV file")
-        try:
-            next(reader)
-        except StopIteration:
-            raise ValidationError("CSV Invalid, one row besides the header row must be present.")
+        if self.is_header_row(header_row):
+            try:
+                next(reader)
+            except StopIteration:
+                raise ValidationError("CSV Invalid, one row besides the header row must be present.")
         data.seek(0)
         return data
 
@@ -32,11 +33,22 @@ class CSVFileField(serializers.FileField):
         nulls = [value for value in header_row if not value]
         if nulls:
             raise ValidationError(f"Header row invalid. Reason: no values detected")
-        numerics = [value for value in header_row
+
+    @staticmethod
+    def is_header_row(row):
+        # check for obvious numerics
+        numerics = [value for value in row
                     if type(value) in [int, float, complex]
-                    or type(value) == str and value.isnumeric()]
+                    or isinstance(value, str) and value.isnumeric()]
         if numerics:
-            raise ValidationError(f"Header row invalid. Reason: numeric types detected.")
+            return False
+        # check for obvious urls
+        for value in row:
+            if isinstance(value, str):
+                for substr in ["www", "http", ".com"]:
+                    if substr in value:
+                        return False
+        return True
 
 
 class MapCSVFieldsSerializer(serializers.Serializer):
