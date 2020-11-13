@@ -42,17 +42,23 @@ def generate_exports(iq_campaign: IQCampaign):
     recommended_s3_key, total_recommended = with_cleanup(create_recommended_export, iq_campaign, exporter, recommended_fp)
     wastage_s3_key, total_wastage = with_cleanup(create_wastage_export, iq_campaign, exporter, wastage_fp)
 
-    iq_campaign.results["exports"] = {
+    # iq_campaign.results["exports"] = {
+    #     EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
+    #     EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
+    #     "statistics": {
+    #         "wastage_channels_percent": "",
+    #         "wastage_spend": "",
+    #         "wastage_count": total_wastage,
+    #         "recommended_count": total_recommended,
+    #     }
+    # }
+    # iq_campaign.save(update_fields=["results"])
+    results = {
         EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
         EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
-        "statistics": {
-            "wastage_channels_percent": "",
-            "wastage_spend": "",
-            "wastage_count": total_wastage,
-            "recommended_count": total_recommended,
-        }
+        "recommended_count": total_recommended,
     }
-    iq_campaign.save(update_fields=["results"])
+    return results
 
 
 def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Exporter, filepath: str) -> tuple:
