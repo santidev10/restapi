@@ -5,6 +5,8 @@ class FlightSerializer(serializers.Serializer):
     margin_cap = serializers.FloatField(required=False, allow_null=True)
 
     def validate_margin_cap(self, margin_cap):
+        if margin_cap is None:
+            return margin_cap
         margin_cap = float(margin_cap)
         if not 0 <= margin_cap <= 100:
             raise ValidationError("margin_cap must be between 0 and 100, inclusive.")
