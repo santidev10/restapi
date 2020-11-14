@@ -22,10 +22,9 @@ class CSVFileField(serializers.FileField):
             raise ValidationError(msg)
         # reset file position and grab the first chunk to validate on
         data.seek(0)
-        for chunk in data.chunks():
-            decoded = chunk.decode("utf-8-sig", errors="ignore")
-            io_string = StringIO(decoded)
-            break
+        chunk = next(data.chunks())
+        decoded = chunk.decode("utf-8-sig", errors="ignore")
+        io_string = StringIO(decoded)
         try:
             reader = csv.reader(io_string, delimiter=",", quotechar="\"")
             header_row = next(reader)

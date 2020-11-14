@@ -165,10 +165,9 @@ class CSVColumnMapper:
         """
         # reset file position, grab first chunk to make header guess from
         self.csv_file.seek(0)
-        for chunk in self.csv_file.chunks():
-            decoded = chunk.decode("utf-8-sig", errors="ignore")
-            io_string = StringIO(decoded)
-            break
+        chunk = next(self.csv_file.chunks())
+        decoded = chunk.decode("utf-8-sig", errors="ignore")
+        io_string = StringIO(decoded)
         reader = csv.reader(io_string, delimiter=",", quotechar="\"")
         self.header_row = next(reader)
         self.csv_has_header_row = True if CSVFileField.is_header_row(self.header_row) else False
