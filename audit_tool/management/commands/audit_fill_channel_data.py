@@ -71,6 +71,7 @@ class Command(BaseCommand):
             total_pending = total_to_go - count
             if total_pending < 0:
                 total_pending = 0
+            self.fill_recent_video_timestamp()
             raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
 
     def fill_recent_video_timestamp(self):
@@ -208,7 +209,7 @@ class Command(BaseCommand):
                     if country not in self.cache["countries"]:
                         self.cache["countries"][country] = AuditCountry.from_string(country)
                     db_channel_meta.country = self.cache["countries"][country]
-                db_channel_meta.subscribers = convert_subscriber_count(i["statistics"]["subscriberCount"])
+                db_channel_meta.subscribers = convert_subscriber_count(i["statistics"].get("subscriberCount"))
                 try:
                     db_channel_meta.hidden_subscriber_count = i["statistics"]["hiddenSubscriberCount"]
                 # pylint: disable=broad-except
