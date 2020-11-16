@@ -1,10 +1,9 @@
 from celery import group
 
 from brand_safety.tasks.channel_update import channel_update
-from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from es_components.query_builder import QueryBuilder
+from es_components.models import Channel
 from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
@@ -20,7 +19,12 @@ def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",),
         channel_update.si(arg).set(queue=queue)
         for arg in args
     ]).apply_async()
+
     if rescore is True:
-        # Update channel rescore to false
-        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(channel_ids).get()
-        channel_manager.update_rescore(query, rescore=False, conflicts="proceed")
+        # Update channels rescore values that are rescored
+        update_rescore_channels = []
+        for channel in channels:
+            rescored = Channel(channel.main.id)
+            rescored.populate_brand_safety(rescore=False)
+            update_rescore_channels.append(rescored)
+        channel_manager.upsert(update_rescore_channels)

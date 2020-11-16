@@ -2,7 +2,6 @@ from celery import group
 
 from brand_safety.auditors.video_auditor import VideoAuditor
 from brand_safety.tasks.constants import Schedulers
-from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import VIEWS_FIELD
@@ -51,10 +50,11 @@ def video_update(video_ids, rescore=False):
     auditor = VideoAuditor()
     scored_videos = auditor.process(video_ids)
     to_rescore = auditor.channels_to_rescore
-    # Add rescore flag for channels to be rescored by channel discovery task
+    # Add rescore flag for channels that should be rescored by channel discovery task as newly scored videos under this
+    # channel may have scored low, and may largely affect how a channel would score
     rescore_channels = auditor.channel_manager.get(to_rescore, skip_none=True)
-    for c in rescore_channels:
-        rescore_channels.brand_safety.rescore = False
+    for channel in rescore_channels:
+        channel.brand_safety.rescore = True
     auditor.channel_manager.upsert(rescore_channels)
 
     # Update video rescore batch to False
@@ -62,8 +62,8 @@ def video_update(video_ids, rescore=False):
         manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
         reset_rescore_videos = []
         for audit in scored_videos:
-            video = Video(audit.id)
-            video.populate_channel(id=audit.channel_id)
+            video = Video(audit.doc.main.id)
+            video.populate_channel(id=audit.doc.channel.id)
             video.populate_brand_safety(rescore=False)
             reset_rescore_videos.append(video)
         manager.upsert(reset_rescore_videos)
