@@ -3,10 +3,13 @@ import uuid
 from django.urls import reverse
 
 from saas.urls.namespaces import Namespace
+from segment.api.serializers import CTLSerializer
+from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models.constants import SegmentTypeEnum
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -33,14 +36,14 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
             statistics={"items_count": self.THRESHOLD - 1},
             title="should not appear in response",
             is_featured=True,
-            segment_type=1,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
         )
         CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             statistics={"items_count": self.THRESHOLD},
             title="SHOULD appear in response",
             is_featured=True,
-            segment_type=1,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
         )
         response = self.client.get(self._get_url("channel"))
         self.assertEqual(len(response.data["items"]), 1)
@@ -52,14 +55,14 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
             statistics={"items_count": self.THRESHOLD},
             title="should not appear in response",
             is_featured=True,
-            segment_type=1,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
         )
         CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             statistics={"items_count": self.THRESHOLD},
             title="SHOULD appear in response",
             is_featured=True,
-            segment_type=0,
+            segment_type=SegmentTypeEnum.VIDEO.value,
         )
         response = self.client.get(self._get_url("channel"))
         self.assertEqual(len(response.data["items"]), 1)
@@ -67,7 +70,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
     def test_custom_segment_statistics_fields(self):
         self.create_admin_user()
         CustomSegment.objects.create(
-            segment_type=1,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
             uuid=uuid.uuid4(),
             title="test custom segment statistics field",
             is_featured=True,
@@ -98,7 +101,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_AUDIT)
         user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY)
         segment = CustomSegment.objects.create(
-            segment_type=1,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
             uuid=uuid.uuid4(),
             title="test custom segment download url permission",
             is_featured=True,
@@ -113,4 +116,24 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         self.assertIn("items", response.data)
         self.assertEqual(len(response.data["items"]), 1)
-        self.assertNotIn("download_url", response.data["items"][0])
+        item = response.data["items"][0]
+        self.assertNotIn("download_url", item)
+        serializer = CTLWithoutDownloadUrlSerializer()
+        self.assertEqual(set(serializer.fields.keys()), set(item.keys()))
+
+    def test_fields_present(self):
+        self.create_admin_user()
+        CustomSegment.objects.create(
+            uuid=uuid.uuid4(),
+            statistics={"items_count": self.THRESHOLD},
+            title="CTL 1",
+            is_featured=True,
+            segment_type=SegmentTypeEnum.CHANNEL.value,
+        )
+        response = self.client.get(self._get_url("channel"))
+        data = response.data
+        self.assertIn("items", data)
+        serializer = CTLSerializer()
+        for item in data.get("items"):
+            with self.subTest(item):
+                self.assertEqual(set(serializer.fields.keys()), set(item.keys()))
