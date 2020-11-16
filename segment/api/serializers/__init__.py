@@ -1,6 +1,6 @@
 from .ctl_params_serializer import CTLParamsSerializer
 from .ctl_serializer import CTLSerializer
-from .ctl_serializer import CustomSegmentWithoutDownloadUrlSerializer
+from .ctl_serializer import CTLWithoutDownloadUrlSerializer
 from .custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
 from .custom_segment_update_serializers import CustomSegmentUpdateSerializer
 from .persistent_segment_serializer import PersistentSegmentSerializer

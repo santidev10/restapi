@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from segment.api.serializers import CTLSerializer
-from segment.api.serializers import CustomSegmentWithoutDownloadUrlSerializer
+from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
 from utils.permissions import user_has_permission
@@ -53,7 +53,7 @@ class CustomSegmentListApiView(APIView):
         serialized = []
         for segment in featured_segments:
             if not segment.statistics \
-                or segment.statistics.get('items_count', 0) < MINIMUM_ITEMS_COUNT:
+                    or segment.statistics.get('items_count', 0) < MINIMUM_ITEMS_COUNT:
                 continue
             serializer_class = self.get_custom_segment_serializer_class()
             serializer = serializer_class(instance=segment)
@@ -63,7 +63,7 @@ class CustomSegmentListApiView(APIView):
     def get_custom_segment_serializer_class(self):
         if self.request.user.has_perm('userprofile.download_audit'):
             return CTLSerializer
-        return CustomSegmentWithoutDownloadUrlSerializer
+        return CTLWithoutDownloadUrlSerializer
 
     def get_segment_type_id(self, segment_type):
         """

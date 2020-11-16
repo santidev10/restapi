@@ -12,6 +12,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
+from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import Field
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
@@ -86,6 +87,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
+    created_at = DateTimeField(read_only=True)
+    updated_at = DateTimeField(read_only=True)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -548,7 +551,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         segment.save(update_fields=[*set_false, "audit_id", "statistics"])
 
 
-class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
+class CTLWithoutDownloadUrlSerializer(CTLSerializer):
     def to_representation(self, instance):
         """
         overrides CustomSegmentSerializer. Users without certain permissions
