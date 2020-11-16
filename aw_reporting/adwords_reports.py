@@ -144,7 +144,7 @@ def account_performance(client, predicates=None, fields=None):
     return _output_to_rows(result, fields)
 
 
-def placement_performance_report(client, dates=None, fields=None, predicates=None, use_raw_enum_values=None):
+def placement_performance_report(client, dates=None, fields=None, predicates=None):
     """
     Used for getting channels and managed videos
     :param client:
@@ -162,8 +162,7 @@ def placement_performance_report(client, dates=None, fields=None, predicates=Non
     else:
         date_range_type = "ALL_TIME"
 
-    result = _get_report(client, "PLACEMENT_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
-                         use_raw_enum_values=use_raw_enum_values)
+    result = _get_report(client, "PLACEMENT_PERFORMANCE_REPORT", selector, date_range_type=date_range_type, )
 
     return _output_to_rows(result, fields)
 

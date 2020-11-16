@@ -2,10 +2,8 @@ FROM python:3.7.4 as base
 ENV PYTHONUNBUFFERED 1
 RUN pip install uwsgi
 COPY ./requirements.txt /tmp/
-COPY ./requirements.dev.txt /tmp/
 COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
 RUN pip install -r /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.dev.txt
 RUN pip install -r /tmp/requirements.es_componenets.txt
 WORKDIR /app
 ENV PYTHONPATH=/app

@@ -184,10 +184,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
         "schedule": crontab(minute="*/10"),
     },
-    "performiq_google_ads_update": {
-        "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
-        "schedule": crontab(minute="*/10")
-    },
+    # "performiq_google_ads_update": {
+    #     "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
+    #     "schedule": crontab(minute="*/10")
+    # },
 }
 
 
