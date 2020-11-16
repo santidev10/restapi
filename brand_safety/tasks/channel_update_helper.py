@@ -9,7 +9,7 @@ from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
-def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",)):
+def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",), rescore=False):
     channel_manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(queue)
     limit = scheduler.get_items_limit(queue_size)
@@ -20,6 +20,7 @@ def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",))
         channel_update.si(arg).set(queue=queue)
         for arg in args
     ]).apply_async()
-    # Update channel rescore to false
-    query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(channel_ids).get()
-    channel_manager.update_rescore(query, rescore=False, conflicts="proceed")
+    if rescore is True:
+        # Update channel rescore to false
+        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(channel_ids).get()
+        channel_manager.update_rescore(query, rescore=False, conflicts="proceed")

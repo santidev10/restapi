@@ -49,16 +49,24 @@ def video_update(video_ids, rescore=False):
     if isinstance(video_ids, str):
         video_ids = [video_ids]
     auditor = VideoAuditor()
-    auditor.process(video_ids)
+    scored_videos = auditor.process(video_ids)
     to_rescore = auditor.channels_to_rescore
-    # Add rescore flag to be rescored by channel discovery task
-    query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
-    auditor.channel_manager.update_rescore(query, rescore=True, conflicts="proceed")
+    # Add rescore flag for channels to be rescored by channel discovery task
+    rescore_channels = auditor.channel_manager.get(to_rescore, skip_none=True)
+    for c in rescore_channels:
+        rescore_channels.brand_safety.rescore = False
+    auditor.channel_manager.upsert(rescore_channels)
 
     # Update video rescore batch to False
     if rescore is True:
         manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
-        manager.update_rescore(manager.ids_query(video_ids), rescore=False, conflicts="proceed")
+        reset_rescore_videos = []
+        for audit in scored_videos:
+            video = Video(audit.id)
+            video.populate_channel(id=audit.channel_id)
+            video.populate_brand_safety(rescore=False)
+            reset_rescore_videos.append(video)
+        manager.upsert(reset_rescore_videos)
 
 
 def get_rescore_ids(manager, base_query):
