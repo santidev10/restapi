@@ -9,11 +9,13 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
     def test_lock_no_schedule(self):
-        """ Test that scheduler should not schedule account update if it is already updating """
+        """ Test that scheduler should not schedule account update if it is already updating
+            i.e. get_lock returns False """
         user = self.create_test_user()
         OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
-        with mock.patch("performiq.tasks.google_ads_scheduler.get_lock", return_value=("", False)),\
-            mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task.delay") as mock_task:
+        with mock.patch("performiq.tasks.google_ads_scheduler.get_lock", return_value=("", False)), \
+             mock.patch("performiq.tasks.google_ads_scheduler.get_queue_size", return_value=0), \
+             mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task.delay") as mock_task:
                 google_ads_update_scheduler.run()
                 mock_task.assert_not_called()
 
@@ -22,6 +24,7 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
         with mock.patch("performiq.tasks.google_ads_scheduler.get_lock", return_value=("", True)), \
+             mock.patch("performiq.tasks.google_ads_scheduler.get_queue_size", return_value=0), \
              mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task.delay") as mock_task:
                 google_ads_update_scheduler.run()
                 mock_task.assert_called_once()
@@ -35,8 +38,8 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         ]
         OAuthAccount.objects.bulk_create(accounts)
         mock_queue_size_val = 7
-        with mock.patch("performiq.tasks.google_ads_scheduler.get_queue_size", return_value=mock_queue_size_val),\
-            mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task.delay") as mock_task,\
+        with mock.patch("performiq.tasks.google_ads_scheduler.get_queue_size", return_value=mock_queue_size_val), \
+             mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task.delay") as mock_task,\
             mock.patch("performiq.tasks.google_ads_scheduler.get_lock", return_value=("", True)):
             google_ads_update_scheduler.run()
             expected_call_count = Schedulers.GoogleAdsUpdateScheduler.MAX_QUEUE_SIZE - mock_queue_size_val

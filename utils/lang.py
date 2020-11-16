@@ -6,7 +6,7 @@ from types import GeneratorType
 from typing import Sequence
 
 import langid
-# from fasttext.FastText import _FastText as FastText
+from fasttext.FastText import _FastText as FastText
 
 FAST_TEXT_MODEL = None
 
