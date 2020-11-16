@@ -825,7 +825,7 @@ class AuditGender(models.Model):
 
 class AuditContentQuality(models.Model):
     ID_CHOICES = [
-        (0, "Poor"),
+        (0, "Low"),
         (1, "Average"),
         (2, "Premium"),
     ]
