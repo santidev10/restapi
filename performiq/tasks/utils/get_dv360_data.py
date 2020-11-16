@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
     report_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        dv360_campaign = Campaign.objects.get(id=iq_campaign.campaign.id, oauth_type=OAuthType.DV360.value)
+        dv360_campaign = iq_campaign.campaign
         oauth_account = OAuthAccount.objects.get(id=kwargs["oauth_account_id"])
         connector = DV360Connector(access_token=oauth_account.token, refresh_token=oauth_account.refresh_token)
         insertion_orders = connector.get_insertion_orders(advertiserId="1878225",
@@ -62,9 +62,13 @@ def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
             ],
             date_range="LAST_90_DAYS",
         )
-        result = connector.download_metrics_report(**report_query)
-        csv_generator = report_csv_generator(report_fp, result)
+
+        csv_generator = report_csv_generator("output.csv", params)
         return csv_generator
+
+        # result = connector.download_metrics_report(**report_query)
+        # csv_generator = report_csv_generator(report_fp, result)
+        # return csv_generator
     except Exception:
         logger.exception(f"Error retrieving DV360 Metrics report for IQCampaign id: {iq_campaign.id}")
 
@@ -102,9 +106,22 @@ def report_csv_generator(report_fp, report_result) -> iter:
                 formatted[mapped_data_key] = mapped_value
             yield formatted
     # Clean up mkstemp file after generator is exhausted
-    try:
-        os.remove(report_fp)
-    except OSError:
-        pass
-    #         all_rows.append(formatted)
-    # return all_rows
+    # try:
+    #     os.remove(report_fp)
+    # except OSError:
+    #     pass
+
+
+params = dict(params=dict(
+    groupBys=[
+        "FILTER_ADVERTISER",
+        "FILTER_ADVERTISER_CURRENCY",
+        "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS",
+    ],
+    metrics=[
+        "METRIC_TRUEVIEW_VIEW_RATE",
+        "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
+        "METRIC_TRUEVIEW_CPV_ADVERTISER",
+        "METRIC_CLIENT_COST_ADVERTISER_CURRENCY",
+    ],
+))

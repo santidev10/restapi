@@ -86,16 +86,23 @@ class PerformanceAnalyzer(BaseAnalyzer):
         }
         for iq_result in self.iq_channel_results.values():
             iq_channel = iq_result.iq_channel
+            # Initialize empty results for all possible performance fields
             curr_result = {
-                "passed": True
+                "passed": None,
+                **{
+                    metric_name: None for metric_name in self.PERFORMANCE_FIELDS
+                }
             }
             data = iq_channel.meta_data.copy()
-            # Compare each metric in data (e.g. cpm) with IQCampaign.params threshold values
-            for metric_name, threshold in self.iq_campaign.params.items():
+            for metric_name in self.PERFORMANCE_FIELDS:
+                threshold = self.iq_campaign.params.get(metric_name)
+                if not threshold:
+                    continue
                 metric_value = data.get(metric_name, None)
                 try:
                     if self.passes(metric_value, threshold):
                         total_results[metric_name]["passed"] += 1
+                        curr_result["passed"] = True
                     else:
                         total_results[metric_name]["failed"] += 1
                         curr_result["passed"] = False

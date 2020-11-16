@@ -88,7 +88,7 @@ class DV360Connector:
     @backoff(max_backoff=3600 * 5, exceptions=(ValueError,))
     def _poll_query_completion(self, query_request):
         response = query_request.execute()
-        if response["metadata"]["running"] is True and response["metadata"].get("googleCloudStoragePathForLatestReport") \
+        if response["metadata"]["running"] is True or response["metadata"].get("googleCloudStoragePathForLatestReport") \
                 is None:
             raise ValueError
         return response

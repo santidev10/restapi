@@ -10,9 +10,9 @@ from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.models import Channel
+from performiq.api.serializers.query_serializer import IQCampaignQuerySerializer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
-from segment.api.serializers import CTLParamsSerializer
 from segment.utils.bulk_search import bulk_search
 from segment.utils.query_builder import SegmentQueryBuilder
 from performiq.tasks.utils.s3_exporter import PerformS3Exporter
@@ -61,10 +61,10 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     """
     clean_ids = list(IQCampaignChannel.objects.filter(iq_campaign=iq_campaign, clean=True)
                      .values_list("channel_id", flat=True)[:EXPORT_LIMIT])
-    params_serializer = CTLParamsSerializer(data=iq_campaign.params)
-    params_serializer.is_valid()
 
     if len(clean_ids) < EXPORT_LIMIT:
+        params_serializer = IQCampaignQuerySerializer(data=iq_campaign.params)
+        params_serializer.is_valid()
         query_builder = SegmentQueryBuilder(params_serializer.validated_data)
         sort = [{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}]
         for batch in bulk_search(Channel, query_builder.query_body, sort=sort, cursor_field=SUBSCRIBERS_FIELD,

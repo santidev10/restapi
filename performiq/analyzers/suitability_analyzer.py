@@ -27,7 +27,7 @@ class SuitabilityAnalyzer(BaseAnalyzer):
         suitability_failed = False
         curr_channel_result = {"overall_score": None, "passed": True}
         try:
-            if channel.brand_safety.overall_score > self.analyze_params["suitability"]:
+            if channel.brand_safety.overall_score > self.analyze_params["score_threshold"]:
                 self._result_counts["passed"] += 1
             else:
                 curr_channel_result["passed"] = False

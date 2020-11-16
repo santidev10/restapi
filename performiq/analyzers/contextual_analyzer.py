@@ -77,6 +77,9 @@ class ContextualAnalyzer(BaseAnalyzer):
             "passed": True
         }
         for es_field, params_field in self.ES_FIELD_RESULTS_MAPPING.items():
+            if not self.iq_campaign.params.get(params_field):
+                curr_channel_result["passed"] = None
+                continue
             count_field = params_field + "_counts"
             # Get value of current field e.g. channel.general_data.primary_category
             attr_value = str(attrgetter(es_field)(channel))

@@ -1,6 +1,7 @@
+from distutils.util import strtobool
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from distutils.util import strtobool
 
 from .utils.get_campaigns import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
@@ -22,4 +23,5 @@ class PerformIQCampaignListCreateAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         validated_params = serializer.validated_data
         iq_campaign = serializer.save()
+        validated_params["id"] = iq_campaign.id
         return Response(validated_params)

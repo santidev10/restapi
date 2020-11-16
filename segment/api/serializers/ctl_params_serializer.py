@@ -46,6 +46,8 @@ class AdsPerformanceRangeField(serializers.CharField):
         super().run_validation(data)
         if data and data is not empty:
             data = self.validate_stats_field(data)
+        elif data is empty:
+            data = None
         return data
 
     def validate_stats_field(self, val):
