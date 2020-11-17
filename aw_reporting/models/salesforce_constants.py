@@ -110,6 +110,7 @@ class SalesforceFields:
         MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
         IAS_CAMPAIGN_NAME = "IAS_Campaign_Name__c"
         CURRENCY_CODE = "CurrencyIsoCode"
+        DISNEY_CAMPAIGN_ADVERTISER_ID = "Disney_Campaign_AdvertiserID__c"
 
     class Placement(Enum):
         AD_WORDS_PLACEMENT = "Adwords_Placement_IQ__c"
@@ -129,6 +130,8 @@ class SalesforceFields:
         TECH_FEE_CAP = "Tech_Fee_Cap_if_applicable__c"
         TECH_FEE_TYPE = "Tech_Fee_Type__c"
         TOTAL_COST = "Total_Client_Costs__c"
+        APEX_GO_CLIENT_RATE = "APEX_GO_Client_Rate__c"
+        DISNEY_DATORAMA_PLACEMENT_NAME = "Disney_Datorama_Placement_Name__c"
 
     class Flight(Enum):
         COST = "Total_Flight_Cost__c"
