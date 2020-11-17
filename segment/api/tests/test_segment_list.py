@@ -72,7 +72,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             "source_name",
             "statistics",
             "title",
-            "thumbnail_image_url"
+            "thumbnail_image_url",
+            "created_at",
+            "updated_at"
         }
         self.assertEqual(ctlv["title"], ctl_video.title)
         self.assertEqual(ctlc["title"], ctl_channel.title)

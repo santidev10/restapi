@@ -79,6 +79,7 @@ class SegmentQueryBuilder:
         :return: dict
         """
         must_queries = []
+        should_queries = []
         segment_type = self._params.get("segment_type")
 
         if self._params.get("minimum_views"):
@@ -255,6 +256,8 @@ class SegmentQueryBuilder:
             must_queries.append(vetting_status_queries)
 
         ads_stats_queries = self._get_ads_stats_queries()
+        if self._params.get("ads_stats_include_na") is True:
+            should_queries.append(QueryBuilder().build().must_not().exists().field(Sections.ADS_STATS).get())
         if self._params.get("last_30day_views"):
             query = self._get_range_queries(["last_30day_views"], Sections.STATS)
             if self._params.get("ads_stats_include_na") is True:
@@ -272,6 +275,9 @@ class SegmentQueryBuilder:
             query &= QueryBuilder().build().must_not().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist")\
                 .value(True).get()
 
+        # Extend should queries last as combining queries with other queries (i.e. combining with forced_filters)
+        # with operators (e.g. &, |) does not properly combine should queries
+        query._params["should"].extend(should_queries)
         return query
 
     @staticmethod
@@ -319,8 +325,6 @@ class SegmentQueryBuilder:
 
     def _get_ads_stats_queries(self):
         queries = self._get_range_queries(self.AD_STATS_RANGE_FIELDS, Sections.ADS_STATS)
-        if self._params.get("ads_stats_include_na") is True:
-            queries |= QueryBuilder().build().must_not().exists().field(Sections.ADS_STATS).get()
         return queries
 
     def _get_range_queries(self, fields, section):

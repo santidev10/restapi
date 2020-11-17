@@ -227,6 +227,74 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         expected_body = "\n\n".join(expected_body_lines)
         self.assertEqual(email.body, expected_body)
 
+    def test_not_notify_ordered_units_changed_fractional(self):
+        """ Test that notification is not sent if changed units are fractional """
+        ordered_units = 554
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            ordered_units=ordered_units,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            ordered_units=ordered_units,
+        )
+
+        new_ordered_units = ordered_units + 0.8
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Ordered_Units__c=new_ordered_units,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch_salesforce_connector(return_value=sf_mock), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
+            update_salesforce_data(do_delete=False, do_update=False)
+
+        flight.refresh_from_db()
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_dynamic_placement_notify_total_cost_changed(self):
         total_cost = 123.
         ad_ops = User.objects.create(
