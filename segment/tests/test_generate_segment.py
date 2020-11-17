@@ -1,7 +1,6 @@
 import io
 from uuid import uuid4
 from mock import patch
-import csv
 
 import boto3
 from django.conf import settings

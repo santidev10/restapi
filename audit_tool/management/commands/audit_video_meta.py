@@ -129,7 +129,7 @@ class Command(BaseCommand):
         admin_temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
         try:
-            # Get original export file to filter using cleaned audit data
+            # Get original export files to filter using cleaned audit data
             export_filename = segment.export.filename
             admin_export_filename = segment.export.admin_filename
             export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
