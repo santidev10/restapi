@@ -210,6 +210,8 @@ class Command(BaseCommand):
                         self.cache["countries"][country] = AuditCountry.from_string(country)
                     db_channel_meta.country = self.cache["countries"][country]
                 db_channel_meta.subscribers = convert_subscriber_count(i["statistics"].get("subscriberCount"))
+                if db_channel_meta.subscribers is None:
+                    db_channel_meta.subscribers = 0
                 try:
                     db_channel_meta.hidden_subscriber_count = i["statistics"]["hiddenSubscriberCount"]
                 # pylint: disable=broad-except
