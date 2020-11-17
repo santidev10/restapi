@@ -111,10 +111,12 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         )
         video.populate_brand_safety(overall_score=0, rescore=True)
         self.video_manager.upsert([video])
-        with patch("brand_safety.tasks.video_discovery.video_update.apply_async") as mock_update, \
+        with patch("brand_safety.tasks.video_discovery.video_update") as mock_update, \
                 patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=0):
             video_discovery_scheduler()
-        ids_arg, rescore_kwarg = mock_update.call_args.args
+        apply_async_kwargs = mock_update.apply_async.call_args.kwargs
+        ids_arg = apply_async_kwargs["args"]
+        rescore_kwarg = apply_async_kwargs["kwargs"]
         self.assertEqual({video.main.id}, set(*ids_arg))
         self.assertEqual(rescore_kwarg["rescore"], True)
 
