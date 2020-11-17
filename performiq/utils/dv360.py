@@ -17,14 +17,17 @@ DISCOVERY_SERVICE_URL = f"https://displayvideo.googleapis.com/$discovery/rest?ve
 OAUTH_TOKEN_URI = "https://accounts.google.com/o/oauth2/token"
 
 
-def load_credentials(account: OAuthAccount):
+def load_credentials(account: OAuthAccount = None, refresh_token=None, access_token=None):
     """
     given an OAuthAccount, build a GoogleCredentials instance.
     used to instantiate a client
     """
+    if account:
+        access_token = account.token
+        refresh_token = account.refresh_token
     credentials = {
-        "access_token": account.token,
-        "refresh_token": account.refresh_token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "client_id": settings.PERFORMIQ_OAUTH_CLIENT_ID,
         "client_secret": settings.PERFORMIQ_OAUTH_CLIENT_SECRET,
         "user_agent": settings.PERFORMIQ_OAUTH_USER_AGENT,

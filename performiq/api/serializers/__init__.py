@@ -1,1 +1,2 @@
-from .google_ads_campaign_serializer import GoogleAdsCampaignSerializer
+from .campaign_serializer import CampaignSerializer
+from .iqcampaign_serializer import IQCampaignSerializer

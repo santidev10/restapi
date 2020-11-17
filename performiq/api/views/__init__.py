@@ -1,3 +1,4 @@
 from .adwords_auth import AdWordsAuthApiView
-from .performiq_campaigns import PerfromIQCampaignsAPIView
+from .campaigns_list_create import PerformIQCampaignListCreateAPIView
 from .map_csv_fields import PerformIQMapCSVFieldsAPIView
+
