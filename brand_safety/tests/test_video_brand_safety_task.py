@@ -3,6 +3,8 @@ from mock import patch
 from elasticsearch_dsl import Q
 
 from brand_safety.auditors.video_auditor import VideoAuditor
+from brand_safety.auditors.utils import AuditUtils
+from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from brand_safety.tasks.constants import Schedulers
 from brand_safety.tasks.video_discovery import video_discovery_scheduler
 from brand_safety.tasks.video_discovery import video_update
@@ -109,7 +111,7 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         )
         video.populate_brand_safety(overall_score=0, rescore=True)
         self.video_manager.upsert([video])
-        with patch("brand_safety.tasks.video_discovery.video_update.apply") as mock_update, \
+        with patch("brand_safety.tasks.video_discovery.video_update.apply_async") as mock_update, \
                 patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=0):
             video_discovery_scheduler()
         ids_arg, rescore_kwarg = mock_update.call_args.args
@@ -124,8 +126,12 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
             description="test description",
         )
         video.populate_brand_safety(overall_score=0, rescore=True)
+        # Set fields added by VideoAuditor get_data method
+        video.tags = ""
+        video.transcript = ""
+        video.transcript_language = ""
         self.video_manager.upsert([video])
-        with patch.object(VideoAuditor, "process"):
+        with patch.object(VideoAuditor, "process", return_value=[BrandSafetyVideoAudit(video, AuditUtils())]):
             video_update([video.main.id], rescore=True)
             updated = self.video_manager.get([video.main.id])[0]
             self.assertEqual(updated.brand_safety.rescore, False)

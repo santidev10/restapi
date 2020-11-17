@@ -59,14 +59,13 @@ def video_update(video_ids, rescore=False):
 
     # Update video rescore batch to False
     if rescore is True:
-        manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
         reset_rescore_videos = []
         for audit in scored_videos:
             video = Video(audit.doc.main.id)
             video.populate_channel(id=audit.doc.channel.id)
             video.populate_brand_safety(rescore=False)
             reset_rescore_videos.append(video)
-        manager.upsert(reset_rescore_videos)
+        auditor.video_manager.upsert(reset_rescore_videos)
 
 
 def get_rescore_ids(manager, base_query):
