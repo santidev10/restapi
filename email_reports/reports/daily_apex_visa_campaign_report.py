@@ -135,6 +135,14 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         ordered_rate = getattr(obj, rate_field) if rate_field \
             else getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
 
+        # validate
+        if ordered_rate is None:
+            return None
+        try:
+            ordered_rate = float(ordered_rate)
+        except ValueError:
+            return None
+
         if goal_type_id == SalesForceGoalType.CPV:
             return round(ordered_rate * obj.video_views, 2)
         if goal_type_id == SalesForceGoalType.CPM:
