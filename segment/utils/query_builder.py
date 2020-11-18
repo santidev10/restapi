@@ -9,6 +9,7 @@ from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from es_components.constants import Sections
+from es_components.constants import LAST_VETTED_AT_MIN_DATE
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -244,15 +245,20 @@ class SegmentQueryBuilder:
             must_queries.append(mismatched_language_queries)
 
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
-            _config = {
-                "0": ("must_not", Sections.TASK_US_DATA),
-                "1": ("must_not", f"{Sections.TASK_US_DATA}.brand_safety"),
-                "2": ("must", f"{Sections.TASK_US_DATA}.brand_safety"),
-            }
             vetting_status_queries = Q("bool")
             for status in self._params["vetting_status"]:
-                config = _config[str(status)]
-                vetting_status_queries |= getattr(QueryBuilder().build(), config[0])().exists().field(config[1]).get()
+                if status == 0:
+                    vetting_status_queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
+                elif status == 1:
+                    vetting_status_risky = Q("bool")
+                    vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_queries |= vetting_status_risky
+                elif status == 2:
+                    vetting_status_safe = Q("bool")
+                    vetting_status_safe &= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_queries |= vetting_status_safe
             must_queries.append(vetting_status_queries)
 
         ads_stats_queries = self._get_ads_stats_queries()
