@@ -11,16 +11,17 @@ def get_currency_code(account_creation, show_client_cost):
     :param show_client_cost:
     :return:
     """
+    currency_code = None
     if show_client_cost:
         try:
             opportunities = Opportunity.objects.filter(
                 placements__adwords_campaigns__account__account_creation=account_creation).distinct()
             currency_code = opportunities.first().currency_code
         except AttributeError:
-            currency_code = None
+            pass
     else:
         try:
             currency_code = account_creation.account.currency_code
         except (Account.DoesNotExist, AttributeError):
-            currency_code = None
+            pass
     return currency_code
