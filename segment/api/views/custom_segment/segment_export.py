@@ -34,8 +34,12 @@ class SegmentExport(APIView):
                                  f"ready."
         else:
             if hasattr(segment, "export"):
-                s3_key = segment.get_s3_key()
-                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
+                if request.user.is_staff:
+                    admin_s3_key = segment.get_admin_s3_key()
+                    response["download_url"] = segment.s3.generate_temporary_url(admin_s3_key)
+                else:
+                    s3_key = segment.get_s3_key()
+                    response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             else:
                 response["message"] = "Segment has no export. Please create the list again."
         return Response(response)

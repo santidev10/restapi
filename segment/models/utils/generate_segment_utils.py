@@ -112,16 +112,17 @@ class GenerateSegmentUtils:
         )
         return config
 
-    def write_to_file(self, items, filename, segment, serializer_context, write_header=False, mode="a"):
+    def write_to_file(self, items, filename, export_serializer, serializer_context, write_header=False, mode="a"):
         """ Write data to csv file """
+        fieldnames = export_serializer.columns
         rows = []
-        fieldnames = segment.export_serializer.columns
         for item in items:
             # YT_GENRE_CHANNELS have no data and should not be on any export
             if item.main.id in YT_GENRE_CHANNELS:
                 continue
-            row = segment.export_serializer(item, context=serializer_context).data
+            row = export_serializer(item, context=serializer_context).data
             rows.append(row)
+
         with open(filename, mode=mode, newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore", quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
