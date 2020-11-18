@@ -370,7 +370,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
             ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
             currency_code=data.get(Fields.CURRENCY_CODE, None),
-            disney_campaign_advertiser_id=data.get(Fields.DISNEY_CAMPAIGN_ADVERTISER_ID, ""),
+            disney_campaign_advertiser_id=data.get(Fields.DISNEY_CAMPAIGN_ADVERTISER_ID, "") or "",
         )
         if sales_email:
             res["sales_email"] = sales_email
@@ -462,7 +462,7 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
             tech_fee_cap=data[Fields.TECH_FEE_CAP],
             tech_fee_type=data[Fields.TECH_FEE_TYPE],
             apex_go_client_rate=data.get(Fields.APEX_GO_CLIENT_RATE, None),
-            disney_datorama_placement_name=data.get(Fields.DISNEY_DATORAMA_PLACEMENT_NAME, ""),
+            disney_datorama_placement_name=data.get(Fields.DISNEY_DATORAMA_PLACEMENT_NAME, "") or "",
         )
         return res
 

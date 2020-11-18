@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
 
-    CAMPAIGNS_FIELDS = ("account__id", "salesforce_placement__opportunity__ias_campaign_name", "id", "name",
+    CAMPAIGNS_FIELDS = ("account__id", "salesforce_placement__opportunity__ias_campaign_name",
+                        "salesforce_placement__opportunity__disney_campaign_advertiser_id",
+                        "salesforce_placement__disney_datorama_placement_name",
+                        "salesforce_placement__apex_go_client_rate", "id", "name",
                         "salesforce_placement__goal_type_id", "salesforce_placement__ordered_rate",)
     STATS_FIELDS = ("date", "impressions", "clicks", "video_views", "cost", "video_views_25_quartile",
                     "video_views_50_quartile", "video_views_75_quartile", "video_views_100_quartile")
@@ -93,16 +96,16 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
             ias_campaign_name = stats.ad__ad_group__campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.ad__ad_group__campaign__account__id,
-                ias_campaign_name,
+                stats.ad__ad_group__campaign__salesforce_placement__opportunity__disney_campaign_advertiser_id, # col B ias_campaign_name,
                 stats.ad__ad_group__campaign__id,
-                stats.ad__ad_group__campaign__name,
+                ias_campaign_name, # col D stats.ad__ad_group__campaign__name,
                 stats.ad__ad_group__id,
-                stats.ad__ad_group__name,
+                stats.ad__ad_group__campaign__salesforce_placement__disney_datorama_placement_name, # col F #stats.ad__ad_group__name,
                 stats.ad__ad_group__videos_stats__creative__id,
                 stats.ad__creative_name,
                 stats.date.strftime(DATE_FORMAT),
                 "GBP",
-                self._get_revenue(stats, "ad__ad_group__campaign__"),
+                self._get_revenue(stats, "ad__ad_group__campaign__", "ad__ad_group__campaign__salesforce_placement__disney_datorama_placement_name"),
                 stats.impressions,
                 stats.clicks,
                 stats.video_views,
