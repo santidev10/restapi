@@ -722,3 +722,29 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(response.data["impressions"], impressions)
         self.assertEqual(response.data["video_views"], video_views)
         self.assertAlmostEqual(response.data["video_view_rate"], (video_views / impressions) * 100)
+
+    def test_correct_currency_code(self):
+        """
+        Test correct currency code is used. If user aw_settings does not includes dashboard_ad_words_rates, then
+            use Google Ads account currency code. Else use Salesforce Opportunity currency code.
+        """
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        self.user.is_staff = True
+        self.user.save()
+        account = Account.objects.create(currency_code="SEK")
+        opportunity = Opportunity.objects.create(currency_code="EUR")
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Campaign.objects.create(
+            id=1, account=account, impressions=5213, video_views=4111,
+            salesforce_placement=placement)
+        with self.patch_user_settings(**user_settings):
+            response_1 = self._request(account.account_creation.id)
+        self.assertEqual(response_1.data["currency_code"], account.currency_code)
+
+        user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = False
+        with self.patch_user_settings(**user_settings):
+            response_2 = self._request(account.account_creation.id)
+        self.assertEqual(response_2.data["currency_code"], opportunity.currency_code)

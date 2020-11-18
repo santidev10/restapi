@@ -123,7 +123,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             data["delivered_cost"] = self._get_client_cost(fs)
 
         self._filter_costs(data, current_user)
-        data["currency_code"] = get_currency_code(account_creation)
+        data["currency_code"] = get_currency_code(account_creation, show_client_cost is False)
         return data
 
     def _filter_costs(self, data, current_user):
