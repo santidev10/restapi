@@ -63,7 +63,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
             show_aw_costs=show_aw_costs,
             **filters)
         data = chart.get_items()
-        data["currency_code"] = get_currency_code(item)
+        data["currency_code"] = get_currency_code(item, show_aw_costs)
         managed_service_hide_delivery_data = request.user.has_custom_user_group(
             PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
         )

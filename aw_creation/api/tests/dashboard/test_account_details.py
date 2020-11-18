@@ -737,7 +737,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         account = Account.objects.create(currency_code="SEK")
         opportunity = Opportunity.objects.create(currency_code="EUR")
         placement = OpPlacement.objects.create(opportunity=opportunity)
-        campaign = Campaign.objects.create(
+        Campaign.objects.create(
             id=1, account=account, impressions=5213, video_views=4111,
             salesforce_placement=placement)
         with self.patch_user_settings(**user_settings):

@@ -415,5 +415,5 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return status
 
     def get_currency_code(self, obj):
-        currency_code = get_currency_code(obj, self.show_client_cost)
+        currency_code = get_currency_code(obj, self.show_client_cost is False)
         return currency_code
