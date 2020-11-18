@@ -1,7 +1,6 @@
 from elasticsearch_dsl import Q
 from elasticsearch_dsl.query import Bool
 from typing import Tuple
-from datetime import datetime
 
 from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.models import AuditAgeGroup
@@ -247,19 +246,18 @@ class SegmentQueryBuilder:
 
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             vetting_status_queries = Q("bool")
-            last_vetted_at_limit = datetime.strptime(LAST_VETTED_AT_MIN_DATE, '%Y/%m/%d')
             for status in self._params["vetting_status"]:
                 if status == 0:
                     vetting_status_queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
                 elif status == 1:
                     vetting_status_risky = Q("bool")
                     vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(last_vetted_at_limit).get()
+                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
                     vetting_status_queries |= vetting_status_risky
                 elif status == 2:
                     vetting_status_safe = Q("bool")
                     vetting_status_safe &= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(last_vetted_at_limit).get()
+                    vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
                     vetting_status_queries |= vetting_status_safe
             must_queries.append(vetting_status_queries)
 
