@@ -159,6 +159,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.stats = {}
         self.plan_rates = {}
         self.daily_chart = defaultdict(list)
+        self.show_client_cost = not self.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -196,7 +197,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        show_client_cost = not self.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         campaign_filter = {
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
@@ -204,7 +204,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             self.FLIGHT_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
         account_client_cost = dict()
-        if show_client_cost:
+        if self.show_client_cost:
             account_client_cost = self._get_client_cost_by_account(
                 campaign_filter)
 
@@ -264,7 +264,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
                 .get("video_impressions", account_data["video_impressions"])
             dict_add_calculated_stats(account_data)
 
-            if show_client_cost:
+            if self.show_client_cost:
                 cost = account_client_cost[account_id]
                 sf_data_for_acc = sf_data_by_acc[account_id]
                 cpv_total_costs = sf_data_for_acc["cpv_total_cost"]
@@ -415,5 +415,5 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return status
 
     def get_currency_code(self, obj):
-        currency_code = get_currency_code(obj)
+        currency_code = get_currency_code(obj, self.show_client_cost)
         return currency_code
