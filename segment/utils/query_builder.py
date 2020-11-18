@@ -250,15 +250,15 @@ class SegmentQueryBuilder:
                 if status == 0:
                     vetting_status_queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
                 elif status == 1:
-                    vetting_status_risky = Q("bool")
-                    vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
-                    vetting_status_queries |= vetting_status_risky
-                elif status == 2:
                     vetting_status_safe = Q("bool")
                     vetting_status_safe &= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
                     vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
                     vetting_status_queries |= vetting_status_safe
+                elif status == 2:
+                    vetting_status_risky = Q("bool")
+                    vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_queries |= vetting_status_risky
             must_queries.append(vetting_status_queries)
 
         ads_stats_queries = self._get_ads_stats_queries()
