@@ -73,6 +73,12 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
                     "ad__ad_group__campaign__salesforce_placement__ordered_rate"
                 ),
                 ad__ad_group__campaign__account__name=Max("ad__ad_group__campaign__account__name"),
+                ad__ad_group__campaign__salesforce_placement__opportunity__disney_campaign_advertiser_id=\
+                    Max("ad__ad_group__campaign__salesforce_placement__opportunity__disney_campaign_advertiser_id"),
+                ad__ad_group__campaign__salesforce_placement__disney_datorama_placement_name=\
+                    Max("ad__ad_group__campaign__salesforce_placement__disney_datorama_placement_name"),
+                ad__ad_group__campaign__salesforce_placement__apex_go_client_rate=\
+                    Max("ad__ad_group__campaign__salesforce_placement__apex_go_client_rate"),
                 ad__ad_group__campaign__account__currency_code=Max("ad__ad_group__campaign__account__currency_code")
             ) \
             .order_by("date") \
@@ -105,7 +111,7 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
                 stats.ad__creative_name,
                 stats.date.strftime(DATE_FORMAT),
                 "GBP",
-                self._get_revenue(stats, "ad__ad_group__campaign__", "ad__ad_group__campaign__salesforce_placement__disney_datorama_placement_name"),
+                self._get_revenue(stats, "ad__ad_group__campaign__", "ad__ad_group__campaign__salesforce_placement__apex_go_client_rate"),
                 stats.impressions,
                 stats.clicks,
                 stats.video_views,
