@@ -33,7 +33,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
             # email admin version export if user is staff
             if owner.is_staff:
                 admin_s3_key = segment.get_admin_s3_key()
-                download_url = segment.s3.generate_temporary_url(admin_s3_key)
+                download_url = segment.s3.generate_temporary_url(admin_s3_key, time_limit=3600 * 24 * 7)
                 send_export_email(segment.owner.email, segment.title, download_url)
                 logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id, segment.title)
             else:
