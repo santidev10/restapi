@@ -107,7 +107,9 @@ class CSVColumnMapper:
         CSVFieldTypeEnum.COST.value: CURRENCY_STRINGS + ["$", "cost"],
         CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "avg", "average"],
         CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "avg", "average"],
-        CSVFieldTypeEnum.VIDEO_PLAYED_VIEW_RATE.value: ["rate"],
+        CSVFieldTypeEnum.VIEW_RATE.value: ["view rate"],
+        CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
+        CSVFieldTypeEnum.CTR.value: ["ctr", "through rate", "click through", "clickthrough"],
     }
 
     data_guess_functions = {
@@ -117,7 +119,9 @@ class CSVColumnMapper:
         CSVFieldTypeEnum.COST.value: is_currency_validator,
         CSVFieldTypeEnum.AVERAGE_CPV.value: is_cpv_validator,
         CSVFieldTypeEnum.AVERAGE_CPM.value: is_cpm_validator,
-        CSVFieldTypeEnum.VIDEO_PLAYED_VIEW_RATE.value: is_rate_validator,
+        CSVFieldTypeEnum.VIEW_RATE.value: is_rate_validator,
+        CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: is_rate_validator,
+        CSVFieldTypeEnum.CTR.value: is_rate_validator,
     }
 
     # listed highest certainty first
@@ -125,7 +129,9 @@ class CSVColumnMapper:
         CSVFieldTypeEnum.URL.value,
         CSVFieldTypeEnum.AVERAGE_CPV.value,
         CSVFieldTypeEnum.AVERAGE_CPM.value,
-        CSVFieldTypeEnum.VIDEO_PLAYED_VIEW_RATE.value,
+        CSVFieldTypeEnum.VIEW_RATE.value,
+        CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value,
+        CSVFieldTypeEnum.CTR.value,
         # very uncertain guesses below
         CSVFieldTypeEnum.COST.value,
         CSVFieldTypeEnum.IMPRESSIONS.value,
