@@ -3,10 +3,9 @@ from operator import attrgetter
 from typing import Dict
 
 from .base_analyzer import BaseAnalyzer
-from .base_analyzer import IQChannelResult
+from .base_analyzer import ChannelAnalysis
+from .constants import AnalysisFields
 from .constants import AnalyzeSection
-from es_components.models import Channel
-from performiq.models import IQCampaign
 
 
 class ContextualAnalyzer(BaseAnalyzer):
@@ -15,17 +14,12 @@ class ContextualAnalyzer(BaseAnalyzer):
     A ContextualAnalyzer expects to be used for many channels and results are stored until requested by accessing
         the results property.
     """
-    # Mapping of fieldname on Elasticsearch document to params value to check values are in parameters
-    ES_FIELD_RESULTS_MAPPING = {
-        "general_data.primary_category": "content_categories",
-        "general_data.top_lang_code": "languages",
-        "task_us_data.content_quality": "content_quality",
-        "task_us_data.content_type": "content_type",
-    }
+    RESULT_KEY = AnalyzeSection.CONTEXTUAL_RESULT_KEY
+    ANALYSIS_FIELDS = {AnalysisFields.CONTENT_CATEGORIES, AnalysisFields.LANGUAGES, AnalysisFields.CONTENT_TYPE,
+                       AnalysisFields.CONTENT_QUALITY}
 
-    def __init__(self, iq_campaign: IQCampaign, iq_channel_results: Dict[str, IQChannelResult]):
-        self.iq_campaign = iq_campaign
-        self.iq_channel_results = iq_channel_results
+    def __init__(self, params):
+        self.params = params
         self._failed_channels = set()
         self._total_result_counts = dict(
             languages_counts=defaultdict(int),
@@ -34,6 +28,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             content_type_counts=defaultdict(int),
             matched_content_categories=0, # Convenience key to keep track how many content categories have matched
         )
+        self._seen = 0
 
     def get_results(self) -> dict:
         """
@@ -43,8 +38,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         :return:
         """
         percentage_results = {}
-        total_analyzed = len(self.iq_channel_results)
-        passed_count = total_analyzed - len(self._failed_channels)
+        passed_count = self._seen - len(self._failed_channels)
         # For each result type (e.g. category, languages) we need to calculate the percentage occurrence of each
         # value in each result type. For languages, we may have analyzed 100 channels with 70 "en" and 30 "fr"
         # languages, so "en" has 70% and fr has 30%
@@ -52,50 +46,49 @@ class ContextualAnalyzer(BaseAnalyzer):
             if "_counts" in result_type:
                 formatted_key = result_type.replace("_counts", "_percents")
                 for key, value in counts.items():
-                    counts[key] = self.get_score(value, total_analyzed)
+                    counts[key] = self.get_score(value, self._seen)
                 percentage_results[formatted_key] = counts
         percentage_results["content_categories_percents"]["overall_percentage"] = self.get_score(
-            self._total_result_counts["matched_content_categories"], total_analyzed
+            self._total_result_counts["matched_content_categories"], self._seen
         )
         final_result = {
-            "overall_score": self.get_score(passed_count, total_analyzed),
+            "overall_score": self.get_score(passed_count, self._seen),
             **percentage_results
         }
         return final_result
 
-    def analyze(self, channel: Channel) -> None:
-        """
-        Analyze a single channel by comparing it's metadata values accessed with ES_FIELD_RESULTS_MAPPING and
-            the parameters created with the IQCampaign
-        This method will mutate the iq_channel_results dictionary passed in during instantiation with the results for the
-            current channel being processed
-        :param channel: Channel document being analyzed
-        :return: dict
-        """
+    def analyze(self, channel_analysis: ChannelAnalysis):
         contextual_failed = False
         curr_channel_result = {
             "passed": True
         }
-        for es_field, params_field in self.ES_FIELD_RESULTS_MAPPING.items():
-            if not self.iq_campaign.params.get(params_field):
+        for params_field in self.ANALYSIS_FIELDS:
+            if not self.params.get(params_field):
                 curr_channel_result["passed"] = None
                 continue
+            value = channel_analysis.get(params_field)
             count_field = params_field + "_counts"
-            # Get value of current field e.g. channel.general_data.primary_category
-            attr_value = str(attrgetter(es_field)(channel))
-            self._total_result_counts[count_field][attr_value] += 1
-            # Check if current value is in campaign params e.g. If channel language is in params["languages"]
-            # If any metadata value does not match params, the entire channel is considered failed
-            if attr_value not in self.iq_campaign.params[params_field]:
-                contextual_failed = True
-            curr_channel_result[params_field] = attr_value
-            self._addl_processing(params_field, attr_value)
+            # Check if value matches params
+            contextual_failed = self._analyze(count_field, params_field, value)
+            curr_channel_result[params_field] = value
+            self._addl_processing(params_field, value)
 
         if contextual_failed is True:
+            channel_analysis.clean = False
             curr_channel_result["passed"] = False
-            self._failed_channels.add(channel.main.id)
+            self._failed_channels.add(channel_analysis.channel_id)
+        self._seen += 1
         # Add the contextual analysis result for the current channel being processed
-        self.iq_channel_results[channel.main.id].add_result(AnalyzeSection.CONTEXTUAL_RESULT_KEY, curr_channel_result)
+        return curr_channel_result
+
+    def _analyze(self, count_field, params_field, value):
+        value = [value] if value is not isinstance(value, list) else value
+        contextual_failed = False
+        for val in value:
+            self._total_result_counts[count_field][val] += 1
+            if contextual_failed is False and val not in self.params[params_field]:
+                contextual_failed = True
+        return contextual_failed
 
     def _addl_processing(self, params_field, value):
         """
@@ -104,6 +97,5 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         # Keep track of matched content categories to calculate overall percentage match of all channels
         # processed
-        if params_field == self.ES_FIELD_RESULTS_MAPPING["general_data.primary_category"]\
-                and value in self.iq_campaign.params[params_field]:
+        if params_field == "content_categories" and value in self.params[params_field]:
             self._total_result_counts["matched_content_categories"] += 1

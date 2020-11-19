@@ -2,19 +2,19 @@ from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELD
 from aw_reporting.adwords_reports import placement_performance_report
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
-from performiq.models.constants import CampaignDataFields
+from performiq.models.constants import AnalysisFields
 from performiq.oauth_utils import get_client
 from performiq.models import Campaign
 
 
 ADWORDS_API_FIELD_MAPPING = {
-    "Impressions": CampaignDataFields.IMPRESSIONS,
-    "VideoViews": CampaignDataFields.VIDEO_VIEWS,
-    "Criteria": CampaignDataFields.CHANNEL_ID,
-    "Ctr": CampaignDataFields.CTR,
-    "AverageCpm": CampaignDataFields.CPM,
-    "AverageCpv": CampaignDataFields.CPV,
-    "ActiveViewViewability": CampaignDataFields.ACTIVE_VIEW_VIEWABILITY,
+    "Impressions": AnalysisFields.IMPRESSIONS,
+    "VideoViews": AnalysisFields.VIDEO_VIEWS,
+    "Criteria": AnalysisFields.CHANNEL_ID,
+    "Ctr": AnalysisFields.CTR,
+    "AverageCpm": AnalysisFields.CPM,
+    "AverageCpv": AnalysisFields.CPV,
+    "ActiveViewViewability": AnalysisFields.ACTIVE_VIEW_VIEWABILITY,
 }
 
 

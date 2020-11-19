@@ -37,7 +37,7 @@ ENTITY_STATUS_MAP_TO_ID = {status.name: status.value for status in EntityStatusT
 ENTITY_STATUS_MAP_TO_STR = {status.value: status.name for status in EntityStatusType}
 
 
-class CampaignDataFields:
+class AnalysisFields:
     AD_GROUP_ID = "ad_group_id"
     CHANNEL_ID = "channel_id"
     IMPRESSIONS = "impressions"
@@ -50,6 +50,13 @@ class CampaignDataFields:
     CPM = "cpm"
     CPV = "cpv"
     ADVERTISER_ID = "advertiser_id"
+
+    # Elasticsearch Fields
+    CONTENT_CATEGORIES = "content_categories"
+    CONTENT_TYPE = "content_type"
+    CONTENT_QUALITY = "content_quality"
+    LANGUAGES = "languages"
+    OVERALL_SCORE = "overall_score"
 
 
 class EXPORT_RESULTS_KEYS:

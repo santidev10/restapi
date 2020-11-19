@@ -10,18 +10,18 @@ from performiq.models import OAuthAccount
 from performiq.models import Campaign
 from performiq.models import IQCampaign
 from performiq.models.constants import OAuthType
-from performiq.models.constants import CampaignDataFields
+from performiq.models.constants import AnalysisFields
 from utils.dv360_api import DV360Connector
 
 
 KEY_MAPPING = {
-    "FILTER_ADVERTISER": CampaignDataFields.ADVERTISER_ID,
+    "FILTER_ADVERTISER": AnalysisFields.ADVERTISER_ID,
     "FILTER_ADVERTISER_CURRENCY": "advertiser_currency",
-    "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS": CampaignDataFields.CHANNEL_ID,
-    "METRIC_TRUEVIEW_VIEW_RATE": CampaignDataFields.VIDEO_VIEW_RATE,
-    "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY": CampaignDataFields.CPM,
-    "METRIC_TRUEVIEW_CPV_ADVERTISER": CampaignDataFields.CPV,
-    "METRIC_CLIENT_COST_ADVERTISER_CURRENCY": CampaignDataFields.COST,
+    "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS": AnalysisFields.CHANNEL_ID,
+    "METRIC_TRUEVIEW_VIEW_RATE": AnalysisFields.VIDEO_VIEW_RATE,
+    "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY": AnalysisFields.CPM,
+    "METRIC_TRUEVIEW_CPV_ADVERTISER": AnalysisFields.CPV,
+    "METRIC_CLIENT_COST_ADVERTISER_CURRENCY": AnalysisFields.COST,
 }
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def report_csv_generator(report_fp, report_result) -> iter:
             # Construct dict for each row as entire csv is not formatted with columns
             for index, column_name in enumerate(columns):
                 mapped_data_key = KEY_MAPPING[column_name]
-                if mapped_data_key == CampaignDataFields.CHANNEL_ID:
+                if mapped_data_key == AnalysisFields.CHANNEL_ID:
                     row[index] = row[index].split("/channel/")[-1]
                 api_value = row[index]
                 coercer = COERCE_FIELD_FUNCS.get(mapped_data_key)

@@ -12,7 +12,7 @@ from utils.views import get_object
 
 
 class IQCampaignSerializer(serializers.ModelSerializer):
-    campaign_id = serializers.IntegerField(write_only=True)
+    campaign_id = serializers.IntegerField(write_only=True, default=None)
     csv_s3_key = serializers.CharField(write_only=True, default=None)
 
     average_cpv = serializers.FloatField(write_only=True)
@@ -44,8 +44,11 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         return iq_campaign
 
     def validate_campaign_id(self, val):
-        campaign = get_object(Campaign, id=val)
-        return campaign.id
+        if val is not None:
+            campaign_id = get_object(Campaign, id=val).id
+        else:
+            campaign_id = None
+        return campaign_id
 
     def validate_content_quality(self, val):
         validated = [str(val) for val in super().validate(val)]
