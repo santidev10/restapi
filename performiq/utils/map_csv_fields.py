@@ -103,7 +103,7 @@ class CSVColumnMapper:
     alt_header_names = {
         CSVFieldTypeEnum.URL.value: ["url", "link", "www", "http"],
         CSVFieldTypeEnum.IMPRESSIONS.value: ["impression", "impres", "imp"],
-        CSVFieldTypeEnum.VIEWS.value: ["views",],
+        CSVFieldTypeEnum.VIEWS.value: ["views"],
         CSVFieldTypeEnum.COST.value: CURRENCY_STRINGS + ["$", "cost"],
         CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "avg", "average"],
         CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "avg", "average"],
@@ -254,6 +254,8 @@ class CSVColumnMapper:
 
         # narrow possible columns by reducing to columns with the lowest number of guesses
         by_count = {letter: len(guesses) for letter, guesses in member_map.items()}
+        if not by_count:
+            return
         counts = by_count.values()
         lowest_count = sorted(counts)[0]
         reduced_map = {letter: guesses for letter, guesses in member_map.items() if len(guesses) == lowest_count}
