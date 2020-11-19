@@ -92,7 +92,7 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
                     valid_headers = [header.value for header in CSVFieldTypeEnum]
                     self.assertEqual(set(keys), set(valid_headers))
                     # check that letters are part of a set
-                    mapping_values = mapping.values()
+                    mapping_values = list(filter(None, mapping.values()))
                     letters = list(string.ascii_uppercase)[:len(mapping_values)]
                     for value in mapping_values:
                         with self.subTest(value):
