@@ -1,17 +1,20 @@
-from typing import List, Dict
+from operator import attrgetter
+from typing import List
 
 from .base_analyzer import BaseAnalyzer
+from .constants import COERCE_FIELD_FUNCS
+from .base_analyzer import ChannelAnalysis
 from .constants import DataSourceType
+from .constants import ESFieldMapping
 from es_components.managers import ChannelManager
-from performiq.analyzers import IQChannelResult
+from es_components.constants import Sections
 from performiq.analyzers import PerformanceAnalyzer
 from performiq.analyzers import SuitabilityAnalyzer
 from performiq.analyzers import ContextualAnalyzer
-from performiq.analyzers.constants import ANALYZE_SECTIONS
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 from performiq.models import OAuthAccount
-from performiq.models.constants import CampaignDataFields
+from performiq.models.constants import AnalysisFields
 from performiq.models.constants import OAuthType
 from performiq.tasks.utils.get_csv_data import get_csv_data
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data
@@ -22,39 +25,76 @@ from utils.utils import chunks_generator
 
 class ExecutorAnalyzer(BaseAnalyzer):
     """
-    Manages PerformIQ analysis flow by providing data to all analyzers and gathering results
+    Manages PerformIQ analysis flow by providing data to all analyzers defined in self._analyzers
+        and gathering / saving results
     """
     def __init__(self, iq_campaign: IQCampaign):
         self.iq_campaign = iq_campaign
-        # Prepare dict results for each analyzer to add results to
-        self._iq_channel_results = self._prepare_data()
-        # Prepare analyzers with results
-        self._performance_analyzer = PerformanceAnalyzer(iq_campaign, self._iq_channel_results)
-        self._contextual_analyzer = ContextualAnalyzer(iq_campaign, self._iq_channel_results)
-        self._suitability_analyzer = SuitabilityAnalyzer(iq_campaign, self._iq_channel_results)
+        # Prepare results for each analyzer to add results to
+        self.channel_analyses = self._prepare_data()
+        self._analyzers = [
+            PerformanceAnalyzer(self.iq_campaign.params),
+            ContextualAnalyzer(self.iq_campaign.params),
+            SuitabilityAnalyzer(self.iq_campaign.params),
+        ]
+        self.channel_manager = ChannelManager(
+            sections=[Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY],
+            upsert_sections=None
+        )
 
     def analyze(self, *args, **kwargs):
         """
         Main method to call analyze method for each analyzer used in PerformIQ analysis
         Saves results of IQCampaignChannels with _save_results method
         """
-        # PerformanceAnalyzer is analyzed separately since we have all available data (i.e. Either api data or from csv)
-        # ContextualAnalyzer and SuitabilityAnalyzer rely on retrieving documents from Elasticsearch which
-        # is done in batches
-        self._performance_analyzer.analyze()
-        channel_metadata_analyzers = [self._contextual_analyzer, self._suitability_analyzer]
-        self._analyze_channels(channel_metadata_analyzers)
-        self._save_results()
+        for batch in chunks_generator(self.channel_analyses, size=10000):
+            channel_data = self._merge_es_data(list(batch))
+            for channel in channel_data:
+                for analyzer in self._analyzers:
+                    result = analyzer.analyze(channel)
+                    channel.add_result(analyzer.RESULT_KEY, result)
+
+    def _merge_es_data(self, channel_data: List[ChannelAnalysis]) -> List[ChannelAnalysis]:
+        """
+        Merges Elasticsearch data by adding to each ChannelAnalysis object using ESFieldMapping
+        First attempt to extract a value using a ESFieldMapping.PRIMARY field. If the document also as a SECONDARY
+            field, it is implied the final value should be a list with the combined values of the PRIMARY and SECONDARY fields
+        :param channel_data: list -> ChannelAnalysis instantiations
+        :return: list
+        """
+        by_id = {
+            c.channel_id: c for c in channel_data
+        }
+        es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
+        for channel in es_data:
+            mapped = {}
+            for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
+                # Map multi dot attribute fields to single keys
+                attr_value = attrgetter(es_field)(channel)
+                coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+                try:
+                    # If has secondary field, it is implied that the final attr_value should be a list
+                    secondary_field = ESFieldMapping.SECONDARY[es_field]
+                    second_attr_value = attrgetter(secondary_field)(channel)
+                    if second_attr_value:
+                        # Check if the original attr_value is None
+                        attr_value = attr_value if attr_value is not None else []
+                        attr_value.extend(second_attr_value)
+                except (KeyError, AttributeError):
+                    pass
+                # Not all fields will need to be coerced
+                mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
+            by_id[channel.main.id].add_data(mapped)
+        return list(by_id.values())
 
     def get_results(self):
         """
-        Format results from each analyzer
+        Gather and format results from each analyzer
         :return:
         """
         all_results = {
-            "performance_results": self._performance_analyzer.get_results(),
-            "contextual_results": self._contextual_analyzer.get_results(),
-            "suitability_results": self._suitability_analyzer.get_results(),
+            analyzer.RESULT_KEY: analyzer.get_results()
+            for analyzer in self._analyzers
         }
         return all_results
 
@@ -63,49 +103,27 @@ class ExecutorAnalyzer(BaseAnalyzer):
         Calculates statistics for channels that do not pass analysis. This should be called only after the self.analyze
             method has been called
         """
-        wastage_channels = [r.iq_channel for r in self._iq_channel_results.values() if r.iq_channel.clean is False]
+        wastage = [analysis for analysis in self.channel_analyses if analysis.clean is False]
         statistics = {
-            "wastage_channels_percent": self.get_score(len(wastage_channels), len(self._iq_channel_results)),
-            "wastage_spend": sum(iq_channel.meta_data[CampaignDataFields.COST] for iq_channel in wastage_channels),
+            "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
+            "wastage_spend": sum(analysis.get(AnalysisFields.COST, 0) for analysis in wastage),
         }
         return statistics
 
-    def _analyze_channels(self, analyzers: list):
+    def _prepare_data(self) -> iter:
         """
-        Method that applies analyzers to each channel retrieved using iq_results
-        Each analyzer will mutate the result of each channel being analyzed, which is stored in self._iq_channel_results
-            which was passed during each analyzer instantiation in __init__ method
-        Each analyzer in analyzer must implement an analyze method that accepts a es_components.models.Channel object
-        :param analyzers: list -> List of analyzers to apply to each channel
+        Retrieve data to create ChannelAnalysis objects to track results throughout analysis processes
         :return: dict
         """
-        channel_manager = ChannelManager(["general_data", "task_us_data", "brand_safety"])
-        for batch in chunks_generator(self._iq_channel_results.keys(), size=5000):
-            channels = channel_manager.get(batch, skip_none=True)
-            for channel in channels:
-                # Each analyzer will mutate channel results in self._iq_channel_results, as each analyzer should
-                # have been instantiated with the same iq_channel_results dict in the __init__ method
-                [analyzer.analyze(channel) for analyzer in analyzers]
-
-    def _prepare_data(self) -> Dict[str, IQChannelResult]:
-        """
-        Retrieve data to create IQCampaignChannels for analysis
-        After db creation, a dict of channel_id: IQChannelResult key, values are created for analyzers
-        :return: dict
-        """
-        data = self._get_data()
-        created_iq_channels = self._create_data(data)
-        # This dict will be passed into each analyzer to be mutated with results
-        iq_results = {
-            item.channel_id: IQChannelResult(item) for item in created_iq_channels
-        }
-        return iq_results
+        raw_data = self._get_data()
+        channel_data = [ChannelAnalysis(data[AnalysisFields.CHANNEL_ID], data=data) for data in raw_data]
+        return channel_data
 
     def _get_data(self):
         """
-        Retrieve data from either Google Ads (Adwords API) / DV360 API's or CSV file
-        Each function in GET_DATA_FUNCS should map their raw values using CampaignDataFields to ensure that all keys
-            are predictable
+        Retrieve data from either APIs or CSV file
+        Each function in GET_DATA_FUNCS should map their raw values using AnalysisFields to ensure that all keys
+            are predictable throughout analysis process
         :return: list
         """
         GET_DATA_FUNCS = {
@@ -128,7 +146,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
     def _get_oauth_account(self) -> OAuthAccount:
         """
         Get related OAuthAccount to current IQCampaign being processed. This method should only be used if
-        the data source is either Google Ads (Adwords API) or DV360 API
+            the data source is either Google Ads (Adwords API) or DV360 API
         :return:
         """
         if self.iq_campaign.campaign.oauth_type == OAuthType.GOOGLE_ADS.value:
@@ -138,21 +156,15 @@ class ExecutorAnalyzer(BaseAnalyzer):
                 .filter(oauth_type=OAuthType.DV360.value).first()
         return oauth_account
 
-    def _create_data(self, raw_data: List[dict]) -> List[IQCampaignChannel]:
+    def _save_results(self, channel_analyses: List[ChannelAnalysis]) -> None:
         """
-        Uses raw data retrieved from _get_data method to create IQCampaignChannels for current self.iq_campaign
+        Save final results stored in ChannelAnalysis objects
+        :param channel_analyses: ChannelAnalysis objects that have been during analysis
+        :return: list
         """
-        init_results = {
-            key: {} for key in ANALYZE_SECTIONS
-        }
-        to_create = [
-            IQCampaignChannel(iq_campaign_id=self.iq_campaign.id, results=init_results,
-                              channel_id=data[CampaignDataFields.CHANNEL_ID], meta_data=data)
-            for data in raw_data
-        ]
+        to_create = (
+            IQCampaignChannel(
+                iq_campaign=self.iq_campaign, clean=analysis.clean, meta_data=analysis.meta_data,
+                channel_id=analysis.channel_id, results=analysis.results) for analysis in channel_analyses
+        )
         safe_bulk_create(IQCampaignChannel, to_create)
-        return to_create
-
-    def _save_results(self):
-        IQCampaignChannel.objects.bulk_update((r.iq_channel for r in self._iq_channel_results.values()),
-                                              fields=["clean", "results"])

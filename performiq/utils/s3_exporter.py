@@ -5,7 +5,7 @@ from uuid import uuid4
 
 
 class PerformS3Exporter(S3Exporter):
-    bucket_name = settings.AMAZON_S3_BUCKET_NAME
+    bucket_name = settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME
     aws_access_key_id = settings.AMAZON_S3_ACCESS_KEY_ID
     aws_secret_access_key = settings.AMAZON_S3_SECRET_ACCESS_KEY
 

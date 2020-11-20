@@ -1,10 +1,9 @@
 from typing import Dict
 
-from .base_analyzer import IQChannelResult
 from .base_analyzer import BaseAnalyzer
+from .base_analyzer import ChannelAnalysis
 from .constants import AnalyzeSection
-from performiq.models import IQCampaign
-from performiq.models.constants import CampaignDataFields
+from performiq.models.constants import AnalysisFields
 
 
 class PerformanceAnalyzer(BaseAnalyzer):
@@ -12,114 +11,167 @@ class PerformanceAnalyzer(BaseAnalyzer):
     Analyzes channels based on ad performance metrics
     Once called, this will attempt to analyze all channels given in iq_channel_results parameter
     """
-    PERFORMANCE_FIELDS = {CampaignDataFields.CPV, CampaignDataFields.CPM, CampaignDataFields.CTR,
-                          CampaignDataFields.VIDEO_VIEW_RATE, CampaignDataFields.ACTIVE_VIEW_VIEWABILITY}
+    RESULT_KEY = AnalyzeSection.PERFORMANCE_RESULT_KEY
+    ANALYSIS_FIELDS = {AnalysisFields.CPV, AnalysisFields.CPM, AnalysisFields.CTR, AnalysisFields.VIDEO_VIEW_RATE,
+                       AnalysisFields.ACTIVE_VIEW_VIEWABILITY, AnalysisFields.VIDEO_QUARTILE_100_RATE}
 
-    def __init__(self, iq_campaign: IQCampaign, iq_channel_results: Dict[str, IQChannelResult]):
-        self.iq_campaign = iq_campaign
-        self.iq_channel_results = iq_channel_results
+    def __init__(self, params: dict):
+        self.params = params
         # This will be set by analyze method
-        self._performance_results = None
+        self._performance_results = {}
         # If channel fails in any metric, it fails entirely
         self._failed_channels_count = 0
+        self._seen = 0
+        # Keep track of counts for each metric being analyzed. Data may not always include an analysis_field,
+        # so use actual number of data that has metric to calculate overall performance
+        self._total_results = {
+            key: dict(failed=0, passed=0) for key in self.ANALYSIS_FIELDS
+        }
+        # Keep track of sum values to calculate overall averages in self.get_results method
+        self._averages = {
+            AnalysisFields.CPM: 0,
+            AnalysisFields.CPV: 0,
+        }
 
-    def get_results(self):
+    def analyze(self, channel_analysis: ChannelAnalysis):
         """
-        Get results of performance analysis for all channels in self.iq_channel_results
+        Count of passed and failed items will be tracked for each field in ANALYSIS_FIELDS
+        After gathering all results, add performance score using _add_performance_percentage_result method
+        """
+        # Initialize empty results for all possible performance fields
+        curr_result = {
+            "passed": None,
+            **{
+                metric_name: None for metric_name in self.ANALYSIS_FIELDS
+            }
+        }
+        # Ensure that the analysis ran at least for one metric and should contribute to the overall count of items seen
+        analyzed = False
+        # Compare each metric (e.g. cpm) against thresholds in IQCampaign.params
+        for metric_name in self.ANALYSIS_FIELDS:
+            threshold = self.params.get(metric_name)
+            metric_value = channel_analysis.get(metric_name)
+            if not threshold or metric_value is None:
+                continue
+            # Add values to calculate overall averages
+            self._add_averages(metric_name, metric_value)
+            try:
+                if self.passes(metric_value, threshold):
+                    self._total_results[metric_name]["passed"] += 1
+                    curr_result["passed"] = True
+                else:
+                    channel_analysis.clean = False
+                    self._total_results[metric_name]["failed"] += 1
+                    curr_result["passed"] = False
+                # Store the actual metric value
+                curr_result[metric_name] = metric_value
+            except TypeError:
+                continue
+            else:
+                analyzed = True
+                if curr_result["passed"] is False:
+                    self._failed_channels_count += 1
+                if analyzed is True:
+                    self._seen += 1
+        return curr_result
+
+    def get_results(self) -> dict:
+        """
+        Gather and format results for all channels analyzed in self.analyze method
         :return: dict
-        """
-        overall_score = self.get_score(len(self.iq_channel_results) - self._failed_channels_count,
-                                       len(self.iq_channel_results))
-        averages = self._calculate_averages()
-        self._performance_results["overall_score"] = overall_score
-        self._performance_results["cpm"]["avg"] = averages["cpm_avg"]
-        self._performance_results["cpv"]["avg"] = averages["cpv_avg"]
-        return self._performance_results
+            failed: Total channels failed for metric
+            passed: Total channels passed for metric
+            performance: Percentage passed over all scored
+            avg: Average of values for all channels seen
 
-    def _add_performance_percentage_result(self, results: dict):
+            example_result = {
+                "average_cpm": {
+                    "failed": 0,
+                    "passed": 121,
+                    "performance": 100.0,
+                    "avg": 3.926
+                },
+                "video_view_rate": {
+                    "failed": 0,
+                    "passed": 121,
+                    "performance": 100.0
+                },
+                "ctr": {
+                    "failed": 121,
+                    "passed": 0,
+                    "performance": 0.0
+                },
+                "active_view_viewability": {
+                    "failed": 0,
+                    "passed": 0,
+                    "performance": null
+                },
+                "video_quartile_100_rate": {
+                    "failed": 0,
+                    "passed": 121,
+                    "performance": 100.0
+                },
+                "average_cpv": {
+                    "failed": 121,
+                    "passed": 0,
+                    "performance": 0.0,
+                    "avg": 0.0069
+                },
+                "overall_score": 60.0
+            }
         """
-        Add performance key to results for each metric defined in IQCampaign.params
-        :param results: dict -> Results gathered in _analyze method
+        self._add_performance_percentage_results()
+        overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen)
+        averages = self._calculate_averages()
+        self._total_results["overall_score"] = overall_score
+        for metric_name, average in averages.items():
+            self._total_results[metric_name]["avg"] = average
+            self._total_results[metric_name]["avg"] = average
+        return self._total_results
+
+    def _add_performance_percentage_results(self) -> None:
         """
-        for metric_name, result in results.items():
-            if metric_name in self.iq_campaign.params:
+        Add percentage results with performance key to results for each metric defined in self.params
+        """
+        for metric_name, result in self._total_results.items():
+            if metric_name in self.params:
                 passed, failed = result.get("passed", 0), result.get("failed", 0)
                 # If no passed and failed, then none were processed
                 performance = self.get_score(passed, passed + failed)
             else:
                 # Threshold value was not saved for current IQCampaign
                 performance = None
-            results[metric_name]["performance"] = performance
+            self._total_results[metric_name]["performance"] = performance
 
-    def _calculate_averages(self):
+    def _add_averages(self, metric_name: str, metric_value) -> None:
+        """
+        Add metric value to total to calculate overall averages of all channels analyzed
+        :param metric_name: str
+        :param metric_value: str
+        :return:
+        """
+        try:
+            self._averages[metric_name] += metric_value
+        except KeyError:
+            pass
+
+    def _calculate_averages(self) -> Dict[str, float]:
         """
         Calculates averages of metrics using all results
         """
-        # Lists to keep track of metrics. index [0] is sum, index[1] is count of items
-        cpm = [0, 0]
-        cpv = [0, 0]
-        for r in self.iq_channel_results.values():
-            cpm_val = r.iq_channel.meta_data.get(CampaignDataFields.CPM, 0)
-            cpv_val = r.iq_channel.meta_data.get(CampaignDataFields.CPV, 0)
-            if cpm_val:
-                cpm[0] = cpm[0] + cpm_val
-                cpm[1] = cpm[1] + 1
-            if cpv_val:
-                cpv[0] = cpv[0] + cpv_val
-                cpv[1] = cpv[1] + 1
-        averages = dict(
-            cpm_avg=cpm[0] / cpm[1] or 1,
-            cpv_avg=cpv[0] / cpv[1] or 1,
-        )
-        return averages
-
-    def analyze(self):
-        """
-        Analyzes for performance using thresholds defined in IQCampaign.params for each channel 
-            in self.iq_channel_results
-        Count of passed and failed items will be tracked for each field in PERFORMANCE_FIELDS
-        After gathering all results, add performance score using _add_performance_percentage_result method
-        """
-        # Keep track of counts for each metric being analyzed
-        total_results = {
-            key: dict(failed=0, passed=0) for key in self.PERFORMANCE_FIELDS
-        }
-        for iq_result in self.iq_channel_results.values():
-            iq_channel = iq_result.iq_channel
-            # Initialize empty results for all possible performance fields
-            curr_result = {
-                "passed": None,
-                **{
-                    metric_name: None for metric_name in self.PERFORMANCE_FIELDS
-                }
-            }
-            data = iq_channel.meta_data.copy()
-            for metric_name in self.PERFORMANCE_FIELDS:
-                threshold = self.iq_campaign.params.get(metric_name)
-                if not threshold:
-                    continue
-                metric_value = data.get(metric_name, None)
-                try:
-                    if self.passes(metric_value, threshold):
-                        total_results[metric_name]["passed"] += 1
-                        curr_result["passed"] = True
-                    else:
-                        total_results[metric_name]["failed"] += 1
-                        curr_result["passed"] = False
-                    # Store the actual metric value
-                    curr_result[metric_name] = metric_value
-                except TypeError:
-                    continue
-            if not curr_result["passed"]:
-                self._failed_channels_count += 1
-            # Add the performance analysis result for the current channel being processed
-            iq_result.add_result(AnalyzeSection.PERFORMANCE_RESULT_KEY, curr_result)
-        self._add_performance_percentage_result(total_results)
-        self._performance_results = dict(total_results)
+        total = self._seen or 1
+        for key, average_sum in self._averages.items():
+            self._averages[key] = round(average_sum / total, 4)
+        return self._averages
 
     def passes(self, value, threshold, direction="+"):
+        """
+        Determines if a channel metric value passes comared to threshold value in self.params
+        :param direction: str -> Whether to compare less or greater
+        :return:
+        """
         if direction == "+":
-            passed = value > threshold
+            passed = value >= threshold
         else:
             passed = value < threshold
         return passed

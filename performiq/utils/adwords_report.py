@@ -2,10 +2,9 @@ from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
 from performiq.oauth_utils import get_customers
-from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
 
 
-def get_campaign_report(client, predicates: dict = None, date_range: dict = None, addl_fields: list = None) -> list:
+def get_campaign_report(client, fields, predicates: dict = None, date_range: dict = None) -> list:
     """
     Retrieve Adwords Campaign Performance report
     :param client: get_client function client result
@@ -14,7 +13,6 @@ def get_campaign_report(client, predicates: dict = None, date_range: dict = None
     :param addl_fields: Additional report fields to retrieve
     :return: list -> namedtuples
     """
-    fields = list(CAMPAIGN_FIELDS_MAPPING.values()) + list(addl_fields or [])
     predicates = predicates or [{"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]}]
     selector = {"fields": fields, "predicates": predicates}
     date_range_type = "ALL_TIME"

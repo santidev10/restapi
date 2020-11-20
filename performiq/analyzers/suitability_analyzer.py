@@ -1,42 +1,48 @@
 from typing import Dict
 
 from .base_analyzer import BaseAnalyzer
-from .base_analyzer import IQChannelResult
+from .base_analyzer import ChannelAnalysis
 from .constants import AnalyzeSection
-from es_components.models import Channel
-from performiq.models import IQCampaign
 
 
 class SuitabilityAnalyzer(BaseAnalyzer):
-    def __init__(self, iq_campaign: IQCampaign, iq_channel_results: Dict[str, IQChannelResult]):
-        self.iq_campaign = iq_campaign
-        self.iq_channel_results = iq_channel_results
-        self.analyze_params = iq_campaign.params
+    RESULT_KEY = AnalyzeSection.SUITABILITY_RESULT_KEY
+
+    def __init__(self, params):
+        self.params = params
         self._failed_channels = set()
         self._result_counts = dict(
             passed=0,
             failed=0
         )
 
-    def get_results(self):
+    def get_results(self) -> dict:
+        """
+        Gather and format results for all channels analyzed in self.analyze method
+        :return: dict
+            passed: total channels that passed analysis
+            failed: total channels that failed analysis
+            overall_score: Percentage of passed channels to total scored
+            example_result: {
+                "passed": 121,
+                "failed": 0,
+                "overall_score": 100.0
+            }
+        """
         total_count = self._result_counts["passed"] + self._result_counts["failed"]
         self._result_counts["overall_score"] = self.get_score(self._result_counts["passed"], total_count)
         return self._result_counts
 
-    def analyze(self, channel: Channel):
-        suitability_failed = False
-        curr_channel_result = {"overall_score": None, "passed": True}
+    def analyze(self, channel_analysis: ChannelAnalysis):
+        curr_channel_result = {"overall_score": channel_analysis.get("overall_score"), "passed": True}
         try:
-            if channel.brand_safety.overall_score > self.analyze_params["score_threshold"]:
+            if curr_channel_result["overall_score"] > self.params["score_threshold"]:
                 self._result_counts["passed"] += 1
             else:
+                channel_analysis.clean = False
                 curr_channel_result["passed"] = False
                 self._result_counts["failed"] += 1
-                self._failed_channels.add(channel.main.id)
-                suitability_failed = True
-            curr_channel_result["overall_score"] = channel.brand_safety.overall_score
+                self._failed_channels.add(channel_analysis.channel_id)
         except TypeError:
             return
-        # Add the suitability analysis result for the current channel being processed
-        self.iq_channel_results[channel.main.id].add_result(AnalyzeSection.SUITABILITY_RESULT_KEY, curr_channel_result)
-        return suitability_failed
+        return curr_channel_result

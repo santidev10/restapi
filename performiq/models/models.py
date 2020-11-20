@@ -97,6 +97,8 @@ class IQCampaign(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     # campaign is the campaign object above, google ads or dv360, null if its a csv
     campaign = models.ForeignKey(Campaign, db_index=True, null=True, default=None, on_delete=models.CASCADE)
+    # Must store user for CSV type analysis
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, null=True, default=None)
 
     def to_dict(self):
         d = {
