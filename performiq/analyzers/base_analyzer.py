@@ -1,6 +1,3 @@
-from performiq.models.constants import AnalysisFields
-
-
 class BaseAnalyzer:
     def analyze(self, *args, **kwargs):
         raise NotImplementedError

@@ -13,6 +13,7 @@ from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.query_builder import QueryBuilder
 from es_components.models import Channel
+from performiq.analyzers.constants import ANALYZE_SECTIONS
 from performiq.api.serializers.query_serializer import IQCampaignQuerySerializer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
@@ -23,10 +24,6 @@ from performiq.models.constants import EXPORT_RESULTS_KEYS
 from utils.datetime import now_in_default_tz
 
 EXPORT_LIMIT = 20000
-PERFORMANCE_RESULT_KEY = "performance"
-CONTEXTUAL_RESULT_KEY = "contextual"
-SUITABILITY_RESULT_KEY = "suitability"
-
 
 logger = logging.getLogger(__name__)
 
@@ -105,8 +102,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
     rows = []
     for iq in iq_channels:
         # Get failure result for each section in analysis
-        failed_values = [get_failed_repr(iq.results[key]["passed"]) 
-                         for key in [PERFORMANCE_RESULT_KEY, CONTEXTUAL_RESULT_KEY, SUITABILITY_RESULT_KEY]]
+        failed_values = [get_failed_repr(iq.results[key]["passed"]) for key in ANALYZE_SECTIONS]
         rows.append([iq.channel_id, *failed_values])
     with open(filepath, mode="w") as file:
         writer = csv.writer(file)
