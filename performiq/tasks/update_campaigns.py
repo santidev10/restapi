@@ -5,7 +5,6 @@ from performiq.models import Campaign
 from performiq.models import OAuthAccount
 from performiq.models import Account
 from performiq.models.constants import OAuthType
-from performiq.utils.constants import CAMPAIGN_FIELDS_MAPPING
 from performiq.utils.adwords_report import get_campaign_report
 from performiq.utils.adwords_report import get_accounts
 from performiq.utils.update import prepare_items
@@ -16,6 +15,21 @@ from utils.db.functions import safe_bulk_create
 
 
 FROM_HISTORICAL_DAYS = 90
+
+
+CAMPAIGN_REPORT_FIELDS_MAPPING = dict(
+    id="CampaignId",
+    impressions="Impressions",
+    video_views="VideoViews",
+    cost="Cost",
+    name="CampaignName",
+    active_view_viewability="ActiveViewViewability",
+    video_quartile_100_rate="VideoQuartile100Rate",
+    ctr="Ctr",
+    cpm="AverageCpm",
+    cpv="AverageCpv",
+)
+
 
 @celery_app.task
 def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts=None):
@@ -47,8 +61,9 @@ def update_mcc_campaigns_task(mcc_id: int, oauth_account_id: int):
     """
     ouath_account = OAuthAccount.objects.get(id=oauth_account_id)
     client = get_client(client_customer_id=mcc_id, refresh_token=ouath_account.refresh_token)
-    cids = get_all_customers(client)[-20:]
-    for cid_account_data in cids:
+    # cids = get_all_customers(client)[-20:]
+    cid_accounts = get_all_customers(client)[:20]
+    for cid_account_data in cid_accounts:
         cid_account_id = int(cid_account_data["customerId"])
         cid_account, _ = Account.objects.get_or_create(id=cid_account_id, oauth_account_id=oauth_account_id)
         update_cid_campaigns_task(cid_account_id)
@@ -57,7 +72,7 @@ def update_mcc_campaigns_task(mcc_id: int, oauth_account_id: int):
 @celery_app.task
 def update_cid_campaigns_task(account_id: int, historical=False):
     """
-    Update single Google Ads CID account
+    Update single Google Ads CID account using update_campaigns function
     :param account_id: Account model id, which is a Google Ads CID account id
     :param historical: bool -> Determines if we will pull historical campaigns using end date
     :return:
@@ -74,22 +89,19 @@ def update_cid_campaigns_task(account_id: int, historical=False):
 
 def update_campaigns(account: Account, predicates=None, date_range=None) -> None:
     """
-    Update campaigns by retrieving report data and creating / updating items
+    Update or create campaigns by retrieving report data and creating / updating items for single Account
         Default fields and report query will be used if None given
-    :param google_ads_cid: int -> Google Ads CID account id
-    :param ouath_account: OAuthAccount
+    :param account: Account model
     :param predicates: dict -> Adwords reports predicates selector
     :param date_range: dict -> {"min": date_obj, "max": date_obj}
-    :param
     """
     client = get_client(client_customer_id=account.id, refresh_token=account.oauth_account.refresh_token)
-    report = get_campaign_report(client, predicates=predicates, date_range=date_range, addl_fields=["Clicks"])
+    fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks"]
+    report = get_campaign_report(client, fields, predicates=predicates, date_range=date_range)
     to_update, to_create = prepare_items(
-        report, Campaign, CAMPAIGN_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value, ["cpm", "cpv", "ctr"]
+        report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value,
+        defaults={"account_id": account.id}
     )
-    # Set FK Account id
-    for item in to_update + to_create:
-        item.account_id = account.id
     safe_bulk_create(Campaign, to_create)
-    update_fields = [val for val in CAMPAIGN_FIELDS_MAPPING.keys() if val not in {"id"}]
+    update_fields = [val for val in CAMPAIGN_REPORT_FIELDS_MAPPING.keys() if val not in {"id"}]
     Campaign.objects.bulk_update(to_update, fields=update_fields)

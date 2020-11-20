@@ -13,7 +13,7 @@ class AnalyzeSection:
 ANALYZE_SECTIONS = {AnalyzeSection.PERFORMANCE_RESULT_KEY, AnalyzeSection.CONTEXTUAL_RESULT_KEY,
                     AnalyzeSection.SUITABILITY_RESULT_KEY}
 
-# Mapping of campaign data fields to function to coerce values for comparisons
+# Mapping of campaign data fields to function to coerce values
 COERCE_FIELD_FUNCS = {
     AnalysisFields.IMPRESSIONS: Coercers.integer,
     AnalysisFields.VIDEO_VIEWS: Coercers.integer,
@@ -24,9 +24,11 @@ COERCE_FIELD_FUNCS = {
     AnalysisFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
     AnalysisFields.VIDEO_VIEW_RATE: Coercers.percentage,
     AnalysisFields.VIDEO_QUARTILE_100_RATE: Coercers.percentage,
-    "channel_url": Coercers.channel_url,
     AnalysisFields.CONTENT_TYPE: Coercers.integer,
     AnalysisFields.CONTENT_QUALITY: Coercers.integer,
+    "channel_url": Coercers.channel_url,
+    "cpm": Coercers.cost,
+    "cpv": Coercers.cost,
 }
 
 
