@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from audit_tool.models import AuditContentQuality
@@ -14,6 +15,7 @@ from utils.views import get_object
 class IQCampaignSerializer(serializers.ModelSerializer):
     campaign_id = serializers.IntegerField(write_only=True, default=None)
     csv_s3_key = serializers.CharField(write_only=True, default=None)
+    csv_column_mapping = serializers.JSONField(write_only=True, default=None)
 
     average_cpv = serializers.FloatField(write_only=True)
     average_cpm = serializers.FloatField(write_only=True)
@@ -25,10 +27,12 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     languages = NullableListField(write_only=True)
     score_threshold = serializers.IntegerField(write_only=True)
     video_view_rate = serializers.FloatField(write_only=True)
+
+    user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
     # These fields are unavailable for DV360 IQCampaigns as the API does not support retrieving these metrics
-    ctr = AdsPerformanceRangeField(write_only=True, required=False)
-    active_view_viewability = serializers.FloatField(write_only=True, required=False)
-    video_quartile_100_rate = serializers.FloatField(write_only=True, required=False)
+    ctr = serializers.FloatField(required=False, write_only=True, default=None)
+    active_view_viewability = serializers.FloatField(write_only=True, required=False, default=None)
+    video_quartile_100_rate = serializers.FloatField(write_only=True, required=False, default=None)
 
     class Meta:
         model = IQCampaign
@@ -36,7 +40,12 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id")
+        # Only set user if IQCampaign is created from csv
+        user = validated_data.pop("user")
+        if not validated_data.get("csv_s3_key"):
+            user = None
         iq_campaign = IQCampaign.objects.create(
+            user=user,
             campaign_id=campaign_id,
             params=validated_data
         )

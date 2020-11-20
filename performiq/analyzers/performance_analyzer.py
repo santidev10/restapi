@@ -12,8 +12,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
     Once called, this will attempt to analyze all channels given in iq_channel_results parameter
     """
     RESULT_KEY = AnalyzeSection.PERFORMANCE_RESULT_KEY
-    ANALYSIS_FIELDS = {AnalysisFields.CPV, AnalysisFields.CPM, AnalysisFields.CTR,
-                       AnalysisFields.VIDEO_VIEW_RATE, AnalysisFields.ACTIVE_VIEW_VIEWABILITY}
+    ANALYSIS_FIELDS = {AnalysisFields.CPV, AnalysisFields.CPM, AnalysisFields.CTR, AnalysisFields.VIDEO_VIEW_RATE,
+                       AnalysisFields.ACTIVE_VIEW_VIEWABILITY, AnalysisFields.VIDEO_QUARTILE_100_RATE}
 
     def __init__(self, params):
         self.params = params
@@ -22,7 +22,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
         # If channel fails in any metric, it fails entirely
         self._failed_channels_count = 0
         self._seen = 0
-        # Keep track of counts for each metric being analyzed
+        # Keep track of counts for each metric being analyzed. Data may not always include an analysis_field,
+        # so use actual number of data that has metric to calculate overall performance
         self._total_results = {
             key: dict(failed=0, passed=0) for key in self.ANALYSIS_FIELDS
         }
@@ -33,8 +34,6 @@ class PerformanceAnalyzer(BaseAnalyzer):
 
     def analyze(self, channel_analysis: ChannelAnalysis):
         """
-        Analyzes for performance using thresholds defined in IQCampaign.params for each channel
-            in self.iq_channel_results
         Count of passed and failed items will be tracked for each field in ANALYSIS_FIELDS
         After gathering all results, add performance score using _add_performance_percentage_result method
         """
@@ -45,11 +44,15 @@ class PerformanceAnalyzer(BaseAnalyzer):
                 metric_name: None for metric_name in self.ANALYSIS_FIELDS
             }
         }
+        # Ensure that the analysis ran at least for one metric and should contribute to the overall count of items seen
+        analyzed = False
+        # Compare each metric (e.g. cpm) against thresholds in IQCampaign.params
         for metric_name in self.ANALYSIS_FIELDS:
             threshold = self.params.get(metric_name)
-            if not threshold:
-                continue
             metric_value = channel_analysis.get(metric_name)
+            if not threshold or metric_value is None:
+                continue
+            # Add values to calculate overall averages
             self._add_averages(metric_name, metric_value)
             try:
                 if self.passes(metric_value, threshold):
@@ -63,9 +66,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
                 curr_result[metric_name] = metric_value
             except TypeError:
                 continue
-        if not curr_result["passed"]:
-            self._failed_channels_count += 1
-        self._seen += 1
+            else:
+                analyzed = True
+                if curr_result["passed"] is False:
+                    self._failed_channels_count += 1
+                if analyzed is True:
+                    self._seen += 1
         return curr_result
 
     def get_results(self):
@@ -73,7 +79,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
         Get results of performance analysis for all channels in self.iq_channel_results
         :return: dict
         """
-        self._add_performance_percentage_result()
+        self._add_performance_percentage_results()
         overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen)
         averages = self._calculate_averages()
         self._total_results["overall_score"] = overall_score
@@ -82,10 +88,9 @@ class PerformanceAnalyzer(BaseAnalyzer):
             self._total_results[metric_name]["avg"] = average
         return self._total_results
 
-    def _add_performance_percentage_result(self):
+    def _add_performance_percentage_results(self):
         """
         Add performance key to results for each metric defined in IQCampaign.params
-        :param results: dict -> Results gathered in _analyze method
         """
         for metric_name, result in self._total_results.items():
             if metric_name in self.params:
@@ -109,7 +114,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
         """
         total = self._seen or 1
         for key, average_sum in self._averages.items():
-            self._averages[key] = round(average_sum / total, 2)
+            self._averages[key] = round(average_sum / total, 4)
         return self._averages
 
     def passes(self, value, threshold, direction="+"):

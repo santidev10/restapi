@@ -21,4 +21,4 @@ class Coercers:
 
     @staticmethod
     def channel_url(val):
-        return val.split("/channel/")[-1]
+        return val.split("/channel/")[-1].strip("/")

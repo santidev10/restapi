@@ -8,10 +8,13 @@ from performiq.models import Campaign
 
 
 ADWORDS_API_FIELD_MAPPING = {
+    "VideoViewRate": AnalysisFields.VIDEO_VIEW_RATE,
+    "VideoQuartile100Rate": AnalysisFields.VIDEO_QUARTILE_100_RATE,
     "Impressions": AnalysisFields.IMPRESSIONS,
     "VideoViews": AnalysisFields.VIDEO_VIEWS,
     "Criteria": AnalysisFields.CHANNEL_ID,
     "Ctr": AnalysisFields.CTR,
+    "Cost": AnalysisFields.COST,
     "AverageCpm": AnalysisFields.CPM,
     "AverageCpv": AnalysisFields.CPV,
     "ActiveViewViewability": AnalysisFields.ACTIVE_VIEW_VIEWABILITY,
@@ -37,10 +40,10 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
         {"field": "CampaignId", "operator": "EQUALS", "values": [campaign.id]},
         {"field": "Impressions", "operator": "GREATER_THAN", "values": 100},
     ]
-    fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv", "VideoViewRate",
+    fields = ("AdGroupId", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv", "VideoViewRate",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
     report = placement_performance_report(client, predicates=predicates, fields=fields)
-    # all_data = []
+    all_rows = []
     for row in report:
         if "channel" not in row.DisplayName:
             continue
@@ -48,8 +51,7 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
         # Create new dictionary of mapped keys to mapped API data values
         for report_field, mapped_key in ADWORDS_API_FIELD_MAPPING.items():
             coercer = COERCE_FIELD_FUNCS.get(mapped_key)
-            api_value = coercer(getattr(row, report_field, None))
+            api_value = getattr(row, report_field, None)
             formatted[mapped_key] = coercer(api_value) if coercer is not None else api_value
-        yield formatted
-    #     all_data.append(data)
-    # return all_data
+        all_rows.append(formatted)
+    return all_rows

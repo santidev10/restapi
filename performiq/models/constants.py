@@ -1,6 +1,4 @@
-from collections import namedtuple
 from enum import IntEnum
-from enum import Enum
 
 
 class OAuthType(IntEnum):
@@ -38,6 +36,7 @@ ENTITY_STATUS_MAP_TO_STR = {status.value: status.name for status in EntityStatus
 
 
 class AnalysisFields:
+    """ Class attributes that should be used to unify data source differences"""
     AD_GROUP_ID = "ad_group_id"
     CHANNEL_ID = "channel_id"
     IMPRESSIONS = "impressions"
@@ -47,8 +46,8 @@ class AnalysisFields:
     VIDEO_VIEW_RATE = "video_view_rate"
     VIDEO_QUARTILE_100_RATE = "video_quartile_100_rate"
     CTR = "ctr"
-    CPM = "cpm"
-    CPV = "cpv"
+    CPM = "average_cpm"
+    CPV = "average_cpv"
     ADVERTISER_ID = "advertiser_id"
 
     # Elasticsearch Fields

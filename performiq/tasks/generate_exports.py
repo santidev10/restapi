@@ -6,16 +6,19 @@ from typing import Callable
 
 from django.conf import settings
 
+from es_components.constants import LAST_VETTED_AT_MIN_DATE
 from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
+from es_components.query_builder import QueryBuilder
 from es_components.models import Channel
 from performiq.api.serializers.query_serializer import IQCampaignQuerySerializer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 from segment.utils.bulk_search import bulk_search
 from segment.utils.query_builder import SegmentQueryBuilder
-from performiq.tasks.utils.s3_exporter import PerformS3Exporter
+from performiq.utils.s3_exporter import PerformS3Exporter
 from performiq.models.constants import EXPORT_RESULTS_KEYS
 from utils.datetime import now_in_default_tz
 
@@ -65,9 +68,11 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     if len(clean_ids) < EXPORT_LIMIT:
         params_serializer = IQCampaignQuerySerializer(data=iq_campaign.params)
         params_serializer.is_valid()
-        query_builder = SegmentQueryBuilder(params_serializer.validated_data)
+        query = SegmentQueryBuilder(params_serializer.validated_data).query_body
+        query &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
+            .gte(LAST_VETTED_AT_MIN_DATE).get()
         sort = [{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}]
-        for batch in bulk_search(Channel, query_builder.query_body, sort=sort, cursor_field=SUBSCRIBERS_FIELD,
+        for batch in bulk_search(Channel, query, sort=sort, cursor_field=SUBSCRIBERS_FIELD,
                                  source=(MAIN_ID_FIELD,)):
             clean_ids.extend(doc.main.id for doc in batch)
             if len(clean_ids) >= EXPORT_LIMIT:
@@ -79,7 +84,11 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
         writer.writerow(["URL"])
         writer.writerows([f"https://www.youtube.com/channel/{channel_id}"] for channel_id in clean_ids)
 
-    display_filename = f"{iq_campaign.campaign.name}_recommended_{now_in_default_tz().date()}.csv"
+    try:
+        display_filename = f"{iq_campaign.campaign.name}_recommended_{now_in_default_tz().date()}.csv"
+    except AttributeError:
+        # csv IQCampaign has no related campaign
+        display_filename = f"recommended_{now_in_default_tz().date()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
     return s3_key, len(clean_ids)
 
@@ -104,7 +113,11 @@ def create_wastage_export(iq_campaign, exporter, filepath):
         writer.writerow(["URL", "performance failed", "contextual failed", "suitability failed"])
         writer.writerows(rows)
 
-    display_filename = f"{iq_campaign.campaign.name}_wastage_{now_in_default_tz().date()}.csv"
+    try:
+        display_filename = f"{iq_campaign.campaign.name}_wastage_{now_in_default_tz().date()}.csv"
+    except AttributeError:
+        # csv IQCampaign has no related campaign
+        display_filename = f"wastage_{now_in_default_tz().date()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
     return s3_key, len(rows)
 

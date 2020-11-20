@@ -19,6 +19,7 @@ class PerformIQCampaignListCreateAPIView(APIView):
         return Response(data=data)
 
     def post(self, request, *args, **kwargs):
+        request.data["user_id"] = request.user.id
         serializer = IQCampaignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_params = serializer.validated_data

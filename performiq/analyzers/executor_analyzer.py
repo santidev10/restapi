@@ -2,10 +2,13 @@ from operator import attrgetter
 from typing import List, Dict
 
 from .base_analyzer import BaseAnalyzer
+from .constants import COERCE_FIELD_FUNCS
 from .constants import AnalyzeSection
 from .base_analyzer import ChannelAnalysis
 from .constants import DataSourceType
+from .constants import ESFieldMapping
 from es_components.managers import ChannelManager
+from es_components.constants import Sections
 from performiq.analyzers import PerformanceAnalyzer
 from performiq.analyzers import SuitabilityAnalyzer
 from performiq.analyzers import ContextualAnalyzer
@@ -22,15 +25,6 @@ from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator
 
 
-ES_FIELD_RESULTS_MAPPING = {
-    "general_data.primary_category": AnalysisFields.CONTENT_CATEGORIES,
-    "general_data.top_lang_code": AnalysisFields.LANGUAGES,
-    "task_us_data.content_quality": AnalysisFields.CONTENT_QUALITY,
-    "task_us_data.content_type": AnalysisFields.CONTENT_TYPE,
-    "brand_safety.overall_score": AnalysisFields.OVERALL_SCORE,
-}
-
-
 class ExecutorAnalyzer(BaseAnalyzer):
     """
     Manages PerformIQ analysis flow by providing data to all analyzers and gathering results
@@ -44,32 +38,52 @@ class ExecutorAnalyzer(BaseAnalyzer):
             ContextualAnalyzer(self.iq_campaign.params),
             SuitabilityAnalyzer(self.iq_campaign.params),
         ]
-        self.channel_manager = ChannelManager(["general_data", "task_us_data", "brand_safety"])
+        self.channel_manager = ChannelManager(
+            sections=[Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY],
+            upsert_sections=None
+        )
 
     def analyze(self, *args, **kwargs):
         """
         Main method to call analyze method for each analyzer used in PerformIQ analysis
         Saves results of IQCampaignChannels with _save_results method
         """
-        for batch in chunks_generator(self.channel_analyses, size=10):
-            channel_data = self._merge_es_data(batch)
+        for batch in chunks_generator(self.channel_analyses, size=10000):
+            channel_data = self._merge_es_data(list(batch))
             for channel in channel_data:
                 for analyzer in self._analyzers:
                     result = analyzer.analyze(channel)
                     channel.add_result(analyzer.RESULT_KEY, result)
-            break
 
-    def _merge_es_data(self, channel_data):
+    def _merge_es_data(self, channel_data: List[ChannelAnalysis]) -> List[ChannelAnalysis]:
+        """
+        Merges Elasticsearch data by adding to each ChannelAnalysis object using ESFieldMapping
+        First attempt to extract a value using a ESFieldMapping.PRIMARY field. If the document does not have a
+            valid value but the PRIMARY field has a ESFieldMapping.SECONDARY field, the SECONDARY field will be used
+        :param channel_data: list -> ChannelAnalysis instantiations
+        :return: list
+        """
         by_id = {
             c.channel_id: c for c in channel_data
         }
         es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
         for channel in es_data:
             mapped = {}
-            for es_field, mapped_key in ES_FIELD_RESULTS_MAPPING.items():
+            for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
                 attr_value = attrgetter(es_field)(channel)
-                mapped[mapped_key] = attr_value
-            by_id[channel.main.id].add_dict_data(mapped)
+                coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+                try:
+                    # If has secondary field, it is implied that the final attr_value should be a list
+                    secondary_field = ESFieldMapping.SECONDARY[es_field]
+                    second_attr_value = attrgetter(secondary_field)(channel)
+                    if second_attr_value:
+                        # Check if the original attr_value is None
+                        attr_value = attr_value if attr_value is not None else []
+                        attr_value.extend(second_attr_value)
+                except (KeyError, AttributeError):
+                    pass
+                mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
+            by_id[channel.main.id].add_data(mapped)
         return list(by_id.values())
 
     def get_results(self):
@@ -88,10 +102,10 @@ class ExecutorAnalyzer(BaseAnalyzer):
         Calculates statistics for channels that do not pass analysis. This should be called only after the self.analyze
             method has been called
         """
-        wastage_channels = [analysis for analysis in self.channel_analyses if analysis.clean is False]
+        wastage = [analysis for analysis in self.channel_analyses if analysis.clean is False]
         statistics = {
-            "wastage_channels_percent": self.get_score(len(wastage_channels), len(self.channel_analyses)),
-            "wastage_spend": sum(iq_channel.meta_data[AnalysisFields.COST] for iq_channel in wastage_channels),
+            "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
+            "wastage_spend": sum(analysis.get(AnalysisFields.COST, 0) for analysis in wastage),
         }
         return statistics
 
@@ -102,7 +116,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         :return: dict
         """
         raw_data = self._get_data()
-        channel_data = (ChannelAnalysis(data[AnalysisFields.CHANNEL_ID], dict_data=data) for data in raw_data)
+        channel_data = [ChannelAnalysis(data[AnalysisFields.CHANNEL_ID], data=data) for data in raw_data]
         return channel_data
 
     def _get_data(self):
@@ -150,14 +164,3 @@ class ExecutorAnalyzer(BaseAnalyzer):
         )
         IQCampaignChannel.objects.bulk_create(to_create)
         return to_create
-
-    def _get_es_data(self, channel_ids):
-        channels = self.channel_manager.get(channel_ids, skip_none=True)
-        mapped_data = []
-        for channel in channels:
-            mapped = {}
-            for es_field, mapped_key in ES_FIELD_RESULTS_MAPPING:
-                attr_value = str(attrgetter(es_field)(channel))
-                mapped[mapped_key] = attr_value
-            mapped_data.append(mapped)
-        return mapped_data
