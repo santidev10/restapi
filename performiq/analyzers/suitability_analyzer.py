@@ -16,7 +16,19 @@ class SuitabilityAnalyzer(BaseAnalyzer):
             failed=0
         )
 
-    def get_results(self):
+    def get_results(self) -> dict:
+        """
+        Gather and format results for all channels analyzed in self.analyze method
+        :return: dict
+            passed: total channels that passed analysis
+            failed: total channels that failed analysis
+            overall_score: Percentage of passed channels to total scored
+            example_result: {
+                "passed": 121,
+                "failed": 0,
+                "overall_score": 100.0
+            }
+        """
         total_count = self._result_counts["passed"] + self._result_counts["failed"]
         self._result_counts["overall_score"] = self.get_score(self._result_counts["passed"], total_count)
         return self._result_counts

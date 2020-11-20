@@ -14,12 +14,13 @@ class ContextualAnalyzer(BaseAnalyzer):
     A ContextualAnalyzer expects to be used for many channels and overall results are stored until requested by
         calling the get_results property
     """
+    TOP_OCCURRENCES_MAX = 5
     RESULT_KEY = AnalyzeSection.CONTEXTUAL_RESULT_KEY
     ANALYSIS_FIELDS = {AnalysisFields.CONTENT_CATEGORIES, AnalysisFields.LANGUAGES, AnalysisFields.CONTENT_TYPE,
                        AnalysisFields.CONTENT_QUALITY}
 
     def __init__(self, params: dict):
-        # Coerce list params to sets as ContextualAnalyzer checks for membership as part of analysis
+        # Coerce list params to sets as ContextualAnalyzer checks for attributes membership as part of analysis
         self._params = {
             key: set(value) if isinstance(value, list) else value
             for key, value in params.items()
@@ -30,15 +31,45 @@ class ContextualAnalyzer(BaseAnalyzer):
             content_categories_counts=defaultdict(int),
             content_quality_counts=defaultdict(int),
             content_type_counts=defaultdict(int),
-            # Keep track of how channels have content categories that matched
+            # Keep track of how channels have content categories that matched. Channels generally have
+            # multiple categories and this should only be incremented when at least one category matches
             matched_content_categories=0,
         )
         self._seen = 0
 
     def get_results(self) -> dict:
         """
-        Finalize results by calculating overall performance for all analyses processed by analyze method
-        :return:
+        Gather and format results for all channels analyzed in self.analyze method
+        Calculates overall performance for all channel analyses processed by analyze method
+        :return: dict
+            overall_score: Overall score for all channels seen in self.analyze method. Simple percentage of passed / totla
+            content_type: Percentage breakdown of content_type values e.g.content_quality["2"] = Percentage of channels
+                that have content_type value of "2"
+            content_quality: Percentage breakdown of content_quality values. Calculated similarly to content_type
+            content_categories_percents: Top occurrences of content categories and overall matched percentage
+                example_result = {
+                    "overall_score": 95.87,
+                    "content_type": {
+                        None: 52.89,
+                        "0": 39.67,
+                        "1": 7.44
+                    },
+                    "content_quality": {
+                        None: 52.89,
+                        "2": 19.83,
+                        "1": 27.27
+                    },
+                    "content_categories_percents": {
+                        "top_occurrence": [
+                            "Action Video Games",
+                            "Arts & Crafts",
+                            "Children's Music",
+                            "Volleyball",
+                            "Softball"
+                        ],
+                        "matched": 0.83
+                    }
+                }
         """
         percentage_results = {}
         passed_count = self._seen - len(self._failed_channels)
@@ -51,10 +82,11 @@ class ContextualAnalyzer(BaseAnalyzer):
                 counts[key] = self.get_score(count, self._seen)
             percentage_results[formatted_key] = counts
 
+        # Get top content category occurrences and overall percentage match
         content_categories_counts = self._total_result_counts["content_categories_counts"]
         top_category_occurrence = sorted(
-            content_categories_counts, key=content_categories_counts.get)[:5]
-        percentage_results["content_categories_percents"] ={
+            content_categories_counts, key=content_categories_counts.get)[:self.TOP_OCCURRENCES_MAX]
+        percentage_results["content_categories_percents"] = {
             "top_occurrence": top_category_occurrence,
             "matched": self.get_score(
                 self._total_result_counts["matched_content_categories"], self._seen
@@ -66,12 +98,35 @@ class ContextualAnalyzer(BaseAnalyzer):
         }
         return final_result
 
-    def analyze(self, channel_analysis: ChannelAnalysis):
+    def analyze(self, channel_analysis: ChannelAnalysis) -> dict:
+        """
+        Analyzes a single Channel for attributes defined in self.ANALYSIS_FIELDS
+        If any attribute of Channel does not match, entire contextual analysis is considered failed
+
+        :return: dict -> Results of contextual analysis for channel_analysis
+            passed: Whether or not analysis passed
+            content_quality: content_quality value of Channel
+            languages: languages value of Channel
+            content_type: content_type value of Channel
+            content_categories: content_categories values of Channel
+
+            example_result = {
+                "passed": false,
+                "content_quality": 1,
+                "languages": "es",
+                "content_categories": [
+                    "Kids Content",
+                    "Pop Culture"
+                ],
+                "content_type": 0
+            }
+        """
         contextual_failed = False
         curr_channel_result = {
             "passed": None
         }
         for params_field in self.ANALYSIS_FIELDS:
+            # Unable to analyze if param not defined
             if not self._params.get(params_field):
                 curr_channel_result["passed"] = None
                 continue
@@ -86,7 +141,6 @@ class ContextualAnalyzer(BaseAnalyzer):
             curr_channel_result["passed"] = False
             self._failed_channels.add(channel_analysis.channel_id)
         self._seen += 1
-        # Add the contextual analysis result for the current channel being processed
         return curr_channel_result
 
     def _analyze(self, count_field: str, params_field: str, value) -> bool:

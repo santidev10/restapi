@@ -6,7 +6,6 @@ from audit_tool.models import AuditContentType
 from performiq.models import Campaign
 from performiq.models import IQCampaign
 from performiq.tasks.start_analysis import start_analysis_task
-from segment.api.serializers.ctl_params_serializer import AdsPerformanceRangeField
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
