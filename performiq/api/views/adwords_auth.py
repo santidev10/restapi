@@ -11,7 +11,6 @@ from suds import WebFault
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.models.constants import OAuthType
 from performiq.models import OAuthAccount
-from performiq.oauth_utils import get_customers
 from performiq.oauth_utils import get_google_access_token_info
 from performiq.oauth_utils import load_client_settings
 from performiq.tasks.update_campaigns import update_campaigns_task
