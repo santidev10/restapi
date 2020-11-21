@@ -92,6 +92,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         Gather and format results from each analyzer
         :return:
         """
+        self._save_results()
         all_results = {
             analyzer.RESULT_KEY: analyzer.get_results()
             for analyzer in self._analyzers
@@ -156,7 +157,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
                 .filter(oauth_type=OAuthType.DV360.value).first()
         return oauth_account
 
-    def _save_results(self, channel_analyses: List[ChannelAnalysis]) -> None:
+    def _save_results(self) -> None:
         """
         Save final results stored in ChannelAnalysis objects
         :param channel_analyses: ChannelAnalysis objects that have been during analysis
@@ -165,6 +166,6 @@ class ExecutorAnalyzer(BaseAnalyzer):
         to_create = (
             IQCampaignChannel(
                 iq_campaign=self.iq_campaign, clean=analysis.clean, meta_data=analysis.meta_data,
-                channel_id=analysis.channel_id, results=analysis.results) for analysis in channel_analyses
+                channel_id=analysis.channel_id, results=analysis.results) for analysis in self.channel_analyses
         )
         safe_bulk_create(IQCampaignChannel, to_create)

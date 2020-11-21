@@ -20,4 +20,4 @@ def start_analysis_task(iq_campaign_id: int):
 
     iq_campaign.results = all_results
     iq_campaign.completed = now_in_default_tz()
-    iq_campaign.save(update_fields=["results", "completed"])
+    iq_campaign.save(update_fields=["started", "results", "completed"])

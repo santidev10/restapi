@@ -46,7 +46,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             content_type: Percentage breakdown of content_type values e.g.content_quality["2"] = Percentage of channels
                 that have content_type value of "2"
             content_quality: Percentage breakdown of content_quality values. Calculated similarly to content_type
-            content_categories_percents: Top occurrences of content categories and overall matched percentage
+            content_categories: Top occurrences of content categories and overall matched percentage
                 example_result = {
                     "overall_score": 95.87,
                     "content_type": {
@@ -59,7 +59,7 @@ class ContextualAnalyzer(BaseAnalyzer):
                         "2": 19.83,
                         "1": 27.27
                     },
-                    "content_categories_percents": {
+                    "content_categories": {
                         "top_occurrence": [
                             "Action Video Games",
                             "Arts & Crafts",
@@ -86,7 +86,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         content_categories_counts = self._total_result_counts["content_categories_counts"]
         top_category_occurrence = sorted(
             content_categories_counts, key=content_categories_counts.get)[:self.TOP_OCCURRENCES_MAX]
-        percentage_results["content_categories_percents"] = {
+        percentage_results["content_categories"] = {
             "top_occurrence": top_category_occurrence,
             "matched": self.get_score(
                 self._total_result_counts["matched_content_categories"], self._seen
