@@ -200,7 +200,7 @@ class AuditUtils(object):
         return vetted_value
 
     @staticmethod
-    def clone_audit(audit, clone_number=1, name=None):
+    def clone_audit(audit, clone_number=1, name=None, seed_status=0):
         params = audit.params
         if not name:
             params['name'] = "{}: Part {}".format(params['name'], clone_number + 1)
@@ -212,6 +212,7 @@ class AuditUtils(object):
             params=params,
             pause=audit.pause,
             audit_type=audit.audit_type,
+            seed_status=seed_status,
         )
 
     @staticmethod

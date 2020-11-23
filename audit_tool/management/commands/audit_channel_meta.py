@@ -35,25 +35,18 @@ process:
     of the videos for the audit.  Once all videos are processed the audit is complete.
 """
 
-
 # pylint: disable=too-many-instance-attributes
 class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
     max_pages = 200
-    MAX_SOURCE_CHANNELS = 100000
-    MAX_SOURCE_CHANNELS_CAP = 300000
     MAX_EMPTY_PLAYLIST_PAGES = 3
     audit = None
-    num_clones = 0
-    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
                                   "&maxResults={num_videos}&type=video"
-    CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
-                               "?key={key}&forUsername={username}&part=id"
     YOUTUBE_CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
     YOUTUBE_PLAYLISTITEMS_URL = 'https://www.googleapis.com/youtube/v3/playlistItems'
     CHANNEL_VIDEOS_ENDPOINT_MAX_VIDEOS = 500
@@ -84,7 +77,7 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir=".", pidname="audit_channel_meta_{}.pid".format(self.thread_id)):
                 try:
-                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2,
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type=2,
                                                                source__in=[0,2]).order_by("pause", "id")[self.machine_number]
                 # pylint: disable=broad-except
                 except Exception as e:
@@ -132,20 +125,7 @@ class Command(BaseCommand):
         if self.audit.params.get('audit_type_original') is None:
             self.audit.params['audit_type_original'] = 2
             self.audit.save(update_fields=['params'])
-        pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get("done_source_list") and pending_channels.count() < self.MAX_SOURCE_CHANNELS_CAP:
-            if self.thread_id == 0:
-                self.process_seed_list()
-                if self.num_clones > 0:
-                    raise Exception("Done processing seed list, split audit into {} parts".format(self.num_clones + 1))
-                pending_channels = AuditChannelProcessor.objects.filter(
-                    audit=self.audit,
-                    processed__isnull=True
-                )
-            else:
-                raise Exception("waiting to process seed list on thread 0")
-        else:
-            pending_channels = pending_channels.filter(processed__isnull=True)
+        pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit).filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
                 # if self.audit.params.get("do_videos") == True:
@@ -167,126 +147,6 @@ class Command(BaseCommand):
         raise Exception(
             "Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
     # pylint: enable=too-many-branches,too-many-statements
-
-    # pylint: disable=too-many-statements
-    def process_seed_file(self, seed_file):
-        try:
-            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            self.audit.params["error"] = "can not open seed file"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("can not open seed file {}".format(seed_file))
-        reader = csv.reader(f)
-        vids = []
-        processed_ids = []
-        resume_val = AuditChannelProcessor.objects.filter(audit=self.audit).count()
-        print("processing seed file starting at position {}".format(resume_val))
-        skipper = 0
-        if resume_val > 0:
-            for _ in reader:
-                if skipper >= resume_val:
-                    break
-                skipper += 1
-        counter = 0
-        for row in reader:
-            seed = row[0]
-            v_id = self.get_channel_id(seed)
-            if counter < self.MAX_SOURCE_CHANNELS_CAP and v_id and not v_id in processed_ids:
-                processed_ids.append(v_id)
-                if len(vids) >= self.MAX_SOURCE_CHANNELS:
-                    self.clone_audit()
-                    vids = []
-                channel = AuditChannel.get_or_create(v_id)
-                if channel.processed_time and (self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
-                    channel.processed_time = None
-                    channel.save(update_fields=["processed_time"])
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    channel=channel,
-                )
-                vids.append(acp)
-                counter += 1
-        if counter == 0:
-            self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return vids
-    # pylint: enable=too-many-statements
-
-    def clone_audit(self):
-        self.num_clones += 1
-        if not self.original_audit_name:
-            self.original_audit_name = self.audit.params["name"]
-        self.audit.params["done_source_list"] = True
-        self.audit.save(update_fields=["params"])
-        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
-
-    def get_channel_id(self, seed):
-        if "youtube.com/channel/" in seed:
-            if seed[-1] == "/":
-                seed = seed[:-1]
-            v_id = seed.split("/")[-1]
-            if "?" in v_id:
-                v_id = v_id.split("?")[0]
-            return v_id.replace(".", "").replace(";", "")
-        if "youtube.com/user/" in seed:
-            if seed[-1] == "/":
-                seed = seed[:-1]
-            username = seed.split("/")[-1]
-            url = self.CONVERT_USERNAME_API_URL.format(
-                key=self.DATA_API_KEY,
-                username=username
-            )
-            try:
-                r = requests.get(url)
-                if r.status_code == 200:
-                    data = r.json()
-                    channel_id = data["items"][0]["id"]
-                    return channel_id
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                pass
-        return None
-
-    def process_seed_list(self):
-        seed_list = self.audit.params.get("videos")
-        if not seed_list:
-            seed_file = self.audit.params.get("seed_file")
-            if seed_file:
-                return self.process_seed_file(seed_file)
-            self.audit.params["error"] = "seed list is empty"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
-        channels = []
-        for seed in seed_list[:self.MAX_SOURCE_CHANNELS]:
-            if "youtube.com/channel/" in seed:
-                if seed[-1] == "/":
-                    seed = seed[:-1]
-                v_id = seed.split("/")[-1]
-                channel = AuditChannel.get_or_create(v_id)
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                avp, _ = AuditChannelProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    channel=channel,
-                )
-                channels.append(avp)
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return channels
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
