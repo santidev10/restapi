@@ -1,4 +1,3 @@
-import csv
 import logging
 import re
 from collections import defaultdict
@@ -11,15 +10,12 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
 
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from audit_tool.utils.audit_utils import AuditUtils
 from utils.utils import remove_tags_punctuation
 
 logger = logging.getLogger(__name__)
