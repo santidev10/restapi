@@ -2,8 +2,8 @@ from rest_framework.serializers import BooleanField
 from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import SerializerMethodField
 
-from .custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
-from .custom_segment_export_serializers import CustomSegmentVideoExportSerializer
+from .custom_segment_export_serializers import AdminCustomSegmentChannelExportSerializer
+from .custom_segment_export_serializers import AdminCustomSegmentVideoExportSerializer
 
 
 __all__ = [
@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
+class CustomSegmentChannelVettedExportSerializer(AdminCustomSegmentChannelExportSerializer):
     columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers",
                "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
                "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
@@ -33,7 +33,7 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetiz
         raise NotImplementedError
 
 
-class CustomSegmentVideoVettedExportSerializer(CustomSegmentVideoExportSerializer):
+class CustomSegmentVideoVettedExportSerializer(AdminCustomSegmentVideoExportSerializer):
     columns = ("URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Overall_Score",
                "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
                "Content_Type", "Content_Quality", "Vetting_Result", "Mismatched_Language",

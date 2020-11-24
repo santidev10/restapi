@@ -12,6 +12,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
+from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import Field
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
@@ -86,6 +87,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     statistics = JSONField(read_only=True)
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
+    created_at = DateTimeField(read_only=True)
+    updated_at = DateTimeField(read_only=True)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -358,13 +361,17 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
                 for row in reader:
-                    if url_is_valid(row[0].split(split_seq)[-1]):
-                        rows.append(row)
+                    try:
+                        if url_is_valid(row[0].split(split_seq)[-1]):
+                            rows.append(row)
+                    # Catch empty rows at end of csv
+                    except IndexError:
+                        continue
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
-                    raise ValidationError("Error: No valid source urls. Please check that urls in column A match this "
-                                          f"format: https://www.youtube.com{split_seq}YOUTUBE_ID")
+                    raise ValidationError("Error: No valid source urls. Please check that urls in column A are valid"
+                                          "YouTube urls.")
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
@@ -544,7 +551,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         segment.save(update_fields=[*set_false, "audit_id", "statistics"])
 
 
-class CustomSegmentWithoutDownloadUrlSerializer(CTLSerializer):
+class CTLWithoutDownloadUrlSerializer(CTLSerializer):
     def to_representation(self, instance):
         """
         overrides CustomSegmentSerializer. Users without certain permissions

@@ -1,3 +1,5 @@
+from math import floor
+
 # pylint: disable=cyclic-import
 from django.utils import timezone
 
@@ -27,7 +29,11 @@ def flight_changed(old_flight: Flight, new_flight: Flight):
 
 
 def flight_ordered_units_changed(old_flight: Flight, new_flight: Flight):
-    ordered_units_changed = old_flight.ordered_units != new_flight.ordered_units
+    old_ordered_units = old_flight.ordered_units
+    new_ordered_units = new_flight.ordered_units
+    if old_ordered_units is None or new_ordered_units is None:
+        return
+    ordered_units_changed = floor(old_ordered_units) != floor(new_ordered_units)
     if not ordered_units_changed or new_flight.placement.dynamic_placement is not None:
         return
     placement = new_flight.placement
@@ -93,7 +99,10 @@ def pre_save_placement_receiver(instance, **_):
 
 
 def placement_changed(old_placement: OpPlacement, new_placement: OpPlacement):
-    if old_placement.ordered_units != new_placement.ordered_units:
+    old_ordered_units = old_placement.ordered_units
+    new_ordered_units = new_placement.ordered_units
+    if old_ordered_units is not None and new_ordered_units is not None and \
+            floor(old_placement.ordered_units) != floor(new_placement.ordered_units):
         today = timezone.now().date()
         Alert.objects.update_or_create(
             record_id=new_placement.id,

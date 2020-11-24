@@ -54,9 +54,14 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         self.cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
     def send(self):
+        if not self.to:
+            logger.error(f"No recipients set for {self.__class__.__name__} Apex campaign report")
+            return
+
         if not isinstance(self.user, get_user_model()):
             return
 
+        # TODO for 5.11: use separate method from send() to generate historicals
         if self.is_historical:
             self._write_historical()
             return
@@ -130,9 +135,18 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         return csv_file.getvalue()
 
     @staticmethod
-    def _get_revenue(obj, campaign_prefix):
+    def _get_revenue(obj, campaign_prefix, rate_field=None):
         goal_type_id = getattr(obj, f"{campaign_prefix}salesforce_placement__goal_type_id")
-        ordered_rate = getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
+        ordered_rate = getattr(obj, rate_field) if rate_field \
+            else getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
+
+        # validate
+        if ordered_rate is None:
+            return None
+        try:
+            ordered_rate = float(ordered_rate)
+        except ValueError:
+            return None
 
         if goal_type_id == SalesForceGoalType.CPV:
             return round(ordered_rate * obj.video_views, 2)

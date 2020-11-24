@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from performiq.models.models import DV360Campaign
+from performiq.models.models import Campaign
+from performiq.models.constants import OAuthType
 
 
 class CampaignSerializer(serializers.Serializer):
@@ -12,8 +13,9 @@ class CampaignSerializer(serializers.Serializer):
     update_time = serializers.DateTimeField()
 
     def save(self, **kwargs):
-        campaign, _created = DV360Campaign.objects.update_or_create(
+        campaign, _created = Campaign.objects.update_or_create(
             id=self.validated_data.get("id"),
+            oauth_type=OAuthType.DV360.value,
             defaults=self.validated_data
         )
         return campaign

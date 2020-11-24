@@ -27,6 +27,7 @@ class CustomSegmentFileUpload(Model):
     query = JSONField()
     updated_at = DateTimeField(null=True, db_index=True)
     filename = TextField(null=True)
+    admin_filename = TextField(null=True, default=None)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

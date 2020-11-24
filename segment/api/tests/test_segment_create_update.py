@@ -296,6 +296,28 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             ).exists())
             mock_generate.delay.assert_called_once()
 
+    def test_create_handle_source_file_empty_rows(self, mock_generate):
+        """ Procesing source urls should handle empty rows """
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_handle_source_file_empty_rows",
+            "segment_type": 1,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}".encode("utf-8"))
+        file.write(b"\n")
+        file.write(b"\n")
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
     def test_create_fail_source_video_invalid_format(self, mock_generate):
         self.create_admin_user()
         payload = {

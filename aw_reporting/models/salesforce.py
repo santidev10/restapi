@@ -233,6 +233,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 
     default_thumbnail = None
     has_alerts = models.BooleanField(default=False, db_index=True)
+    disney_campaign_advertiser_id = models.CharField(max_length=255, default="")
 
     @property
     def thumbnail(self):
@@ -369,6 +370,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
             ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
             currency_code=data.get(Fields.CURRENCY_CODE, None),
+            disney_campaign_advertiser_id=data.get(Fields.DISNEY_CAMPAIGN_ADVERTISER_ID, "") or "",
         )
         if sales_email:
             res["sales_email"] = sales_email
@@ -414,6 +416,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     max_allowed_bid = models.PositiveIntegerField(null=True)
     automation_enabled = models.BooleanField(default=False)
     incremental = models.BooleanField(default=False)
+    apex_go_client_rate = models.FloatField(null=True, default=None)
+    disney_datorama_placement_name = models.CharField(max_length=255, default="")
 
     OUTGOING_FEE_TYPE = "Outgoing Fee"
 
@@ -457,6 +461,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
             tech_fee=data[Fields.TECH_FEE],
             tech_fee_cap=data[Fields.TECH_FEE_CAP],
             tech_fee_type=data[Fields.TECH_FEE_TYPE],
+            apex_go_client_rate=data.get(Fields.APEX_GO_CLIENT_RATE, None),
+            disney_datorama_placement_name=data.get(Fields.DISNEY_DATORAMA_PLACEMENT_NAME, "") or "",
         )
         return res
 

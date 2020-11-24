@@ -44,8 +44,15 @@ class TestAuditCTL(ExtendedAPITestCase):
         mock_export.write(b"mock_video_urls\n")
         mock_export.write("\n".join(mock_urls).encode("utf-8"))
         mock_export.seek(0)
-        CustomSegmentFileUpload.objects.create(segment=segment, filename=mock_export.name, query={})
+        admin_mock_export = BytesIO()
+        admin_mock_export.name = "admin_mock_export.csv"
+        admin_mock_export.write(b"mock_video_urls\n")
+        admin_mock_export.write("\n".join(mock_urls).encode("utf-8"))
+        admin_mock_export.seek(0)
+
+        CustomSegmentFileUpload.objects.create(segment=segment, filename=mock_export.name, admin_filename=admin_mock_export.name, query={})
         conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, mock_export.name).put(Body=mock_export)
+        conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, admin_mock_export.name).put(Body=admin_mock_export)
 
         unclean = [v for v in v_processors if v.clean is False]
         expected_clean = [v for v in v_processors if v.clean is True]
@@ -56,16 +63,25 @@ class TestAuditCTL(ExtendedAPITestCase):
         }
         with patch.object(GenerateSegmentUtils, "get_aggregations_by_ids", return_value=mock_stats):
             audit_command.update_ctl()
+
         segment.refresh_from_db()
         audit.refresh_from_db()
         updated_export = conn.Object(
             settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.filename
         ).get()
+        updated_admin_export = conn.Object(
+            settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.admin_filename
+        ).get()
+
         expected_content_disposition = get_content_disposition(segment)
         export_rows = updated_export["Body"].read().decode("utf-8")
+        admin_export_rows = updated_admin_export["Body"].read().decode("utf-8")
         self.assertEqual(updated_export["ContentDisposition"], expected_content_disposition)
+        self.assertEqual(updated_admin_export["ContentDisposition"], expected_content_disposition)
         self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in export_rows for v in expected_clean)
+        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in admin_export_rows for v in expected_clean)
         self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in export_rows for v in unclean)
+        self.assertTrue(all(f"https://www.youtube.com/watch?v={v.id}") in admin_export_rows for v in unclean)
         self.assertEqual(segment.statistics["clean_count"], mock_stats["clean_count"])
 
     @mock_s3
@@ -90,8 +106,15 @@ class TestAuditCTL(ExtendedAPITestCase):
         mock_export.write(b"mock_channel_urls\n")
         mock_export.write("\n".join(mock_urls).encode("utf-8"))
         mock_export.seek(0)
-        CustomSegmentFileUpload.objects.create(segment=segment, filename=mock_export.name, query={})
+        admin_mock_export = BytesIO()
+        admin_mock_export.name = "admin_mock_export.csv"
+        admin_mock_export.write(b"mock_channel_urls\n")
+        admin_mock_export.write("\n".join(mock_urls).encode("utf-8"))
+        admin_mock_export.seek(0)
+
+        CustomSegmentFileUpload.objects.create(segment=segment, filename=mock_export.name, admin_filename=admin_mock_export.name, query={})
         conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, mock_export.name).put(Body=mock_export)
+        conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, admin_mock_export.name).put(Body=admin_mock_export)
 
         unclean = [c for c in c_processors if c.clean is False]
         expected_clean = [c for c in c_processors if c.clean is True]
@@ -107,9 +130,17 @@ class TestAuditCTL(ExtendedAPITestCase):
         updated_export = conn.Object(
             settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.filename
         ).get()
+        updated_admin_export = conn.Object(
+            settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, segment.export.admin_filename
+        ).get()
         expected_content_disposition = get_content_disposition(segment)
         export_rows = updated_export["Body"].read().decode("utf-8")
+        admin_export_rows = updated_export["Body"].read().decode("utf-8")
+
         self.assertEqual(updated_export["ContentDisposition"], expected_content_disposition)
+        self.assertEqual(updated_admin_export["ContentDisposition"], expected_content_disposition)
         self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in export_rows for c in expected_clean)
         self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in export_rows for c in unclean)
+        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in admin_export_rows for c in expected_clean)
+        self.assertTrue(all(f"https://www.youtube.com/channel/{c.id}") in admin_export_rows for c in unclean)
         self.assertEqual(segment.statistics["clean_channel_count"], mock_stats["clean_channel_count"])

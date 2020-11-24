@@ -21,6 +21,8 @@ from es_components.query_builder import QueryBuilder
 from segment.api.export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoExportSerializer
+from segment.api.export_serializers import AdminCustomSegmentVideoExportSerializer
+from segment.api.export_serializers import AdminCustomSegmentChannelExportSerializer
 from segment.api.export_serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
@@ -86,6 +88,15 @@ class CustomSegment(SegmentMixin, Timestampable):
         else:
             serializer = self._get_channel_serializer()
         return serializer
+
+    @property
+    def admin_export_serializer(self):
+        """ Get admin export serializer depending on channel or video segment """
+        if self.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
+            admin_serializer = AdminCustomSegmentVideoExportSerializer
+        else:
+            admin_serializer = AdminCustomSegmentChannelExportSerializer
+        return admin_serializer
 
     def _get_video_serializer(self):
         """ Get video export serializer depending on vetting """
@@ -167,6 +178,15 @@ class CustomSegment(SegmentMixin, Timestampable):
         if hasattr(self, 'export') and self.export.filename:
             return self.export.filename
         return f"{self.uuid}_export.csv"
+
+    def get_admin_s3_key(self, *args, **kwargs):
+        """
+        get existing admin_s3_key from related CustomSegmentFileUpload's
+        admin_filename field or make new key
+        """
+        if hasattr(self, 'export') and self.export.admin_filename:
+            return self.export.admin_filename
+        return f"{self.uuid}_admin_export.csv"
 
     def get_vetted_s3_key(self, suffix=None):
         """

@@ -111,42 +111,42 @@ class Command(BaseCommand):
         """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
-            audit_model = AuditVideoProcessor
-            model_fk_ref = "video"
             url_separator = "?v="
+            clean_audits = AuditVideoProcessor.objects.filter(audit=self.audit, clean=True)\
+                .annotate(yt_id=F("video__video_id"))
         elif self.audit.audit_type == 2:
-            audit_model = AuditChannelProcessor
-            model_fk_ref = "channel"
             url_separator = "/channel/"
+            # If a channel contains one unclean video, the entire channel is considered unclean
+            unclean_channel_ids = AuditVideoProcessor.objects.filter(audit=self.audit, clean=False)\
+                .annotate(yt_channel_id=F("channel__channel_id"))\
+                .values_list("yt_channel_id")\
+                .distinct()
+            clean_audits = AuditChannelProcessor.objects.filter(audit=self.audit)\
+                .exclude(channel__channel_id__in=unclean_channel_ids)\
+                .annotate(yt_id=F("channel__channel_id"))
         else:
             return
-        clean_audits = audit_model.objects \
-            .filter(audit=self.audit, clean=True) \
-            .select_related(model_fk_ref) \
-            .annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
-        clean_ids = set(audit.item_id for audit in clean_audits)
+        clean_ids = set(yt_id for yt_id in clean_audits.values_list("yt_id", flat=True))
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
+        admin_temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
         try:
-            # Get original export file to filter using cleaned audit data
+            # Get original export files to filter using cleaned audit data
             export_filename = segment.export.filename
+            admin_export_filename = segment.export.admin_filename
             export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
+            admin_export_fp = segment.s3.download_file(admin_export_filename,
+                                                       f"{settings.TEMPDIR}/{admin_export_filename}")
             quote_char = '"'
-            with open(export_fp, mode="r") as read_file, \
-                    open(temp_file, mode="w") as dest_file:
-                reader = csv.reader(read_file, quotechar=quote_char)
-                writer = csv.writer(dest_file, quotechar=quote_char)
-                for chunk in chunks_generator(reader, size=2000):
-                    chunk = list(chunk)
-                    if write_header is True:
-                        header = chunk.pop(0)
-                        writer.writerow(header)
-                        write_header = False
-                    rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
-                    writer.writerows(rows)
+            self.write_audit_to_file(export_fp, temp_file, quote_char, url_separator, \
+                                     clean_ids, write_header)
+            self.write_audit_to_file(admin_export_fp, admin_temp_file, quote_char, \
+                                     url_separator, clean_ids, write_header)
             # Replace segment export with the audited file
             content_disposition = get_content_disposition(segment)
             segment.s3.export_file_to_s3(temp_file, segment.export.filename,
+                                         extra_args=dict(ContentDisposition=content_disposition))
+            segment.s3.export_file_to_s3(admin_temp_file, segment.export.admin_filename,
                                          extra_args=dict(ContentDisposition=content_disposition))
             aggregations = GenerateSegmentUtils(segment).get_aggregations_by_ids(clean_ids)
             segment.statistics = {
@@ -159,9 +159,27 @@ class Command(BaseCommand):
             logger.exception(err)
         else:
             os.remove(export_fp)
+            os.remove(admin_export_fp)
         # pylint: enable=broad-except
         finally:
             os.remove(temp_file)
+            os.remove(admin_temp_file)
+
+    def write_audit_to_file(self, export_fp, temp_file, quote_char, url_separator, clean_ids, write_header=True,
+                            membership=True):
+        """ rewrites files in s3 according to audit results """
+        with open(export_fp, mode="r") as read_file, \
+                open(temp_file, mode="w") as dest_file:
+            reader = csv.reader(read_file, quotechar=quote_char)
+            writer = csv.writer(dest_file, quotechar=quote_char)
+            for chunk in chunks_generator(reader, size=2000):
+                chunk = list(chunk)
+                if write_header is True:
+                    header = chunk.pop(0)
+                    writer.writerow(header)
+                    write_header = False
+                rows = [row for row in chunk if row[0].split(url_separator)[-1] in clean_ids]
+                writer.writerows(rows)
 
     # pylint: disable=too-many-branches,too-many-statements
     def process_audit(self, num=2000):

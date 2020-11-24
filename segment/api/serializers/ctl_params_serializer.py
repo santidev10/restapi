@@ -27,8 +27,8 @@ class NullableDictField(serializers.DictField):
 
 class NullableListField(serializers.ListField):
     """ Provide default list for null / empty values """
-    def __init__(self):
-        super().__init__(allow_null=True, allow_empty=True)
+    def __init__(self, *_, **kwargs):
+        super().__init__(allow_null=True, allow_empty=True, **kwargs)
 
     def run_validation(self, data=None):
         super().run_validation(data)
@@ -39,16 +39,21 @@ class NullableListField(serializers.ListField):
 
 class AdsPerformanceRangeField(serializers.CharField):
     """ Field to validate for range query values """
-    def __init__(self):
-        super().__init__(allow_null=True, allow_blank=True)
+    def __init__(self, *_, **kwargs):
+        super().__init__(allow_null=True, allow_blank=True, **kwargs)
 
     def run_validation(self, data=None):
         super().run_validation(data)
         if data and data is not empty:
             data = self.validate_stats_field(data)
+        elif data is empty:
+            data = None
         return data
 
     def validate_stats_field(self, val):
+        # If val is int, imply val is lower bound
+        if type(val) in {int, float}:
+            val = str(val) + ","
         bounds = val.replace(" ", "").split(",")
         # coerce ",", ", " to None
         if not [bound for bound in bounds if bound]:
@@ -60,7 +65,7 @@ class AdsPerformanceRangeField(serializers.CharField):
             raise ValidationError(msg)
         if len(numeric_bounds) == 2:
             lower_bound, upper_bound = numeric_bounds
-            if lower_bound >= upper_bound:
+            if float(lower_bound) >= float(upper_bound):
                 msg = f"The lower bound ({lower_bound}) must be lower than the upper bound ({upper_bound})"
                 raise ValidationError(msg)
 
