@@ -111,20 +111,25 @@ class Command(BaseCommand):
         """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
-            audit_model = AuditVideoProcessor
             model_fk_ref = "video"
             url_separator = "?v="
+            clean_audits = AuditVideoProcessor.objects.filter(audit=self.audit, clean=True)
         elif self.audit.audit_type == 2:
-            audit_model = AuditChannelProcessor
             model_fk_ref = "channel"
             url_separator = "/channel/"
+            # If a channel contains one unclean video, the entire channel is considered unclean
+            unclean_channel_ids = AuditVideoProcessor.objects.filter(audit=self.audit, clean=False)\
+                .annotate(yt_channel_id=F("channel__channel_id"))\
+                .values_list("yt_channel_id")\
+                .distinct()
+            clean_audits = AuditChannelProcessor.objects.filter(audit=self.audit)\
+                .exclude(channel__channel_id__in=unclean_channel_ids)
         else:
             return
-        clean_audits = audit_model.objects \
-            .filter(audit=self.audit, clean=True) \
-            .select_related(model_fk_ref) \
-            .annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
-        clean_ids = set(audit.item_id for audit in clean_audits)
+        clean_ids = set(
+            audit.item_id for audit in
+            clean_audits.select_related(model_fk_ref).annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
+        )
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         admin_temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
@@ -133,7 +138,8 @@ class Command(BaseCommand):
             export_filename = segment.export.filename
             admin_export_filename = segment.export.admin_filename
             export_fp = segment.s3.download_file(export_filename, f"{settings.TEMPDIR}/{export_filename}")
-            admin_export_fp = segment.s3.download_file(admin_export_filename, f"{settings.TEMPDIR}/{admin_export_filename}")
+            admin_export_fp = segment.s3.download_file(admin_export_filename,
+                                                       f"{settings.TEMPDIR}/{admin_export_filename}")
             quote_char = '"'
             self.write_audit_to_file(export_fp, temp_file, quote_char, url_separator, \
                                      clean_ids, write_header)
@@ -162,7 +168,8 @@ class Command(BaseCommand):
             os.remove(temp_file)
             os.remove(admin_temp_file)
 
-    def write_audit_to_file(self, export_fp, temp_file, quote_char, url_separator, clean_ids, write_header=True):
+    def write_audit_to_file(self, export_fp, temp_file, quote_char, url_separator, clean_ids, write_header=True,
+                            membership=True):
         """ rewrites files in s3 according to audit results """
         with open(export_fp, mode="r") as read_file, \
                 open(temp_file, mode="w") as dest_file:
