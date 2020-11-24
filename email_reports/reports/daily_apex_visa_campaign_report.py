@@ -54,9 +54,14 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         self.cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
     def send(self):
+        if not self.to:
+            logger.error(f"No recipients set for {self.__class__.__name__} Apex campaign report")
+            return
+
         if not isinstance(self.user, get_user_model()):
             return
 
+        # TODO for 5.11: use separate method from send() to generate historicals
         if self.is_historical:
             self._write_historical()
             return
