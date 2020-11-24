@@ -1,4 +1,5 @@
 from functools import wraps
+from random import randint
 from time import sleep
 
 
@@ -31,4 +32,31 @@ def retry(count=3, delay=1, exceptions=(Exception,)):
 
         return wrapper
 
+    return decorator
+
+
+def backoff(max_backoff: int = 3600, exceptions: tuple = (Exception,)):
+    """
+    :param max_backoff: Max seconds to back off before raising last exception
+    :param exceptions: tuple of exceptions to catch
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            step = 0
+            slept = 0
+            errors = None
+            while slept <= max_backoff:
+                try:
+                    res = func(*args, **kwargs)
+                except exceptions as e:
+                    errors = e
+                    sleeping = (2**step + randint(0, 1000)) / 1000
+                    sleep(sleeping)
+                    step += 1
+                    slept += sleeping
+                else:
+                    return res
+            raise errors
+        return wrapper
     return decorator

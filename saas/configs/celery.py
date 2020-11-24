@@ -183,7 +183,11 @@ CELERY_BEAT_SCHEDULE = {
     "sync_dv_campaigns": {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
         "schedule": crontab(minute="*/10"),
-    }
+    },
+    # "performiq_google_ads_update": {
+    #     "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
+    #     "schedule": crontab(minute="*/10")
+    # },
 }
 
 
@@ -202,6 +206,7 @@ class Queue:
     BRAND_SAFETY_VIDEO_PRIORITY = "brand_safety_video_priority"
     SCHEDULERS = "schedulers"
     IAS = "ias"
+    PERFORMIQ = "performiq"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -216,6 +221,7 @@ CELERY_ROUTES_PREPARED = [
     ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
     ("channel.tasks.ingest_ias_channels.*", {"queue": Queue.IAS}),
+    ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError

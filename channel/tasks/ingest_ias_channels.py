@@ -9,6 +9,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from saas import celery_app
 from saas.configs.celery import TaskExpiration, TaskTimeout
+from time import sleep
 from utils.aws.s3_exporter import S3Exporter
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -77,6 +78,7 @@ def ingest_ias_channels(target_file_name=None):
                         ias_channel.ias_verified = timezone.now()
                         ias_channel.save(update_fields=["ias_verified"])
                     channel_manager.upsert(new_channels)
+                    sleep(20)
                 source_key = file_name
                 dest_key = f"{settings.IAS_ARCHIVE_FOLDER}{file_name}"
                 ingestor.copy_from(source_key, dest_key)

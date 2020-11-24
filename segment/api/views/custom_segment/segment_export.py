@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from segment.models import CustomSegment
+from segment.models import CustomSegmentFileUpload
 from segment.models.utils.segment_action import segment_action
 from segment.models.constants import SegmentActionEnum
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
@@ -15,7 +16,7 @@ class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
             CustomSegmentOwnerPermission,
-            user_has_permission("userprofile.vet_audit_admin")
+            user_has_permission("userprofile.custom_target_list_creation")
         ),
     )
 
@@ -34,8 +35,18 @@ class SegmentExport(APIView):
                                  f"ready."
         else:
             if hasattr(segment, "export"):
-                s3_key = segment.get_s3_key()
-                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
+                related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
+                                            f"segment_id: {segment.id} not found.", segment_id=segment.id)
+                if request.user.is_staff or request.user.has_perm('userprofile.vet_audit_admin'):
+                    if related_file_obj.admin_filename:
+                        admin_s3_key = segment.get_admin_s3_key()
+                        response["download_url"] = segment.s3.generate_temporary_url(admin_s3_key)
+                    else:
+                        s3_key = segment.get_s3_key()
+                        response["download_url"] = segment.s3.generate_temporary_url(s3_key)
+                else:
+                    s3_key = segment.get_s3_key()
+                    response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             else:
                 response["message"] = "Segment has no export. Please create the list again."
         return Response(response)
