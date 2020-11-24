@@ -40,10 +40,18 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.video_manager = VideoManager(sections=sections)
         self.channel_manager = ChannelManager(sections=sections)
         BadWordCategory.objects.create(name="test")
-        AuditContentType.objects.create(id=0, content_type=AuditContentType.to_str[0])
-        AuditContentQuality.objects.create(id=0, quality=AuditContentQuality.to_str[0])
-        AuditGender.objects.create(id=0, gender=AuditGender.to_str[0])
-        AuditAgeGroup.objects.create(id=0, age_group=AuditAgeGroup.to_str[0])
+        content_type_obj = AuditContentType.objects.get_or_create(id=0)[0]
+        content_type_obj.content_type = AuditContentType.to_str[0]
+        content_type_obj.save()
+        content_quality_obj = AuditContentQuality.objects.get_or_create(id=0)[0]
+        content_quality_obj.quality = AuditContentQuality.to_str[0]
+        content_quality_obj.save()
+        gender_obj = AuditGender.objects.get_or_create(id=0)[0]
+        gender_obj.gender = AuditGender.to_str[0]
+        gender_obj.save()
+        age_group_obj = AuditAgeGroup.objects.get_or_create(id=0)[0]
+        age_group_obj.age_group = AuditAgeGroup.to_str[0]
+        age_group_obj.save()
 
     @mock_s3
     def test_csv_admin_channel_headers(self):
