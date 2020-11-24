@@ -20,8 +20,6 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
 from segment.api.export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.export_serializers import \
-    CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.export_serializers import AdminCustomSegmentChannelExportSerializer
 from segment.api.export_serializers import AdminCustomSegmentVideoExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoExportSerializer
@@ -46,38 +44,6 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         AuditContentQuality.objects.create(id=0, quality=AuditContentQuality.to_str[0])
         AuditGender.objects.create(id=0, gender=AuditGender.to_str[0])
         AuditAgeGroup.objects.create(id=0, age_group=AuditAgeGroup.to_str[0])
-
-    @mock_s3
-    def test_generate_channel_monetized_headers(self):
-        user = self.create_admin_user()
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(
-            title=f"title_{next(int_iterator)}",
-            segment_type=1, owner=user,
-        )
-        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
-        generate_segment(segment, Q(), 1)
-        export_key = segment.get_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        header = [row.decode("utf-8") for row in body][0]
-        self.assertTrue(set(header), CustomSegmentChannelWithMonetizationExportSerializer.columns)
-
-    @mock_s3
-    def test_generate_user_channel_headers(self):
-        user = self.create_test_user()
-        conn = boto3.resource("s3", region_name="us-east-1")
-        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        segment = CustomSegment.objects.create(
-            title=f"title_{next(int_iterator)}",
-            segment_type=1, owner=user,
-        )
-        self.channel_manager.upsert([self.channel_manager.model(f"channel_{next(int_iterator)}")])
-        generate_segment(segment, Q(), 1)
-        export_key = segment.get_s3_key()
-        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        header = [row.decode("utf-8") for row in body][0]
-        self.assertTrue(set(header), CustomSegmentChannelExportSerializer.columns)
 
     @mock_s3
     def test_csv_admin_channel_headers(self):
@@ -114,7 +80,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(header, CustomSegmentChannelExportSerializer.columns)
 
     @mock_s3
-    def test_generate_channel_non_monetized_headers(self):
+    def test_generate_channel_headers(self):
         user = self.create_test_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
@@ -336,15 +302,15 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
 
-        self.assertIn(doc.general_data.title, rows)
-        self.assertIn(doc.general_data.country_code, rows)
-        self.assertIn(str(doc.stats.views), rows)
-        self.assertIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
-        self.assertIn(bs_category.name, rows)
+        self.assertNotIn(doc.general_data.title, rows)
+        self.assertNotIn(doc.general_data.country_code, rows)
+        self.assertNotIn(str(doc.stats.views), rows)
+        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
+        self.assertNotIn(bs_category.name, rows)
         self.assertNotIn(age_group.age_group, rows)
         self.assertNotIn(gender.gender, rows)
-        self.assertIn(content_type.content_type, rows)
-        self.assertIn(content_quality.quality, rows)
+        self.assertNotIn(content_type.content_type, rows)
+        self.assertNotIn(content_quality.quality, rows)
         self.assertIn(f"https://www.youtube.com/watch?v={doc.main.id}", rows)
         self.video_manager.delete([doc.main.id for doc in docs])
 
@@ -438,15 +404,15 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
         rows = ",".join([row.decode("utf-8") for row in body])
 
-        self.assertIn(doc.general_data.title, rows)
-        self.assertIn(doc.general_data.country_code, rows)
-        self.assertIn(str(doc.stats.subscribers), rows)
-        self.assertIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
-        self.assertIn(bs_category.name, rows)
+        self.assertNotIn(doc.general_data.title, rows)
+        self.assertNotIn(doc.general_data.country_code, rows)
+        self.assertNotIn(str(doc.stats.subscribers), rows)
+        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
+        self.assertNotIn(bs_category.name, rows)
         self.assertNotIn(age_group.age_group, rows)
         self.assertNotIn(gender.gender, rows)
-        self.assertIn(content_type.content_type, rows)
-        self.assertIn(content_quality.quality, rows)
+        self.assertNotIn(content_type.content_type, rows)
+        self.assertNotIn(content_quality.quality, rows)
         self.assertIn(f"https://www.youtube.com/channel/{doc.main.id}", rows)
         self.video_manager.delete([doc.main.id for doc in docs])
 
