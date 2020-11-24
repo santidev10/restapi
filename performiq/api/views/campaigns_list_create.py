@@ -31,7 +31,8 @@ class PerformIQCampaignListCreateAPIView(APIView):
     def _get_analyzed_campaigns(self, request):
         paginator = self.pagination_class()
         qs = IQCampaign.objects.filter(campaign__account__oauth_account__user=request.user) \
-             | IQCampaign.objects.filter(campaign__advertiser__oauth_accounts__user=request.user)
+             | IQCampaign.objects.filter(campaign__advertiser__oauth_accounts__user=request.user) \
+             | IQCampaign.objects.filter(campaign__isnull=True, user=request.user)
         page = IQCampaignSerializer(paginator.paginate_queryset(qs, request), many=True).data
         response_data = paginator._get_response_data(page)
         return response_data
