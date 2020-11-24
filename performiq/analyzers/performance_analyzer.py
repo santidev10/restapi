@@ -17,9 +17,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
 
     def __init__(self, params: dict):
         self.params = params
-        # This will be set by analyze method
-        self._performance_results = {}
-        # If channel fails in any metric, it fails entirely
+        # If a channel fails in any metric, it fails entirely
         self._failed_channels_count = 0
         self._seen = 0
         # Keep track of counts for each metric being analyzed. Data may not always include an analysis_field,
@@ -40,7 +38,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
         """
         # Initialize empty results for all possible performance fields
         curr_result = {
-            "passed": None,
+            "passed": True,
             **{
                 metric_name: None for metric_name in self.ANALYSIS_FIELDS
             }
@@ -56,9 +54,9 @@ class PerformanceAnalyzer(BaseAnalyzer):
             # Add values to calculate overall averages
             self._add_averages(metric_name, metric_value)
             try:
+                # Only set passed to True if not already failed
                 if self.passes(metric_value, threshold):
                     self._total_results[metric_name]["passed"] += 1
-                    curr_result["passed"] = True
                 else:
                     channel_analysis.clean = False
                     self._total_results[metric_name]["failed"] += 1
@@ -69,10 +67,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
                 continue
             else:
                 analyzed = True
-                if curr_result["passed"] is False:
-                    self._failed_channels_count += 1
-                if analyzed is True:
-                    self._seen += 1
+        if analyzed is False:
+            curr_result["passed"] = None
+        else:
+            self._seen += 1
+        if curr_result["passed"] is False:
+            self._failed_channels_count += 1
         return curr_result
 
     def get_results(self) -> dict:
@@ -134,7 +134,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
         Add percentage results with performance key to results for each metric defined in self.params
         """
         for metric_name, result in self._total_results.items():
-            if metric_name in self.params:
+            if self.params.get(metric_name):
                 passed, failed = result.get("passed", 0), result.get("failed", 0)
                 # If no passed and failed, then none were processed
                 performance = self.get_score(passed, passed + failed)
