@@ -111,11 +111,10 @@ class Command(BaseCommand):
         """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
-            model_fk_ref = "video"
             url_separator = "?v="
-            clean_audits = AuditVideoProcessor.objects.filter(audit=self.audit, clean=True)
+            clean_audits = AuditVideoProcessor.objects.filter(audit=self.audit, clean=True)\
+                .annotate(yt_id=F("video__video_id"))
         elif self.audit.audit_type == 2:
-            model_fk_ref = "channel"
             url_separator = "/channel/"
             # If a channel contains one unclean video, the entire channel is considered unclean
             unclean_channel_ids = AuditVideoProcessor.objects.filter(audit=self.audit, clean=False)\
@@ -123,13 +122,11 @@ class Command(BaseCommand):
                 .values_list("yt_channel_id")\
                 .distinct()
             clean_audits = AuditChannelProcessor.objects.filter(audit=self.audit)\
-                .exclude(channel__channel_id__in=unclean_channel_ids)
+                .exclude(channel__channel_id__in=unclean_channel_ids)\
+                .annotate(yt_id=F("channel__channel_id"))
         else:
             return
-        clean_ids = set(
-            audit.item_id for audit in
-            clean_audits.select_related(model_fk_ref).annotate(item_id=F(f"{model_fk_ref}__{model_fk_ref}_id"))
-        )
+        clean_ids = set(yt_id for yt_id in clean_audits.values_list("yt_id", flat=True))
         temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         admin_temp_file = tempfile.mkstemp(dir=settings.TEMPDIR, suffix=".csv")[1]
         write_header = True
