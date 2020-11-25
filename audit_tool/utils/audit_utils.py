@@ -150,9 +150,9 @@ class AuditUtils(object):
     @staticmethod
     def get_quality_types():
         data = [{
-            "id": item.id,
-            "value": item.quality
-        } for item in AuditContentQuality.objects.all()]
+            "id": key,
+            "value": value
+        } for key, value in AuditContentQuality.to_str.items()]
         return data
 
     @staticmethod

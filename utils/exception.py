@@ -52,7 +52,6 @@ def backoff(max_backoff: int = 3600, exceptions: tuple = (Exception,)):
                 except exceptions as e:
                     errors = e
                     sleeping = (2**step + randint(0, 1000)) / 1000
-                    print("sleeping: ", sleeping)
                     sleep(sleeping)
                     step += 1
                     slept += sleeping

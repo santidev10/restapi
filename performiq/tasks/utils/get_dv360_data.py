@@ -1,5 +1,6 @@
 import csv
 import logging
+import os
 import tempfile
 
 from django.conf import settings
@@ -25,14 +26,7 @@ KEY_MAPPING = {
     "METRIC_TRUEVIEW_VIEW_RATE": AnalysisFields.VIDEO_VIEW_RATE,
     "METRIC_TRUEVIEW_VIEWS": AnalysisFields.VIDEO_VIEWS,
 }
-"""
-# METRIC_ACTIVE_VIEW_ELIGIBLE_IMPRESSIONS, METRIC_ACTIVE_VIEW_MEASURABLE_IMPRESSIONS
-# METRIC_ACTIVE_VIEW_AUDIBLE_FULLY_ON_SCREEN_HALF_OF_DURATION_IMPRESSIONS
-# METRIC_ACTIVE_VIEW_AUDIBLE_FULLY_ON_SCREEN_HALF_OF_DURATION_TRUEVIEW_IMPRESSIONS
-METRIC_ACTIVE_VIEW_AUDIBLE_FULLY_ON_SCREEN_HALF_OF_DURATION_TRUEVIEW_MEASURABLE_IMPRESSIONS
-METRIC_ACTIVE_VIEW_AUDIBLE_VISIBLE_ON_COMPLETE_IMPRESSIONS
-METRIC_VIEWABLE_BID_REQUESTS
-"""
+
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +63,6 @@ def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
             ],
             date_range="LAST_90_DAYS",
         )
-
-        # csv_generator = report_csv_generator("output.csv", params)
-        # return csv_generator
-
         result = connector.download_metrics_report(**report_query)
         csv_generator = report_csv_generator(report_fp, result)
         return csv_generator
@@ -113,22 +103,7 @@ def report_csv_generator(report_fp, report_result) -> iter:
                 formatted[mapped_data_key] = mapped_value
             yield formatted
     # Clean up mkstemp file after generator is exhausted
-    # try:
-    #     os.remove(report_fp)
-    # except OSError:
-    #     pass
-
-
-params = dict(params=dict(
-    groupBys=[
-        "FILTER_ADVERTISER",
-        "FILTER_ADVERTISER_CURRENCY",
-        "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS",
-    ],
-    metrics=[
-        "METRIC_TRUEVIEW_VIEW_RATE",
-        "METRIC_CLIENT_COST_ECPM_ADVERTISER_CURRENCY",
-        "METRIC_TRUEVIEW_CPV_ADVERTISER",
-        "METRIC_CLIENT_COST_ADVERTISER_CURRENCY",
-    ],
-))
+    try:
+        os.remove(report_fp)
+    except OSError:
+        pass
