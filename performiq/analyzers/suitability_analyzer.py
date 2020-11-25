@@ -1,5 +1,3 @@
-from typing import Dict
-
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
 from .constants import AnalyzeSection
@@ -36,7 +34,7 @@ class SuitabilityAnalyzer(BaseAnalyzer):
     def analyze(self, channel_analysis: ChannelAnalysis):
         curr_channel_result = {"overall_score": channel_analysis.get("overall_score"), "passed": True}
         try:
-            if curr_channel_result["overall_score"] > self.params["score_threshold"]:
+            if curr_channel_result["overall_score"] >= self.params["score_threshold"]:
                 self._result_counts["passed"] += 1
             else:
                 channel_analysis.clean = False
