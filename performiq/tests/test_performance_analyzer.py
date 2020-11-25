@@ -24,6 +24,7 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
         analyzer = PerformanceAnalyzer(params)
         result = analyzer.analyze(analysis)
         self.assertEqual(result["passed"], True)
+        self.assertEqual(analysis.clean, True)
 
     def test_single_channel_score_fails(self):
         """ Test analysis that channel fails performance. If one metric is < params, then entire analysis fails """
@@ -43,6 +44,7 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
         analyzer = PerformanceAnalyzer(params)
         result = analyzer.analyze(analysis)
         self.assertEqual(result["passed"], False)
+        self.assertEqual(analysis.clean, False)
 
     def test_averages(self):
         """ Test calculating overall averages of channels analyzed """

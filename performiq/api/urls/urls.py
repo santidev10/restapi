@@ -21,7 +21,7 @@ urlpatterns = [
         DV360AuthApiView.as_view(),
         name=PerformIQPathName.DV360Auth.CONNECTION_LIST),
     url(r"^performiq/campaigns/$", PerformIQCampaignListCreateAPIView.as_view(), name=PerformIQPathName.CAMPAIGNS),
-    url(r"^performiq/campaign/(?P<pk>\d+)/$", PerformIQCampaignRetrieveAPIView.as_view(),
+    url(r"^performiq/campaigns/(?P<pk>\d+)/$", PerformIQCampaignRetrieveAPIView.as_view(),
         name=PerformIQPathName.CAMPAIGN),
     url(r"^performiq/map_csv_fields/$",
         PerformIQMapCSVFieldsAPIView.as_view(),
