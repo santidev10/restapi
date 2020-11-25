@@ -5,7 +5,6 @@ from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from performiq.models import Campaign
 from performiq.models import IQCampaign
-from performiq.tasks.start_analysis import start_analysis_task
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
@@ -38,6 +37,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def create(self, validated_data):
+        from performiq.tasks.start_analysis import start_analysis_task
         campaign_id = validated_data.pop("campaign_id")
         # Only set user if IQCampaign is created from csv
         user = validated_data.pop("user")
