@@ -26,7 +26,6 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from segment.models import CustomSegment
-from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.utils import get_content_disposition
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
@@ -100,6 +99,7 @@ class Command(BaseCommand):
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def update_ctl(self):
+        from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
         """ Create export for CTL using audited data """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
