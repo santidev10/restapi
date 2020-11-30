@@ -19,7 +19,6 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 from segment.api.export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoExportSerializer
 from segment.api.export_serializers import AdminCustomSegmentVideoExportSerializer
 from segment.api.export_serializers import AdminCustomSegmentChannelExportSerializer
@@ -111,11 +110,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         if self.is_vetting is True:
             serializer = CustomSegmentChannelVettedExportSerializer
         else:
-            owner = getattr(self, "owner", None)
-            if owner and owner.has_perm("userprofile.monetization_filter"):
-                serializer = CustomSegmentChannelWithMonetizationExportSerializer
-            else:
-                serializer = CustomSegmentChannelExportSerializer
+            serializer = CustomSegmentChannelExportSerializer
         return serializer
 
     @property
