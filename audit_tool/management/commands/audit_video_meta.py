@@ -1,10 +1,10 @@
 import csv
 import logging
+import os
 import re
+import tempfile
 from collections import defaultdict
 from datetime import timedelta
-import tempfile
-import os
 
 import requests
 from dateutil.parser import parse
@@ -15,7 +15,6 @@ from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
 
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -23,19 +22,16 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
-from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from audit_tool.utils.audit_utils import AuditUtils
 from segment.models import CustomSegment
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.utils.utils import get_content_disposition
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
-from utils.utils import remove_tags_punctuation
 from utils.utils import chunks_generator
-from segment.utils.utils import get_content_disposition
-
+from utils.utils import remove_tags_punctuation
 
 logger = logging.getLogger(__name__)
 """
@@ -47,18 +43,14 @@ process:
     clean list of videos.
 """
 
-
 # pylint: disable=too-many-instance-attributes
 class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    MAX_SOURCE_VIDEOS = 750000
     categories = {}
     audit = None
     acps = {}
-    num_clones = 0
-    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
                          "?key={key}&part=id,status,snippet,statistics,contentDetails,player&id={id}"
@@ -93,7 +85,7 @@ class Command(BaseCommand):
         with PidFile(piddir=".", pidname="audit_video_meta_{}.pid".format(self.thread_id)):
             # self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1,
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type=1,
                                                            source__in=[0,2]).order_by("pause", "id")[self.machine_number]
             # pylint: disable=broad-except
             except Exception as e:
@@ -104,7 +96,7 @@ class Command(BaseCommand):
 
     def check_thread_limit_reached(self):
         if self.thread_id > 6:
-            if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
+            if AuditProcessor.objects.filter(seed_status=2, audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def update_ctl(self):
@@ -204,18 +196,7 @@ class Command(BaseCommand):
             self.inclusion_hit_count = 1
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
-        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get("done_source_list") and pending_videos.count() < self.MAX_SOURCE_VIDEOS:
-            if self.thread_id == 0:
-                self.process_seed_list()
-                pending_videos = AuditVideoProcessor.objects.filter(
-                    audit=self.audit,
-                    processed__isnull=True
-                )
-            else:
-                raise Exception("waiting to process seed list on thread 0")
-        else:
-            pending_videos = pending_videos.filter(processed__isnull=True)
+        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit).filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
                 self.audit.completed = timezone.now()
@@ -249,97 +230,6 @@ class Command(BaseCommand):
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit {}.  thread {}".format(self.audit.id, self.thread_id))
     # pylint: enable=too-many-branches,too-many-statements
-
-    def process_seed_file(self, seed_file):
-        try:
-            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            self.audit.params["error"] = "can not open seed file"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("can not open seed file {}".format(seed_file))
-        reader = csv.reader(f)
-        vids = []
-        counter = 0
-        processed_ids = []
-        resume_val = AuditVideoProcessor.objects.filter(audit=self.audit).count()
-        print("processing seed file starting at position {}".format(resume_val))
-        skipper = 0
-        if resume_val > 0:
-            for _ in reader:
-                if skipper >= resume_val:
-                    break
-                skipper += 1
-        for row in reader:
-            seed = row[0]
-            if "youtube." in seed:
-                # if seed[-1] == "/":
-                #    seed = seed[:-1]
-                v_id = seed.strip().split("/")[-1]
-                if "?v=" in v_id:
-                    v_id = v_id.split("v=")[-1]
-                v_id = v_id.replace(".", "").replace(";", "")
-                if v_id and len(v_id) < 51 and not v_id in processed_ids:
-                    processed_ids.append(v_id)
-                    if len(vids) >= self.MAX_SOURCE_VIDEOS:
-                        self.clone_audit()
-                        vids = []
-                    video = AuditVideo.get_or_create(v_id)
-                    avp, _ = AuditVideoProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        video=video,
-                    )
-                    vids.append(avp)
-                    counter += 1
-        if counter == 0 and resume_val == 0:
-            self.audit.params["error"] = "no valid YouTube Video URL's in seed file"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return vids
-
-    def clone_audit(self):
-        self.num_clones += 1
-        if not self.original_audit_name:
-            self.original_audit_name = self.audit.params["name"]
-        self.audit.params["done_source_list"] = True
-        self.audit.save(update_fields=["params"])
-        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
-
-    def process_seed_list(self):
-        seed_list = self.audit.params.get("videos")
-        if not seed_list:
-            seed_file = self.audit.params.get("seed_file")
-            if seed_file:
-                return self.process_seed_file(seed_file)
-            self.audit.params["error"] = "seed list is empty"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
-        vids = []
-        for seed in seed_list:
-            if "youtube." in seed:
-                v_id = seed.split("/")[-1]
-                if "?v=" in v_id:
-                    v_id = v_id.split("v=")[-1]
-                video = AuditVideo.get_or_create(v_id)
-                avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
-                )
-                vids.append(avp)
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return vids
 
     def do_check_video(self, videos):
         for video_id, avp in videos.items():
