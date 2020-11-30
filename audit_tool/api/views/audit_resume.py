@@ -35,6 +35,7 @@ class AuditResumeApiView(APIView):
                     params=params,
                     max_recommended=max_recommended,
                     name=params['name'].lower(),
+                    seed_status=2,
                 )
                 # GET SOURCE VIDEOS FROM OLD AUDIT THAT WERE NOT PROCESSED AND COPY THEM AS SOURCE FOR THIS
                 videos = AuditVideoProcessor.objects.filter(audit_id=audit.id, processed__isnull=True)
