@@ -16,7 +16,7 @@ class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
             CustomSegmentOwnerPermission,
-            user_has_permission("userprofile.custom_target_list_creation")
+            user_has_permission("userprofile.vet_audit_admin")
         ),
     )
 
