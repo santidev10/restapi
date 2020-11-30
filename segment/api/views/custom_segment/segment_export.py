@@ -1,5 +1,6 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
@@ -16,7 +17,8 @@ class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
             CustomSegmentOwnerPermission,
-            user_has_permission("userprofile.vet_audit_admin")
+            user_has_permission("userprofile.vet_audit_admin"),
+            IsAdminUser
         ),
     )
 
