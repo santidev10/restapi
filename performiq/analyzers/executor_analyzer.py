@@ -110,7 +110,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         statistics = {
             "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
             "wastage_spend": wastage_spend,
-            "wastage_percent": wastage_spend / total_spend,
+            "wastage_percent": wastage_spend / (total_spend or 1),
         }
         return statistics
 

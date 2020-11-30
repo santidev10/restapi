@@ -81,7 +81,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             formatted_key = analysis_type.replace("_counts", "_percents")
             # percents will contain percent occurrence of each analysis_type and targeted boolean
             # targeted describes if the value was targeted in params
-            # e.g. [{"en": 75}, {"ko": 50}, {"ja": 40}, ...]
+            # e.g. [{"en": 75, "targeted": True}, {"ko": 50, "targeted": False}, {"ja": 40, "targeted": False}, ...]
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
                 percent = self.get_score(counts[key], self._seen)
@@ -89,16 +89,7 @@ class ContextualAnalyzer(BaseAnalyzer):
                 percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
-        # Get top content category occurrences and overall percentage match
-        content_categories_counts = self._total_result_counts["content_categories_counts"]
-        top_category_occurrence = sorted(
-            content_categories_counts, key=content_categories_counts.get, reverse=True)[:self.TOP_OCCURRENCES_MAX]
-        percentage_results["content_categories"] = {
-            "top_occurrence": top_category_occurrence,
-            "matched": self.get_score(
-                self._total_result_counts["matched_content_categories"], self._seen
-            )
-        }
+        percentage_results["content_categories"] = self._get_content_categories_result()
         final_result = {
             "overall_score": self.get_score(passed_count, self._seen),
             **percentage_results
@@ -180,3 +171,24 @@ class ContextualAnalyzer(BaseAnalyzer):
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
         return contextual_failed
+
+    def _get_content_categories_result(self):
+        # Get top content category occurrences and overall percentage match
+        content_categories_counts = self._total_result_counts["content_categories_counts"]
+        category_sorted_keys = sorted(
+            content_categories_counts, key=content_categories_counts.get, reverse=True)
+        category_occurrence = [
+            {
+                "category": category,
+                # Whether or not a cateory was seen at least once
+                "matched": content_categories_counts[category] > 0
+            }
+            for category in category_sorted_keys if category in self._params[AnalysisFields.CONTENT_CATEGORIES]
+        ]
+        result = {
+            "category_occurrence": category_occurrence,
+            "total_matched_percent": self.get_score(
+                self._total_result_counts["matched_content_categories"], self._seen
+            )
+        }
+        return result

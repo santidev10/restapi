@@ -174,6 +174,6 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
             analyzer.analyze(a)
         results = analyzer.get_results()
         # All items have ctr, two pass, one fail, so should be average of 3
-        self.assertAlmostEqual(results["ctr"]["performance"], round(2 / 3 * 100, 2))
+        self.assertAlmostEqual(results["ctr"]["performance"], round(2 / 3 * 100, 2), delta=1)
         # Only two items in data have video_view_rate, one pass one fail, so should be average of 2
-        self.assertAlmostEqual(results["video_view_rate"]["performance"], round(1 / 2 * 100, 2))
+        self.assertAlmostEqual(results["video_view_rate"]["performance"], round(1 / 2 * 100, 2), delta=1)

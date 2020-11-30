@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 import boto3
 from moto import mock_s3
@@ -37,7 +37,8 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         iq_campaign.refresh_from_db()
         results = iq_campaign.results
         expected_export_result_keys = {"wastage_spend", "recommended_count", "wastage_export_filename",
-                                       "wastage_channels_percent", "recommended_export_filename"}
+                                       "wastage_channels_percent", "recommended_export_filename",
+                                       "wastage_percent", "wastage_count"}
         self.assertEqual(set(results["exports"].keys()), expected_export_result_keys)
         self.assertTrue(AnalyzeSection.PERFORMANCE_RESULT_KEY in results)
         self.assertTrue(AnalyzeSection.CONTEXTUAL_RESULT_KEY in results)
