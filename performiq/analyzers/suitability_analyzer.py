@@ -42,5 +42,8 @@ class SuitabilityAnalyzer(BaseAnalyzer):
                 self._result_counts["failed"] += 1
                 self._failed_channels.add(channel_analysis.channel_id)
         except TypeError:
-            return
+            curr_channel_result.update({
+                "overall_score": None,
+                "passed": None,
+            })
         return curr_channel_result

@@ -46,6 +46,7 @@ def generate_exports(iq_campaign: IQCampaign):
         EXPORT_RESULTS_KEYS.RECOMMENDED_EXPORT_FILENAME: recommended_s3_key,
         EXPORT_RESULTS_KEYS.WASTAGE_EXPORT_FILENAME: wastage_s3_key,
         "recommended_count": total_recommended,
+        "wastage_count": total_wastage,
     }
     return results
 

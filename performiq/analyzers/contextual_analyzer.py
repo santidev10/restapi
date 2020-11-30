@@ -79,12 +79,14 @@ class ContextualAnalyzer(BaseAnalyzer):
             counts_field = analysis_type + "_counts"
             counts = self._total_result_counts[counts_field]
             formatted_key = analysis_type.replace("_counts", "_percents")
-            # percents will contain percent occurrence of each analysis_type
+            # percents will contain percent occurrence of each analysis_type and targeted boolean
+            # targeted describes if the value was targeted in params
             # e.g. [{"en": 75}, {"ko": 50}, {"ja": 40}, ...]
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
                 percent = self.get_score(counts[key], self._seen)
-                percents.append({key: percent})
+                targeted = str(key) in self._params.get(analysis_type, {})
+                percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
         # Get top content category occurrences and overall percentage match
@@ -131,13 +133,17 @@ class ContextualAnalyzer(BaseAnalyzer):
             "passed": True
         }
         for params_field in self.ANALYSIS_FIELDS:
-            value = channel_analysis.get(params_field)
+            raw_value = channel_analysis.get(params_field)
+            # Check AttrList from elasticsearch_dsl AttrList type
+            mapped_value = [raw_value] if type(raw_value) not in {list, AttrList} else raw_value
+            mapped_value = [str(val) if val is not None else val for val in mapped_value]
+
             count_field = params_field + "_counts"
             # Check if value matches params
-            curr_contextual_failed = self._analyze(count_field, params_field, value)
+            curr_contextual_failed = self._analyze(count_field, params_field, mapped_value)
             if curr_contextual_failed is True:
                 contextual_failed = True
-            curr_channel_result[params_field] = value
+            curr_channel_result[params_field] = mapped_value
 
         if contextual_failed is True:
             channel_analysis.clean = False
@@ -156,9 +162,6 @@ class ContextualAnalyzer(BaseAnalyzer):
         :param value: Actual value to analyze and compare against self._params[params_field]
         :return: bool
         """
-        # Check AttrList from elasticsearch_dsl AttrList type
-        to_list = type(value) not in {list, AttrList}
-        value = [value] if to_list else value
         contextual_failed = False
         content_category_matched = False
         for val in value:

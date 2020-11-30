@@ -136,7 +136,6 @@ class PerformanceAnalyzer(BaseAnalyzer):
         for metric_name, result in self._total_results.items():
             if self.params.get(metric_name):
                 passed, failed = result.get("passed", 0), result.get("failed", 0)
-                # If no passed and failed, then none were processed
                 performance = self.get_score(passed, passed + failed)
             else:
                 # Threshold value was not saved for current IQCampaign
