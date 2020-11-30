@@ -13,7 +13,6 @@ from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
 
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -25,7 +24,6 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from audit_tool.utils.audit_utils import AuditUtils
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
@@ -104,6 +102,7 @@ class Command(BaseCommand):
                     .filter(temp_stop=False,
                             completed__isnull=True,
                             audit_type=0,
+                            seed_status=2,
                             source=0) \
                     .order_by("pause", "id")[self.machine_number]
                 self.load_audit_params()
@@ -153,13 +152,7 @@ class Command(BaseCommand):
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=["started"])
-        if not self.audit.params.get("done_source_list"):
-            if self.thread_id == 0:
-                pending_videos = self.process_seed_list()
-            else:
-                raise Exception("waiting for seed list to finish on thread 0")
-        else:
-            pending_videos = self.check_complete()
+        pending_videos = self.check_complete()
         num = 50
         start = self.thread_id * num
         for video in pending_videos[start:start + num]:
@@ -208,55 +201,6 @@ class Command(BaseCommand):
                 export_as_channels=export_as_channels,
             )
         raise Exception("Audit completed, all videos processed")
-
-    def process_seed_file(self, seed_file):
-        try:
-            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            self.audit.params["error"] = "can not open seed file {}".format(seed_file)
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("can not open seed file {}".format(seed_file))
-        reader = csv.reader(f)
-        vids = []
-        for row in reader:
-            avp = AuditUtils.get_avp_from_url(row[0], self.audit)
-            if avp:
-                vids.append(avp)
-        if len(vids) == 0:
-            self.audit.params["error"] = "no valid YouTube Video URL's in seed file"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return vids
-
-    def process_seed_list(self):
-        seed_list = self.audit.params.get("videos")
-        if not seed_list:
-            seed_file = self.audit.params.get("seed_file")
-            if seed_file:
-                return self.process_seed_file(seed_file)
-            self.audit.params["error"] = "seed list is empty"
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause"])
-            raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
-        vids = []
-        for seed in seed_list:
-            avp = AuditUtils.get_avp_from_url(seed, self.audit)
-            if avp:
-                vids.append(avp)
-        audit = self.audit
-        audit.params["done_source_list"] = True
-        audit.save(update_fields=["params"])
-        return vids
 
     # pylint: disable=too-many-branches,too-many-statements
     def do_recommended_api_call(self, avp):
