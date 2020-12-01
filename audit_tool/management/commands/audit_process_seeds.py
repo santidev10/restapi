@@ -15,6 +15,7 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
+
 from audit_tool.utils.audit_utils import AuditUtils
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class Command(BaseCommand):
                         thread=None,
                     )
             try:
-                self.audit = AuditProcessor.objects.filter(seed_status=0, completed__isnull=True, machine=None, thread=None).order_by("audit__pause","id")[0]
+                self.audit = AuditProcessor.objects.filter(seed_status=0, completed__isnull=True, machine=None, thread=None).order_by("pause","id")[0]
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
