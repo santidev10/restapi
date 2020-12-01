@@ -3,6 +3,7 @@ from copy import deepcopy
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
@@ -145,6 +146,13 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
+
+    def get_serializer_context(self):
+        latest_ias_ingestion = IASHistory.objects.latest("completed")
+        context = {
+            "latest_ias_ingestion": latest_ias_ingestion.started
+        }
+        return context
 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
