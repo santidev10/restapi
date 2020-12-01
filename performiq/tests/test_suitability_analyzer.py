@@ -7,19 +7,21 @@ from utils.unittests.int_iterator import int_iterator
 
 class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
     def test_single_channel_score_passes(self):
-        """ Test analysis that channel passes performance. Every metric compared to params must be >= """
+        """ Test analysis that channel passes performance """
         _params = dict(
             score_threshold=50,
         )
         params = get_params(_params)
-        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=_params)
+        data = params.copy()
+        data["overall_score"] = 100
+        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
         analyzer = SuitabilityAnalyzer(params)
         result = analyzer.analyze(analysis)
         self.assertEqual(result["passed"], True)
         self.assertEqual(analysis.clean, True)
 
     def test_single_channel_score_fails(self):
-        """ Test analysis that channel passes performance. Every metric compared to params must be >= """
+        """ Test analysis that channel fails suitability """
         _params = dict(
             score_threshold=50,
         )
