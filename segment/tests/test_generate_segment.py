@@ -1,3 +1,4 @@
+import csv
 import io
 from uuid import uuid4
 from mock import patch
@@ -308,18 +309,21 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        rows = ",".join([row.decode("utf-8") for row in body])
+        reader = csv.reader(io.StringIO(body.read().decode("utf-8")))
+        rows = [row for row in reader]
+        # Skip header
+        data = rows[1]
 
-        self.assertNotIn(doc.general_data.title, rows)
-        self.assertNotIn(doc.general_data.country_code, rows)
-        self.assertNotIn(str(doc.stats.views), rows)
-        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
-        self.assertNotIn(bs_category.name, rows)
-        self.assertNotIn(age_group.age_group, rows)
-        self.assertNotIn(gender.gender, rows)
-        self.assertNotIn(content_type.content_type, rows)
-        self.assertNotIn(content_quality.quality, rows)
-        self.assertIn(f"https://www.youtube.com/watch?v={doc.main.id}", rows)
+        self.assertNotIn(doc.general_data.title, data)
+        self.assertNotIn(doc.general_data.country_code, data)
+        self.assertNotIn(str(doc.stats.views), data)
+        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), data)
+        self.assertNotIn(bs_category.name, data)
+        self.assertNotIn(age_group.age_group, data)
+        self.assertNotIn(gender.gender, data)
+        self.assertNotIn(content_type.content_type, data)
+        self.assertNotIn(content_quality.quality, data)
+        self.assertIn(f"https://www.youtube.com/watch?v={doc.main.id}", data)
         self.video_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
@@ -410,19 +414,22 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         generate_segment(segment, Q(), len(docs))
         export_key = segment.get_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
-        rows = ",".join([row.decode("utf-8") for row in body])
+        reader = csv.reader(io.StringIO(body.read().decode("utf-8")))
+        rows = [row for row in reader]
+        # Skip header
+        data = rows[1]
 
-        self.assertNotIn(doc.general_data.title, rows)
-        self.assertNotIn(doc.general_data.country_code, rows)
-        self.assertNotIn(str(doc.stats.subscribers), rows)
-        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), rows)
-        self.assertNotIn(bs_category.name, rows)
-        self.assertNotIn(age_group.age_group, rows)
-        self.assertNotIn(gender.gender, rows)
-        self.assertNotIn(content_type.content_type, rows)
-        self.assertNotIn(content_quality.quality, rows)
-        self.assertIn(f"https://www.youtube.com/channel/{doc.main.id}", rows)
-        self.video_manager.delete([doc.main.id for doc in docs])
+        self.assertNotIn(doc.general_data.title, data)
+        self.assertNotIn(doc.general_data.country_code, data)
+        self.assertNotIn(str(doc.stats.subscribers), data)
+        self.assertNotIn(str(map_brand_safety_score(doc.brand_safety.overall_score)), data)
+        self.assertNotIn(bs_category.name, data)
+        self.assertNotIn(age_group.age_group, data)
+        self.assertNotIn(gender.gender, data)
+        self.assertNotIn(content_type.content_type, data)
+        self.assertNotIn(content_quality.quality, data)
+        self.assertIn(f"https://www.youtube.com/channel/{doc.main.id}", data)
+        self.channel_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
     def test_generate_video_source_inclusion(self):
