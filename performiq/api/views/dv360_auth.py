@@ -76,8 +76,8 @@ class DV360AuthApiView(AdWordsAuthApiView):
             oauth_account, _created = OAuthAccount.objects.update_or_create(
                 user=self.request.user,
                 email=token_info["email"],
+                oauth_type=OAuthType.DV360.value,
                 defaults={
-                    "oauth_type": OAuthType.DV360.value,
                     "token": access_token,
                     "refresh_token": refresh_token,
                     "revoked_access": False,
