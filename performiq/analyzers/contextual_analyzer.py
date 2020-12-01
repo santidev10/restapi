@@ -73,25 +73,23 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         percentage_results = {}
         passed_count = self._seen - len(self._failed_channels)
-        # Calculate percentage breakdown for content_type and content_quality analysis
-        for analysis_type in {AnalysisFields.CONTENT_TYPE, AnalysisFields.CONTENT_QUALITY}:
+        # Calculate percentage breakdown for languages, content_type, and content_quality analysis by
+        # creating sorted list of how often values occur
+        for analysis_type in {AnalysisFields.LANGUAGES, AnalysisFields.CONTENT_TYPE, AnalysisFields.CONTENT_QUALITY}:
             counts_field = analysis_type + "_counts"
             counts = self._total_result_counts[counts_field]
             formatted_key = analysis_type.replace("_counts", "_percents")
-            for key, count in counts.items():
-                counts[key] = self.get_score(count, self._seen)
-            percentage_results[formatted_key] = counts
+            # percents will contain percent occurrence of each analysis_type and targeted boolean
+            # targeted describes if the value was targeted in params
+            # e.g. [{"en": 75, "targeted": True}, {"ko": 50, "targeted": False}, {"ja": 40, "targeted": False}, ...]
+            percents = []
+            for key in sorted(counts, key=counts.get, reverse=True):
+                percent = self.get_score(counts[key], self._seen)
+                targeted = str(key) in self._params.get(analysis_type, {})
+                percents.append({key: percent, "targeted": targeted})
+            percentage_results[formatted_key] = percents
 
-        # Get top content category occurrences and overall percentage match
-        content_categories_counts = self._total_result_counts["content_categories_counts"]
-        top_category_occurrence = sorted(
-            content_categories_counts, key=content_categories_counts.get)[:self.TOP_OCCURRENCES_MAX]
-        percentage_results["content_categories"] = {
-            "top_occurrence": top_category_occurrence,
-            "matched": self.get_score(
-                self._total_result_counts["matched_content_categories"], self._seen
-            )
-        }
+        percentage_results["content_categories"] = self._get_content_categories_result()
         final_result = {
             "overall_score": self.get_score(passed_count, self._seen),
             **percentage_results
@@ -123,18 +121,20 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         contextual_failed = False
         curr_channel_result = {
-            "passed": None
+            "passed": True
         }
         for params_field in self.ANALYSIS_FIELDS:
-            # Unable to analyze if param not defined
-            if not self._params.get(params_field):
-                curr_channel_result["passed"] = None
-                continue
-            value = channel_analysis.get(params_field)
+            raw_value = channel_analysis.get(params_field)
+            # Check AttrList from elasticsearch_dsl AttrList type
+            mapped_value = [raw_value] if type(raw_value) not in {list, AttrList} else raw_value
+            mapped_value = [str(val) if val is not None else val for val in mapped_value]
+
             count_field = params_field + "_counts"
             # Check if value matches params
-            contextual_failed = self._analyze(count_field, params_field, value)
-            curr_channel_result[params_field] = value
+            curr_contextual_failed = self._analyze(count_field, params_field, mapped_value)
+            if curr_contextual_failed is True:
+                contextual_failed = True
+            curr_channel_result[params_field] = mapped_value
 
         if contextual_failed is True:
             channel_analysis.clean = False
@@ -153,15 +153,16 @@ class ContextualAnalyzer(BaseAnalyzer):
         :param value: Actual value to analyze and compare against self._params[params_field]
         :return: bool
         """
-        # Check AttrList from elasticsearch_dsl AttrList type
-        to_list = type(value) not in {list, AttrList}
-        value = [value] if to_list else value
         contextual_failed = False
         content_category_matched = False
         for val in value:
+            self._total_result_counts[count_field][val] += 1
+            # Unable to analyze if param not defined, however we still want to count the occurrences of a value
+            if not self._params.get(params_field):
+                continue
+
             if contextual_failed is False and val not in self._params[params_field]:
                 contextual_failed = True
-            self._total_result_counts[count_field][val] += 1
 
             # Channel has at least one content category that matched
             if params_field == AnalysisFields.CONTENT_CATEGORIES and val in self._params[params_field]:
@@ -170,3 +171,24 @@ class ContextualAnalyzer(BaseAnalyzer):
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
         return contextual_failed
+
+    def _get_content_categories_result(self):
+        # Get top content category occurrences and overall percentage match
+        content_categories_counts = self._total_result_counts["content_categories_counts"]
+        category_sorted_keys = sorted(
+            content_categories_counts, key=content_categories_counts.get, reverse=True)
+        category_occurrence = [
+            {
+                "category": category,
+                # Whether or not a cateory was seen at least once
+                "matched": content_categories_counts[category] > 0
+            }
+            for category in category_sorted_keys if category in self._params[AnalysisFields.CONTENT_CATEGORIES]
+        ]
+        result = {
+            "category_occurrence": category_occurrence,
+            "total_matched_percent": self.get_score(
+                self._total_result_counts["matched_content_categories"], self._seen
+            )
+        }
+        return result

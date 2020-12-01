@@ -343,6 +343,7 @@ class ESDictSerializer(Serializer):
             chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
         data = instance.to_dict()
         data = self._add_blocklist(data)
+        data = self._check_ias_verified(data)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -351,6 +352,17 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+
+    def _check_ias_verified(self, data: dict):
+        """
+        Only provide IAS data if channel was included in the last IAS data ingestion
+        """
+        try:
+            if data["ias_data"]["ias_verified"] < self.context["latest_ias_ingestion"]:
+                data.pop("ias_data", None)
+        except (KeyError, TypeError):
+            pass
+        return data
 
     def _add_blocklist(self, data: dict):
         """

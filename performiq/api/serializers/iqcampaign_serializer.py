@@ -26,8 +26,8 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     languages = NullableListField(write_only=True)
     score_threshold = serializers.IntegerField(write_only=True)
     video_view_rate = serializers.FloatField(write_only=True)
-
     user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
+
     # These fields are unavailable for DV360 IQCampaigns as the API does not support retrieving these metrics
     ctr = serializers.FloatField(required=False, write_only=True, default=None)
     active_view_viewability = serializers.FloatField(write_only=True, required=False, default=None)
@@ -38,7 +38,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def create(self, validated_data):
-        campaign_id = validated_data.pop("campaign_id")
+        campaign_id = validated_data.pop("campaign_id", None)
         # Only set user if IQCampaign is created from csv
         user = validated_data.pop("user")
         if not validated_data.get("csv_s3_key"):

@@ -19,14 +19,29 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     '''
     Base CustomSegment export serializer for channels.
     '''
-    columns = (
-        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
-        "Brand_Safety", "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language", "Country", "Sentiment",
-        "Monthly_Views", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate",
-        "Views_30_Days", "Last_Upload_Date",
-    )
+    columns = ("URL",)
 
     URL = SerializerMethodField("get_url")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+class AdminCustomSegmentChannelExportSerializer(CustomSegmentChannelExportSerializer):
+    '''
+    Export serializer containing additional admin and vetting admin data that is not available
+    to standard users.
+    '''
+    columns = (
+        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
+        "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
+        "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views", "Video_View_Rate",
+        "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days", "Last_Upload_Date",
+    )
+
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Primary_Category = CharField(source="general_data.primary_category")
@@ -49,56 +64,8 @@ class CustomSegmentChannelExportSerializer(SegmentChannelExportSerializerMixin, 
     Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
     Views_30_Days = FloatField(source="stats.last_30day_views")
     Last_Upload_Date = DateTimeField(source="stats.last_video_published_at", format="%Y-%m-%d", default="")
-
-    def update(self, instance, validated_data):
-        raise NotImplementedError
-
-    def create(self, validated_data):
-        raise NotImplementedError
-
-
-
-class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
-    '''
-    Inherits from CustomSegmentChannelExportSerializer.
-
-    Contains additional monetization field for channels.
-    '''
-    columns = (
-        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
-        "Monetizable", "Brand_Safety", "Content_Type", "Content_Quality", "Num_Videos", "Mismatched_Language",
-        "Country", "Sentiment", "Monthly_Views", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v",
-        "Video_100_Completion_Rate", "Views_30_Days", "Last_Upload_Date",
-    )
-
-    Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
-
-    def __init__(self, instance, *args, **kwargs):
-        super().__init__(instance, *args, **kwargs)
-
-    def update(self, instance, validated_data):
-        raise NotImplementedError
-
-    def create(self, validated_data):
-        raise NotImplementedError
-
-
-
-class AdminCustomSegmentChannelExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
-    '''
-        Inherits from CustomSegmentChannelWithMonetizationExportSerializer.
-
-        An export serializer containing additional admin and vetting admin data that is not available
-        to standard users.
-    '''
-    columns = (
-        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Subscribers", "Overall_Score",
-        "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality", "Num_Videos",
-        "Mismatched_Language", "Last_Vetted", "Country", "Sentiment", "Monthly_Views", "Video_View_Rate",
-        "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days", "Last_Upload_Date",
-    )
-
     Vetted = SerializerMethodField("get_vetted")
+    Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
@@ -113,18 +80,36 @@ class AdminCustomSegmentChannelExportSerializer(CustomSegmentChannelWithMonetiza
         raise NotImplementedError
 
 
+
 class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Serializer):
     '''
     Base CustomSegment export serializer for videos.
     '''
-    columns = (
-        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Monthly_Views",
-        "Brand_Safety", "Content_Type", "Content_Quality", "Overall_Score", "Mismatched_Language", "Country",
-        "Sentiment", "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate",
-        "Views_30_Days", "Upload_Date",
-    )
+    columns = ("URL",)
 
     URL = SerializerMethodField("get_url")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+
+
+class AdminCustomSegmentVideoExportSerializer(CustomSegmentVideoExportSerializer):
+    '''
+    Export serializer containing additional admin and vetting admin data that is not available
+    to standard users.
+    '''
+    columns = (
+        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Monthly_Views",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality", "Overall_Score",
+        "Mismatched_Language", "Last_Vetted", "Country", "Sentiment",
+        "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
+        "Upload_Date",
+    )
+
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Primary_Category = CharField(source="general_data.primary_category")
@@ -146,30 +131,6 @@ class CustomSegmentVideoExportSerializer(SegmentVideoExportSerializerMixin, Seri
     Video_100_Completion_Rate = FloatField(source="ads_stats.video_quartile_100_rate")
     Views_30_Days = FloatField(source="stats.last_30day_views")
     Upload_Date = DateTimeField(source="general_data.youtube_published_at", format="%Y-%m-%d", default="")
-
-    def update(self, instance, validated_data):
-        raise NotImplementedError
-
-    def create(self, validated_data):
-        raise NotImplementedError
-
-
-
-class AdminCustomSegmentVideoExportSerializer(CustomSegmentVideoExportSerializer):
-    '''
-        Inherits from CustomSegmentVideoExportSerializer.
-
-        An export serializer containing additional admin and vetting admin data that is not available
-        to standard users.
-    '''
-    columns = (
-        "URL", "Title", "Language", "Primary_Category", "Additional_Categories", "Views", "Monthly_Views",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Content_Quality", "Overall_Score",
-        "Mismatched_Language", "Last_Vetted", "Country", "Sentiment",
-        "Video_View_Rate", "Avg_CPV", "Avg_CPM", "Avg_CTR", "Avg_CTR_v", "Video_100_Completion_Rate", "Views_30_Days",
-        "Upload_Date",
-    )
-
     Vetted = SerializerMethodField("get_vetted")
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")

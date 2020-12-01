@@ -8,7 +8,7 @@ class BaseAnalyzer:
     @staticmethod
     def get_score(passed, total):
         try:
-            score = round(passed / total * 100, 2)
+            score = round(passed / total * 100, 4)
         except ZeroDivisionError:
             score = 0
         return score
