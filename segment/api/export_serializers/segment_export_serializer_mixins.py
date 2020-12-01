@@ -1,4 +1,5 @@
-import time
+from datetime import datetime
+import pytz
 
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
@@ -79,7 +80,7 @@ class SegmentExportSerializerMixin:
         date_last_vetted_at = getattr(obj.task_us_data, "last_vetted_at", None)
         if not date_last_vetted_at:
             return "N"
-        elif time.strptime(date_last_vetted_at, "%Y/%m/%d") < time.strptime(LAST_VETTED_AT_MIN_DATE, "%Y/%m/%d"):
+        elif date_last_vetted_at < pytz.utc.localize(datetime.strptime(LAST_VETTED_AT_MIN_DATE, "%Y-%m-%d")):
             return "N"
         return "Y"
 

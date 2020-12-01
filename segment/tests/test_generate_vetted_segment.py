@@ -1,6 +1,7 @@
 import boto3
 from django.conf import settings
 from django.utils import timezone
+from datetime import datetime
 import io
 from moto import mock_s3
 
@@ -150,7 +151,8 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             age_group=0,
             brand_safety=[0],
             gender=0,
-            iab_categories=["Test"]
+            iab_categories=["Test"],
+            last_vetted_at=datetime.now(timezone.utc)
         )
         # Prepare inclusion source list of urls
         source_file = io.BytesIO()
