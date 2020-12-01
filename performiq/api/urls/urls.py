@@ -5,6 +5,7 @@ from performiq.api.views import AdWordsAuthApiView
 from performiq.api.views.dv360_auth import DV360AuthApiView
 from performiq.api.views import PerformIQCampaignListCreateAPIView
 from performiq.api.views import PerformIQMapCSVFieldsAPIView
+from performiq.api.views import PerformIQCampaignExportAPIView
 from performiq.api.views import PerformIQCampaignRetrieveAPIView
 
 
@@ -23,6 +24,8 @@ urlpatterns = [
     url(r"^performiq/campaigns/$", PerformIQCampaignListCreateAPIView.as_view(), name=PerformIQPathName.CAMPAIGNS),
     url(r"^performiq/campaigns/(?P<pk>\d+)/$", PerformIQCampaignRetrieveAPIView.as_view(),
         name=PerformIQPathName.CAMPAIGN),
+    url(r"^performiq/campaigns/(?P<pk>\d+)/export/$", PerformIQCampaignExportAPIView.as_view(),
+        name=PerformIQPathName.EXPORT),
     url(r"^performiq/map_csv_fields/$",
         PerformIQMapCSVFieldsAPIView.as_view(),
         name=PerformIQPathName.MAP_CSV_FIELDS),

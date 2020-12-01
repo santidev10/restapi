@@ -104,7 +104,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
     for iq in iq_channels:
         # Get failure result for each section in analysis
         failed_values = [get_failed_repr(iq.results[key]["passed"]) for key in ANALYZE_SECTIONS]
-        rows.append([iq.channel_id, *failed_values])
+        rows.append([f"https://www.youtube.com/channel/{iq.channel_id}", *failed_values])
     with open(filepath, mode="w") as file:
         writer = csv.writer(file)
         writer.writerow(["URL", "performance failed", "contextual failed", "suitability failed"])
