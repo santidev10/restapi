@@ -120,7 +120,6 @@ class PermissionGroupNames:
     DOMAIN_MANAGEMENT = "Domain Management"
     RESEARCH_EXPORTS = "Research Exports"
     CUSTOM_TARGET_LIST_CREATION = "Create Custom Target List"
-    CTL_VETTED_SAFE_ONLY = "Custom Target List Vetted Safe Only"
 
 
 class Permissions:
@@ -226,9 +225,6 @@ class Permissions:
         (PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION, (
             "custom_target_list_creation",
         )),
-        (PermissionGroupNames.CTL_VETTED_SAFE_ONLY, (
-            "custom_target_list_vetted_safe_only",
-        )),
     )
 
     PERM_LIST = (
@@ -278,8 +274,6 @@ class Permissions:
         "research_exports",
         # Custom Target List
         "custom_target_list_creation",
-        # User can create only vetted safe custom target lists
-        "custom_target_list_vetted_safe_only",
     )
 
     @staticmethod

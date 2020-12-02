@@ -31,6 +31,11 @@ class SegmentCreateUpdateApiView(CreateAPIView):
     def _prep_request(self, request):
         request.upload_handlers = [TemporaryFileUploadHandler(request)]
         data = json.loads(request.data["data"])
+
+        # If user is not admin / vetting admin, force create vetted safe only
+        if (self.request.user and self.request.user.is_staff is False) \
+                or not self.request.user.has_perm("userprofile.vet_audit_admin"):
+            data["vetting_status"] = [1]
         return request, data
 
     @segment_action(SegmentActionEnum.CREATE.value)
