@@ -31,7 +31,11 @@ def generate_vetted_segment(segment_id, recipient=None):
         # may rapidly change
         s3_key_suffix = str(timezone.now()) if recipient else None
         s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
-        results = generate_segment(segment, query, segment.config.LIST_SIZE, add_uuid=False, s3_key=s3_key)
+        if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+            size = segment.config.ADMIN_LIST_SIZE
+        else:
+            size = segment.config.USER_LIST_SIZE
+        results = generate_segment(segment, query, size, add_uuid=False, s3_key=s3_key)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:
