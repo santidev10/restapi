@@ -278,7 +278,7 @@ class Permissions:
         "research_exports",
         # Custom Target List
         "custom_target_list_creation",
-        # User will able to create only vetted safe custom target lists
+        # User can create only vetted safe custom target lists
         "custom_target_list_vetted_safe_only",
     )
 
