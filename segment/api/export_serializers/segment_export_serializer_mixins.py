@@ -78,9 +78,8 @@ class SegmentExportSerializerMixin:
 
     def get_vetted(self, obj):
         date_last_vetted_at = getattr(obj.task_us_data, "last_vetted_at", None)
-        if not date_last_vetted_at:
-            return "N"
-        elif date_last_vetted_at < pytz.utc.localize(datetime.strptime(LAST_VETTED_AT_MIN_DATE, "%Y-%m-%d")):
+        if not date_last_vetted_at or date_last_vetted_at < \
+                pytz.utc.localize(datetime.strptime(LAST_VETTED_AT_MIN_DATE, "%Y-%m-%d")):
             return "N"
         return "Y"
 
