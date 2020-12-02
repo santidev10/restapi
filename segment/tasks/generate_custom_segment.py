@@ -17,7 +17,11 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
-        args = (segment, export.query["body"], segment.config.LIST_SIZE)
+        if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+            size = segment.config.ADMIN_LIST_SIZE
+        else:
+            size = segment.config.USER_LIST_SIZE
+        args = (segment, export.query["body"], size)
         results = generate_segment(*args, with_audit=with_audit)
         segment.statistics = results.get("statistics", {})
         export.download_url = results.get("download_url")
