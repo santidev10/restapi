@@ -28,7 +28,11 @@ def update_custom_segment():
             ).first()
             if export_to_update:
                 segment = export_to_update.segment
-                results = generate_segment(segment, export_to_update.query["body"], segment.LIST_SIZE)
+                if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+                    size = segment.config.ADMIN_LIST_SIZE
+                else:
+                    size = segment.config.USER_LIST_SIZE
+                results = generate_segment(segment, export_to_update.query["body"], size)
                 segment.statistics = results["statistics"]
                 export_to_update.download_url = results["download_url"]
                 export_to_update.updated_at = timezone.now()
