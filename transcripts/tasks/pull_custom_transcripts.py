@@ -18,6 +18,7 @@ from es_components.models.video import Video
 from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
+from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from utils.lang import replace_apostrophes
@@ -103,8 +104,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
     vid_id = vid_obj.main.id
     top_5_transcripts = get_top_5_transcripts(lang_codes_soups_dict, vid_obj.general_data.lang_code)
     for vid_lang_code, transcript_soup in top_5_transcripts.items():
-        transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
-        transcript_text = transcript_text.replace(".", ". ").replace("?", "? ").replace("!", "! ")
+        transcript_text = get_formatted_captions_from_soup(transcript_soup)
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
