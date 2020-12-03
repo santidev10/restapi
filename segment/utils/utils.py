@@ -164,6 +164,20 @@ def get_content_disposition(segment, is_vetting=False, ext="csv"):
     return content_disposition
 
 
+def set_user_perm_params(request, ctl_params):
+    """
+    Modify params using for CTL depending on user permissions
+    :param request: View request object
+    :param ctl_params: dict: Request body data used for CTL
+    :return:
+    """
+    # If user is not admin / vetting admin, force create vetted safe only
+    if (request.user and request.user.is_staff is False) \
+            or not request.user.has_perm("userprofile.vet_audit_admin"):
+        ctl_params["vetting_status"] = [1]
+    return ctl_params
+
+
 class CustomSegmentOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         try:
