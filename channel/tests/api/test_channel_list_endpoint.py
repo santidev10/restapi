@@ -676,7 +676,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         now = timezone.now()
         channel_manager = ChannelManager((Sections.IAS_DATA, Sections.GENERAL_DATA, Sections.STATS))
-        latest_ias = IASHistory.objects.create(name="", started=now)
+        latest_ias = IASHistory.objects.create(name="", started=now, completed=now)
         channel_outdated_ias = Channel(f"channel_{next(int_iterator)}")
         channel_outdated_ias.populate_general_data(title="test")
         channel_outdated_ias.populate_ias_data(ias_verified=now - datetime.timedelta(days=1))
