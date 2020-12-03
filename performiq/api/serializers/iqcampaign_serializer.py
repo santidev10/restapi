@@ -16,22 +16,22 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     csv_s3_key = serializers.CharField(write_only=True, default=None)
     csv_column_mapping = serializers.JSONField(write_only=True, default=None)
 
-    average_cpv = serializers.FloatField(write_only=True)
-    average_cpm = serializers.FloatField(write_only=True)
+    average_cpv = serializers.FloatField(write_only=True, allow_null=True)
+    average_cpm = serializers.FloatField(write_only=True, allow_null=True)
 
     content_categories = NullableListField(write_only=True)
-    content_quality = CoerceListMemberField(write_only=True, valid_values=set(AuditContentQuality.to_str_with_unknown.keys()))
-    content_type = CoerceListMemberField(write_only=True, valid_values=set(AuditContentType.to_str_with_unknown.keys()))
+    content_quality = CoerceListMemberField(write_only=True, allow_null=True, valid_values=set(AuditContentQuality.to_str_with_unknown.keys()))
+    content_type = CoerceListMemberField(write_only=True, allow_null=True, valid_values=set(AuditContentType.to_str_with_unknown.keys()))
     exclude_content_categories = NullableListField(write_only=True)
     languages = NullableListField(write_only=True)
-    score_threshold = serializers.IntegerField(write_only=True)
-    video_view_rate = serializers.FloatField(write_only=True)
+    score_threshold = serializers.IntegerField(write_only=True, allow_null=True)
+    video_view_rate = serializers.FloatField(write_only=True, allow_null=True)
     user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
 
     # These fields are unavailable for DV360 IQCampaigns as the API does not support retrieving these metrics
-    ctr = serializers.FloatField(required=False, write_only=True, default=None)
-    active_view_viewability = serializers.FloatField(write_only=True, required=False, default=None)
-    video_quartile_100_rate = serializers.FloatField(write_only=True, required=False, default=None)
+    ctr = serializers.FloatField(required=False, write_only=True, default=None, allow_null=True)
+    active_view_viewability = serializers.FloatField(write_only=True, required=False, default=None, allow_null=True)
+    video_quartile_100_rate = serializers.FloatField(write_only=True, required=False, default=None, allow_null=True)
 
     class Meta:
         model = IQCampaign
