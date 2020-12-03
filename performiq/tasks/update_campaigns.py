@@ -1,20 +1,16 @@
-from datetime import timedelta
+import concurrent.futures
 
 from aw_reporting.adwords_api import get_all_customers
 from performiq.models import Campaign
 from performiq.models import OAuthAccount
-from performiq.models import Account
 from performiq.models.constants import OAuthType
 from performiq.utils.adwords_report import get_campaign_report
 from performiq.utils.adwords_report import get_accounts
 from performiq.utils.update import prepare_items
 from performiq.oauth_utils import get_client
 from saas import celery_app
-from utils.datetime import now_in_default_tz
 from utils.db.functions import safe_bulk_create
-
-
-FROM_HISTORICAL_DAYS = 90
+from utils.utils import chunks_generator
 
 
 CAMPAIGN_REPORT_FIELDS_MAPPING = dict(
@@ -30,6 +26,11 @@ CAMPAIGN_REPORT_FIELDS_MAPPING = dict(
     cpv="AverageCpv",
 )
 
+CAMPAIGN_REPORT_PREDICATES = [
+    {"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]},
+    {"field": "CampaignStatus", "operator": "EQUALS", "values": ["ENABLED"]},
+]
+
 
 @celery_app.task
 def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts=None):
@@ -44,63 +45,56 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
     if mcc_accounts is None and cid_accounts is None:
         mcc_accounts, cid_accounts = get_accounts(oauth_account.refresh_token)
     if mcc_accounts:
-        first = mcc_accounts[0]
-        update_mcc_campaigns_task(first["customerId"], oauth_account_id=oauth_account.id)
+        for mcc in mcc_accounts:
+            update_mcc_campaigns(mcc["customerId"], oauth_account.refresh_token)
     elif cid_accounts:
         for cid in cid_accounts:
-            update_cid_campaigns_task(cid["customerId"], oauth_account_id=oauth_account.id)
+            update_cid_campaigns(cid["customerId"], oauth_account.refresh_token)
 
 
-@celery_app.task
-def update_mcc_campaigns_task(mcc_id: int, oauth_account_id: int):
+def update_mcc_campaigns(mcc_id: int, refresh_token: str):
     """
     Update campaigns for MCC account
     :param mcc_id: Google Ads MCC account id
-    :param oauth_account_id: OAuthAccount pk
+    :param refresh_token: OAuthAccount.refresh_token
     :return:
     """
-    ouath_account = OAuthAccount.objects.get(id=oauth_account_id)
-    client = get_client(client_customer_id=mcc_id, refresh_token=ouath_account.refresh_token)
-    cid_accounts = get_all_customers(client)[-20:]
-    for cid_account_data in cid_accounts:
-        cid_account_id = int(cid_account_data["customerId"])
-        cid_account, _ = Account.objects.get_or_create(
-            id=cid_account_id, defaults=dict(oauth_account=ouath_account))
-        update_cid_campaigns_task(cid_account_id)
+    client = get_client(client_customer_id=mcc_id, refresh_token=refresh_token)
+    cid_accounts = get_all_customers(client)
+
+    for batch in chunks_generator(cid_accounts, size=20):
+        with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
+            all_args = [(int(cid["customerId"]), refresh_token) for cid in batch]
+            futures = [executor.submit(get_report, *args) for args in all_args]
+            reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
+        for account_id, report in reports_data:
+            update_create_campaigns(report, account_id)
 
 
-@celery_app.task
-def update_cid_campaigns_task(account_id: int, historical=False):
-    """
-    Update single Google Ads CID account using update_campaigns function
-    :param account_id: Account model id, which is a Google Ads CID account id
-    :param historical: bool -> Determines if we will pull historical campaigns using end date
-    :return:
-    """
-    account = Account.objects.get(id=account_id)
-    date_range = None
-    predicates = None
-    if historical is True:
-        today = now_in_default_tz().date()
-        from_date = (today - timedelta(days=FROM_HISTORICAL_DAYS)).strftime("%Y%m%d")
-        predicates = [{"field": "EndDate", "operator": "GREATER_THAN_EQUALS", "values": [from_date]}]
-    update_campaigns(account, date_range=date_range, predicates=predicates)
-
-
-def update_campaigns(account: Account, predicates=None, date_range=None) -> None:
+def update_cid_campaigns(account_id, refresh_token) -> None:
     """
     Update or create campaigns by retrieving report data and creating / updating items for single Account
         Default fields and report query will be used if None given
-    :param account: Account model
-    :param predicates: dict -> Adwords reports predicates selector
-    :param date_range: dict -> {"min": date_obj, "max": date_obj}
+    :param account_id: Account id
+    :param refresh_token: str -> OAuthAccount.refresh_token
     """
-    client = get_client(client_customer_id=account.id, refresh_token=account.oauth_account.refresh_token)
-    fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks"]
-    report = get_campaign_report(client, fields, predicates=predicates, date_range=date_range)
+    account_id, report = get_report(account_id, refresh_token)
+    update_create_campaigns(report, account_id)
+
+
+def get_report(account_id, refresh_token):
+    """ Retrieve Campaign report for Google Ads account id"""
+    client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
+    fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks", "CampaignStatus"]
+    report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
+    return account_id, report
+
+
+def update_create_campaigns(report, account_id):
+    """ Update or create campaigns from Adwords API Campaign Report """
     to_update, to_create = prepare_items(
         report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value,
-        defaults={"account_id": account.id}
+        defaults={"account_id": account_id}
     )
     safe_bulk_create(Campaign, to_create)
     update_fields = [val for val in CAMPAIGN_REPORT_FIELDS_MAPPING.keys() if val not in {"id"}]
