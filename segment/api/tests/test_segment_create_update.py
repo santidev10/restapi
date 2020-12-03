@@ -35,6 +35,15 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        Permissions.sync_groups()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
 
@@ -471,7 +480,6 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
         user = self.create_test_user()
-        Permissions.sync_groups()
         user.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
         data = {
             "languages": ["es"],
@@ -1112,3 +1120,44 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         self.assertTrue(hasattr(segment, "source"))
         self.assertFalse(hasattr(segment, "export"))
         self.assertFalse(hasattr(segment, "vetted_export"))
+
+    def test_create_regular_user_vetted_safe_only(self, mock_generate):
+        """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 0,
+            "title": "test vetted safe only",
+            "vetting_status": [],
+        }
+        params = self.get_params(**payload)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(params)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        export = ctl.export
+        self.assertEqual(export.query["params"]["vetting_status"], [1])
+
+    def test_update_regular_user_vetted_safe_only(self, mock_generate):
+        """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
+        segment = CustomSegment.objects.create(
+            title=f"test_regenerate_remove_related",
+            segment_type=1, owner=user,
+            statistics={"items_count": 1}, params={"meta_audit_id": None},
+        )
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        payload = dict(
+            id=segment.id,
+            languages=["es"],
+            vetting_status=[0]
+        )
+        params = self.get_params(**payload)
+        with patch.object(CTLSerializer, "_start_segment_export_task") as mock_start_export:
+            response = self.client.patch(self._get_url(), dict(data=json.dumps(params)))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        segment.refresh_from_db()
+        export = segment.export
+        self.assertEqual(export.query["params"]["vetting_status"], [1])
