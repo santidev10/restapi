@@ -28,12 +28,11 @@ def get_formatted_captions_from_soup(soup: BeautifulSoup) -> str:
     captions = replace_apostrophes(captions)
     captions = re.sub(r"<font.+?>", "", captions)
     captions = re.sub(r"<\/font>", "", captions)
-    # replace any number of periods, question marks, exclamation marks, or double quotes (group 2)
-    # preceded by any number of spaces (group 1)
-    # followed by one or more digits or alphas (group 3)
-    # with the second and third group bisected by a space.
+    # replace any number of periods, question marks, exclamation marks, or double quotes (group 1)
+    # followed by one or more digits or alphas (group 2)
+    # with the first and second group bisected by a space.
     # This upgrades the simple period, exclaim, question space appending with something a tad smarter
-    captions = re.sub(r"(\ *)([\.\?\!\"]+)([a-zA-Z0-9]+)", r"\2 \3", captions)
+    captions = re.sub(r"([\.\?\!\"]+)([a-zA-Z0-9]+)", r"\1 \2", captions)
     return captions
 
 
