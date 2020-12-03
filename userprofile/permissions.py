@@ -224,7 +224,7 @@ class Permissions:
         )),
         (PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION, (
             "custom_target_list_creation",
-        ))
+        )),
     )
 
     PERM_LIST = (
@@ -273,7 +273,7 @@ class Permissions:
         # Exports
         "research_exports",
         # Custom Target List
-        "custom_target_list_creation"
+        "custom_target_list_creation",
     )
 
     @staticmethod
