@@ -1,7 +1,8 @@
 import re
+from html import unescape
 from threading import Thread
 
-from bs4 import BeautifulSoup as bs
+from bs4 import BeautifulSoup
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
@@ -11,6 +12,29 @@ from requests.exceptions import ConnectionError, Timeout
 from administration.notifications import send_email
 from utils.celery.tasks import lock
 from utils.lang import replace_apostrophes
+
+
+def get_formatted_captions_from_soup(soup: BeautifulSoup) -> str:
+    """
+    Takes a soup and formats outgoing captions from it
+    :param soup:
+    :return: str
+    """
+    if not isinstance(soup, BeautifulSoup):
+        return ""
+    lines = soup.find_all(text=True)
+    captions = " ".join([line.strip() for line in lines])
+    captions = unescape(captions)
+    captions = replace_apostrophes(captions)
+    captions = re.sub(r"<font.+?>", "", captions)
+    captions = re.sub(r"<\/font>", "", captions)
+    # replace any number of periods, question marks, exclamation marks, or double quotes (group 2)
+    # preceded by any number of spaces (group 1)
+    # followed by one or more digits or alphas (group 3)
+    # with the second and third group bisected by a space.
+    # This upgrades the simple period, exclaim, question space appending with something a tad smarter
+    captions = re.sub(r"(\ *)([\.\?\!\"]+)([a-zA-Z0-9]+)", r"\2 \3", captions)
+    return captions
 
 
 class YTTranscriptsScraper(object):
@@ -181,12 +205,8 @@ class YTVideo(object):
             self.captions_url = self.clean_url(captions_url)
             self.captions_url_response, self.captions_url_status = \
                 self.get_response_through_proxy(self.scraper, self.captions_url)
-            soup = bs(self.captions_url_response, 'xml')
-            captions = replace_apostrophes(
-                " ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
-            captions = re.sub(r"<font.+?>", "", captions)
-            captions = re.sub(r"<\/font>", "", captions)
-            captions = captions.replace(".", ". ").replace("?", "? ").replace("!", "! ")
+            soup = BeautifulSoup(self.captions_url_response, 'xml')
+            captions = get_formatted_captions_from_soup(soup)
             self.captions = captions
             self.captions_language = self.captions_url.split("&lang=")[1].split("&")[0].split("-")[0]
         # pylint: disable=broad-except
