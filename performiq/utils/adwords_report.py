@@ -4,7 +4,7 @@ from aw_reporting.adwords_reports import stream_iterator
 from performiq.oauth_utils import get_customers
 
 
-def get_campaign_report(client, fields, predicates: dict = None, date_range: dict = None) -> list:
+def get_campaign_report(client, fields, predicates: list = None, date_range: dict = None) -> list:
     """
     Retrieve Adwords Campaign Performance report
     :param client: get_client function client result

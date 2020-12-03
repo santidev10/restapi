@@ -152,8 +152,7 @@ class AdWordsAuthApiView(APIView):
             else:
                 response = "You have no accounts to sync."
                 status = HTTP_400_BAD_REQUEST
-            # TODO async this?
-            update_campaigns_task(oauth_account.id)
+            update_campaigns_task.delay(oauth_account.id)
             return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 

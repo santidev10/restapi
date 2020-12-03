@@ -58,19 +58,5 @@ class BaseAuditor:
             handled.populate_brand_safety(overall_score=0)
             return handled
 
-    def _vetted_handler(self, doc, **__):
-        """
-        Handler for vetted documents
-        If vetted, bypass audit logic and instantiate brand safety with default data since scoring is not required
-            for vetted items
-        :param doc: Channel | Video
-        :param __: Unused kwargs that may be passed into another handler
-        :return:
-        """
-        if self._config.get("ignore_vetted_brand_safety") is False and doc.task_us_data.last_vetted_at is not None:
-            handled = self._blank_doc(doc.main.id)
-            handled.populate_brand_safety(**self.audit_utils.get_brand_safety_data(doc))
-            return handled
-
     def _blank_doc(self, item_id):
         return self.es_model(item_id)
