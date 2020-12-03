@@ -11,20 +11,14 @@ class VideoAuditor(BaseAuditor):
     VIDEO_BATCH_SIZE = 1000
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
-    def __init__(self, *args, ignore_vetted_brand_safety=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Class to handle video brand safety scoring logic
         :param ignore_vetted_videos: bool -> Determines if vetted videos should be indexed after
-        :param ignore_vetted_brand_safety: bool -> Determines if the script should use vetted brand safety categories
-            to set category scores and overall score to 0 if not safe or to 100 if safe
-            A video is determined safe or not safe by the presence of task_us_data.brand_safety categories
         :param audit_utils: AuditUtils -> Optional passing of an AuditUtils object, as it is expensive to instantiate
             since it compiles keyword processors of every brand safety BadWord row
         """
         super().__init__(*args, **kwargs)
-        self._config = dict(
-            ignore_vetted_brand_safety=ignore_vetted_brand_safety,
-        )
         self._channels_to_rescore = []
 
     @property
@@ -62,8 +56,7 @@ class VideoAuditor(BaseAuditor):
         """
         if isinstance(video, str):
             video = self.get_data([video])
-        audit = BrandSafetyVideoAudit(video, self.audit_utils,
-                                      ignore_vetted_brand_safety=self._config.get("ignore_vetted_brand_safety"))
+        audit = BrandSafetyVideoAudit(video, self.audit_utils)
         audit.run()
         return audit
 
