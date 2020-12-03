@@ -150,20 +150,3 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         for category in updated.brand_safety.categories:
             self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
         self.assertEqual(updated.brand_safety.overall_score, 100)
-
-    def test_vetted_unsafe(self, *_):
-        """ Test scoring vetted unsafe channels should receive all scores of 0 """
-        channel_auditor = ChannelAuditor()
-        now = timezone.now()
-        channel = Channel(f"channel_{next(int_iterator)}")
-        bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
-        channel.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[str(bs_category.id)]
-        )
-        self.channel_manager.upsert([channel])
-        channel_auditor.process([channel.main.id])
-        updated = self.channel_manager.get([channel.main.id])[0]
-        for category in updated.brand_safety.categories:
-            self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
-        self.assertEqual(updated.brand_safety.overall_score, 0)
