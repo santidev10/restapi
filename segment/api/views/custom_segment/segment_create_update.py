@@ -13,6 +13,7 @@ from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
+from segment.utils.utils import set_user_perm_params
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.views import get_object
@@ -32,10 +33,7 @@ class SegmentCreateUpdateApiView(CreateAPIView):
         request.upload_handlers = [TemporaryFileUploadHandler(request)]
         data = json.loads(request.data["data"])
 
-        # If user is not admin / vetting admin, force create vetted safe only
-        if (self.request.user and self.request.user.is_staff is False) \
-                or not self.request.user.has_perm("userprofile.vet_audit_admin"):
-            data["vetting_status"] = [1]
+        data = set_user_perm_params(request, data)
         return request, data
 
     @segment_action(SegmentActionEnum.CREATE.value)
