@@ -16,7 +16,10 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get(self, request, pk, *_):
         try:
             segment = CustomSegment.objects.get(id=pk)
-            content_generator = segment.s3.get_export_file(segment.get_s3_key())
+            if request.user.is_staff or request.user.has_perm("userprofile.vet_audit_admin"):
+                content_generator = segment.s3.get_export_file(segment.get_admin_s3_key())
+            else:
+                content_generator = segment.s3.get_export_file(segment.get_s3_key())
         except CustomSegment.DoesNotExist:
             raise Http404
         response = StreamingHttpResponse(
