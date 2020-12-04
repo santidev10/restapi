@@ -91,33 +91,23 @@ class AdWordsAuthApiView(APIView):
                                 data=token_info)
             access_token = credential.access_token
             refresh_token = credential.refresh_token
-            try:
-                oauth_account = OAuthAccount.objects.get(
-                    user=self.request.user,
-                    email=token_info["email"],
-                    oauth_type=OAuthType.GOOGLE_ADS.value,
+            if not refresh_token:
+                return Response(
+                    data=dict(error=self.lost_perm_error),
+                    status=HTTP_400_BAD_REQUEST,
                 )
-            except OAuthAccount.DoesNotExist:
-                if refresh_token:
-                    oauth_account = OAuthAccount.objects.create(
-                        oauth_type=OAuthType.GOOGLE_ADS.value,
-                        user=self.request.user,
-                        email=token_info["email"],
-                        token=access_token,
-                        refresh_token=refresh_token,
-                    )
-                else:
-                    return Response(
-                        data=dict(error=self.lost_perm_error),
-                        status=HTTP_400_BAD_REQUEST,
-                    )
-            else:
-                # update token
-                if refresh_token and oauth_account.refresh_token != refresh_token:
-                    oauth_account.revoked_access = False
-                    oauth_account.token = access_token
-                    oauth_account.refresh_token = refresh_token
-                    oauth_account.save()
+
+            oauth_account, _created = OAuthAccount.objects.update_or_create(
+                user=self.request.user,
+                email=token_info["email"],
+                oauth_type=OAuthType.GOOGLE_ADS.value,
+                defaults={
+                    "token": access_token,
+                    "refresh_token": refresh_token,
+                    "revoked_access": False,
+                    "is_enabled": True,
+                }
+            )
 
         # Get Name of First MCC Account
         try:

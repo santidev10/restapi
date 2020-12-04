@@ -81,6 +81,7 @@ class DV360AuthApiView(AdWordsAuthApiView):
                     "token": access_token,
                     "refresh_token": refresh_token,
                     "revoked_access": False,
+                    "is_enabled": True,
                 }
             )
 

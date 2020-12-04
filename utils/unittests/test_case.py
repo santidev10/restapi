@@ -25,8 +25,8 @@ class TestUserMixin:
         """
         Make test user
         """
-        get_user_model().objects.filter(email=self.test_user_data["email"]) \
-            .delete()
+        email = kwargs.get("email", self.test_user_data["email"])
+        get_user_model().objects.filter(email=email).delete()
         user_data = {**self.test_user_data, **kwargs}
         user = get_user_model().objects.create(
             **user_data,
