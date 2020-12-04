@@ -35,14 +35,8 @@ class PerformIQCampaignListCreateAPIView(APIView):
              | IQCampaign.objects.filter(campaign__isnull=True, user=request.user)
 
         search = request.query_params.get("search")
-        sort = request.query_params.get("sort")
         if search is not None:
             qs = qs.filter(name__icontains=search)
-        if sort == "-":
-            qs.order_by("-name")
-        elif sort == "+":
-            qs.order_by("name")
-
         page = IQCampaignSerializer(paginator.paginate_queryset(qs.order_by("id"), request), many=True).data
         response_data = paginator._get_response_data(page)
         return response_data
