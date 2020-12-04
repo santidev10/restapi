@@ -51,13 +51,10 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
             vetting_items = AuditChannelVet.objects \
                 .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False, audit__isnull=False) \
                 .select_related("channel__auditchannelmeta")
-            try:
-                history = [{
-                    "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
-                    "suitable": item.clean
-                } for item in vetting_items]
-            except AuditChannelMeta.DoesNotExist:
-                history = []
+            history = [{
+                "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
+                "suitable": item.clean
+            } for item in vetting_items if hasattr(item.channel, "auditchannelmeta")]
         # Set bool for get_language method to return correct language field
         self.has_vetting_history = bool(history)
         return history
