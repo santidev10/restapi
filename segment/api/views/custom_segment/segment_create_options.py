@@ -19,8 +19,9 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.utils.utils import with_unknown
 from segment.utils.query_builder import SegmentQueryBuilder
+from segment.utils.utils import set_user_perm_params
+from segment.utils.utils import with_unknown
 
 
 class SegmentCreateOptionsApiView(APIView):
@@ -34,7 +35,8 @@ class SegmentCreateOptionsApiView(APIView):
         }
         get_estimate = request.data.get("segment_type") is not None
         if get_estimate:
-            validator = CTLParamsSerializer(data=request.data)
+            data = set_user_perm_params(request, request.data)
+            validator = CTLParamsSerializer(data=data)
             validator.is_valid(raise_exception=True)
             params = validator.validated_data
             query_builder = SegmentQueryBuilder(params)
