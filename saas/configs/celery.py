@@ -72,7 +72,9 @@ CELERY_BEAT_SCHEDULE = {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["DailyApexVisaCampaignEmailReport", "DailyApexDisneyCampaignEmailReport"],
+            # TODO add Apex Disney back after column splitting hotfix is done AND recipients set to Alex, Bryan, awong
+            # reports=["DailyApexVisaCampaignEmailReport", "DailyApexDisneyCampaignEmailReport"],
+            reports=["DailyApexVisaCampaignEmailReport"],
         ),
     },
     "recreate-demo-data": {
@@ -184,10 +186,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
         "schedule": crontab(minute="*/10"),
     },
-    # "performiq_google_ads_update": {
-    #     "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
-    #     "schedule": crontab(minute="*/10")
-    # },
+    "performiq_google_ads_update": {
+        "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
+        "schedule": crontab(minute="*/10")
+    },
 }
 
 

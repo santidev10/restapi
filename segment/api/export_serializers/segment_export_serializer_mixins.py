@@ -1,3 +1,6 @@
+from datetime import datetime
+import pytz
+
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
@@ -6,6 +9,7 @@ from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from utils.brand_safety import map_brand_safety_score
+from es_components.constants import LAST_VETTED_AT_MIN_DATE
 
 
 class SegmentExportSerializerMixin:
@@ -73,10 +77,11 @@ class SegmentExportSerializerMixin:
         return vetted_value
 
     def get_vetted(self, obj):
-        vetted = "Y" \
-            if getattr(obj.task_us_data, "created_at", None) is not None \
-            else None
-        return vetted
+        date_last_vetted_at = getattr(obj.task_us_data, "last_vetted_at", None)
+        if not date_last_vetted_at or date_last_vetted_at < \
+                pytz.utc.localize(datetime.strptime(LAST_VETTED_AT_MIN_DATE, "%Y-%m-%d")):
+            return "N"
+        return "Y"
 
     def get_overall_score(self, obj):
         score = map_brand_safety_score(obj.brand_safety.overall_score)

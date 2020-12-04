@@ -18,21 +18,14 @@ class ChannelAuditor(BaseAuditor):
     CHANNEL_BATCH_SIZE = 2
     MAX_THREAD_POOL = 3
 
-    def __init__(self, *args, ignore_vetted_brand_safety=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Class to handle channel brand safety scoring logic
-        :param ignore_vetted_brand_safety: bool -> Determines if the script should use vetted brand safety categories
-            to set category scores and overall score to 0 if not safe or to 100 if safe
-            A channel is determined safe or not safe by the presence of task_us_data.brand_safety categories
         :param audit_utils: AuditUtils -> Optional passing of an AuditUtils object, as it is expensive to instantiate
             since it compiles keyword processors of every brand safety BadWord row
         """
         super().__init__(*args, **kwargs)
-        self._config = dict(
-            ignore_vetted_brand_safety=ignore_vetted_brand_safety,
-        )
-        self.video_auditor = VideoAuditor(ignore_vetted_brand_safety=ignore_vetted_brand_safety,
-                                          audit_utils=self.audit_utils)
+        self.video_auditor = VideoAuditor(audit_utils=self.audit_utils)
 
     def get_data(self, channel_id: str) -> BrandSafetyChannel:
         """
@@ -53,7 +46,7 @@ class ChannelAuditor(BaseAuditor):
         :param index: bool
         :return:
         """
-        handlers = [self._blocklist_handler, self._vetted_handler, self.audit]
+        handlers = [self._blocklist_handler, self.audit]
         try:
             channel = self.get_data(channel_id)
         except IndexError:
@@ -87,9 +80,7 @@ class ChannelAuditor(BaseAuditor):
             channel = self.get_data(channel)
         self._set_channel_data(channel)
         channel.video_audits = self.video_auditor.process_for_channel(channel, channel.videos, index=index)
-        channel_audit = BrandSafetyChannelAudit(channel, self.audit_utils,
-                                                ignore_vetted_brand_safety=self._config.get(
-                                                    "ignore_vetted_brand_safety"))
+        channel_audit = BrandSafetyChannelAudit(channel, self.audit_utils)
         channel_audit.run()
         return channel_audit.instantiate_es()
 

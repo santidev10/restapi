@@ -39,6 +39,7 @@ class OAuthAccount(OAuthBase):
     token = models.CharField(null=True, max_length=255)
     refresh_token = models.CharField(null=True, max_length=150)
     revoked_access = models.BooleanField(default=False, db_index=True)
+    is_enabled = models.BooleanField(default=True, db_index=True)
 
 
 class Account(models.Model):

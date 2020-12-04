@@ -17,7 +17,7 @@ class BrandSafetyChannelAudit(object):
         "transcript": 1
     }
 
-    def __init__(self, channel, audit_utils, ignore_vetted_brand_safety=False):
+    def __init__(self, channel, audit_utils):
         self.video_audits = channel.video_audits
         self.doc = channel
         self.audit_utils = audit_utils
@@ -29,7 +29,6 @@ class BrandSafetyChannelAudit(object):
             self.video_audits) > 0 else audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
         self.audit_metadata = self._get_metadata(channel)
-        self.ignore_vetted_brand_safety = ignore_vetted_brand_safety
 
     def _get_metadata(self, channel: Channel) -> dict:
         """
@@ -125,22 +124,6 @@ class BrandSafetyChannelAudit(object):
                 continue
             else:
                 channel_brand_safety_score.add_metadata_score(word.name, keyword_category, keyword_score)
-
-        # If vetted brand safety data available
-        if self.ignore_vetted_brand_safety is False and self.doc.task_us_data.last_vetted_at is not None:
-            # Set overall score and category scores to 0 as it is vetted unsafe
-            has_vetted_brand_safety = any(category for category in self.doc.task_us_data.brand_safety)
-            if has_vetted_brand_safety:
-                for category_id in self.doc.task_us_data.brand_safety:
-                    if category_id in channel_brand_safety_score.category_scores:
-                        channel_brand_safety_score.category_scores[category_id] = 0
-                        if category_id not in BadWordCategory.EXCLUDED:
-                            channel_brand_safety_score.overall_score = 0
-            else:
-                # Vetted safe as it has no vetted brand safety categories
-                for category_id in channel_brand_safety_score.category_scores.keys():
-                    channel_brand_safety_score.category_scores[category_id] = 100
-                channel_brand_safety_score.overall_score = 100
 
         if self.doc.custom_properties.blocklist is True:
             channel_brand_safety_score.overall_score = 0

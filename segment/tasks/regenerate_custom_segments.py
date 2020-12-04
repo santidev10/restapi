@@ -48,7 +48,11 @@ def regenerate_custom_segments():
     for segment in query:
         logger.debug("Processing regenerating segment titled: %s", segment.title)
         export = segment.export
-        results = generate_segment(segment, export.query["body"], segment.config.LIST_SIZE, add_uuid=False)
+        if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+            size = segment.config.ADMIN_LIST_SIZE
+        else:
+            size = segment.config.USER_LIST_SIZE
+        results = generate_segment(segment, export.query["body"], size, add_uuid=False)
         segment.statistics = results["statistics"]
         segment.save()
         export.download_url = results["download_url"]

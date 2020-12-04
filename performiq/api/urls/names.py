@@ -13,4 +13,6 @@ class PerformIQPathName:
 
     CAMPAIGN = "campaign"
     CAMPAIGNS = "campaigns"
+    EXPORT = "export"
     MAP_CSV_FIELDS = "map_csv_fields"
+    OAUTH_ACCOUNTS = "oauth_accounts"

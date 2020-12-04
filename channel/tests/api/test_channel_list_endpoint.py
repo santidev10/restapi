@@ -1,3 +1,4 @@
+import datetime
 import urllib
 from urllib.parse import urlencode
 from time import sleep
@@ -9,6 +10,7 @@ from django.utils import timezone
 from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
+from audit_tool.models import IASHistory
 from brand_safety import constants
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
@@ -668,3 +670,30 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(buckets), 4)
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
+
+    def test_channel_ias_data(self):
+        """ Test that a Channel is serialized with IAS data only if it was included in the latest IAS ingestion """
+        self.create_admin_user()
+        now = timezone.now()
+        channel_manager = ChannelManager((Sections.IAS_DATA, Sections.GENERAL_DATA, Sections.STATS))
+        latest_ias = IASHistory.objects.create(name="", started=now, completed=now)
+        channel_outdated_ias = Channel(f"channel_{next(int_iterator)}")
+        channel_outdated_ias.populate_general_data(title="test")
+        channel_outdated_ias.populate_ias_data(ias_verified=now - datetime.timedelta(days=1))
+        channel_outdated_ias.populate_stats(total_videos_count=1)
+
+        channel_current_ias = Channel(f"channel_{next(int_iterator)}")
+        channel_current_ias.populate_general_data(title="test")
+        channel_current_ias.populate_ias_data(ias_verified=latest_ias.started)
+        channel_current_ias.populate_stats(total_videos_count=1)
+
+        channel_manager.upsert([channel_outdated_ias, channel_current_ias])
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = sorted(response.data["items"], key=lambda x: x["main"]["id"])
+
+        self.assertEqual(data[0]["main"]["id"], channel_outdated_ias.main.id)
+        self.assertIsNone(data[0].get("ias_data"))
+
+        self.assertEqual(data[1]["main"]["id"], channel_current_ias.main.id)
+        self.assertIsNotNone(data[1].get("ias_data"))

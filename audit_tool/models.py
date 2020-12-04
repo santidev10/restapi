@@ -135,6 +135,9 @@ class AuditProcessor(models.Model):
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
+    seed_status = models.IntegerField(db_index=True, default=0)
+    machine = models.IntegerField(db_index=True, default=None, null=True)
+    thread = models.IntegerField(db_index=True, default=None, null=True)
 
     class Meta:
         index_together = [

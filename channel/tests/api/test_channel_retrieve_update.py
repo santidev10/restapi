@@ -1,10 +1,13 @@
+import datetime
 from unittest.mock import patch
 
 import requests
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import IASHistory
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -229,3 +232,33 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(channel.main.id) + "?fields=main.id%2Cmonetization.is_monetizable"
         response = self.client.get(url)
         self.assertIsNotNone(response.data.get("monetization"))
+
+    def test_channel_ias_data(self):
+        """ Test that a Channel is serialized with IAS data only if it was included in the latest IAS ingestion """
+        self.create_admin_user()
+        now = timezone.now()
+        channel_manager = ChannelManager((Sections.IAS_DATA, Sections.GENERAL_DATA, Sections.STATS))
+        latest_ias = IASHistory.objects.create(name="", started=now, completed=now)
+        channel_outdated_ias = Channel(f"channel_{next(int_iterator)}")
+        channel_outdated_ias.populate_general_data(title="test")
+        channel_outdated_ias.populate_ias_data(ias_verified=now - datetime.timedelta(days=1))
+        channel_outdated_ias.populate_stats(total_videos_count=1)
+
+        channel_current_ias = Channel(f"channel_{next(int_iterator)}")
+        channel_current_ias.populate_general_data(title="test")
+        channel_current_ias.populate_ias_data(ias_verified=latest_ias.started)
+        channel_current_ias.populate_stats(total_videos_count=1)
+
+        channel_manager.upsert([channel_outdated_ias, channel_current_ias])
+
+        # Channel should not contain ias_data
+        url = self._get_url(channel_outdated_ias.main.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNone(response.data.get("ias_data"))
+
+        # Channel should contain ias_data
+        url = self._get_url(channel_current_ias.main.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data.get("ias_data"))
