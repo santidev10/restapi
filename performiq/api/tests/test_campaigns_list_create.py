@@ -37,6 +37,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
             content_type=[],
             exclude_content_categories=[],
             languages=[],
+            name="",
             score_threshold=0,
             video_view_rate=0,
             ctr=0,
@@ -69,6 +70,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
             "completed",
             "created",
             "id",
+            "name",
             "params",
             "results",
             "started",
@@ -102,7 +104,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         """ Test successfully creating IQCampaign for Google ads campaign """
         user = self.create_admin_user(f"test_{next(int_iterator)}.com")
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
-        _params = dict(campaign_id=gads_campaign.id)
+        _params = dict(campaign_id=gads_campaign.id, name="test_csv")
         params = self._get_iqcampaign_params(_params)
         with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task") \
                 as mock_analysis:
@@ -115,7 +117,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         """ Test successfully creating IQCampaign for DV360 campaign """
         user = self.create_admin_user(f"test_{next(int_iterator)}.com")
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
-        _params = dict(campaign_id=dv360_campaign.id)
+        _params = dict(campaign_id=dv360_campaign.id, name="test_csv")
         params = self._get_iqcampaign_params(_params)
         with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task")\
                 as mock_analysis:
@@ -133,7 +135,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
             B="video_views",
             C="ctr"
         )
-        _params = dict(csv_s3_key=csv_s3_key, csv_column_mapping=csv_column_mapping)
+        _params = dict(csv_s3_key=csv_s3_key, csv_column_mapping=csv_column_mapping, name="test_csv")
         params = self._get_iqcampaign_params(_params)
         with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task") \
                 as mock_analysis:
@@ -156,3 +158,17 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["dv360"]["email"], user.email)
         self.assertEqual(data["dv360"]["oauth_account_id"], dv360_oauth.id)
         self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)
+
+    def test_search(self):
+        user = self.create_admin_user()
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
+        iq_google = IQCampaign.objects.create(campaign=gads_campaign, name="gads")
+        IQCampaign.objects.create(campaign=dv360_campaign, name="dv360")
+        IQCampaign.objects.create(user=user, name="csv")
+        response = self.client.get(self._get_url() + "?analyzed=true&search=gads")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["items_count"], 1)
+        self.assertEqual(data["items"][0]["id"], iq_google.id)
+        self.assertEqual(data["items"][0]["name"], iq_google.name)
