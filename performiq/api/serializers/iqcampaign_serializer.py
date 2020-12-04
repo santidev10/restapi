@@ -24,6 +24,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     content_type = CoerceListMemberField(write_only=True, allow_null=True, valid_values=set(AuditContentType.to_str_with_unknown.keys()))
     exclude_content_categories = NullableListField(write_only=True)
     languages = NullableListField(write_only=True)
+    name = serializers.CharField(max_length=255)
     score_threshold = serializers.IntegerField(write_only=True, allow_null=True)
     video_view_rate = serializers.FloatField(write_only=True, allow_null=True)
     user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
