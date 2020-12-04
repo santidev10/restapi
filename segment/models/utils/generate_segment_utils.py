@@ -149,17 +149,15 @@ class GenerateSegmentUtils:
             key = agg.split(".")[1]
             aggregations[key] /= count or 1
         aggregations["overall_score"] = map_brand_safety_score(aggregations["overall_score"])
-        # Map channel keys
-        map_keys = (
+        # normalize channel likes/dislikes keys
+        channel_keys_map = (
             ("observed_videos_likes", "likes"),
             ("observed_videos_dislikes", "dislikes")
         )
-        for old_key, new_key in map_keys:
-            try:
-                aggregations[new_key] = aggregations[old_key]
-                del aggregations[old_key]
-            except KeyError:
-                pass
+        for channel_key, normalized_key in channel_keys_map:
+            if channel_key in aggregations:
+                aggregations[normalized_key] = aggregations[channel_key]
+                del aggregations[channel_key]
         return aggregations
 
     def add_segment_uuid(self, segment, ids):
