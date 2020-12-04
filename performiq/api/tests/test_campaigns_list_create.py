@@ -1,7 +1,6 @@
 import json
 import mock
 
-from django.conf import settings
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
@@ -94,6 +93,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(user.email == data["google_ads"]["email"] == data["dv360"]["email"])
+        self.assertEqual(data["google_ads"]["id"], gads_oauth.id)
+        self.assertEqual(data["dv360"]["id"], dv360_oauth.id)
         self.assertEqual(data["google_ads"]["campaigns"][0]["id"], gads_campaign.id)
         self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)
 
@@ -138,3 +139,16 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertTrue(response.data["csv_s3_key"], csv_s3_key)
         self.assertTrue(response.data["csv_column_mapping"], csv_column_mapping)
         mock_analysis.delay.assert_called_once()
+
+    def test_disabled_accounts_excluded_from_list(self):
+        user = self.create_admin_user(f"test_{next(int_iterator)}.com")
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        gads_oauth.is_enabled = False
+        gads_oauth.save(update_fields=["is_enabled"])
+        dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
+        response = self.client.get(self._get_url())
+        data = response.data
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(user.email, data["dv360"]["email"])
+        self.assertEqual(data["google_ads"], {})
+        self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)

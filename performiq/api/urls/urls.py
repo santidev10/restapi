@@ -7,6 +7,7 @@ from performiq.api.views import PerformIQCampaignListCreateAPIView
 from performiq.api.views import PerformIQMapCSVFieldsAPIView
 from performiq.api.views import PerformIQCampaignExportAPIView
 from performiq.api.views import PerformIQCampaignRetrieveAPIView
+from performiq.api.views import PerformIQOAuthAccountUpdateAPIView
 
 
 urlpatterns = [
@@ -29,4 +30,7 @@ urlpatterns = [
     url(r"^performiq/map_csv_fields/$",
         PerformIQMapCSVFieldsAPIView.as_view(),
         name=PerformIQPathName.MAP_CSV_FIELDS),
+    url(r"^performiq/oauth_accounts/(?P<pk>\d+)/$",
+        PerformIQOAuthAccountUpdateAPIView.as_view(),
+        name=PerformIQPathName.OAUTH_ACCOUNTS),
 ]
