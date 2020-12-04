@@ -36,7 +36,7 @@ class PerformIQCampaignListCreateAPIView(APIView):
 
         search = request.query_params.get("search")
         if search is not None:
-            qs = qs.filter(name__icontains=search)
+            qs = qs.filter(name__icontains=search.lower())
         page = IQCampaignSerializer(paginator.paginate_queryset(qs.order_by("id"), request), many=True).data
         response_data = paginator._get_response_data(page)
         return response_data

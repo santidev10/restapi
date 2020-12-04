@@ -186,3 +186,17 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["items_count"], 1)
         self.assertEqual(data["items"][0]["id"], iq_dv360.id)
         self.assertEqual(data["items"][0]["name"], iq_dv360.name)
+
+    def test_search_upper_case(self):
+        user = self.create_admin_user()
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
+        IQCampaign.objects.create(campaign=gads_campaign, name="gads case")
+        IQCampaign.objects.create(campaign=dv360_campaign, name="Dv360 TesTing CAse")
+        iq_csv = IQCampaign.objects.create(user=user, name="csv case")
+        response = self.client.get(self._get_url() + "?analyzed=true&search=CSV")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["items_count"], 1)
+        self.assertEqual(data["items"][0]["id"], iq_csv.id)
+        self.assertEqual(data["items"][0]["name"], iq_csv.name)
