@@ -93,8 +93,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(user.email == data["google_ads"]["email"] == data["dv360"]["email"])
-        self.assertEqual(data["google_ads"]["id"], gads_oauth.id)
-        self.assertEqual(data["dv360"]["id"], dv360_oauth.id)
+        self.assertEqual(data["google_ads"]["oauth_account_id"], gads_oauth.id)
+        self.assertEqual(data["dv360"]["oauth_account_id"], dv360_oauth.id)
         self.assertEqual(data["google_ads"]["campaigns"][0]["id"], gads_campaign.id)
         self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)
 
@@ -149,6 +149,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url())
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(user.email, data["dv360"]["email"])
         self.assertEqual(data["google_ads"], {})
+        self.assertEqual(data["dv360"]["email"], user.email)
+        self.assertEqual(data["dv360"]["oauth_account_id"], dv360_oauth.id)
         self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)

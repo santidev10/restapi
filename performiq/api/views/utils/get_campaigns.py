@@ -29,7 +29,7 @@ def _get_serialized(qs, account):
     campaigns = CampaignSerializer(qs, many=True).data
     data = {
         "email": account.email,
-        "id": account.id,
+        "oauth_account_id": account.id,
         "campaigns": campaigns,
     }
     return data
