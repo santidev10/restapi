@@ -86,7 +86,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(self.mock_get_document.call_count, 0)
 
     def test_get_next_video_vetting_item_with_history_success(self, *args):
-        """ Test retrieving next vetting item in video audit """
+        """ Test retrieving next vetting item in video audit with history """
         user = self.create_admin_user()
         before = timezone.now()
         audit_1, segment_1 = self._create_segment_audit(user,
@@ -149,7 +149,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertTrue(video_meta.name in vetting_history[1]["data"])
 
     def test_get_next_channel_vetting_item_with_history_success(self, *args):
-        """ Test retrieving next vetting item in video audit """
+        """ Test retrieving next vetting item in channel audit with history """
         user = self.create_admin_user()
         before = timezone.now()
         audit_1, segment_1 = self._create_segment_audit(user,
@@ -685,3 +685,39 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate_vetted.delay.assert_called_once()
+
+    def test_channel_history_no_meta_success(self, *args):
+        """ Test retrieving history for channels with no AuditChannelMeta does not throw exception """
+        user = self.create_admin_user()
+        before = timezone.now()
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_3"))
+        c_id = f"test_youtube_channel_id{next(int_iterator)}"
+        # AuditChannelMeta is usually created with AuditChannel
+        channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
+        AuditChannelVet.objects.create(
+            audit=audit_1, channel=channel_audit, processed=before, clean=False
+        )
+        AuditChannelVet.objects.create(
+            audit=audit_2, channel=channel_audit, processed=before, clean=True
+        )
+        new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
+
+        self.assertEqual(new_channel_vet.processed, None)
+        self.assertEqual(new_channel_vet.checked_out_at, None)
+        iab_categories = ['Video Gaming', 'PC Games', 'MMOs']
+        task_us = dict(iab_categories=iab_categories)
+        monetization = dict(is_monetizable=False)
+        general_data = dict(primary_category="Video Games")
+        mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us,
+                                                      monetzation_data=monetization, general_data=general_data)
+        self.mock_get_document.return_value = mock_channel_doc
+        url = self._get_url(kwargs=dict(pk=audit_3.id))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["vetting_id"], new_channel_vet.id)
