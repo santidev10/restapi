@@ -6,10 +6,12 @@ from rest_framework.response import Response
 from .utils.get_campaigns import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
 from performiq.api.views.utils.paginator import PerformIQPaginatior
+from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.models import IQCampaign
 
 
 class PerformIQCampaignListCreateAPIView(APIView):
+    permission_classes = (PerformIQPermission,)
     pagination_class = PerformIQPaginatior
 
     def get(self, request, *args, **kwargs):

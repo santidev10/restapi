@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.conf import settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.api.urls.names import PerformIQPathName
 from performiq.utils.constants import CSVFieldTypeEnum
@@ -45,6 +46,11 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             if write_data:
                 writer.writerow(self.data_row)
         return filename
+
+    def test_permission(self):
+        self.create_test_user()
+        response = self.client.get(self._get_url())
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_bad_extension(self):
         self.create_admin_user()

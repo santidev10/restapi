@@ -5,12 +5,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.utils import get_google_access_token_info
 from performiq.api.views.adwords_auth import AdWordsAuthApiView
+from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.oauth_utils import load_client_settings
 from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
 
 class DV360AuthApiView(AdWordsAuthApiView):
+    permission_classes = (PerformIQPermission,)
 
     scopes = (
         "https://www.googleapis.com/auth/display-video",

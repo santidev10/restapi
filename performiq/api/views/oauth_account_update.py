@@ -3,11 +3,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
 
 from performiq.api.serializers import OAuthAccountSerializer
+from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.models import OAuthAccount
 
 
 class PerformIQOAuthAccountUpdateAPIView(UpdateAPIView):
-
+    permission_classes = (PerformIQPermission,)
     serializer_class = OAuthAccountSerializer
 
     def get_object(self):

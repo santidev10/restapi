@@ -15,9 +15,14 @@ class OAuthAccountUpdateAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_id):
         return reverse(Namespace.PERFORMIQ + ":" + PerformIQPathName.OAUTH_ACCOUNTS, kwargs={"pk": account_id})
 
+    def test_permission(self):
+        self.create_test_user()
+        response = self.client.get(self._get_url(0))
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
     def test_oauth_account_is_updated(self):
         """test that an OAuthAccount is modified successfully"""
-        user = self.create_test_user()
+        user = self.create_admin_user()
         uniqifier = next(int_iterator)
         oauth_account = OAuthAccount.objects.create(
             user=user,
