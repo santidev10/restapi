@@ -3,6 +3,7 @@ import mock
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.api.urls.names import PerformIQPathName
 from performiq.models import Account
@@ -55,6 +56,14 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         advertiser.oauth_accounts.add(oauth_account)
         campaign = Campaign.objects.create(oauth_type=oauth_account.oauth_type, advertiser=advertiser)
         return oauth_account, advertiser, campaign
+
+    def test_permission(self):
+        self.create_test_user()
+        response = self.client.get(self._get_url())
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        response = self.client.get(self._get_url() + "?analyzed=true")
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_analyzed_success(self):
         user = self.create_admin_user()

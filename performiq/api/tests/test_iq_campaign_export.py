@@ -3,6 +3,7 @@ from unittest import mock
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from performiq.api.urls.names import PerformIQPathName
@@ -18,6 +19,11 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         url = reverse(Namespace.PERFORMIQ + ":" + PerformIQPathName.EXPORT, kwargs=dict(pk=iq_campaign_id)) \
               + f"?type={export_type}"
         return url
+
+    def test_permission(self):
+        self.create_test_user()
+        response = self.client.get(self._get_url(0, 0))
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_recommended(self):
         self.create_admin_user()
