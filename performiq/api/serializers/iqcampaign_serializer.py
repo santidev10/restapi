@@ -5,7 +5,7 @@ from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from performiq.models import Campaign
 from performiq.models import IQCampaign
-from performiq.tasks.start_analysis import start_analysis_task
+import performiq.tasks.start_analysis as start_analysis
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
@@ -24,6 +24,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     content_type = CoerceListMemberField(write_only=True, allow_null=True, valid_values=set(AuditContentType.to_str_with_unknown.keys()))
     exclude_content_categories = NullableListField(write_only=True)
     languages = NullableListField(write_only=True)
+    name = serializers.CharField(max_length=255)
     score_threshold = serializers.IntegerField(write_only=True, allow_null=True)
     video_view_rate = serializers.FloatField(write_only=True, allow_null=True)
     user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
@@ -48,7 +49,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
             campaign_id=campaign_id,
             params=validated_data
         )
-        start_analysis_task.delay(iq_campaign.id)
+        start_analysis.start_analysis_task.delay(iq_campaign.id)
         return iq_campaign
 
     def validate_campaign_id(self, val):
