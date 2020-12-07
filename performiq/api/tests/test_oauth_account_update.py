@@ -22,7 +22,7 @@ class OAuthAccountUpdateAPITestCase(ExtendedAPITestCase):
 
     def test_oauth_account_is_updated(self):
         """test that an OAuthAccount is modified successfully"""
-        user = self.create_test_user()
+        user = self.create_admin_user()
         uniqifier = next(int_iterator)
         oauth_account = OAuthAccount.objects.create(
             user=user,
