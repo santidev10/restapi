@@ -198,8 +198,10 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
         self.add_fields()
-
-        return ESQuerysetAdapter(self.get_manager_class()(sections), cached_aggregations=self.get_cached_aggregations())
+        is_default_page = self.is_default_page()
+        return ESQuerysetAdapter(self.get_manager_class()(sections),
+                                 cached_aggregations=self.get_cached_aggregations(),
+                                 is_default_page=is_default_page)
 
     @staticmethod
     def get_own_channel_ids(user, query_params):
