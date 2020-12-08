@@ -16,6 +16,12 @@ CURRENCY_STRINGS = ["USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", "HKD
 CURRENCY_SYMBOLS = ["$", "€", "¥", "£", "A$", "C$", "元", "HK$", "NZ$", "kr", "₩"]
 
 
+def is_float_validator(value):
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
+
 def is_currency_validator(value):
     if isinstance(value, float):
         return value
@@ -58,9 +64,8 @@ def is_integer_validator(value):
 
 
 def is_cpm_validator(value):
-    is_currency = is_currency_validator(value)
-    if is_currency:
-        return value
+    is_currency_validator(value)
+    is_float_validator(value)
 
     if 1 <= float(value) <= 10:
         return value
@@ -68,10 +73,13 @@ def is_cpm_validator(value):
 
 
 def is_cpv_validator(value):
-    is_currency = is_currency_validator(value)
-    if is_currency:
-        return value
+    is_currency_validator(value)
+    is_float_validator(value)
 
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
     if float(value) <= 0.1:
         return value
     raise ValidationError("value likely not cpv")
