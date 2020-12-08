@@ -25,7 +25,7 @@ def cached_method(timeout, extended_timeout=14400, ttl_threshold=0.2):
 
             is_default_page = getattr(obj, "is_default_page", False)
             cache_timeout = extended_timeout if is_default_page is True else timeout
-            data, ttl = get_from_cache(obj, part=part, options=options) if from_cache else None
+            data, ttl = get_from_cache(obj, part=part, options=options) if from_cache else (None, 0)
             if data is None or ttl <= cache_timeout * ttl_threshold:
                 data = method(obj, *args, **kwargs)
                 set_to_cache(obj, part=part, options=options, data=data, timeout=cache_timeout)
