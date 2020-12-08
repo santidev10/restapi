@@ -34,9 +34,10 @@ def get_csv_data(iq_campaign):
         with open(csv_fp, mode="r") as file:
             reader = csv.reader(file)
             for row in reader:
-                # Skip if header row
+                # Skip non data rows
                 if all(r.replace(" ", "").isalpha() for r in row) or not row or "channel" not in "".join(row):
-                    row = next(reader)
+                    next(reader)
+                    continue
 
                 # Map column letters to metric names. csv_column_mapping will be a dict of column letter
                 # to metric name e.g. {"A": "impressions", "B": "video views", ...}
