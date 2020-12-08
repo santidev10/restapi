@@ -10,7 +10,7 @@ from performiq.utils.map_csv_fields import is_rate_validator
 class MapCSVFieldsValidatorTestCase(testcases.TestCase):
 
     def test_invalid_cpm(self):
-        for invalid in [0.5, ".123", 1123, 10, [], "asdf", {}]:
+        for invalid in [0.5, ".123", 1123, 10, [], "asdf", {}, "USD"]:
             with self.subTest(invalid):
                 with self.assertRaises(ValidationError):
                     is_cpm_validator(invalid)
@@ -21,7 +21,7 @@ class MapCSVFieldsValidatorTestCase(testcases.TestCase):
                 is_cpm_validator(valid)
 
     def test_invalid_cpv(self):
-        for invalid in [1, "1", 2.1, 0.2, [], "asdf", {}]:
+        for invalid in [1, "1", 2.1, 0.2, [], "asdf", {}, "USD"]:
             with self.subTest(invalid):
                 with self.assertRaises(ValidationError):
                     is_cpv_validator(invalid)

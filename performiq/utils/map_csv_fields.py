@@ -16,6 +16,12 @@ CURRENCY_STRINGS = ["USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", "HKD
 CURRENCY_SYMBOLS = ["$", "€", "¥", "£", "A$", "C$", "元", "HK$", "NZ$", "kr", "₩"]
 
 
+def is_float_validator(value):
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
+
 def is_currency_validator(value):
     if isinstance(value, float):
         return value
@@ -59,6 +65,7 @@ def is_integer_validator(value):
 
 def is_cpm_validator(value):
     is_currency_validator(value)
+    is_float_validator(value)
 
     if 1 <= float(value) <= 10:
         return value
@@ -67,7 +74,12 @@ def is_cpm_validator(value):
 
 def is_cpv_validator(value):
     is_currency_validator(value)
+    is_float_validator(value)
 
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
     if float(value) <= 0.1:
         return value
     raise ValidationError("value likely not cpv")
@@ -180,7 +192,7 @@ class CSVColumnMapper:
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row
         self.header_map = {header.value: None for header in CSVFieldTypeEnum}
         self.available_headers = [header.value for header in CSVFieldTypeEnum]
-        column_letters = list(string.ascii_uppercase)[:len(self.available_headers)]
+        column_letters = list(string.ascii_uppercase)
 
         # initialize header/data guess maps
         self.header_guess_map = {letter: [] for letter in column_letters}
