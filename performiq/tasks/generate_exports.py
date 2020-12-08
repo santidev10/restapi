@@ -70,8 +70,9 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
         query &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
             .gte(LAST_VETTED_AT_MIN_DATE).get()
         sort = [{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}]
-        for batch in bulk_search(Channel, query, sort=sort, cursor_field=SUBSCRIBERS_FIELD,
-                                 source=(MAIN_ID_FIELD,)):
+        for batch in bulk_search(Channel, query, sort=sort, cursor_field=SUBSCRIBERS_FIELD, batch_size=5000,
+                                 source=(MAIN_ID_FIELD, f"{Sections.STATS}.subscribers"),
+                                 include_cursor_exclusions=True):
             clean_ids.extend(doc.main.id for doc in batch)
             if len(clean_ids) >= EXPORT_LIMIT:
                 break
