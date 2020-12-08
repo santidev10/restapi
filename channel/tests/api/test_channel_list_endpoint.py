@@ -3,7 +3,6 @@ import urllib
 from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
-from mock import patch
 
 from django.contrib.auth.models import Group
 from django.utils import timezone
@@ -20,6 +19,8 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
+from utils.es_components_cache import flush_cache
+from utils.redis import get_redis_client
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -697,3 +698,44 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(data[1]["main"]["id"], channel_current_ias.main.id)
         self.assertIsNotNone(data[1].get("ias_data"))
+
+    def test_cache(self):
+        """ Test subsequent requests uses cache """
+        self.create_admin_user()
+        flush_cache()
+        url = self.url + "?page=1&fields=main&sort=stats.views:desc"
+        self.client.get(url)
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+            # Subsequent requests should use cache to retrieve but not set
+            self.client.get(url)
+        mock_set_cache.assert_not_called()
+        flush_cache()
+
+    def test_should_set_cache_threshold_expires(self):
+        """ Test should_set_cache returns True only if page being requested is a default page and time to live expires """
+        redis = get_redis_client()
+        self.create_admin_user()
+        flush_cache()
+        url = self.url + "?page=1&fields=main&sort=stats.subscribers:desc"
+        # Initial request to set cache
+        self.client.get(url)
+        # Manually update ttl for key to be below threshold to refresh cache
+        cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
+        redis.expire(cache_key, 20)
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+            # Normally this would retrieve cached data as the key ttl would still be valid.
+            # However since redis.expire was used to manually reduce ttl, the cache should
+            # be refreshed
+            self.client.get(url)
+            mock_set_cache.assert_called_once()
+        flush_cache()
+
+    def test_default_page_extended_timeout(self):
+        """ Test that a default page uses an extended cache timeout e.g. First page of research with no filters """
+        self.create_admin_user()
+        url = self.url + "?page=1&fields=main&sort=stats.subscribers:desc"
+        # Initial request to set cache
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+            self.client.get(url)
+        args = mock_set_cache.call_args[1]
+        self.assertEqual(args["timeout"], 14400)
