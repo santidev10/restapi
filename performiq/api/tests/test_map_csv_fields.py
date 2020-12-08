@@ -18,7 +18,6 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
 
-    empty_header_row = ["", "", ""]
     header_row = ["view rate", "imps.", "url", "views", "cpv", "cost", "cpm"]
     data_row = [34.4, 100203, "youtube.com/video/3asdf32", 43245, 0.024, 500, 3.43]
 
@@ -32,24 +31,22 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.PERFORMIQ + ":" + PerformIQPathName.MAP_CSV_FIELDS)
 
-    def _create_csv(self, filename="csv_file.csv", write_header=True, write_data=True, write_empty_header=False):
+    def _create_csv(self, filename="csv_file.csv", write_header=True, write_data=True, header_row=[]):
         try:
             os.remove(filename)
         except FileNotFoundError:
             pass
         with open(filename, mode="w") as f:
             writer = csv.writer(f)
-            if write_empty_header:
-                writer.writerow(self.empty_header_row)
             if write_header:
-                writer.writerow(self.header_row)
+                writer.writerow(header_row if header_row else self.header_row)
             if write_data:
                 writer.writerow(self.data_row)
         return filename
 
     def test_permission(self):
         self.create_test_user()
-        response = self.client.get(self._get_url())
+        response = self.client.post(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_bad_extension(self):
@@ -62,7 +59,8 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
 
     def test_no_data(self):
         self.create_admin_user()
-        filename = self._create_csv("csv_file.csv", write_header=False, write_data=False, write_empty_header=True)
+        header_row = ["", "", ""]
+        filename = self._create_csv("csv_file.csv", write_data=False, header_row=header_row)
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
             self.assertIn("Header row invalid.", response.json().get("csv_file")[0])
@@ -76,6 +74,21 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             json = response.json()
             self.assertIn("one row besides the header row must be present", json.get("csv_file", [])[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_more_columns_than_mappable_success(self):
+        self.create_admin_user()
+        header_row = self.header_row + ["asdf", "qwer"]
+        filename = self._create_csv("csv_file.csv", header_row=header_row)
+        with open(filename) as file:
+            response = self.client.post(self._get_url(), {"csv_file": file})
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            json = response.json()
+            # check column options depending on presence of header row
+            self.assertIn("column_options", json)
+            column_options = json.get("column_options", {}).values()
+            for header in header_row:
+                with self.subTest(header):
+                    self.assertIn(header, column_options)
 
     @mock_s3
     def test_success(self):
