@@ -26,7 +26,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=255)
     score_threshold = serializers.IntegerField(write_only=True, allow_null=True)
     video_view_rate = serializers.FloatField(write_only=True, allow_null=True)
-    user_id = serializers.IntegerField()
+    user_id = serializers.IntegerField(write_only=True)
 
     # These fields are unavailable for DV360 IQCampaigns as the API does not support retrieving these metrics
     ctr = serializers.FloatField(required=False, write_only=True, default=None, allow_null=True)

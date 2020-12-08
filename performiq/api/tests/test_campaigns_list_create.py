@@ -13,6 +13,7 @@ from performiq.models import Campaign
 from performiq.models import IQCampaign
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
+from performiq.utils.constants import CSVFieldTypeEnum
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -139,19 +140,17 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         """ Test successfully creating IQCampaign for csv upload """
         self.create_admin_user(f"test_{next(int_iterator)}.com")
         csv_s3_key = "test_s3_key.csv"
-        csv_column_mapping = dict(
-            A="impressions",
-            B="video_views",
-            C="ctr"
-        )
+        csv_column_mapping = {
+            CSVFieldTypeEnum.CTR.value: "A",
+            CSVFieldTypeEnum.URL.value: "B",
+            CSVFieldTypeEnum.AVERAGE_CPM.value: "C"
+        }
         _params = dict(csv_s3_key=csv_s3_key, csv_column_mapping=csv_column_mapping, name="test_csv")
         params = self._get_iqcampaign_params(_params)
         with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task") \
                 as mock_analysis:
             response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertTrue(response.data["csv_s3_key"], csv_s3_key)
-        self.assertTrue(response.data["csv_column_mapping"], csv_column_mapping)
         mock_analysis.delay.assert_called_once()
 
     def test_disabled_accounts_excluded_from_list(self):
