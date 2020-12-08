@@ -58,7 +58,9 @@ def is_integer_validator(value):
 
 
 def is_cpm_validator(value):
-    is_currency_validator(value)
+    is_currency = is_currency_validator(value)
+    if is_currency:
+        return value
 
     if 1 <= float(value) <= 10:
         return value
@@ -66,7 +68,9 @@ def is_cpm_validator(value):
 
 
 def is_cpv_validator(value):
-    is_currency_validator(value)
+    is_currency = is_currency_validator(value)
+    if is_currency:
+        return value
 
     if float(value) <= 0.1:
         return value
@@ -180,7 +184,7 @@ class CSVColumnMapper:
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row
         self.header_map = {header.value: None for header in CSVFieldTypeEnum}
         self.available_headers = [header.value for header in CSVFieldTypeEnum]
-        column_letters = list(string.ascii_uppercase)[:len(self.available_headers)]
+        column_letters = list(string.ascii_uppercase)
 
         # initialize header/data guess maps
         self.header_guess_map = {letter: [] for letter in column_letters}
