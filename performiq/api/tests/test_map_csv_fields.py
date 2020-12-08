@@ -75,8 +75,11 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             self.assertIn("one row besides the header row must be present", json.get("csv_file", [])[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    @mock_s3
     def test_more_columns_than_mappable_success(self):
         self.create_admin_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
         header_row = self.header_row + ["asdf", "qwer"]
         filename = self._create_csv("csv_file.csv", header_row=header_row)
         with open(filename) as file:
