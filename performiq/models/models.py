@@ -40,7 +40,7 @@ class OAuthAccount(OAuthBase):
     refresh_token = models.CharField(null=True, max_length=150)
     revoked_access = models.BooleanField(default=False, db_index=True)
     is_enabled = models.BooleanField(default=True, db_index=True)
-    is_syncing = models.BooleanField(default=False)
+    synced = models.BooleanField(default=False, db_index=True)
 
 
 class Account(models.Model):
