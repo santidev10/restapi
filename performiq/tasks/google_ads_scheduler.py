@@ -1,3 +1,5 @@
+import datetime
+
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.tasks.constants import Schedulers
@@ -10,6 +12,7 @@ from utils.celery.utils import get_queue_size
 from utils.datetime import now_in_default_tz
 
 LOCK_PREFIX = "performiq_google_ads_update_"
+UPDATE_THRESHOLD = 3600 * 2
 
 
 @celery_app.task
@@ -24,10 +27,12 @@ def google_ads_update_scheduler():
     for account in accounts:
         lock, is_acquired = get_lock(account.id)
         if is_acquired:
-            update_campaigns_task.delay(account.id)
+            now = now_in_default_tz()
+            if account.updated_at < now - datetime.timedelta(seconds=UPDATE_THRESHOLD):
+                update_campaigns_task(account.id)
+                account.updated_at = now_in_default_tz()
+                account.save()
             unlock.run(lock_name=lock, fail_silently=True)
-            account.updated_at = now_in_default_tz()
-            account.save()
 
 
 def get_lock(account_id):

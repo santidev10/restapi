@@ -12,8 +12,8 @@ from utils.views import get_object
 
 class IQCampaignSerializer(serializers.ModelSerializer):
     campaign_id = serializers.IntegerField(write_only=True, default=None)
-    csv_s3_key = serializers.CharField(write_only=True, default=None)
-    csv_column_mapping = serializers.JSONField(write_only=True, default=None)
+    csv_s3_key = serializers.CharField(write_only=True, default=None, allow_null=True)
+    csv_column_mapping = serializers.JSONField(write_only=True, default=None, allow_null=True)
 
     average_cpv = serializers.FloatField(write_only=True, allow_null=True)
     average_cpm = serializers.FloatField(write_only=True, allow_null=True)
