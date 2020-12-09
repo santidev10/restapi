@@ -21,17 +21,19 @@ def google_ads_update_scheduler():
     Main scheduler task to start individual account update tasks
     """
     queue_size = get_queue_size(Queue.PERFORMIQ)
+    now = now_in_default_tz()
     # limit queue size to prevent queue growing uncontrollably
     limit = Schedulers.GoogleAdsUpdateScheduler.get_items_limit(queue_size)
-    accounts = OAuthAccount.objects.filter(oauth_type=OAuthType.GOOGLE_ADS.value).order_by("updated_at")[:limit]
+    update_threshold = now - datetime.timedelta(seconds=UPDATE_THRESHOLD)
+    accounts = OAuthAccount.objects\
+        .filter(oauth_type=OAuthType.GOOGLE_ADS.value, updated_at__lte=update_threshold)\
+        .order_by("updated_at")[:limit]
     for account in accounts:
         lock, is_acquired = get_lock(account.id)
         if is_acquired:
-            now = now_in_default_tz()
-            if account.updated_at < now - datetime.timedelta(seconds=UPDATE_THRESHOLD):
-                update_campaigns_task(account.id)
-                account.updated_at = now_in_default_tz()
-                account.save()
+            update_campaigns_task(account.id)
+            account.updated_at = now_in_default_tz()
+            account.save()
             unlock.run(lock_name=lock, fail_silently=True)
 
 
