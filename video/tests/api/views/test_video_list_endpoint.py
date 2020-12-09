@@ -546,22 +546,26 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
     def test_should_set_cache_threshold_expires(self):
         """ Test should_set_cache returns True only if page being requested is a default page and time to live expires """
         redis = get_redis_client()
-        self.create_admin_user()
         flush_cache()
+        self.create_admin_user()
         url = self.get_url() + "?page=1&fields=main&sort=stats.views:desc"
         with override_settings(ES_CACHE_ENABLED=True):
             # Initial request to set cache
             self.client.get(url)
         # Manually update ttl for key to be below threshold to refresh cache
         cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
-        redis.expire(cache_key, 20)
-        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+        redis.expire(cache_key, 0)
+        # Cache is accessed twice for each get request, for a document count and a list of documents.
+        # Use side effect to return first [0 count, 0 ttl] and [[] documents, 0 ttl]
+        with patch("utils.es_components_cache.get_from_cache", side_effect=[(0, 0), ([], 0)]),\
+            patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
                 override_settings(ES_CACHE_ENABLED=True):
+
             # Normally this would retrieve cached data as the key ttl would still be valid.
             # However since redis.expire was used to manually reduce ttl, the cache should
             # be refreshed
             self.client.get(url)
-        mock_set_cache.assert_called_once()
+        self.assertEqual(mock_set_cache.call_count, 2)
         flush_cache()
 
     def test_default_page_extended_timeout(self):
