@@ -30,12 +30,9 @@ def generate_vetted_segment(segment_id, recipient=None):
         # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
         # may rapidly change
         s3_key_suffix = str(timezone.now()) if recipient else None
-        s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
-        if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
-            size = segment.config.ADMIN_LIST_SIZE
-        else:
-            size = segment.config.USER_LIST_SIZE
-        results = generate_segment(segment, query, size, add_uuid=False, s3_key=s3_key)
+        vetted_s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
+        size = segment.config.ADMIN_LIST_SIZE
+        results = generate_segment(segment, query, size, add_uuid=False, admin_s3_key=vetted_s3_key)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:
@@ -46,7 +43,7 @@ def generate_vetted_segment(segment_id, recipient=None):
             vetted_export = CustomSegmentVettedFileUpload.objects.create(segment=segment)
             vetted_export.download_url = results["download_url"]
             vetted_export.completed_at = timezone.now()
-            vetted_export.filename = s3_key
+            vetted_export.filename = vetted_s3_key
             vetted_export.save()
             segment.save()
             send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])

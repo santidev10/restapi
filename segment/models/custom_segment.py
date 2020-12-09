@@ -80,37 +80,37 @@ class CustomSegment(SegmentMixin, Timestampable):
         return SegmentTypeEnum(self.segment_type).name.lower()
 
     @property
-    def export_serializer(self):
-        """ Get export serializer depending on channel or video segment """
+    def user_export_serializer(self):
+        """ Get user export serializer depending on if channel or video segment """
         if self.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
-            serializer = self._get_video_serializer()
+            serializer = CustomSegmentVideoExportSerializer
         else:
-            serializer = self._get_channel_serializer()
+            serializer = CustomSegmentChannelExportSerializer
         return serializer
 
     @property
     def admin_export_serializer(self):
-        """ Get admin export serializer depending on channel or video segment """
+        """ Returns export serializer available only to admin """
         if self.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
-            admin_serializer = AdminCustomSegmentVideoExportSerializer
+            serializer = self._get_video_admin_serializer()
         else:
-            admin_serializer = AdminCustomSegmentChannelExportSerializer
-        return admin_serializer
+            serializer = self._get_channel_admin_serializer()
+        return serializer
 
-    def _get_video_serializer(self):
-        """ Get video export serializer depending on vetting """
+    def _get_video_admin_serializer(self):
+        """ Get video admin export serializer depending on vetting status """
         if self.is_vetting is True:
             serializer = CustomSegmentVideoVettedExportSerializer
         else:
-            serializer = CustomSegmentVideoExportSerializer
+            serializer = AdminCustomSegmentVideoExportSerializer
         return serializer
 
-    def _get_channel_serializer(self):
-        """ Get channel export serializer depending on vetting and segment owner permissions """
+    def _get_channel_admin_serializer(self):
+        """ Get channel admin export serializer depending on vetting status """
         if self.is_vetting is True:
             serializer = CustomSegmentChannelVettedExportSerializer
         else:
-            serializer = CustomSegmentChannelExportSerializer
+            serializer = AdminCustomSegmentChannelExportSerializer
         return serializer
 
     @property
