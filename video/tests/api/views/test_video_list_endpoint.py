@@ -4,6 +4,7 @@ from unittest.mock import PropertyMock
 from unittest.mock import patch
 
 from django.utils import timezone
+from django.test import override_settings
 from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
@@ -535,7 +536,8 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         flush_cache()
         url = self.get_url() + "?page=1&fields=main&sort=stats.views:desc"
         self.client.get(url)
-        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
             # Subsequent requests should use cache to retrieve but not set
             self.client.get(url)
         mock_set_cache.assert_not_called()
@@ -552,7 +554,8 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         # Manually update ttl for key to be below threshold to refresh cache
         cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
         redis.expire(cache_key, 20)
-        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
             # Normally this would retrieve cached data as the key ttl would still be valid.
             # However since redis.expire was used to manually reduce ttl, the cache should
             # be refreshed
@@ -563,9 +566,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
     def test_default_page_extended_timeout(self):
         """ Test that a default page uses an extended cache timeout e.g. First page of research with no filters """
         self.create_admin_user()
-        url = self.get_url() + "?page=1&fields=main&sort=stats.subscribers:desc"
+        url = self.get_url() + "page=1&fields=main&sort=stats.subscribers:desc"
         # Initial request to set cache
-        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
             self.client.get(url)
         args = mock_set_cache.call_args[1]
         self.assertEqual(args["timeout"], 14400)
