@@ -125,11 +125,16 @@ class AdWordsAuthApiView(APIView):
                                 data=dict(error=ex_token_error))
         except GoogleAdsServerFault as e:
             for error in e.errors:
-                authentication_error = "AuthenticationError.CUSTOMER_NOT_FOUND"
-                if authentication_error in error.errorString:
-                    error_message = "Authentication error. Are you sure you have access to google ads?"
+                # no assigned cids
+                if "AuthenticationError.CUSTOMER_NOT_FOUND" in error.errorString:
+                    response = AWAuthSerializer(oauth_account).data
+                    return Response(status=HTTP_200_OK,
+                                    data=response)
+                elif "AuthenticationError.OAUTH_TOKEN_INVALID" in error.errorString:
+                    error_message = "Oauth token is invalid!"
                     return Response(status=HTTP_400_BAD_REQUEST,
                                     data=dict(error=error_message))
+
         else:
             if mcc_accounts:
                 first = mcc_accounts[0]
