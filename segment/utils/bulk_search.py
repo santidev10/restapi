@@ -76,8 +76,10 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
 
     if direction == 0:
         range_opt = "lte"
+        cursor = cursor if cursor is not None else 10**15
     else:
         range_opt = "gte"
+        cursor = cursor if cursor is not None else 0
     while True:
         cursor_query = QueryBuilder().build().must().range().field(cursor_field)
         cursor_query = getattr(cursor_query, range_opt)(cursor).get()

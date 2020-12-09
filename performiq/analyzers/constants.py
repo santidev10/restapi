@@ -18,18 +18,29 @@ COERCE_FIELD_FUNCS = {
     AnalysisFields.IMPRESSIONS: Coercers.integer,
     AnalysisFields.VIDEO_VIEWS: Coercers.integer,
     AnalysisFields.CTR: Coercers.percentage,
-    AnalysisFields.CPM: Coercers.cost,
-    AnalysisFields.CPV: Coercers.cost,
-    AnalysisFields.COST: Coercers.cost,
+    AnalysisFields.CPM: Coercers.float,
+    AnalysisFields.CPV: Coercers.float,
+    AnalysisFields.COST: Coercers.float,
     AnalysisFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
     AnalysisFields.VIDEO_VIEW_RATE: Coercers.percentage,
     AnalysisFields.VIDEO_QUARTILE_100_RATE: Coercers.percentage,
     AnalysisFields.CONTENT_TYPE: Coercers.integer,
     AnalysisFields.CONTENT_QUALITY: Coercers.integer,
     "channel_url": Coercers.channel_url,
-    "cpm": Coercers.cost,
-    "cpv": Coercers.cost,
+    "cpm": Coercers.float,
+    "cpv": Coercers.float,
 }
+
+ADWORDS_COERCE_FIELD_FUNCS = {
+    key: func for key, func in COERCE_FIELD_FUNCS.items()
+}
+ADWORDS_COERCE_FIELD_FUNCS.update({
+    "cpm": Coercers.cost_micros,
+    "cpv": Coercers.cost_micros,
+    AnalysisFields.CPM: Coercers.cost_micros,
+    AnalysisFields.CPV: Coercers.cost_micros,
+    AnalysisFields.COST: Coercers.cost_micros,
+})
 
 
 class DataSourceType(enum.IntEnum):

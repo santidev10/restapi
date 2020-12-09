@@ -64,6 +64,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         """
         by_id = {
             c.channel_id: c for c in channel_data
+            if len(str(c.channel_id)) == 24
         }
         es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
         for channel in es_data:
@@ -110,7 +111,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         statistics = {
             "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
             "wastage_spend": wastage_spend,
-            "wastage_percent": wastage_spend / (total_spend or 1),
+            "wastage_percent": wastage_spend / (total_spend or 1) * 100,
         }
         return statistics
 

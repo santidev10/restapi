@@ -25,10 +25,8 @@ class PerformIQCampaignListCreateAPIView(APIView):
         request.data["user_id"] = request.user.id
         serializer = IQCampaignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        validated_params = serializer.validated_data
         iq_campaign = serializer.save()
-        validated_params["id"] = iq_campaign.id
-        return Response(validated_params)
+        return Response(IQCampaignSerializer(iq_campaign).data)
 
     def _get_analyzed_campaigns(self, request):
         paginator = self.pagination_class()
