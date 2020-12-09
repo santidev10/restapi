@@ -1,6 +1,6 @@
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELDS
 from aw_reporting.adwords_reports import placement_performance_report
-from performiq.analyzers.constants import COERCE_FIELD_FUNCS
+from performiq.analyzers.constants import ADWORDS_COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
 from performiq.models.constants import AnalysisFields
 from performiq.oauth_utils import get_client
@@ -50,7 +50,7 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
         formatted = {}
         # Create new dictionary of mapped keys to mapped API data values
         for report_field, mapped_key in ADWORDS_API_FIELD_MAPPING.items():
-            coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+            coercer = ADWORDS_COERCE_FIELD_FUNCS.get(mapped_key)
             api_value = getattr(row, report_field, None)
             formatted[mapped_key] = coercer(api_value) if coercer is not None else api_value
         all_rows.append(formatted)

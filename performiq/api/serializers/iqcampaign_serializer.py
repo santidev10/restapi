@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from audit_tool.models import AuditContentQuality
@@ -27,7 +26,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=255)
     score_threshold = serializers.IntegerField(write_only=True, allow_null=True)
     video_view_rate = serializers.FloatField(write_only=True, allow_null=True)
-    user = serializers.PrimaryKeyRelatedField(default=None, queryset=get_user_model().objects.all())
+    user_id = serializers.IntegerField(write_only=True)
 
     # These fields are unavailable for DV360 IQCampaigns as the API does not support retrieving these metrics
     ctr = serializers.FloatField(required=False, write_only=True, default=None, allow_null=True)
@@ -41,11 +40,12 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id", None)
         # Only set user if IQCampaign is created from csv
-        user = validated_data.pop("user")
+        user_id = validated_data.pop("user_id")
         if not validated_data.get("csv_s3_key"):
-            user = None
+            user_id = None
         iq_campaign = IQCampaign.objects.create(
-            user=user,
+            name=validated_data["name"],
+            user_id=user_id,
             campaign_id=campaign_id,
             params=validated_data
         )
