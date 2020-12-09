@@ -9,6 +9,9 @@ from elasticsearch_dsl import Q
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import VideoConfig
+from segment.models.constants import ChannelConfig
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
 from utils.utils import chunks_generator
@@ -30,18 +33,23 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
     :param query_dict: dict
     :param size: int -> Max row size of export
     :param sort: list -> Additional sort fields
-    :param s3_key: str -> Name to use for S3 export filename
-    :param admin_s3_key: str -> Name to use for admin S3 export filename containing special data
+    :param s3_key: str -> Name to use for user S3 export filename
+    :param admin_s3_key: str -> Name to use for admin or vetted only S3 export filename
     :param options: list -> List of queries to sequentially apply to base query
     :param add_uuid: bool -> Add uuid to document segments section
     :param with_audit: bool -> Determines if CTL is being generated with meta audit
     :return:
     """
     generate_utils = GenerateSegmentUtils(segment)
-    filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    # prevent admin export from being overwritten by vetted export in case that segment is being vetted
+    # file for admin or vetted only exports
+    admin_filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    # prevent user export from being overwritten by vetted export in case that segment is being vetted
     if segment.is_vetting is False:
-        admin_filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+        if segment.segment_type in (SegmentTypeEnum.VIDEO.value, "video"):
+            user_size = VideoConfig.USER_LIST_SIZE
+        else:
+            user_size = ChannelConfig.USER_LIST_SIZE
     context = generate_utils.default_serialization_context
     source_list = None
     # pylint: disable=broad-except
@@ -83,18 +91,27 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 # Get the current batch's Postgres vetting data context for serialization
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                generate_utils.write_to_file(batch, filename, segment.export_serializer, \
+                generate_utils.write_to_file(batch, admin_filename, segment.admin_export_serializer, \
                                              context, write_header=write_header is True)
-                if segment.is_vetting is False:
-                    generate_utils.write_to_file(batch, admin_filename, segment.admin_export_serializer, \
-                                                 context, write_header=write_header is True)
-                generate_utils.add_aggregations(aggregations, batch)
+                # Only write user version ctl data up to user export cap size
+                if (segment.is_vetting is False) and (seen < user_size):
+                    # context not required since user export only contains URL data
+                    generate_utils.write_to_file(batch[:user_size - seen], filename, segment.user_export_serializer, \
+                                                 {}, write_header=write_header is True)
+                    # if segment is user generated, add aggregations for user version export
+                    if segment.owner.is_staff is False:
+                        generate_utils.add_aggregations(aggregations, batch[:user_size - seen])
+                # if segment is admin generated, add aggregations for admin version export
+                if segment.owner.is_staff:
+                    generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
                 if seen >= size:
                     raise MaxItemsException
         except MaxItemsException:
             pass
+        if (segment.owner.is_staff is False) and (seen > user_size):
+            seen = user_size
         generate_utils.finalize_aggregations(aggregations, seen)
         if add_uuid is True:
             generate_utils.add_segment_uuid(segment, item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE])
@@ -102,18 +119,18 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             "items_count": seen,
             **aggregations,
         }
-        s3_key = s3_key or segment.get_s3_key()
+        admin_s3_key = admin_s3_key or segment.get_admin_s3_key()
         if segment.is_vetting is False:
-            admin_s3_key = admin_s3_key or segment.get_admin_s3_key()
+            s3_key = s3_key or segment.get_s3_key()
         # If with_audit is True and item_count is 0 for export, then it is unnecessary to start audit for ctl as there
         # are no further items to filter
         if with_audit is True and statistics["items_count"] > 0:
-            segment.s3.export_file_to_s3(filename, s3_key)
+            segment.s3.export_file_to_s3(admin_filename, admin_s3_key)
             if segment.is_vetting is False:
-                segment.s3.export_file_to_s3(admin_filename, admin_s3_key)
+                segment.s3.export_file_to_s3(filename, s3_key)
             # CTL export csv is finished, start audit for further filtering with inclusion_file / exclusion
             # file keywords
-            generate_utils.start_audit(filename)
+            generate_utils.start_audit(admin_filename)
             results = {
                 "s3_key": s3_key,
                 "admin_s3_key": admin_s3_key,
@@ -123,10 +140,10 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             AuditProcessor.objects.filter(id=segment.params.get("meta_audit_id")).delete()
             segment.remove_meta_audit_params()
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
-            segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+            segment.s3.export_file_to_s3(admin_filename, admin_s3_key, extra_args={"ContentDisposition": content_disposition})
             if segment.is_vetting is False:
-                segment.s3.export_file_to_s3(admin_filename, admin_s3_key, extra_args={"ContentDisposition": content_disposition})
-            download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+                segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
+            download_url = segment.s3.generate_temporary_url(admin_s3_key, time_limit=3600 * 24 * 7)
             results = {
                 "statistics": statistics,
                 "download_url": download_url,
@@ -135,9 +152,9 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             }
         return results
     finally:
-        os.remove(filename)
+        os.remove(admin_filename)
         if segment.is_vetting is False:
-            os.remove(admin_filename)
+            os.remove(filename)
 # pylint: enable=too-many-nested-blocks,too-many-statements
 
 

@@ -22,28 +22,30 @@ class DV360AuthApiView(AdWordsAuthApiView):
         "https://www.googleapis.com/auth/userinfo.email",
     )
 
-    def get_flow(self, redirect_url):
-        aw_settings = load_client_settings()
-        flow = client.OAuth2WebServerFlow(
-            client_id=aw_settings.get("client_id"),
-            client_secret=aw_settings.get("client_secret"),
-            scope=self.scopes,
-            user_agent=aw_settings.get("user_agent"),
-            redirect_uri=redirect_url,
-            prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
-        )
-        return flow
+    # TODO remove
+    # def get_flow(self, redirect_url):
+    #     aw_settings = load_client_settings()
+    #     flow = client.OAuth2WebServerFlow(
+    #         client_id=aw_settings.get("client_id"),
+    #         client_secret=aw_settings.get("client_secret"),
+    #         scope=self.scopes,
+    #         user_agent=aw_settings.get("user_agent"),
+    #         redirect_uri=redirect_url,
+    #         prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
+    #     )
+    #     return flow
 
     # second step
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
         # get refresh token
-        redirect_url = self.request.query_params.get("redirect_url")
-        if not redirect_url:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=dict(error="Required query param: 'redirect_url'")
-            )
+        # TODO remove
+        # redirect_url = self.request.query_params.get("redirect_url")
+        # if not redirect_url:
+        #     return Response(
+        #         status=HTTP_400_BAD_REQUEST,
+        #         data=dict(error="Required query param: 'redirect_url'")
+        #     )
 
         code = request.data.get("code")
         if not code:
@@ -53,7 +55,7 @@ class DV360AuthApiView(AdWordsAuthApiView):
             )
         code = unquote(code)
 
-        flow = self.get_flow(redirect_url)
+        flow = self.get_flow()
         try:
             credential = flow.step2_exchange(code)
         except client.FlowExchangeError as e:
@@ -84,9 +86,11 @@ class DV360AuthApiView(AdWordsAuthApiView):
                     "refresh_token": refresh_token,
                     "revoked_access": False,
                     "is_enabled": True,
+                    "synced": False,
                 }
             )
 
             # get user's  partners and advertisers relations
-            sync_dv_partners.delay(force_emails=[oauth_account.email], sync_advertisers=True)
+            sync_dv_partners.delay(force_emails=[oauth_account.email], sync_advertisers=True,
+                                   update_sync_status_account_id=oauth_account.id)
         return Response(status=204)

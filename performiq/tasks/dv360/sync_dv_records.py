@@ -36,7 +36,8 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False):
+def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False,
+                     update_sync_status_account_id: OAuthAccount = None):
     """
     Updates partners for accounts that were either created
     recently, or have not been recently updated
@@ -44,6 +45,7 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
     :param force_all: force update on all dv360 oauth accounts that haven't revoked access
     :param sync_advertisers: syncs advertisers as well. This is currently the only way to
         link advertisers to oauth accounts
+    :param update_sync_status_account_id: the id of an OAuthAccount for which to set `synced` to True
     """
     logger.info(f"starting dv partners sync...")
     if force_emails:
@@ -96,6 +98,9 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
 
         account.updated_at = timezone.now()
         account.save(update_fields=["updated_at"])
+
+        if update_sync_status_account_id:
+            OAuthAccount.objects.filter(id=update_sync_status_account_id).update(synced=True)
 
 
 @celery_app.task

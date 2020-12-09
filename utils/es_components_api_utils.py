@@ -410,7 +410,7 @@ class VettedStatusSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, is_default_page=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -422,6 +422,7 @@ class ESQuerysetAdapter:
         self.cached_aggregations = cached_aggregations
         # Additional control if cached methods should use cache
         self.from_cache = from_cache
+        self.is_default_page = is_default_page
 
     @cached_method(timeout=7200)
     def count(self):
@@ -659,6 +660,13 @@ class APIViewMixin:
         if self.vetting_admin_permission_class().has_permission(self.request):
             return self.admin_manager_class
         return self.manager_class
+
+    def is_default_page(self):
+        query_params = self.request.query_params
+        is_default_page = False
+        if query_params.get("page") == "1" and set(query_params.keys()) == {"page", "sort", "fields"}:
+            is_default_page = True
+        return is_default_page
 
 
 class PaginatorWithAggregationMixin:

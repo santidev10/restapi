@@ -30,6 +30,7 @@ def _get_serialized(qs, account):
     data = {
         "email": account.email,
         "oauth_account_id": account.id,
+        "oauth_account_synced": account.synced,
         "campaigns": campaigns,
     }
     return data
