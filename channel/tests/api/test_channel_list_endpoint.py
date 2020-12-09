@@ -716,11 +716,12 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_should_set_cache_threshold_expires(self):
         """ Test should_set_cache returns True only if page being requested is a default page and time to live expires """
         redis = get_redis_client()
-        self.create_admin_user()
         flush_cache()
+        self.create_admin_user()
         url = self.url + "?page=1&fields=main&sort=stats.subscribers:desc"
-        # Initial request to set cache
-        self.client.get(url)
+        with override_settings(ES_CACHE_ENABLED=True):
+            # Initial request to set cache
+            self.client.get(url)
         # Manually update ttl for key to be below threshold to refresh cache
         cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
         redis.expire(cache_key, 20)

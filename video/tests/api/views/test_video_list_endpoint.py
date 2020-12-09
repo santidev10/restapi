@@ -549,8 +549,9 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.create_admin_user()
         flush_cache()
         url = self.get_url() + "?page=1&fields=main&sort=stats.views:desc"
-        # Initial request to set cache
-        self.client.get(url)
+        with override_settings(ES_CACHE_ENABLED=True):
+            # Initial request to set cache
+            self.client.get(url)
         # Manually update ttl for key to be below threshold to refresh cache
         cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
         redis.expire(cache_key, 20)
