@@ -109,6 +109,7 @@ class AdWordsAuthApiView(APIView):
                     "refresh_token": refresh_token,
                     "revoked_access": False,
                     "is_enabled": True,
+                    "synced": False,
                 }
             )
 

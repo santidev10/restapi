@@ -51,6 +51,9 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
         for cid in cid_accounts:
             update_cid_campaigns(cid["customerId"], oauth_account.refresh_token)
 
+    oauth_account.synced = True
+    oauth_account.save(update_fields=["synced"])
+
 
 def update_mcc_campaigns(mcc_id: int, refresh_token: str):
     """

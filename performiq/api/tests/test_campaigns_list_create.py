@@ -106,6 +106,10 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertTrue(user.email == data["google_ads"]["email"] == data["dv360"]["email"])
         self.assertEqual(data["google_ads"]["oauth_account_id"], gads_oauth.id)
         self.assertEqual(data["dv360"]["oauth_account_id"], dv360_oauth.id)
+        self.assertIn("oauth_account_synced", data["google_ads"])
+        self.assertIn("oauth_account_synced", data["dv360"])
+        self.assertFalse(data["google_ads"]["oauth_account_synced"])
+        self.assertFalse(data["dv360"]["oauth_account_synced"])
         self.assertEqual(data["google_ads"]["campaigns"][0]["id"], gads_campaign.id)
         self.assertEqual(data["dv360"]["campaigns"][0]["id"], dv360_campaign.id)
 
