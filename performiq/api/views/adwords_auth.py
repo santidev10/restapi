@@ -1,3 +1,4 @@
+from django.conf import settings
 from googleads.errors import GoogleAdsServerFault
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
@@ -47,14 +48,15 @@ class AdWordsAuthApiView(APIView):
 
     # first step
     def get(self, *args, **kwargs):
-        redirect_url = self.request.query_params.get("redirect_url")
-        if not redirect_url:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=dict(error="Required query param: 'redirect_url'")
-            )
+        # TODO remove
+        # redirect_url = self.request.query_params.get("redirect_url")
+        # if not redirect_url:
+        #     return Response(
+        #         status=HTTP_400_BAD_REQUEST,
+        #         data=dict(error="Required query param: 'redirect_url'")
+        #     )
 
-        flow = self.get_flow(redirect_url)
+        flow = self.get_flow()
         authorize_url = flow.step1_get_authorize_url()
         return Response(dict(authorize_url=authorize_url))
 
@@ -62,12 +64,13 @@ class AdWordsAuthApiView(APIView):
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
         # get refresh token
-        redirect_url = self.request.query_params.get("redirect_url")
-        if not redirect_url:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=dict(error="Required query param: 'redirect_url'")
-            )
+        # TODO remove
+        # redirect_url = self.request.query_params.get("redirect_url")
+        # if not redirect_url:
+        #     return Response(
+        #         status=HTTP_400_BAD_REQUEST,
+        #         data=dict(error="Required query param: 'redirect_url'")
+        #     )
 
         code = request.data.get("code")
         if not code:
@@ -76,7 +79,7 @@ class AdWordsAuthApiView(APIView):
                 data=dict(error="Required: 'code'")
             )
 
-        flow = self.get_flow(redirect_url)
+        flow = self.get_flow()
         try:
             credential = flow.step2_exchange(code)
         except client.FlowExchangeError as e:
@@ -151,15 +154,18 @@ class AdWordsAuthApiView(APIView):
             return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 
-    def get_flow(self, redirect_url):
+    def get_flow(self):
         aw_settings = load_client_settings()
+        # new popup flow, different than redirect flow
         flow = client.OAuth2WebServerFlow(
             client_id=aw_settings.get("client_id"),
             client_secret=aw_settings.get("client_secret"),
             scope=self.scopes,
-            user_agent=aw_settings.get("user_agent"),
-            redirect_uri=redirect_url,
-            prompt="consent"
+            access_type="offline",
+            response_type="code",
+            prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
+            redirect_uri=settings.GOOGLE_APP_OAUTH2_REDIRECT_URL,
+            origin=settings.GOOGLE_APP_OAUTH2_ORIGIN
         )
         return flow
 
