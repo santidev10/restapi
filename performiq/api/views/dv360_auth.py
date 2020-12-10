@@ -91,6 +91,5 @@ class DV360AuthApiView(AdWordsAuthApiView):
             )
 
             # get user's  partners and advertisers relations
-            sync_dv_partners.delay(force_emails=[oauth_account.email], sync_advertisers=True,
-                                   update_sync_status_account_id=oauth_account.id)
+            sync_dv_partners.delay(oauth_account_ids=[oauth_account.email], sync_advertisers=True)
         return Response(status=204)

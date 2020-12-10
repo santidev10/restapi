@@ -36,20 +36,18 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False,
-                     update_sync_status_account_id: OAuthAccount = None):
+def sync_dv_partners(oauth_account_ids: list = False, force_all=False, sync_advertisers=False):
     """
     Updates partners for accounts that were either created
     recently, or have not been recently updated
-    :param force_emails: force update on a list of emails belonging to OAuthAccounts
+    :param oauth_account_ids: force update on a list of emails belonging to OAuthAccounts
     :param force_all: force update on all dv360 oauth accounts that haven't revoked access
     :param sync_advertisers: syncs advertisers as well. This is currently the only way to
         link advertisers to oauth accounts
-    :param update_sync_status_account_id: the id of an OAuthAccount for which to set `synced` to True
     """
     logger.info(f"starting dv partners sync...")
-    if force_emails:
-        query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, email__in=force_emails)
+    if oauth_account_ids and isinstance(oauth_account_ids, list):
+        query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, id__in=oauth_account_ids)
     elif force_all:
         query = OAuthAccount.objects.filter(oauth_type=OAuthType.DV360.value, revoked_access=False)
     else:
@@ -84,7 +82,7 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
 
         for partner in partners:
             try:
-                advertisers_response = request_partner_advertisers(str(partner.id), resource)
+                advertisers_response = request_partner_advertisers(partner, resource)
             except Exception as e:
                 raise e
             advertiser_serializers = serialize_dv360_list_response_items(
@@ -99,8 +97,8 @@ def sync_dv_partners(force_emails=False, force_all=False, sync_advertisers=False
         account.updated_at = timezone.now()
         account.save(update_fields=["updated_at"])
 
-        if update_sync_status_account_id:
-            OAuthAccount.objects.filter(id=update_sync_status_account_id).update(synced=True)
+    if oauth_account_ids:
+        OAuthAccount.objects.filter(id__in=oauth_account_ids).update(synced=True)
 
 
 @celery_app.task
