@@ -48,14 +48,6 @@ class AdWordsAuthApiView(APIView):
 
     # first step
     def get(self, *args, **kwargs):
-        # TODO remove
-        # redirect_url = self.request.query_params.get("redirect_url")
-        # if not redirect_url:
-        #     return Response(
-        #         status=HTTP_400_BAD_REQUEST,
-        #         data=dict(error="Required query param: 'redirect_url'")
-        #     )
-
         flow = self.get_flow()
         authorize_url = flow.step1_get_authorize_url()
         return Response(dict(authorize_url=authorize_url))
@@ -63,15 +55,6 @@ class AdWordsAuthApiView(APIView):
     # second step
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
-        # get refresh token
-        # TODO remove
-        # redirect_url = self.request.query_params.get("redirect_url")
-        # if not redirect_url:
-        #     return Response(
-        #         status=HTTP_400_BAD_REQUEST,
-        #         data=dict(error="Required query param: 'redirect_url'")
-        #     )
-
         code = request.data.get("code")
         if not code:
             return Response(

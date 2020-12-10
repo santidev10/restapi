@@ -22,31 +22,9 @@ class DV360AuthApiView(AdWordsAuthApiView):
         "https://www.googleapis.com/auth/userinfo.email",
     )
 
-    # TODO remove
-    # def get_flow(self, redirect_url):
-    #     aw_settings = load_client_settings()
-    #     flow = client.OAuth2WebServerFlow(
-    #         client_id=aw_settings.get("client_id"),
-    #         client_secret=aw_settings.get("client_secret"),
-    #         scope=self.scopes,
-    #         user_agent=aw_settings.get("user_agent"),
-    #         redirect_uri=redirect_url,
-    #         prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
-    #     )
-    #     return flow
-
     # second step
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
-        # get refresh token
-        # TODO remove
-        # redirect_url = self.request.query_params.get("redirect_url")
-        # if not redirect_url:
-        #     return Response(
-        #         status=HTTP_400_BAD_REQUEST,
-        #         data=dict(error="Required query param: 'redirect_url'")
-        #     )
-
         code = request.data.get("code")
         if not code:
             return Response(
