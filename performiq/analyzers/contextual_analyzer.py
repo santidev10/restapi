@@ -156,11 +156,13 @@ class ContextualAnalyzer(BaseAnalyzer):
         contextual_failed = False
         content_category_matched = False
         for val in value:
-            self._total_result_counts[count_field][val] += 1
             # Unable to analyze if param not defined, however we still want to count the occurrences of a value
+            self._total_result_counts[count_field][val] += 1
             if not self._params.get(params_field):
                 continue
 
+            # Check if value of current analysis matches params
+            # e.g. val = "Education" not in self._params[AnalysisFields.CONTENT_CATEGORIES]
             if contextual_failed is False and val not in self._params[params_field]:
                 contextual_failed = True
 
@@ -172,7 +174,11 @@ class ContextualAnalyzer(BaseAnalyzer):
             self._total_result_counts["matched_content_categories"] += 1
         return contextual_failed
 
-    def _get_content_categories_result(self):
+    def _get_content_categories_result(self) -> dict:
+        """
+        Format counts of all content categories analyzed
+        :return:
+        """
         # Get top content category occurrences and overall percentage match
         content_categories_counts = self._total_result_counts["content_categories_counts"]
         category_sorted_keys = sorted(
