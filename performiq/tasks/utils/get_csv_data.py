@@ -36,9 +36,12 @@ def get_csv_data(iq_campaign):
             for row in reader:
                 # Skip non data rows
                 if all(r.replace(" ", "").isalpha() for r in row) or not row or "channel" not in "".join(row):
-                    next(reader)
-                    continue
-
+                    try:
+                        next(reader)
+                    except StopIteration:
+                        break
+                    else:
+                        continue
                 # Map column letters to metric names. csv_column_mapping will be a dict of column letter
                 # to metric name e.g. {"A": "impressions", "B": "video views", ...}
                 # Then use sorted column letters to get column value e.g. A = 0, B = 1, ... to assign with metric_name
