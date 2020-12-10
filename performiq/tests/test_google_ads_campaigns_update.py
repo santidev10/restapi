@@ -27,4 +27,4 @@ class GAdsCampaignUpdateTestCase(ExtendedAPITestCase):
         Account.objects.filter(id=account.id).update(updated_at=outdated)
         to_update = _get_cids_to_update([account.id])
         self.assertEqual(len(to_update), 1)
-        self.assertEqual(to_update[0], oauth_account.id)
+        self.assertEqual(to_update[0], account.id)

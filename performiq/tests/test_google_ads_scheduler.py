@@ -1,5 +1,5 @@
 import datetime
-import mock
+from unittest import mock
 
 from django.utils import timezone
 
@@ -39,8 +39,7 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         should_update = OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
         OAuthAccount.objects.filter(id=should_update.id).update(updated_at=expired)
         should_not_update = OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
-        with mock.patch("performiq.tasks.google_ads_scheduler.get_queue_size", return_value=0), \
-             mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task") as mock_task, \
+        with mock.patch("performiq.tasks.google_ads_scheduler.update_campaigns_task") as mock_task, \
                 mock.patch("performiq.tasks.google_ads_scheduler.get_lock", return_value=("", True)):
             google_ads_update_scheduler.run()
         should_update.refresh_from_db()
