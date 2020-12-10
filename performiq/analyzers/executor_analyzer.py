@@ -38,7 +38,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
             SuitabilityAnalyzer(self.iq_campaign.params),
         ]
         self.channel_manager = ChannelManager(
-            sections=[Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY],
+            sections=(Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY),
             upsert_sections=None
         )
 
@@ -47,7 +47,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         Main method to call analyze method for each analyzer used in PerformIQ analysis
         Saves results of IQCampaignChannels with _save_results method
         """
-        for batch in chunks_generator(self.channel_analyses, size=10000):
+        for batch in chunks_generator(self.channel_analyses, size=5000):
             channel_data = self._merge_es_data(list(batch))
             for channel in channel_data:
                 for analyzer in self._analyzers:
@@ -68,6 +68,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
         }
         es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
         for channel in es_data:
+            if not channel.main.id:
+                continue
             mapped = {}
             for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
                 # Map multi dot attribute fields to single keys
@@ -121,7 +123,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
         :return: dict
         """
         raw_data = self._get_data()
-        channel_data = [ChannelAnalysis(data[AnalysisFields.CHANNEL_ID], data=data) for data in raw_data]
+        channel_data = [ChannelAnalysis(data[AnalysisFields.CHANNEL_ID], data=data) for data in raw_data
+                        if data.get(AnalysisFields.CHANNEL_ID)]
         return channel_data
 
     def _get_data(self):
