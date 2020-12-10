@@ -8,7 +8,6 @@ from django.utils import timezone
 from .utils import get_params
 from performiq.analyzers.executor_analyzer import ExecutorAnalyzer
 from performiq.analyzers.constants import AnalyzeSection
-from performiq.models import IQCampaign
 from performiq.analyzers import ChannelAnalysis
 from performiq.models import IQCampaign
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -33,7 +32,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=analyses),\
              mock.patch.object(ExecutorAnalyzer, "_merge_es_data", return_value=analyses), \
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
-            start_analysis.start_analysis_task(iq_campaign.id)
+            start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         results = iq_campaign.results
         expected_export_result_keys = {"wastage_spend", "recommended_count", "wastage_export_filename",
@@ -51,11 +50,13 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=[]), \
              mock.patch.object(ExecutorAnalyzer, "_merge_es_data", return_value=[]), \
              mock.patch("performiq.tasks.start_analysis.generate_exports", return_value=dict()),\
-             mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
-            start_analysis.start_analysis_task(iq_campaign.id)
+             mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create),\
+             mock.patch("performiq.tasks.start_analysis._send_completion_email") as mock_email:
+            start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         self.assertTrue(iq_campaign.started > before)
         self.assertTrue(iq_campaign.completed > iq_campaign.started)
+        mock_email.assert_called_once()
 
     def test_iqcampaign_empty_results(self):
         """ Test that resuls no_placement_analyzed is True if no placements to analyze """
@@ -65,6 +66,6 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
              mock.patch.object(ExecutorAnalyzer, "_merge_es_data", return_value=[]), \
              mock.patch("performiq.tasks.start_analysis.generate_exports", return_value=dict()),\
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
-            start_analysis.start_analysis_task(iq_campaign.id)
+            start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         self.assertTrue(iq_campaign.results["no_placement_analyzed"], True)

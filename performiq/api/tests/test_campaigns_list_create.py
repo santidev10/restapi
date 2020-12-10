@@ -120,7 +120,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         _params = dict(campaign_id=gads_campaign.id, name="test_csv")
         params = self._get_iqcampaign_params(_params)
-        with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task") \
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task") \
                 as mock_analysis:
             response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -133,7 +133,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
         _params = dict(campaign_id=dv360_campaign.id, name="test_csv")
         params = self._get_iqcampaign_params(_params)
-        with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task")\
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task")\
                 as mock_analysis:
             response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -151,7 +151,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         }
         _params = dict(csv_s3_key=csv_s3_key, csv_column_mapping=csv_column_mapping, name="test_csv")
         params = self._get_iqcampaign_params(_params)
-        with mock.patch("performiq.api.serializers.iqcampaign_serializer.start_analysis.start_analysis_task") \
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task") \
                 as mock_analysis:
             response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
