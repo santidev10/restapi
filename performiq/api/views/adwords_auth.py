@@ -46,12 +46,6 @@ class AdWordsAuthApiView(APIView):
     no_mcc_error = "MCC account wasn't found. Please check that you " \
                    "really have access to at least one."
 
-    # first step
-    def get(self, *args, **kwargs):
-        flow = self.get_flow()
-        authorize_url = flow.step1_get_authorize_url()
-        return Response(dict(authorize_url=authorize_url))
-
     # second step
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
