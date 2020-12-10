@@ -112,16 +112,18 @@ def is_url_validator(value):
 
 class CSVColumnMapper:
 
+    # NOTE: ordering matters here! Higher items have more priority for now
     alt_header_names = {
         CSVFieldTypeEnum.URL.value: ["url", "link", "www", "http"],
         CSVFieldTypeEnum.IMPRESSIONS.value: ["impression", "impres", "imp"],
         CSVFieldTypeEnum.VIEWS.value: ["views"],
         CSVFieldTypeEnum.COST.value: CURRENCY_STRINGS + ["$", "cost"],
+        CSVFieldTypeEnum.CTR.value: ["ctr", "through rate", "through_rate", "click through", "click_through",
+                                     "clickthrough"],
+        CSVFieldTypeEnum.VIEW_RATE.value: ["view rate", "view_rate"],
+        CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
         CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "avg", "average"],
         CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "avg", "average"],
-        CSVFieldTypeEnum.VIEW_RATE.value: ["view rate"],
-        CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
-        CSVFieldTypeEnum.CTR.value: ["ctr", "through rate", "click through", "clickthrough"],
     }
 
     data_guess_functions = {
@@ -171,9 +173,39 @@ class CSVColumnMapper:
         present, use the declared header values
         :return: dict
         """
-        letters = list(string.ascii_uppercase)[:len(self.header_row)]
-        labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in letters]
-        return dict(zip(letters, labels))
+        column_letters = self._get_column_letters(self.header_row)
+        labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in column_letters]
+        return dict(zip(column_letters, labels))
+
+    def _get_column_letters(self, longest_row) -> list:
+        """
+        Given a header row, which presumes the max number of columns, get a list of the column letters/names
+        :param longest_row:
+        :return:
+        """
+        column_letters = list(string.ascii_uppercase)
+        if len(longest_row) <= len(column_letters):
+            return column_letters
+
+        position = len(column_letters)
+        non_alphabet_count = len(longest_row) - len(column_letters)
+        for _ in range(non_alphabet_count):
+            position += 1
+            column_letters.append(self._get_non_alphabet_excel_column_name(position))
+
+        return column_letters
+
+    def _get_non_alphabet_excel_column_name(self, position):
+        """
+        get the column name for excel columns past alphabet columns, e.g. AA, AB...
+        :param position:
+        :return:
+        """
+        name = ""
+        while position > 0:
+            position, remainder = divmod(position - 1, 26)
+            name = chr(65 + remainder) + name
+        return name
 
     def _init_csv_data(self):
         """
@@ -192,7 +224,7 @@ class CSVColumnMapper:
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row
         self.header_map = {header.value: None for header in CSVFieldTypeEnum}
         self.available_headers = [header.value for header in CSVFieldTypeEnum]
-        column_letters = list(string.ascii_uppercase)
+        column_letters = self._get_column_letters(self.header_row)
 
         # initialize header/data guess maps
         self.header_guess_map = {letter: [] for letter in column_letters}
