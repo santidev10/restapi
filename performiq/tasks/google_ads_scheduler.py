@@ -2,13 +2,10 @@ import datetime
 
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
-from performiq.tasks.constants import Schedulers
 from performiq.tasks.update_campaigns import update_campaigns_task
 from saas import celery_app
-from saas.configs.celery import Queue
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
-from utils.celery.utils import get_queue_size
 from utils.datetime import now_in_default_tz
 
 LOCK_PREFIX = "performiq_google_ads_update_"
@@ -20,14 +17,11 @@ def google_ads_update_scheduler():
     """
     Main scheduler task to start individual account update tasks
     """
-    queue_size = get_queue_size(Queue.PERFORMIQ)
     now = now_in_default_tz()
-    # limit queue size to prevent queue growing uncontrollably
-    limit = Schedulers.GoogleAdsUpdateScheduler.get_items_limit(queue_size)
     update_threshold = now - datetime.timedelta(seconds=UPDATE_THRESHOLD)
     accounts = OAuthAccount.objects\
         .filter(oauth_type=OAuthType.GOOGLE_ADS.value, updated_at__lte=update_threshold)\
-        .order_by("updated_at")[:limit]
+        .order_by("updated_at")
     for account in accounts:
         lock, is_acquired = get_lock(account.id)
         if is_acquired:

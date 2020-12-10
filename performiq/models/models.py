@@ -46,6 +46,7 @@ class OAuthAccount(OAuthBase):
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
     oauth_account = models.ForeignKey(OAuthAccount, related_name="accounts", on_delete=models.CASCADE)
+    updated_at = models.DateTimeField(auto_now_add=True, null=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):
@@ -103,7 +104,6 @@ class IQCampaign(models.Model):
     campaign = models.ForeignKey(Campaign, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     # Must store user for CSV type analysis
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, null=True, default=None)
-
 
     def to_dict(self):
         d = {

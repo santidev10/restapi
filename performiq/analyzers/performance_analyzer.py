@@ -51,15 +51,13 @@ class PerformanceAnalyzer(BaseAnalyzer):
             metric_value = channel_analysis.get(metric_name)
             if not threshold or metric_value is None:
                 continue
-            # Add values to calculate overall averages
             self._add_averages(metric_name, metric_value)
             try:
-                # Only set passed to True if not already failed
                 if self.passes(metric_value, threshold):
                     self._total_results[metric_name]["passed"] += 1
                 else:
-                    channel_analysis.clean = False
                     self._total_results[metric_name]["failed"] += 1
+                    channel_analysis.clean = False
                     curr_result["passed"] = False
                 # Store the actual metric value
                 curr_result[metric_name] = metric_value
@@ -67,9 +65,11 @@ class PerformanceAnalyzer(BaseAnalyzer):
                 continue
             else:
                 analyzed = True
+        # Channel should not have passed = True / False if no fields were analyzed
         if analyzed is False:
             curr_result["passed"] = None
         else:
+        # Increment totals to calculate overall score in get_results method
             self._seen += 1
         if curr_result["passed"] is False:
             self._failed_channels_count += 1

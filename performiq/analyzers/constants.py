@@ -10,8 +10,8 @@ class AnalyzeSection:
     SUITABILITY_RESULT_KEY = "suitability_results"
 
 
-ANALYZE_SECTIONS = {AnalyzeSection.PERFORMANCE_RESULT_KEY, AnalyzeSection.CONTEXTUAL_RESULT_KEY,
-                    AnalyzeSection.SUITABILITY_RESULT_KEY}
+ANALYZE_SECTIONS = [AnalyzeSection.PERFORMANCE_RESULT_KEY, AnalyzeSection.CONTEXTUAL_RESULT_KEY,
+                    AnalyzeSection.SUITABILITY_RESULT_KEY]
 
 # Mapping of campaign data fields to function to coerce values
 COERCE_FIELD_FUNCS = {
