@@ -5,7 +5,9 @@ from rest_framework.views import APIView
 
 from segment.api.mixins import DynamicPersistentModelViewMixin
 from segment.models import CustomSegment
+from segment.models import CustomSegmentFileUpload
 from utils.permissions import user_has_permission
+from utils.views import get_object
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
@@ -16,8 +18,13 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get(self, request, pk, *_):
         try:
             segment = CustomSegment.objects.get(id=pk)
+            related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
+                                    f"segment_id: {segment.id} not found.", segment_id=segment.id)
             if request.user.is_staff or request.user.has_perm("userprofile.vet_audit_admin"):
-                content_generator = segment.s3.get_export_file(segment.get_admin_s3_key())
+                if related_file_obj.admin_filename:
+                    content_generator = segment.s3.get_export_file(segment.get_admin_s3_key())
+                else:
+                    content_generator = segment.s3.get_export_file(segment.get_s3_key())
             else:
                 content_generator = segment.s3.get_export_file(segment.get_s3_key())
         except CustomSegment.DoesNotExist:
