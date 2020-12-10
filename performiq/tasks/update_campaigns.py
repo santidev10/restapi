@@ -1,7 +1,6 @@
 import concurrent.futures
 
 from aw_reporting.adwords_api import get_all_customers
-from performiq.models import Account
 from performiq.models import Campaign
 from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
@@ -47,43 +46,43 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
         mcc_accounts, cid_accounts = get_accounts(oauth_account.refresh_token)
     if mcc_accounts:
         for mcc in mcc_accounts:
-            update_mcc_campaigns(mcc["customerId"], oauth_account)
+            update_mcc_campaigns(mcc["customerId"], oauth_account.refresh_token)
     elif cid_accounts:
         for cid in cid_accounts:
-            update_cid_campaigns(cid["customerId"], oauth_account)
+            update_cid_campaigns(cid["customerId"], oauth_account.refresh_token)
 
     oauth_account.synced = True
     oauth_account.save(update_fields=["synced"])
 
 
-def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
+def update_mcc_campaigns(mcc_id: int, refresh_token: str):
     """
     Update campaigns for MCC account
     :param mcc_id: Google Ads MCC account id
-    :param oauth_account: OAuthAccount
+    :param refresh_token: OAuthAccount.refresh_token
     :return:
     """
-    client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
+    client = get_client(client_customer_id=mcc_id, refresh_token=refresh_token)
     cid_accounts = get_all_customers(client)
 
     for batch in chunks_generator(cid_accounts, size=20):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
-            all_args = [(int(cid["customerId"]), oauth_account.refresh_token) for cid in batch]
+            all_args = [(int(cid["customerId"]), refresh_token) for cid in batch]
             futures = [executor.submit(get_report, *args) for args in all_args]
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
-            update_create_campaigns(report, account_id, oauth_account)
+            update_create_campaigns(report, account_id)
 
 
-def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
+def update_cid_campaigns(account_id, refresh_token) -> None:
     """
     Update or create campaigns by retrieving report data and creating / updating items for single Account
         Default fields and report query will be used if None given
     :param account_id: Account id
-    :param oauth_account: str -> OAuthAccount
+    :param refresh_token: str -> OAuthAccount.refresh_token
     """
-    account_id, report = get_report(account_id, oauth_account.refresh_token)
-    update_create_campaigns(report, account_id, oauth_account)
+    account_id, report = get_report(account_id, refresh_token)
+    update_create_campaigns(report, account_id)
 
 
 def get_report(account_id, refresh_token):
@@ -94,12 +93,11 @@ def get_report(account_id, refresh_token):
     return account_id, report
 
 
-def update_create_campaigns(report, account_id, oauth_account):
+def update_create_campaigns(report, account_id):
     """ Update or create campaigns from Adwords API Campaign Report """
-    account, _ = Account.objects.get_or_create(id=account_id, defaults=dict(oauth_account_id=oauth_account.id))
     to_update, to_create = prepare_items(
         report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value,
-        defaults={"account_id": account.id}
+        defaults={"account_id": account_id}
     )
     safe_bulk_create(Campaign, to_create)
     update_fields = [val for val in CAMPAIGN_REPORT_FIELDS_MAPPING.keys() if val not in {"id"}]
