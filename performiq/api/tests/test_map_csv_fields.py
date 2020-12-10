@@ -80,10 +80,8 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
-        alphabet = list(string.ascii_uppercase)
         header_row = self.header_row
-        for letter in alphabet:
-            header_row.append(letter)
+        header_row.extend(list(string.ascii_uppercase))
         filename = self._create_csv("csv_file.csv", header_row=header_row)
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
