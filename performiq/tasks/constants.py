@@ -1,3 +1,6 @@
+from performiq.analyzers.constants import DataSourceType
+
+
 class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=1)
@@ -14,3 +17,10 @@ class BaseScheduler:
 class Schedulers:
     class GoogleAdsUpdateScheduler(BaseScheduler):
         NAME = "performiq_google_ads_update_scheduler"
+
+
+EXPORT_TYPES = {
+    DataSourceType.GOOGLE_ADS.value: "Google Ads",
+    DataSourceType.DV360.value: "DV360",
+    DataSourceType.CSV.value: "CSV",
+}

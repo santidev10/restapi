@@ -61,6 +61,7 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     :return: str file key stored on S3
     """
     clean_ids = list(IQCampaignChannel.objects.filter(iq_campaign=iq_campaign, clean=True)
+                     .distinct()
                      .values_list("channel_id", flat=True)[:EXPORT_LIMIT])
 
     if len(clean_ids) < EXPORT_LIMIT:
@@ -83,11 +84,7 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
         writer.writerow(["URL"])
         writer.writerows([f"https://www.youtube.com/channel/{channel_id}"] for channel_id in clean_ids)
 
-    try:
-        display_filename = f"{iq_campaign.campaign.name}_recommended_{now_in_default_tz().date()}.csv"
-    except AttributeError:
-        # csv IQCampaign has no related campaign
-        display_filename = f"recommended_{now_in_default_tz().date()}.csv"
+    display_filename = f"{iq_campaign.name}_recommended_{now_in_default_tz()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
     return s3_key, len(clean_ids)
 
@@ -100,7 +97,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
     :param filepath: Filepath of file being used to generate export
     :return: str file key stored on S3
     """
-    iq_channels = iq_campaign.channels.filter(clean=False)
+    iq_channels = iq_campaign.channels.filter(clean=False).distinct()
     rows = []
     for iq in iq_channels:
         # Get failure result for each section in analysis
@@ -111,11 +108,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
         writer.writerow(["URL", "performance failed", "contextual failed", "suitability failed"])
         writer.writerows(rows)
 
-    try:
-        display_filename = f"{iq_campaign.campaign.name}_wastage_{now_in_default_tz().date()}.csv"
-    except AttributeError:
-        # csv IQCampaign has no related campaign
-        display_filename = f"wastage_{now_in_default_tz().date()}.csv"
+    display_filename = f"{iq_campaign.name}_wastage_{now_in_default_tz()}.csv"
     s3_key = exporter.export_file(filepath, display_filename)
     return s3_key, len(rows)
 
