@@ -31,7 +31,7 @@ def get_csv_data(iq_campaign):
         csv_column_mapping = iq_campaign.params["csv_column_mapping"]
         column_letter_to_metric_names = {value: key for key, value in csv_column_mapping.items()}
         s3.download_file(csv_s3_key, csv_fp)
-        # User might incorrectly upload multiple rows of the placement id. Use data from first instance
+        # csv may contain multiple rows of the same placement id. Use first instance
         seen_placement_ids = set()
         with open(csv_fp, mode="r") as file:
             reader = csv.reader(file)
