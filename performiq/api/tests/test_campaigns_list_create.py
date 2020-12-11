@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from performiq.analyzers.constants import DataSourceType
 from performiq.api.urls.names import PerformIQPathName
 from performiq.models import Account
 from performiq.models import DV360Advertiser
@@ -73,9 +74,10 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
         iq_google = IQCampaign.objects.create(campaign=gads_campaign)
         iq_dv360 = IQCampaign.objects.create(campaign=dv360_campaign)
-        iq_csv = IQCampaign.objects.create(user=user)
+        iq_csv = IQCampaign.objects.create(user=user, params=dict(csv_s3_key="test.csv"))
 
         expected_keys = {
+            "analysis_type",
             "campaign",
             "completed",
             "created",
@@ -91,8 +93,11 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         items = sorted(response.data["items"], key=lambda x: x["id"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(items[0]["id"], iq_google.id)
+        self.assertEqual(items[0]["analysis_type"], DataSourceType.GOOGLE_ADS.value)
         self.assertEqual(items[1]["id"], iq_dv360.id)
+        self.assertEqual(items[1]["analysis_type"], DataSourceType.DV360.value)
         self.assertEqual(items[2]["id"], iq_csv.id)
+        self.assertEqual(items[2]["analysis_type"], DataSourceType.CSV.value)
         for item in items:
             self.assertEqual(set(item.keys()), expected_keys)
 
@@ -205,7 +210,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
         IQCampaign.objects.create(campaign=gads_campaign, name="gads case")
         IQCampaign.objects.create(campaign=dv360_campaign, name="Dv360 TesTing CAse")
-        iq_csv = IQCampaign.objects.create(user=user, name="csv case")
+        iq_csv = IQCampaign.objects.create(user=user, name="csv case", params=dict(csv_s3_key="test.csv"))
         response = self.client.get(self._get_url() + "?analyzed=true&search=CSV")
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
