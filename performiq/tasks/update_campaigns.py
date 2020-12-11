@@ -100,7 +100,7 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
 
     for batch in chunks_generator(to_update_cids, size=20):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
-            all_args = [(int(cid["customerId"]), oauth_account.refresh_token) for cid in batch]
+            all_args = [(cid, oauth_account.refresh_token) for cid in batch]
             futures = [executor.submit(get_report, *args) for args in all_args]
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
