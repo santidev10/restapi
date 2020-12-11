@@ -76,11 +76,12 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     @mock_s3
-    def test_more_columns_than_mappable_success(self):
+    def test_more_columns_than_alphabet_letters_success(self):
         self.create_admin_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
-        header_row = self.header_row + ["asdf", "qwer"]
+        header_row = self.header_row
+        header_row.extend(list(string.ascii_uppercase))
         filename = self._create_csv("csv_file.csv", header_row=header_row)
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
@@ -89,6 +90,7 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             # check column options depending on presence of header row
             self.assertIn("column_options", json)
             column_options = json.get("column_options", {}).values()
+            self.assertEqual(len(column_options), len(header_row))
             for header in header_row:
                 with self.subTest(header):
                     self.assertIn(header, column_options)
