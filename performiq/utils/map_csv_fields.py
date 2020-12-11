@@ -138,7 +138,7 @@ def decode_to_string(data: bytes) -> str:
     :param data:
     :return: str
     """
-    for encoding in ["utf-8-sig", "utf-16", "utf-32"]:
+    for encoding in ["utf-8", "utf-8-sig", "utf-16", "utf-32"]:
         try:
             return data.decode(encoding)
         except UnicodeDecodeError:
@@ -154,6 +154,7 @@ def get_reader(io_string: StringIO) -> csv.reader:
     """
     delimiter_map = {}
     for delimiter in [",", "\t"]:
+        io_string.seek(0)
         reader = csv.reader(io_string, delimiter=delimiter, quotechar="\"")
         row = next(reader)
         delimiter_map[delimiter] = len(row)
