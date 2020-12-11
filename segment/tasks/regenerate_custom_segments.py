@@ -54,4 +54,6 @@ def regenerate_custom_segments():
         segment.save()
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
+        if export.admin_filename is None:
+            export.admin_filename = results["admin_s3_key"]
         export.save()
