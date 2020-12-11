@@ -31,6 +31,8 @@ def get_csv_data(iq_campaign):
         csv_column_mapping = iq_campaign.params["csv_column_mapping"]
         column_letter_to_metric_names = {value: key for key, value in csv_column_mapping.items()}
         s3.download_file(csv_s3_key, csv_fp)
+        # User might incorrectly upload multiple rows of the placement id. Use data from first instance
+        seen_placement_ids = set()
         with open(csv_fp, mode="r") as file:
             reader = csv.reader(file)
             for row in reader:
@@ -51,17 +53,24 @@ def get_csv_data(iq_campaign):
                     metric_name = column_letter_to_metric_names[column_letter]
                     raw_values_by_metric_name[metric_name] = row[column_index]
 
+                placement_seen = False
                 # Map metric names to AnalysisFields that is used for all data sources
                 mapped_metrics = {}
                 for metric_name, metric_value in raw_values_by_metric_name.items():
                     if metric_name == CSVFieldTypeEnum.URL.value:
                         placement_id = COERCE_FIELD_FUNCS["channel_url"](metric_value)
+                        if placement_id in seen_placement_ids or len(placement_id) != 24 or placement_id[:2] != "UC":
+                            placement_seen = True
+                            break
                         mapped_metrics[AnalysisFields.CHANNEL_ID] = placement_id
+                        seen_placement_ids.add(placement_id)
                     else:
                         mapped_key = CSV_HEADER_MAPPING.get(metric_name, metric_name)
                         coercer = COERCE_FIELD_FUNCS.get(mapped_key)
                         mapped_value = coercer(metric_value) if coercer else metric_value
                         mapped_metrics[mapped_key] = mapped_value
+                if placement_seen is True:
+                    continue
                 yield mapped_metrics
     except Exception:
         logger.exception(f"Error processing PerformIQ csv file. S3 file key: {s3}")
