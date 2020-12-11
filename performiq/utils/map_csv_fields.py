@@ -1,4 +1,5 @@
 import csv
+import operator
 import string
 from io import StringIO
 from typing import Type
@@ -7,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import URLValidator
 
-from performiq.api.serializers.map_csv_fields_serializer import CSVFileField
 from performiq.utils.constants import CSVFieldTypeEnum
 
 
@@ -110,6 +110,59 @@ def is_url_validator(value):
     return value
 
 
+def is_header_row(row: list) -> bool:
+    """
+    check for signs that a row is a header row
+    :param row:
+    :return: Bool
+    """
+    # check for obvious numerics
+    numerics = [value for value in row
+                if type(value) in [int, float, complex]
+                or isinstance(value, str) and value.isnumeric()]
+    if numerics:
+        return False
+    # check for obvious urls
+    for value in row:
+        if isinstance(value, str):
+            for substr in ["www", "http", ".com"]:
+                if substr in value:
+                    return False
+    return True
+
+
+def decode_to_string(data: bytes) -> str:
+    """
+    decode a bytes object into a string, try multiple character encodings
+    NOTE: Google's reports use utf-16!
+    :param data:
+    :return: str
+    """
+    for encoding in ["utf-8-sig", "utf-16", "utf-32"]:
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValidationError("Could not find the right character encoding!")
+
+
+def get_reader(io_string: StringIO) -> csv.reader:
+    """
+    get a reader with the the most likely delimiter value
+    :param io_string:
+    :return csv.reader:
+    """
+    delimiter_map = {}
+    for delimiter in [",", "\t"]:
+        reader = csv.reader(io_string, delimiter=delimiter, quotechar="\"")
+        row = next(reader)
+        delimiter_map[delimiter] = len(row)
+
+    delimiter_with_most_items = max(delimiter_map.items(), key=operator.itemgetter(1))[0]
+    io_string.seek(0)
+    return csv.reader(io_string, delimiter=delimiter_with_most_items, quotechar="\"")
+
+
 class CSVColumnMapper:
 
     # NOTE: ordering matters here! Higher items have more priority for now
@@ -122,8 +175,8 @@ class CSVColumnMapper:
                                      "clickthrough"],
         CSVFieldTypeEnum.VIEW_RATE.value: ["view rate", "view_rate"],
         CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
-        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "avg", "average"],
-        CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "avg", "average"],
+        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "cost per view", "cost_per_view",],
+        CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "mille"],
     }
 
     data_guess_functions = {
@@ -216,11 +269,11 @@ class CSVColumnMapper:
         # reset file position, grab first chunk to make header guess from
         self.csv_file.seek(0)
         chunk = next(self.csv_file.chunks())
-        decoded = chunk.decode("utf-8-sig", errors="ignore")
+        decoded = decode_to_string(chunk)
         io_string = StringIO(decoded)
-        reader = csv.reader(io_string, delimiter=",", quotechar="\"")
+        reader = get_reader(io_string)
         self.header_row = next(reader)
-        self.csv_has_header_row = True if CSVFileField.is_header_row(self.header_row) else False
+        self.csv_has_header_row = True if is_header_row(self.header_row) else False
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row
         self.header_map = {header.value: None for header in CSVFieldTypeEnum}
         self.available_headers = [header.value for header in CSVFieldTypeEnum]
