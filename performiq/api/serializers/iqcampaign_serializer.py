@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from performiq.analyzers.constants import DataSourceType
 from performiq.models import Campaign
 from performiq.models import IQCampaign
 from segment.api.serializers.ctl_params_serializer import NullableListField
@@ -31,6 +32,9 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     ctr = serializers.FloatField(required=False, write_only=True, default=None, allow_null=True)
     active_view_viewability = serializers.FloatField(write_only=True, required=False, default=None, allow_null=True)
     video_quartile_100_rate = serializers.FloatField(write_only=True, required=False, default=None, allow_null=True)
+
+    # Read only fields
+    analysis_type = serializers.SerializerMethodField()
 
     class Meta:
         model = IQCampaign
@@ -64,3 +68,15 @@ class IQCampaignSerializer(serializers.ModelSerializer):
     def validate_content_type(self, val):
         validated = [str(val) for val in super().validate(val)]
         return validated
+
+    def get_analysis_type(self, obj) -> int:
+        """
+        Get analysis type of IQCampaign
+        :param obj:
+        :return:
+        """
+        if obj.params.get("csv_s3_key"):
+            analysis_type = DataSourceType(2).value
+        else:
+            analysis_type = DataSourceType(obj.campaign.oauth_type).value
+        return analysis_type

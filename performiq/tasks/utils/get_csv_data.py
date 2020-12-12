@@ -37,7 +37,8 @@ def get_csv_data(iq_campaign):
             reader = csv.reader(file)
             for row in reader:
                 # Skip non data rows
-                if all(r.replace(" ", "").isalpha() for r in row) or not row or "channel" not in "".join(row):
+                invalid_placement_url = ("youtube.com/channel/" not in "".join(row))
+                if all(r.replace(" ", "").isalpha() for r in row) or not row or invalid_placement_url:
                     try:
                         next(reader)
                     except StopIteration:
