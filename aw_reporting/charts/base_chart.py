@@ -274,7 +274,7 @@ class BaseChart:
             self.fill_missed_dates(chart_items)
 
         # sort by label
-        chart_items = sorted(chart_items, key=lambda i: i["label"])
+        chart_items = sorted(chart_items, key=lambda i: i.get("label", "") or "")
 
         return chart_items
     # pylint: enable=too-many-nested-blocks
