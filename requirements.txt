@@ -14,7 +14,7 @@ djangorestframework-csv==2.1.0
 djangorestframework==3.11.0
 drf-yasg==1.17.1
 elastic-apm==5.8.1
-elasticsearch==7.1.0
+elasticsearch==7.10.1
 emoji==0.5.4
 fasttext==0.9.1
 flashtext==2.7
