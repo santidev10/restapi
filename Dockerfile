@@ -1,5 +1,6 @@
 FROM python:3.7.4 as base
 ENV PYTHONUNBUFFERED 1
+ENV ELASTIC_SEARCH_URLS es
 RUN pip install uwsgi
 COPY ./requirements.txt /tmp/
 COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
