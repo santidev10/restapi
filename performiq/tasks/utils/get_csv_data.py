@@ -12,14 +12,15 @@ from performiq.utils.constants import CSVFieldTypeEnum
 
 logger = logging.getLogger(__name__)
 
-# Create a mapping of AnalysisFields to csv data columns
+# Mapping of CSV data column names to AnalysisFields that is uniform for all data sources
 CSV_HEADER_MAPPING = {
-    CSVFieldTypeEnum.URL.value: "url",
-    CSVFieldTypeEnum.VIEW_RATE.value: AnalysisFields.VIDEO_VIEW_RATE,
     CSVFieldTypeEnum.AVERAGE_CPV.value: AnalysisFields.CPV,
     CSVFieldTypeEnum.AVERAGE_CPM.value: AnalysisFields.CPM,
+    CSVFieldTypeEnum.COST: AnalysisFields.COST,
     CSVFieldTypeEnum.CTR.value: AnalysisFields.CTR,
+    CSVFieldTypeEnum.URL.value: "url",
     CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: AnalysisFields.VIDEO_QUARTILE_100_RATE,
+    CSVFieldTypeEnum.VIEW_RATE.value: AnalysisFields.VIDEO_VIEW_RATE,
 }
 
 
