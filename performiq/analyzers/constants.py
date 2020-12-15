@@ -4,14 +4,14 @@ from .utils import Coercers
 from performiq.models.constants import AnalysisFields
 
 
-class AnalyzeSection:
+class AnalysisResultSection:
     PERFORMANCE_RESULT_KEY = "performance_results"
     CONTEXTUAL_RESULT_KEY = "contextual_results"
     SUITABILITY_RESULT_KEY = "suitability_results"
 
 
-ANALYZE_SECTIONS = [AnalyzeSection.PERFORMANCE_RESULT_KEY, AnalyzeSection.CONTEXTUAL_RESULT_KEY,
-                    AnalyzeSection.SUITABILITY_RESULT_KEY]
+ANALYSIS_RESULT_SECTIONS = [AnalysisResultSection.PERFORMANCE_RESULT_KEY, AnalysisResultSection.CONTEXTUAL_RESULT_KEY,
+                            AnalysisResultSection.SUITABILITY_RESULT_KEY]
 
 # Mapping of campaign data fields to function to coerce values
 COERCE_FIELD_FUNCS = {

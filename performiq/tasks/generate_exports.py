@@ -13,7 +13,7 @@ from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.query_builder import QueryBuilder
 from es_components.models import Channel
-from performiq.analyzers.constants import ANALYZE_SECTIONS
+from performiq.analyzers.constants import ANALYSIS_RESULT_SECTIONS
 from performiq.api.serializers.query_serializer import IQCampaignQuerySerializer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
@@ -101,7 +101,7 @@ def create_wastage_export(iq_campaign, exporter, filepath):
     rows = []
     for iq in iq_channels:
         # Get failure result for each section in analysis
-        failed_values = [get_failed_repr(iq.results[key]["passed"]) for key in ANALYZE_SECTIONS]
+        failed_values = [get_failed_repr(iq.results[key]["passed"]) for key in ANALYSIS_RESULT_SECTIONS]
         rows.append([f"https://www.youtube.com/channel/{iq.channel_id}", *failed_values])
     with open(filepath, mode="w") as file:
         writer = csv.writer(file)

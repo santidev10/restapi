@@ -1,10 +1,10 @@
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
-from .constants import AnalyzeSection
+from .constants import AnalysisResultSection
 
 
 class SuitabilityAnalyzer(BaseAnalyzer):
-    RESULT_KEY = AnalyzeSection.SUITABILITY_RESULT_KEY
+    RESULT_KEY = AnalysisResultSection.SUITABILITY_RESULT_KEY
 
     def __init__(self, params):
         self.params = params
