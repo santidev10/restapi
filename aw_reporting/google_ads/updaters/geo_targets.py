@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class GeoTargetUpdater(UpdateMixin):
     RESOURCE_NAME = "geo_target_constant"
     UPDATE_FIELDS = ["canonical_name", "country_code", "name", "parent_id", "status", "target_type"]
-    COMPARE_FIELDS = ["canonical_name", "country_code", "id", "name", "parent_id", "status", "target_type"]
+    COMPARE_FIELDS = [*UPDATE_FIELDS, "id"]
 
     def __init__(self):
         self.client = None
