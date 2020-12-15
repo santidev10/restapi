@@ -3,6 +3,8 @@ import operator
 import string
 from io import StringIO
 from typing import Type
+from abc import ABC
+from abc import abstractmethod
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
@@ -146,10 +148,42 @@ def decode_to_string(data: bytes) -> str:
     raise ValidationError("Could not find the right character encoding!")
 
 
-class CSVWithOnlyData:
+class AbstractCSVType(ABC):
+    """
+    Abstract class for validation with CSVHeaderUtil
+    """
 
     def __init__(self, rows: list):
         self.rows = rows
+
+    @abstractmethod
+    def is_valid(self):
+        """
+        raise ValidationErrors if the `rows` list passed in __init__ are invalid for the concrete type
+        :return:
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_type_string():
+        """
+        return a type string in snake case, e.g.: csv_type_asdf
+        :return:
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_first_data_row_index():
+        """
+        return the index of the first data row
+        :return:
+        """
+        pass
+
+
+class CSVWithOnlyData(AbstractCSVType):
 
     def is_valid(self):
         if not len(self.rows):
@@ -157,18 +191,19 @@ class CSVWithOnlyData:
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
         if is_header_row(self.rows[0]):
-            raise ValidationError("CSV has a header row")
+            raise ValidationError("CSV cannot have a header row")
         return True
+
+    @staticmethod
+    def get_type_string():
+        return "csv_with_only_data"
 
     @staticmethod
     def get_first_data_row_index():
         return 0
 
 
-class CSVWithHeader:
-
-    def __init__(self, rows: list):
-        self.rows = rows
+class CSVWithHeader(AbstractCSVType):
 
     def is_valid(self):
         if len(self.rows) < 2:
@@ -176,23 +211,24 @@ class CSVWithHeader:
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
         if not is_header_row(self.rows[0]):
-            raise ValidationError("First row is not a header row")
+            raise ValidationError("First row must be a header row")
         nulls = [value for value in self.rows[0] if not value]
         if nulls:
             raise ValidationError("Header row invalid. Reason: no values detected")
         if is_header_row(self.rows[1]):
-            raise ValidationError("Second row is a header row")
+            raise ValidationError("Second row must be a data row")
         return True
+
+    @staticmethod
+    def get_type_string():
+        return "csv_with_headers"
 
     @staticmethod
     def get_first_data_row_index():
         return 1
 
 
-class ManagedPlacementsReport:
-
-    def __init__(self, rows: list):
-        self.rows = rows
+class ManagedPlacementsReport(AbstractCSVType):
 
     def is_valid(self):
         if len(self.rows) < 4:
@@ -200,12 +236,16 @@ class ManagedPlacementsReport:
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
         if len(self.rows[0]) != 1 or self.rows[0][0] != "Managed placements report":
-            raise ValidationError("First row is not 'Managed placements report'")
+            raise ValidationError("First row must be 'Managed placements report'")
         if len(self.rows[1]) != 1 or self.rows[1][0] != "All time":
-            raise ValidationError("Second row is not 'All time'")
+            raise ValidationError("Second must be 'All time'")
         if not is_header_row(self.rows[2]):
             raise ValidationError("Third row must be a header row")
         return True
+
+    @staticmethod
+    def get_type_string():
+        return "managed_placements_report"
 
     @staticmethod
     def get_first_data_row_index():
@@ -229,7 +269,7 @@ class CSVHeaderUtil:
             self.reader = get_reader(io_string)
 
         self._init_rows(rows)
-        self.validation_errors = []
+        self.validation_errors = {}
         self.valid_types = {}
         self._run_validation()
 
@@ -248,18 +288,22 @@ class CSVHeaderUtil:
 
     def _run_validation(self):
         """
-        run through all registered validators, store validation errors and valid types
+        run through all registered validators, store type-mapped validation errors
         :return:
         """
         for csv_type in self.csv_header_types:
+            csv_type_string = csv_type.get_type_string()
+
             instance = csv_type(self.rows)
             try:
                 instance.is_valid()
             except ValidationError as e:
-                self.validation_errors.append(e)
+                type_errors = self.validation_errors.get(csv_type_string, [])
+                type_errors.append(e.message)
+                self.validation_errors[csv_type_string] = type_errors
                 continue
 
-            self.valid_types[csv_type] = instance
+            self.valid_types[csv_type_string] = instance
 
     def is_valid(self) -> bool:
         """
@@ -274,7 +318,7 @@ class CSVHeaderUtil:
         :return: int
         """
         if not self.valid_types:
-            raise ValidationError("No valid header types detected!")
+            raise ValidationError(self.validation_errors)
 
         indices = [instance.get_first_data_row_index() for valid_type, instance in self.valid_types.items()]
 

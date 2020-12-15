@@ -11,6 +11,9 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.api.urls.names import PerformIQPathName
 from performiq.utils.constants import CSVFieldTypeEnum
+from performiq.utils.map_csv_fields import CSVWithHeader
+from performiq.utils.map_csv_fields import CSVWithOnlyData
+from performiq.utils.map_csv_fields import ManagedPlacementsReport
 from saas.urls.namespaces import Namespace
 from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -64,8 +67,16 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         filename = self._create_csv("csv_file.csv", write_data=False, header_row=header_row)
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
-            self.assertIn("Header row invalid.", response.json().get("csv_file")[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            json = response.json()
+            type_error_map = {
+                CSVWithOnlyData.get_type_string(): "CSV cannot have a header row",
+                CSVWithHeader.get_type_string(): "CSV must have at least two rows",
+                ManagedPlacementsReport.get_type_string(): "Managed placements reports must have at least 4 rows"
+            }
+            for csv_type, expected_error in type_error_map.items():
+                with self.subTest((csv_type, expected_error)):
+                    self.assertIn(expected_error, json.get("csv_file", {}).get(csv_type, []))
 
     def test_missing_data_row(self):
         self.create_admin_user()
@@ -73,7 +84,9 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
             json = response.json()
-            self.assertIn("one row besides the header row must be present", json.get("csv_file", [])[0])
+            csv_type_key = CSVWithHeader.get_type_string()
+            self.assertIn("CSV must have at least two rows",
+                          json.get("csv_file", {}).get(csv_type_key, []))
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     @mock_s3

@@ -27,7 +27,7 @@ class CSVFileField(serializers.FileField):
         except csv.Error:
             raise ValidationError("Unable to parse the CSV file")
         if not csv_header_util.is_valid():
-            raise ValidationError("The CSV did not have the required format!")
+            raise ValidationError(csv_header_util.validation_errors)
 
         return data
 
