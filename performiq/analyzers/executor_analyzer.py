@@ -100,6 +100,19 @@ class ExecutorAnalyzer(BaseAnalyzer):
             analyzer.RESULT_KEY: analyzer.get_results()
             for analyzer in self._analyzers
         }
+        # Calculate total score average for all analysis sections. Only factor in section overall score if analysis
+        # was done (i.e. params were set for analysis)
+        sum_score = 0
+        sections_analyzed = 0
+        for result in all_results.values():
+            if result["overall_score"] is not None:
+                sum_score += result["overall_score"]
+                sections_analyzed += 1
+        try:
+            total_score = round(sum_score / sections_analyzed, 4)
+        except ZeroDivisionError:
+            total_score = None
+        all_results["total_score"] = total_score
         return all_results
 
     def calculate_wastage_statistics(self):
