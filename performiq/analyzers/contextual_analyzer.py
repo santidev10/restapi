@@ -5,7 +5,7 @@ from elasticsearch_dsl.utils import AttrList
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
 from .constants import AnalysisFields
-from .constants import AnalyzeSection
+from .constants import AnalysisResultSection
 
 
 class ContextualAnalyzer(BaseAnalyzer):
@@ -15,14 +15,14 @@ class ContextualAnalyzer(BaseAnalyzer):
         calling the get_results property
     """
     TOP_OCCURRENCES_MAX = 5
-    RESULT_KEY = AnalyzeSection.CONTEXTUAL_RESULT_KEY
+    RESULT_KEY = AnalysisResultSection.CONTEXTUAL_RESULT_KEY
     ANALYSIS_FIELDS = {AnalysisFields.CONTENT_CATEGORIES, AnalysisFields.LANGUAGES, AnalysisFields.CONTENT_TYPE,
                        AnalysisFields.CONTENT_QUALITY}
 
     def __init__(self, params: dict):
         # Coerce list params to sets as ContextualAnalyzer checks for attributes membership as part of analysis
         self._params = {
-            key: set(value) if isinstance(value, list) else value
+            key: set(value) if isinstance(value, list) and value is not None else value
             for key, value in params.items()
         }
         self._failed_channels = set()
@@ -90,8 +90,12 @@ class ContextualAnalyzer(BaseAnalyzer):
             percentage_results[formatted_key] = percents
 
         percentage_results["content_categories"] = self._get_content_categories_result()
+        # Check if params were applied for analysis
+        params_exist = any(
+            len(self._params[field]) > 0 for field in self.ANALYSIS_FIELDS
+        )
         final_result = {
-            "overall_score": self.get_score(passed_count, self._seen),
+            "overall_score": self.get_score(passed_count, self._seen) if params_exist else None,
             **percentage_results
         }
         return final_result
@@ -186,7 +190,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         category_occurrence = [
             {
                 "category": category,
-                # Whether or not a cateory was seen at least once
+                # Whether or not a category was seen at least once
                 "matched": content_categories_counts[category] > 0
             }
             for category in category_sorted_keys if category in self._params[AnalysisFields.CONTENT_CATEGORIES]
