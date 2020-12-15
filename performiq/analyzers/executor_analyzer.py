@@ -105,7 +105,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         sum_score = 0
         sections_analyzed = 0
         for result in all_results.values():
-            if result["overall_score"] is not None:
+            if result.get("overall_score") is not None:
                 sum_score += result["overall_score"]
                 sections_analyzed += 1
         try:
