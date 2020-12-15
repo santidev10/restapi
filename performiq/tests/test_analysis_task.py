@@ -94,3 +94,40 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         # contextual params of empty lists means no params were set for analysis
         self.assertIsNone(results[AnalysisResultSection.CONTEXTUAL_RESULT_KEY]["overall_score"])
         self.assertIsNone(results[AnalysisResultSection.PERFORMANCE_RESULT_KEY]["overall_score"])
+
+    @mock_s3
+    def test_null_results_excluded_total_score(self):
+        """ Test that analyzers with None overall scores do not contribute to total score.
+         An analyzer may have a None overall score if no params were set"""
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
+
+        performance_null_params = {
+            key: None for key in PerformanceAnalyzer.ANALYSIS_FIELDS
+        }
+        _params = dict(
+            # params set for contextual and suitability, but not performance
+            content_type=[0],
+            score_threshold=1,
+            **performance_null_params
+        )
+        params = get_params(performance_null_params)
+        iq_campaign = IQCampaign.objects.create(params=params)
+        analysis_data = dict(
+            # Pass both contextual and suitability analysis
+            content_type=0,
+            overall_score=100,
+        )
+        analyses = [
+            ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=analysis_data)
+        ]
+        with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=analyses), \
+             mock.patch.object(ExecutorAnalyzer, "_merge_es_data", return_value=analyses), \
+             mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
+            start_analysis.start_analysis_task(iq_campaign.id, "", "")
+        iq_campaign.refresh_from_db()
+        results = iq_campaign.results
+        # No params set for performance, so overall score should be None and not factored into average total score
+        # Params set for contextual and suitability and with analysis passed for both sections. Total score
+        # should be calculated as 100 (contextual) + 100 (suitability) / 2
+        self.assertEqual(results["total_score"], 100)
