@@ -235,9 +235,9 @@ class ManagedPlacementsReport(AbstractCSVType):
             raise ValidationError("Managed placements reports must have at least 4 rows")
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
-        if len(self.rows[0]) != 1 or self.rows[0][0] != "Managed placements report":
+        if not len(self.rows[0]) or self.rows[0][0] != "Managed placements report":
             raise ValidationError("First row must be 'Managed placements report'")
-        if len(self.rows[1]) != 1 or self.rows[1][0] != "All time":
+        if not len(self.rows[1]) or self.rows[1][0] != "All time":
             raise ValidationError("Second must be 'All time'")
         if not is_header_row(self.rows[2]):
             raise ValidationError("Third row must be a header row")
@@ -325,22 +325,33 @@ class CSVHeaderUtil:
         return max(indices)
 
 
-def get_reader(io_string: StringIO) -> csv.reader:
+def get_reader(io_string: StringIO, row_depth: int = 5) -> csv.reader:
     """
     get a reader with the the most likely delimiter value
     :param io_string:
+    :param row_depth:
     :return csv.reader:
     """
     delimiter_map = {}
     for delimiter in [",", "\t"]:
         io_string.seek(0)
         reader = csv.reader(io_string, delimiter=delimiter, quotechar="\"")
-        row = next(reader)
-        delimiter_map[delimiter] = len(row)
+        column_counts = []
+        for _ in range(row_depth):
+            try:
+                row = next(reader)
+            except StopIteration:
+                break
+            column_counts.append(len(row))
 
-    delimiter_with_most_items = max(delimiter_map.items(), key=operator.itemgetter(1))[0]
+        delimiter_map[delimiter] = max(column_counts)
+
+    if not delimiter_map:
+        raise ValidationError("No rows detected!")
+
+    delimiter_with_greatest_column_count = max(delimiter_map.items(), key=operator.itemgetter(1))[0]
     io_string.seek(0)
-    return csv.reader(io_string, delimiter=delimiter_with_most_items, quotechar="\"")
+    return csv.reader(io_string, delimiter=delimiter_with_greatest_column_count, quotechar="\"")
 
 
 class CSVColumnMapper:
@@ -355,7 +366,7 @@ class CSVColumnMapper:
                                      "clickthrough"],
         CSVFieldTypeEnum.VIEW_RATE.value: ["view rate", "view_rate"],
         CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
-        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "cost per view", "cost_per_view",],
+        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "cost per view", "cost_per_view"],
         CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "mille"],
     }
 
