@@ -12,6 +12,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.api.urls.names import AuditPathName
+from audit_tool.tests.utils import create_model_objs
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
@@ -35,6 +36,15 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
     custom_segment_model = None
     custom_segment_export_model = None
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        create_model_objs()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def setUp(self):
         # Import and set models to avoid recursive ImportError
@@ -721,3 +731,65 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["vetting_id"], new_channel_vet.id)
+
+    def test_patch_channel_primary_updates_iab_categories(self, *args):
+        """ Test that updating primary_category adds to general_data.iab_categories and task_us_data.iab_categories """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        audit_item = AuditChannel.objects.create(channel_id=audit_item_yt_id)
+        AuditChannelMeta.objects.create(channel=audit_item, name="test meta name")
+        vetting_item = AuditChannelVet.objects.create(audit=audit, channel=audit_item)
+        payload = {
+            "brand_safety": [],
+            "age_group": 1,
+            "content_quality": 1,
+            "content_type": 1,
+            "gender": 1,
+            "iab_categories": ["Industries"],
+            "is_monetizable": False,
+            "language": "ja",
+            "primary_category": "Automotive",
+            "suitable": True,
+            "vetting_id": vetting_item.id,
+        }
+        mock_doc = self._create_mock_document(Channel, audit_item.channel_id)
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch.object(ChannelManager, "upsert") as mock_upsert,\
+                patch.object(ChannelManager, "get", return_value=[mock_doc]):
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        upserted_doc = mock_upsert.call_args[0][0][0]
+        self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
+        self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
+
+    def test_patch_video_primary_updates_iab_categories(self, *args):
+        """ Test that updating primary_category adds to general_data.iab_categories and task_us_data.iab_categories """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="video"))
+        audit_item_yt_id = f"video_id{next(int_iterator)}"
+        audit_item = AuditVideo.objects.create(video_id=audit_item_yt_id)
+        AuditVideoMeta.objects.create(video=audit_item, name="test meta name")
+        vetting_item = AuditVideoVet.objects.create(audit=audit, video=audit_item)
+        payload = {
+            "brand_safety": [],
+            "age_group": 1,
+            "content_quality": 1,
+            "content_type": 1,
+            "gender": 1,
+            "iab_categories": ["Industries"],
+            "is_monetizable": False,
+            "language": "ja",
+            "primary_category": "Automotive",
+            "suitable": True,
+            "vetting_id": vetting_item.id,
+        }
+        mock_doc = self._create_mock_document(Video, audit_item.channel_id)
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch.object(VideoManager, "upsert") as mock_upsert,\
+                patch.object(VideoManager, "get", return_value=[mock_doc]):
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        upserted_doc = mock_upsert.call_args[0][0][0]
+        self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
+        self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)

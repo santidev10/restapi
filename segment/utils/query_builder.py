@@ -172,17 +172,21 @@ class SegmentQueryBuilder:
                     .field(f"{Sections.GENERAL_DATA}.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
 
-        if self._params.get("content_categories"):
-            content_queries = Q("bool")
-            for category in self._params["content_categories"]:
-                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
-                    category).get()
-            must_queries.append(content_queries)
-
         if self._params.get("exclude_content_categories"):
             content_exclusion_queries = self._get_terms_query(self._params["exclude_content_categories"],
                                                               "general_data.iab_categories", "must_not")
-            must_queries.append(content_exclusion_queries)
+            primary_category_exclusion = self._get_terms_query(self._params["exclude_content_categories"],
+                                                               "general_data.primary_category", "must_not")
+            must_queries.extend((content_exclusion_queries, primary_category_exclusion))
+
+        if self._params.get("content_categories"):
+            content_queries = Q("bool")
+            content_categories = set(self._params["content_categories"]) \
+                                 - set(self._params.get("exclude_content_categories", []))
+            for category in content_categories:
+                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
+                    category).get()
+            must_queries.append(content_queries)
 
         if self._params.get("countries"):
             country_queries = Q("bool")

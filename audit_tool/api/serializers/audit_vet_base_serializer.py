@@ -24,20 +24,20 @@ class AuditVetBaseSerializer(Serializer):
     general_data_lang_code_field = None
     es_manager = None
 
-    # Elasticsearch fields for serialization. Some fields are also used to deserialization
+    # Elasticsearch fields for serialization
     age_group = IntegerField(source="task_us_data.age_group", default=None)
-    content_type = IntegerField(source="task_us_data.content_type", default=None)
+    brand_safety_overall_score = IntegerField(source="brand_safety.overall_score", default=None)
     content_quality = IntegerField(source="task_us_data.content_quality", default=None)
+    content_type = IntegerField(source="task_us_data.content_type", default=None)
     gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
-    mismatched_language = BooleanField(source="task_us_data.mismatched_language", default=None)
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
-    YT_id = CharField(source="main.id", default=None)
-    title = CharField(source="general_data.title", default=None)
-    brand_safety = SerializerMethodField()
-    brand_safety_overall_score = IntegerField(source="brand_safety.overall_score", default=None)
-    language = SerializerMethodField()
+    mismatched_language = BooleanField(source="task_us_data.mismatched_language", default=None)
     primary_category = CharField(source="general_data.primary_category")
+    title = CharField(source="general_data.title", default=None)
+    YT_id = CharField(source="main.id", default=None)
+    brand_safety = SerializerMethodField()
+    language = SerializerMethodField()
 
     # Postgres fields to save during deserialization
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -141,6 +141,8 @@ class AuditVetBaseSerializer(Serializer):
         :return: AuditCategory
         """
         values = list(set(values))
+        if not values:
+            raise ValidationError("Content categories must not be empty.")
         iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
@@ -248,18 +250,16 @@ class AuditVetBaseSerializer(Serializer):
             pre_limbo_score = None
 
         vetted_brand_safety_categories, should_rescore = self._get_vetted_brand_safety(previous_blacklist_categories)
-        task_us_data = {
-            "last_vetted_at": timezone.now(),
-            **self.validated_data["task_us_data"],
-        }
-        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        task_us_data = self._get_task_us_data()
         general_data = self._get_general_data(task_us_data)
+        # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
         # Must use [None] as a sentinel value as elasticsearch_dsl will not serialize empty lists during update
         # https://github.com/elastic/elasticsearch-dsl-py/issues/758
+        # https://github.com/elastic/elasticsearch-dsl-py/issues/460
         task_us_data["brand_safety"] = vetted_brand_safety_categories if vetted_brand_safety_categories else [None]
         brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score, pre_limbo_score)
 
-        # Update Elasticsearch document
+        # Update Elasticsearch document with vetted data
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
@@ -281,16 +281,9 @@ class AuditVetBaseSerializer(Serializer):
         lang_code = task_us_data.get("lang_code")
         if lang_code and LANGUAGES.get(lang_code):
             general_data[self.general_data_lang_code_field] = lang_code
-        # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
-        # https://github.com/elastic/elasticsearch-dsl-py/issues/460
-        if not task_us_data.get("iab_categories"):
-            general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
-        else:
-            general_data["iab_categories"] = task_us_data["iab_categories"]
-        try:
-            general_data["primary_category"] = self.validated_data["general_data"]["primary_category"]
-        except KeyError:
-            pass
+
+        general_data["iab_categories"] = task_us_data.get("iab_categories", [])
+        general_data["primary_category"] = self.validated_data["general_data"].get("primary_category")
         return general_data
 
     def _get_brand_safety_limbo(self, task_us_data, overall_score, pre_limbo_score):
@@ -328,3 +321,12 @@ class AuditVetBaseSerializer(Serializer):
                     "pre_limbo_score": overall_score,
                 }
         return limbo_data
+
+    def _get_task_us_data(self):
+        task_us_data = {
+            "last_vetted_at": timezone.now(),
+            "lang_code": self.validated_data["task_us_data"].pop("language", None),
+            **self.validated_data["task_us_data"],
+        }
+        task_us_data["iab_categories"].append(self.validated_data["general_data"]["primary_category"])
+        return task_us_data
