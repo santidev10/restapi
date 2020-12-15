@@ -1,14 +1,11 @@
 import csv
-from io import StringIO
 
 from typing import Type
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 
-from performiq.utils.map_csv_fields import decode_to_string
-from performiq.utils.map_csv_fields import get_reader
-from performiq.utils.map_csv_fields import is_header_row
+from performiq.utils.map_csv_fields import CSVHeaderUtil
 
 
 class CSVFileField(serializers.FileField):
@@ -25,28 +22,14 @@ class CSVFileField(serializers.FileField):
             raise ValidationError(msg)
         # reset file position and grab the first chunk to validate on
         data.seek(0)
-        chunk = next(data.chunks())
-        decoded = decode_to_string(chunk)
-        io_string = StringIO(decoded)
         try:
-            reader = get_reader(io_string)
-            header_row = next(reader)
-            self._validate_header_row(header_row)
+            csv_header_util = CSVHeaderUtil(data)
         except csv.Error:
             raise ValidationError("Unable to parse the CSV file")
-        # validate that there is one row besides the header row, if a header row is present
-        if is_header_row(header_row):
-            try:
-                next(reader)
-            except StopIteration:
-                raise ValidationError("CSV Invalid, one row besides the header row must be present.")
+        if not csv_header_util.is_valid():
+            raise ValidationError("The CSV did not have the required format!")
 
         return data
-
-    def _validate_header_row(self, header_row) -> None:
-        nulls = [value for value in header_row if not value]
-        if nulls:
-            raise ValidationError(f"Header row invalid. Reason: no values detected")
 
 
 class MapCSVFieldsSerializer(serializers.Serializer):
