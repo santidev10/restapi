@@ -271,19 +271,19 @@ class CSVHeaderUtil:
         :param row_depth: integer. default 4. max depth to scan to determine csv "type". Should be set to the lowest
         required depth. Should be the max of all csv_header_types' data row index
         """
-        if not csv_file and not reader and not rows:
+        if all(item is None for item in [csv_file, reader, rows]):
             raise ValueError("Either csv_file, reader or rows must be passed!")
 
         self.row_depth = row_depth
         self.validation_errors = {}
         self.valid_types = {}
 
-        if rows:
+        if rows is not None:
             self.rows = rows[:self.row_depth]
-        elif reader:
+        elif reader is not None:
             self.reader = reader
             self._init_rows_from_reader()
-        elif csv_file:
+        elif csv_file is not None:
             csv_file.seek(0)
             chunk = next(csv_file.chunks())
             decoded = decode_to_string(chunk)
