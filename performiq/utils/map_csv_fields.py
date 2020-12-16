@@ -262,6 +262,15 @@ class CSVHeaderUtil:
 
     def __init__(self, csv_file: Type[UploadedFile] = None, reader: csv.reader = None, rows: list = None,
                  row_depth: int = 4):
+        """
+        takes either an UploadedFile, csv.reader, or list of rows, and an optional row_depth to validate or determine
+        the index of the first data row for the given csv representation
+        :param csv_file: UploadedFile. Encoding, delimiters will be determined by the util
+        :param reader: csv.reader instance.
+        :param rows: list of rows
+        :param row_depth: integer. default 4. max depth to scan to determine csv "type". Should be set to the lowest
+        required depth. Should be the max of all csv_header_types' data row index
+        """
         if not csv_file and not reader and not rows:
             raise ValueError("Either csv_file, reader or rows must be passed!")
 
