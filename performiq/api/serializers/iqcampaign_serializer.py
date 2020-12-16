@@ -42,10 +42,7 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id", None)
-        # Only set user if IQCampaign is created from csv
         user_id = validated_data.pop("user_id")
-        if not validated_data.get("csv_s3_key"):
-            user_id = None
         iq_campaign = IQCampaign.objects.create(
             name=validated_data["name"],
             user_id=user_id,

@@ -173,8 +173,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         if self.iq_campaign.campaign.oauth_type == OAuthType.GOOGLE_ADS.value:
             oauth_account = self.iq_campaign.campaign.account.oauth_account
         else:
-            oauth_account = self.iq_campaign.campaign.advertiser.oauth_accounts\
-                .filter(oauth_type=OAuthType.DV360.value).first()
+            oauth_account = OAuthAccount.objects.get(oauth_type=OAuthType.DV360.value, user=self.iq_campaign.user)
         return oauth_account
 
     def _save_results(self) -> None:
