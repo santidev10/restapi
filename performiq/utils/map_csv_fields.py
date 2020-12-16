@@ -260,31 +260,54 @@ class CSVHeaderUtil:
         ManagedPlacementsReport,
     ]
 
-    def __init__(self, csv_file: Type[UploadedFile] = None, rows: list = None):
-        if csv_file:
+    def __init__(self, csv_file: Type[UploadedFile] = None, reader: csv.reader = None, rows: list = None,
+                 row_depth: int = 4):
+        """
+        takes either an UploadedFile, csv.reader, or list of rows, and an optional row_depth to validate or determine
+        the index of the first data row for the given csv representation
+        :param csv_file: UploadedFile. Encoding, delimiters will be determined by the util
+        :param reader: csv.reader instance.
+        :param rows: list of rows
+        :param row_depth: integer. default 4. max depth to scan to determine csv "type". Should be set to the lowest
+        required depth. Should be the max of all csv_header_types' data row index
+        """
+        if all(item is None for item in [csv_file, reader, rows]):
+            raise ValueError("Either csv_file, reader or rows must be passed!")
+
+        self.row_depth = row_depth
+        self.validation_errors = {}
+        self.valid_types = {}
+
+        if rows is not None:
+            self.rows = rows[:self.row_depth]
+        elif reader is not None:
+            self.reader = reader
+            self._init_rows_from_reader()
+        elif csv_file is not None:
             csv_file.seek(0)
             chunk = next(csv_file.chunks())
             decoded = decode_to_string(chunk)
             io_string = StringIO(decoded)
             self.reader = get_reader(io_string)
+            self._init_rows_from_reader()
 
-        self._init_rows(rows)
-        self.validation_errors = {}
-        self.valid_types = {}
         self._run_validation()
 
         if csv_file:
             csv_file.seek(0)
 
-    def _init_rows(self, rows):
-        if rows:
-            self.rows = rows
-            return
-
+    def _init_rows_from_reader(self):
+        """
+        take row samples from self.reader up to self.row_depth limit
+        :return:
+        """
         self.rows = []
-        if hasattr(self, "reader"):
-            for row in self.reader:
-                self.rows.append(row)
+        for i in range(self.row_depth):
+            try:
+                row = next(self.reader)
+            except StopIteration:
+                break
+            self.rows.append(row)
 
     def _run_validation(self):
         """
