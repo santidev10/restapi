@@ -15,7 +15,6 @@ from es_components.models import Channel
 from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from utils.brand_safety import map_brand_safety_score
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -142,7 +141,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "sentiment",
             "engage_rate",
             "last_video_published_at",
-            "brand_safety_score",
             "video_view_rate",
             "ctr",
             "ctr_v",
@@ -209,7 +207,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.stats.sentiment,
             channel.stats.engage_rate,
             channel.stats.last_video_published_at.isoformat().replace("+00:00", "Z"),
-            map_brand_safety_score(channel.brand_safety.overall_score),
             channel.ads_stats.video_view_rate,
             channel.ads_stats.ctr,
             channel.ads_stats.ctr_v,
@@ -356,24 +353,24 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
-    @mock_s3
-    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
-                return_value=EXPORT_FILE_HASH)
-    def test_brand_safety_score_mapped(self, *args):
-        self.create_admin_user()
-        channels = [Channel(next(int_iterator)) for _ in range(2)]
-        channels[0].populate_brand_safety(overall_score=71)
-        channels[0].populate_stats(total_videos_count=100)
-        channels[1].populate_brand_safety(overall_score=78)
-        channels[1].populate_stats(total_videos_count=100)
-        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
-
-        self._request_collect_file(brand_safety=constants.RISKY)
-        response = self._request()
-
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)
-        # 15 is brand safety score index in export row
-        rows = sorted(data[1:], key=lambda x: x[16])
-        self.assertEqual(7, int(rows[0][16]))
-        self.assertEqual(7, int(rows[1][16]))
+    # @mock_s3
+    # @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+    #             return_value=EXPORT_FILE_HASH)
+    # def test_brand_safety_score_mapped(self, *args):
+    #     self.create_admin_user()
+    #     channels = [Channel(next(int_iterator)) for _ in range(2)]
+    #     channels[0].populate_brand_safety(overall_score=71)
+    #     channels[0].populate_stats(total_videos_count=100)
+    #     channels[1].populate_brand_safety(overall_score=78)
+    #     channels[1].populate_stats(total_videos_count=100)
+    #     ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
+    #
+    #     self._request_collect_file(brand_safety=constants.RISKY)
+    #     response = self._request()
+    #
+    #     csv_data = get_data_from_csv_response(response)
+    #     data = list(csv_data)
+    #     # 15 is brand safety score index in export row
+    #     rows = sorted(data[1:], key=lambda x: x[16])
+    #     self.assertEqual(7, int(rows[0][16]))
+    #     self.assertEqual(7, int(rows[1][16]))

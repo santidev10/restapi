@@ -35,7 +35,6 @@ class VideoListExportSerializer(ListExportSerializerMixin, Serializer):
     ctr = FloatField(source="ads_stats.ctr")
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
-    brand_safety_score = SerializerMethodField()
 
     def get_brand_safety_score(self, doc):
         score = map_brand_safety_score(doc.brand_safety.overall_score)

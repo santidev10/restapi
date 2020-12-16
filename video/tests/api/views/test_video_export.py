@@ -272,7 +272,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "dislikes",
             "comments",
             "youtube_published_at",
-            "brand_safety_score",
             "video_view_rate",
             "ctr",
             "ctr_v",
@@ -322,27 +321,27 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
-    @mock_s3
-    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
-                return_value=EXPORT_FILE_HASH)
-    def test_brand_safety_score_mapped(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
-
-        manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
-        videos = [Video(next(int_iterator)) for _ in range(2)]
-
-        videos[0].populate_brand_safety(overall_score=74)
-        videos[1].populate_brand_safety(overall_score=77)
-
-        manager.upsert(videos)
-
-        self._request_collect_file(brand_safety=constants.RISKY)
-        response = self._request()
-
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)
-        rows = sorted(data[1:], key=lambda x: x[11])
-        # 13 is brand safety score index in export row
-        self.assertEqual(7, int(rows[0][13]))
-        self.assertEqual(7, int(rows[1][13]))
+    # @mock_s3
+    # @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+    #             return_value=EXPORT_FILE_HASH)
+    # def test_brand_safety_score_mapped(self, *args):
+    #     user = self.create_test_user()
+    #     user.add_custom_user_permission("research_exports")
+    #
+    #     manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+    #     videos = [Video(next(int_iterator)) for _ in range(2)]
+    #
+    #     videos[0].populate_brand_safety(overall_score=74)
+    #     videos[1].populate_brand_safety(overall_score=77)
+    #
+    #     manager.upsert(videos)
+    #
+    #     self._request_collect_file(brand_safety=constants.RISKY)
+    #     response = self._request()
+    #
+    #     csv_data = get_data_from_csv_response(response)
+    #     data = list(csv_data)
+    #     rows = sorted(data[1:], key=lambda x: x[11])
+    #     # 13 is brand safety score index in export row
+    #     self.assertEqual(7, int(rows[0][13]))
+    #     self.assertEqual(7, int(rows[1][13]))
