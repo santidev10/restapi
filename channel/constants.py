@@ -33,7 +33,6 @@ CHANNEL_CSV_HEADERS = [
     "sentiment",
     "engage_rate",
     "last_video_published_at",
-    "brand_safety_score",
     "video_view_rate",
     "ctr",
     "ctr_v",

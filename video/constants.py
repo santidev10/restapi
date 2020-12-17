@@ -36,7 +36,6 @@ VIDEO_CSV_HEADERS = [
     "dislikes",
     "comments",
     "youtube_published_at",
-    "brand_safety_score",
     "video_view_rate",
     "ctr",
     "ctr_v",
