@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from unittest import mock
+from unittest import skip
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -353,24 +354,25 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
-    # @mock_s3
-    # @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
-    #             return_value=EXPORT_FILE_HASH)
-    # def test_brand_safety_score_mapped(self, *args):
-    #     self.create_admin_user()
-    #     channels = [Channel(next(int_iterator)) for _ in range(2)]
-    #     channels[0].populate_brand_safety(overall_score=71)
-    #     channels[0].populate_stats(total_videos_count=100)
-    #     channels[1].populate_brand_safety(overall_score=78)
-    #     channels[1].populate_stats(total_videos_count=100)
-    #     ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
-    #
-    #     self._request_collect_file(brand_safety=constants.RISKY)
-    #     response = self._request()
-    #
-    #     csv_data = get_data_from_csv_response(response)
-    #     data = list(csv_data)
-    #     # 15 is brand safety score index in export row
-    #     rows = sorted(data[1:], key=lambda x: x[16])
-    #     self.assertEqual(7, int(rows[0][16]))
-    #     self.assertEqual(7, int(rows[1][16]))
+    @skip("Not implemented")
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_brand_safety_score_mapped(self, *args):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_brand_safety(overall_score=71)
+        channels[0].populate_stats(total_videos_count=100)
+        channels[1].populate_brand_safety(overall_score=78)
+        channels[1].populate_stats(total_videos_count=100)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
+
+        self._request_collect_file(brand_safety=constants.RISKY)
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)
+        # 15 is brand safety score index in export row
+        rows = sorted(data[1:], key=lambda x: x[16])
+        self.assertEqual(7, int(rows[0][16]))
+        self.assertEqual(7, int(rows[1][16]))
