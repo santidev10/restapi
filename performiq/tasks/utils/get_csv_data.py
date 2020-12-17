@@ -7,8 +7,9 @@ from django.conf import settings
 
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from performiq.models.constants import AnalysisFields
-from performiq.utils.s3_exporter import PerformS3Exporter
 from performiq.utils.constants import CSVFieldTypeEnum
+from performiq.utils.map_csv_fields import CSVHeaderUtil
+from performiq.utils.s3_exporter import PerformS3Exporter
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +37,11 @@ def get_csv_data(iq_campaign):
         seen_placement_ids = set()
         with open(csv_fp, mode="r") as file:
             reader = csv.reader(file)
-            for row in reader:
-                # Skip non data rows
-                invalid_placement_url = ("youtube.com/channel/" not in "".join(row))
-                if all(r.replace(" ", "").isalpha() for r in row) or not row or invalid_placement_url:
-                    try:
-                        next(reader)
-                    except StopIteration:
-                        break
-                    else:
-                        continue
+            rows = [r for r in reader]
+            csv_util = CSVHeaderUtil(rows=rows)
+            start_index = csv_util.get_first_data_row_index()
+            for i in range(start_index, len(rows)):
+                row = rows[i]
                 # Map column letters to metric names. csv_column_mapping will be a dict of column letter
                 # to metric name e.g. {"A": "impressions", "B": "video views", ...}
                 # Then use sorted column letters to get column value e.g. A = 0, B = 1, ... to assign with metric_name
@@ -78,5 +74,3 @@ def get_csv_data(iq_campaign):
         logger.exception(f"Error processing PerformIQ csv file. S3 file key: {s3}")
     finally:
         os.remove(csv_fp)
-
-
