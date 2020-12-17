@@ -11,6 +11,8 @@ from rest_framework.serializers import Serializer
 
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from es_components.query_repository import get_ias_verified_exists_filter
+from es_components.query_repository import get_last_vetted_at_exists_filter
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
@@ -266,10 +268,24 @@ class QueryGenerator:
         else:
             return
 
-    def adapt_ias_filters(self, filters, value):
+    @staticmethod
+    def adapt_ias_filters(filters, value):
         if value is True or value == "true":
-            q = QueryBuilder().build().must().range().field("ias_data.ias_verified").gte("now-7d/d").get()
-            filters.append(q)
+            query = get_ias_verified_exists_filter()
+            filters.append(query)
+        return
+
+    @staticmethod
+    def adapt_last_vetted_at_exists_filter(filters, value):
+        """
+        modify task_us_data.last_vetted_at:exists to check if the date is greater than LAST_VETTED_AT_MIN_DATE
+        :param filters:
+        :param value:
+        :return: filters
+        """
+        if value is True or (isinstance(value, str) and value.lower() == "true"):
+            query = get_last_vetted_at_exists_filter()
+            filters.append(query)
         return
 
     def __get_filters_exists(self):
@@ -286,6 +302,9 @@ class QueryGenerator:
                 continue
             elif field == "ias_data.ias_verified":
                 self.adapt_ias_filters(filters, value)
+                continue
+            elif field == "task_us_data.last_vetted_at":
+                self.adapt_last_vetted_at_exists_filter(filters, value)
                 continue
 
             query = QueryBuilder().build()

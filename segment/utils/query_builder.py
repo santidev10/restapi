@@ -9,12 +9,13 @@ from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from es_components.constants import Sections
-from es_components.constants import LAST_VETTED_AT_MIN_DATE
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from es_components.query_repository import get_last_vetted_at_exists_filter
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
 
 
 # pylint: disable=too-many-instance-attributes
@@ -251,17 +252,20 @@ class SegmentQueryBuilder:
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             vetting_status_queries = Q("bool")
             for status in self._params["vetting_status"]:
-                if status == 0:
-                    vetting_status_queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
-                elif status == 1:
+                if status == SegmentVettingStatusEnum.NOT_VETTED.value:
+                    vetting_status_queries |= QueryBuilder().build().must_not().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
+                elif status == SegmentVettingStatusEnum.VETTED_SAFE.value:
                     vetting_status_safe = Q("bool")
-                    vetting_status_safe &= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_safe &= QueryBuilder().build().must_not().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_safe &= get_last_vetted_at_exists_filter()
                     vetting_status_queries |= vetting_status_safe
-                elif status == 2:
+                elif status == SegmentVettingStatusEnum.VETTED_RISKY.value:
                     vetting_status_risky = Q("bool")
-                    vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_risky &= QueryBuilder().build().must().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_risky &= get_last_vetted_at_exists_filter()
                     vetting_status_queries |= vetting_status_risky
             must_queries.append(vetting_status_queries)
 
