@@ -63,7 +63,6 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         self.assertEqual(results["content_categories"]["total_matched_percent"], 0)
         # Occurrences should still be counted if set in params
         categories = set(r["category"] for r in results["content_categories"]["category_occurrence"])
-        self.assertTrue("Music" not in categories)
         self.assertEqual(results["overall_score"], 100)
         # These assertions represent percentage occurrence
         self.assertEqual(results["content_quality"][0].get("1"), 100)
@@ -96,7 +95,7 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         self.assertEqual(results["content_categories"]["total_matched_percent"], round(2 / 3 * 100, 4))
         self.assertEqual(results["content_categories"]["category_occurrence"][0]["category"], "Music")
         categories = set(r["category"] for r in results["content_categories"]["category_occurrence"])
-        self.assertEqual(set(params["content_categories"]), categories)
+        self.assertEqual(set(params["content_categories"] + ["Cars"]), categories)
 
     def test_percentages(self):
         """ Test percentage occurrences are sorted and calculated correctly """
