@@ -19,6 +19,7 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
 from segment.utils.query_builder import SegmentQueryBuilder
 from segment.utils.utils import set_user_perm_params
 from segment.utils.utils import with_unknown
@@ -131,9 +132,9 @@ class SegmentCreateOptionsApiView(APIView):
             "ads_stats": ads_stats,
             "latest_ias": latest_ias_date,
             "vetting_status": [
-                {"id": 0, "name": "Non-Vetted"},
-                {"id": 1, "name": "Vetted Safe"},
-                {"id": 2, "name": "Vetted Risky"},
+                {"id": SegmentVettingStatusEnum.NOT_VETTED.value, "name": "Non-Vetted"},
+                {"id": SegmentVettingStatusEnum.VETTED_SAFE.value, "name": "Vetted Safe"},
+                {"id": SegmentVettingStatusEnum.VETTED_RISKY.value, "name": "Vetted Risky"},
             ]
         }
         return options
