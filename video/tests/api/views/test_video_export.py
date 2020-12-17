@@ -322,7 +322,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
-    @skip("Not implemented")
+    @skip("brand_safety_score removed from export. It may be added again in the future.")
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)

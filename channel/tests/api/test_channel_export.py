@@ -354,7 +354,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
-    @skip("Not implemented")
+    @skip("brand_safety_score removed from export. It may be added again in the future.")
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
