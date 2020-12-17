@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from unittest import mock
+from unittest import skip
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -15,7 +16,6 @@ from es_components.models import Channel
 from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from utils.brand_safety import map_brand_safety_score
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -142,7 +142,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "sentiment",
             "engage_rate",
             "last_video_published_at",
-            "brand_safety_score",
             "video_view_rate",
             "ctr",
             "ctr_v",
@@ -209,7 +208,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.stats.sentiment,
             channel.stats.engage_rate,
             channel.stats.last_video_published_at.isoformat().replace("+00:00", "Z"),
-            map_brand_safety_score(channel.brand_safety.overall_score),
             channel.ads_stats.video_view_rate,
             channel.ads_stats.ctr,
             channel.ads_stats.ctr_v,
@@ -356,6 +354,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
+    @skip("brand_safety_score removed from export. It may be added again in the future.")
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)

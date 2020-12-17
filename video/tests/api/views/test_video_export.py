@@ -1,5 +1,6 @@
 from datetime import datetime
 from unittest import mock
+from unittest import skip
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -272,7 +273,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "dislikes",
             "comments",
             "youtube_published_at",
-            "brand_safety_score",
             "video_view_rate",
             "ctr",
             "ctr_v",
@@ -322,6 +322,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(2, len(data))
 
+    @skip("brand_safety_score removed from export. It may be added again in the future.")
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
