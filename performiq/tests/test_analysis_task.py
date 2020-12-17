@@ -1,3 +1,4 @@
+import io
 from unittest import mock
 
 import boto3
@@ -131,3 +132,32 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         # Params set for contextual and suitability and with analysis passed for both sections. Total score
         # should be calculated as 100 (contextual) + 100 (suitability) / 2
         self.assertEqual(results["total_score"], 100)
+
+    @mock_s3
+    def test_csv_encoding(self):
+        """ Test different csv encodings are supported """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
+        # Create channel id of length 24 starting with UC
+        channel_id = "UC" + "0" * 22
+        csv_filename = "test_csv_encoding.csv"
+        csv_file = io.BytesIO(f"http://youtube.com/channel/{channel_id},0.05".encode("utf-16"))
+        csv_file.seek(0)
+        conn.Object(settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME, csv_filename).put(Body=csv_file)
+        params = get_params(dict(
+            cpm=0.1,
+            csv_s3_key=csv_filename,
+            csv_column_mapping={
+                "URL": "A",
+                "Avg CPM": "B"
+            }
+        ))
+        iq_campaign = IQCampaign.objects.create(params=params)
+        analyses = [
+            ChannelAnalysis(channel_id, data=dict(cpm=1))
+        ]
+        with mock.patch.object(ExecutorAnalyzer, "_merge_es_data", return_value=analyses), \
+             mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
+            start_analysis.start_analysis_task(iq_campaign.id, "", "")
+        iq_campaign.refresh_from_db()
+        self.assertTrue(iq_campaign.results and iq_campaign.completed is not None)

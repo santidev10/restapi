@@ -191,9 +191,10 @@ class ContextualAnalyzer(BaseAnalyzer):
             {
                 "category": category,
                 # Whether or not a category was seen at least once
-                "matched": content_categories_counts[category] > 0
+                "matched": content_categories_counts[category] > 0,
+                "targeted": category in self._params[AnalysisFields.CONTENT_CATEGORIES]
             }
-            for category in category_sorted_keys if category in self._params[AnalysisFields.CONTENT_CATEGORIES]
+            for category in category_sorted_keys
         ]
         result = {
             "category_occurrence": category_occurrence,
