@@ -187,7 +187,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/10"),
     },
     "performiq_google_ads_update": {
-        "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
+        "task": "performiq.tasks.google_ads_update.google_ads_update_task",
         "schedule": crontab(minute="*/10")
     },
 }
