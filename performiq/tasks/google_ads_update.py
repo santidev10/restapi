@@ -13,7 +13,7 @@ UPDATE_THRESHOLD = 3600 * 2
 
 
 @celery_app.task
-def google_ads_update_scheduler():
+def google_ads_update_task():
     """
     Main scheduler task to start individual account update tasks
     """
