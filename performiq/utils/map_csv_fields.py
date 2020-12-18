@@ -212,9 +212,11 @@ class CSVWithHeader(AbstractCSVType):
             raise ValidationError("CSV must have at least one column")
         if not is_header_row(self.rows[0]):
             raise ValidationError("First row must be a header row")
-        nulls = [value for value in self.rows[0] if not value]
-        if nulls:
-            raise ValidationError("Header row invalid. Reason: no values detected")
+        # NOTE: disabling for now. Deleting columns in Excel by highlighting only sets cells to '', rather than
+        # actually removing the whole column. This seems like a common use case, so removing this empties check
+        # nulls = [value for value in self.rows[0] if not value]
+        # if nulls:
+        #     raise ValidationError("Header row invalid. Reason: empty header values detected")
         if is_header_row(self.rows[1]):
             raise ValidationError("Second row must be a data row")
         return True
@@ -435,13 +437,26 @@ class CSVColumnMapper:
 
     def get_column_options(self) -> dict:
         """
-        public method for geting the default column_letter_key:label dict.
+        public method for getting the default column_letter_key:label dict.
         If no headers are present use "column A", etc. if headers are
         present, use the declared header values
         :return: dict
         """
+        letter_label_template = "column {}"
         column_letters = self._get_column_letters(self.header_row)
-        labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in column_letters]
+        # use header labels unless falsy
+        if self.csv_has_header_row:
+            labels = []
+            for index, header in enumerate(self.header_row):
+                if header:
+                    labels.append(header)
+                    continue
+                # replace any empty header label with a generic "letter label"
+                letter_label = letter_label_template.format(column_letters[index])
+                labels.append(letter_label)
+        # use generic letter labels if csv has no headers
+        else:
+            labels = [letter_label_template.format(letter) for letter in column_letters]
         return dict(zip(column_letters, labels))
 
     def _get_column_letters(self, longest_row) -> list:
