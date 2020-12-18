@@ -4,6 +4,7 @@ import logging
 from typing import List
 
 from googleads.errors import GoogleAdsServerFault
+from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
 from performiq.models import Account
@@ -55,8 +56,11 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
     if mcc_accounts is None and cid_accounts is None:
         try:
             mcc_accounts, cid_accounts = get_accounts(oauth_account.refresh_token)
-        except GoogleAdsServerFault:
-            logger.exception(f"Error updating campaigns for OAuthAccount id: {oauth_account_id}")
+        except (GoogleAdsServerFault, RefreshError):
+            logger.warning(f"Error updating campaigns for OAuthAccount id: {oauth_account_id}")
+            return
+        except Exception:
+            logger.exception(f"Unexpected Exception updating campaigns for OAuthAccount id: {oauth_account_id}")
             return
 
     if mcc_accounts:
