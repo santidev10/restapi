@@ -123,7 +123,11 @@ class TargetTableSerializer(ModelSerializer):
     def get_days_remaining(self, obj):
         placement_end = obj[f"{self.Meta.ad_group_ref}__campaign__salesforce_placement__end"]
         today = self.context["now"].date()
-        return (placement_end - today).days
+        try:
+            remaining = (placement_end - today).days
+        except (ValueError, TypeError, AttributeError):
+            remaining = None
+        return remaining
 
     def get_avg_rate(self, obj):
         cost = obj["sum_cost"]
@@ -131,45 +135,59 @@ class TargetTableSerializer(ModelSerializer):
         divider = self._get_units_divider(obj)
         try:
             return cost / (units / divider)
-        except ZeroDivisionError:
+        except (TypeError, ZeroDivisionError):
             return None
 
     def get_revenue(self, obj):
         units = self._get_units(obj)
         rate = obj[f"{self.Meta.ad_group_ref}__campaign__salesforce_placement__ordered_rate"]
         divider = self._get_units_divider(obj)
-        return units * rate / divider
+        try:
+            revenue = units * rate / divider
+        except (TypeError, ZeroDivisionError):
+            revenue = None
+        return revenue
 
     def get_profit(self, obj):
         revenue = self.get_revenue(obj)
         cost = obj["sum_cost"]
-        return revenue - cost
+        try:
+            profit = revenue - cost
+        except TypeError:
+            profit = None
+        return profit
 
     def get_margin(self, obj):
         profit = self.get_profit(obj)
         revenue = self.get_revenue(obj)
-        return (profit / revenue
-                if revenue
-                else None)
+        try:
+            margin = profit / revenue
+        except (TypeError, ZeroDivisionError):
+            margin = None
+        return margin
 
     def get_video_played_to_100(self, obj):
-        impressions = obj["sum_impressions"]
-        if impressions:
-            return obj["sum_video_views_100_quartile"] / obj["sum_impressions"]
-        return None
+        try:
+            val = obj["sum_video_views_100_quartile"] / obj["sum_impressions"]
+        except (TypeError, ZeroDivisionError):
+            val = None
+        return val
 
     def get_cost_delivery_percentage(self, obj):
-        cost = obj["sum_type_cost"]
-        if cost:
-            return obj["sum_cost"] / obj["sum_type_cost"]
-        return None
+        try:
+            val = obj["sum_cost"] / obj["sum_type_cost"]
+        except (TypeError, ZeroDivisionError):
+            val = None
+        return val
 
     def get_delivery_percentage(self, obj):
         delivered = self._get_units(obj)
         sum_delivery = obj["sum_type_delivery"]
-        if sum_delivery:
-            return delivered / sum_delivery
-        return None
+        try:
+            val = delivered / sum_delivery
+        except (TypeError, ZeroDivisionError):
+            val = None
+        return val
 
     def _get_units(self, obj):
         goal_type_id = self._get_goal_type_id(obj)
