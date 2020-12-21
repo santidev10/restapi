@@ -17,18 +17,22 @@ def get_brand_safety_label(score):
     # pylint: disable=misplaced-comparison-constant
     if 90 <= score:
         label = constants.SAFE
+        score_threshold = 4
     elif 80 <= score:
         label = constants.LOW_RISK
+        score_threshold = 3
     elif 70 <= score:
         label = constants.RISKY
+        score_threshold = 2
     else:
         label = constants.HIGH_RISK
-    return label
+        score_threshold = 1
+    return label, score_threshold
     # pylint: enable=misplaced-comparison-constant
 
 
 def get_brand_safety_data(score):
-    label = get_brand_safety_label(score)
+    label = get_brand_safety_label(score)[0]
     mapped_score = map_brand_safety_score(score)
     data = {
         "score": mapped_score,
@@ -50,3 +54,22 @@ def map_brand_safety_score(score):
         except ValueError:
             pass
     return mapped
+
+
+def map_score_threshold(score_threshold: int):
+    """
+    Map score threshold values to brand safety overall scores
+    :param score_threshold: int
+    :return: int
+    """
+    if score_threshold == 1:
+        threshold = 0
+    elif score_threshold == 2:
+        threshold = 70
+    elif score_threshold == 3:
+        threshold = 80
+    elif score_threshold == 4:
+        threshold = 90
+    else:
+        threshold = None
+    return threshold

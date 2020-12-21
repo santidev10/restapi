@@ -16,6 +16,7 @@ from es_components.query_builder import QueryBuilder
 from es_components.query_repository import get_last_vetted_at_exists_filter
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
+from utils.brand_safety import map_score_threshold
 
 
 # pylint: disable=too-many-instance-attributes
@@ -388,15 +389,6 @@ class SegmentQueryBuilder:
         :param score_threshold: int
         :return: int
         """
-        if score_threshold == 1:
-            threshold = 0
-        elif score_threshold == 2:
-            threshold = 70
-        elif score_threshold == 3:
-            threshold = 80
-        elif score_threshold == 4:
-            threshold = 90
-        else:
-            threshold = None
+        threshold = map_score_threshold(score_threshold)
         return threshold
 # pylint: enable=too-many-instance-attributes

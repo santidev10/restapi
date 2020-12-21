@@ -33,9 +33,9 @@ class ExecutorAnalyzer(BaseAnalyzer):
         # Prepare results for each analyzer to add results to
         self.channel_analyses = self._prepare_data()
         self._analyzers = [
-            PerformanceAnalyzer(self.iq_campaign.params),
-            ContextualAnalyzer(self.iq_campaign.params),
-            SuitabilityAnalyzer(self.iq_campaign.params),
+            PerformanceAnalyzer(iq_campaign.params),
+            ContextualAnalyzer(iq_campaign.params),
+            SuitabilityAnalyzer(iq_campaign.params),
         ]
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY),
