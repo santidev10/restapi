@@ -81,5 +81,5 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     def get_params(self, obj) -> dict:
         params = obj.params
-        params["score_threshold"] = map_score_threshold(params["score_threshold"], reverse=True)
+        params["score_threshold"] = map_score_threshold(params.get("score_threshold"), reverse=True)
         return params
