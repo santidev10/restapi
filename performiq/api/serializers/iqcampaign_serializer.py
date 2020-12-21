@@ -8,7 +8,6 @@ from performiq.models import IQCampaign
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
-from utils.brand_safety import get_brand_safety_label
 from utils.brand_safety import map_score_threshold
 
 
@@ -82,5 +81,5 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     def get_params(self, obj) -> dict:
         params = obj.params
-        params["score_threshold"] = get_brand_safety_label(params["score_threshold"])[1]
+        params["score_threshold"] = map_score_threshold(params["score_threshold"], reverse=True)
         return params

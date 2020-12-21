@@ -18,6 +18,7 @@ from performiq.utils.constants import CSVFieldTypeEnum
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.brand_safety import map_score_threshold
 
 
 class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
@@ -217,3 +218,14 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["items_count"], 1)
         self.assertEqual(data["items"][0]["id"], iq_csv.id)
         self.assertEqual(data["items"][0]["name"], iq_csv.name)
+
+    def test_params_score_threshold(self):
+        """ Test that score threshold is serialized into original value as it is saved with a mapped value for analysis """
+        user = self.create_admin_user(f"test_{next(int_iterator)}.com")
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        _params = dict(campaign_id=gads_campaign.id, name="test_csv", score_threshold=2)
+        params = self._get_iqcampaign_params(_params)
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task"):
+            response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["params"]["score_threshold"], params["score_threshold"])

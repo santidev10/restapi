@@ -43,15 +43,15 @@ class BrandSafetyDecoratorTestCase(TestCase):
             "score": "5P",
             "label": None
         }
-        self.assertEqual(get_brand_safety_label(test_1["score"])[0], test_1["label"])
-        self.assertEqual(get_brand_safety_label(test_2["score"])[0], test_2["label"])
-        self.assertEqual(get_brand_safety_label(test_3["score"])[0], test_3["label"])
-        self.assertEqual(get_brand_safety_label(test_4["score"])[0], test_4["label"])
-        self.assertEqual(get_brand_safety_label(test_5["score"])[0], test_5["label"])
-        self.assertEqual(get_brand_safety_label(test_6["score"])[0], test_6["label"])
-        self.assertEqual(get_brand_safety_label(test_7["score"])[0], test_7["label"])
-        self.assertEqual(get_brand_safety_label(test_8["score"])[0], test_8["label"])
-        self.assertEqual(get_brand_safety_label(test_9["score"])[0], test_9["label"])
+        self.assertEqual(get_brand_safety_label(test_1["score"]), test_1["label"])
+        self.assertEqual(get_brand_safety_label(test_2["score"]), test_2["label"])
+        self.assertEqual(get_brand_safety_label(test_3["score"]), test_3["label"])
+        self.assertEqual(get_brand_safety_label(test_4["score"]), test_4["label"])
+        self.assertEqual(get_brand_safety_label(test_5["score"]), test_5["label"])
+        self.assertEqual(get_brand_safety_label(test_6["score"]), test_6["label"])
+        self.assertEqual(get_brand_safety_label(test_7["score"]), test_7["label"])
+        self.assertEqual(get_brand_safety_label(test_8["score"]), test_8["label"])
+        self.assertEqual(get_brand_safety_label(test_9["score"]), test_9["label"])
 
     def test_get_brand_safety_data(self):
         test_1 = {
