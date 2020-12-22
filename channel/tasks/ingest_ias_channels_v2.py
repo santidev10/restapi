@@ -1,26 +1,25 @@
 import logging
-from time import sleep
 from datetime import timedelta
 
-from django.db import transaction
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
+from elasticsearch.exceptions import TransportError
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
 
 from audit_tool.models import AuditChannel
 from audit_tool.models import IASChannel
 from audit_tool.models import IASHistory
 from audit_tool.models import get_hash_name
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
 from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.aws.s3_exporter import S3Exporter
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from utils.utils import chunks_generator
 from utils.exception import backoff
-from elasticsearch.exceptions import TransportError
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +145,6 @@ class IASChannelIngestor:
             channel_ids_chunk = list(channel_ids_chunk)
             self._upsert_es_channels(channel_ids_chunk)
             self._upsert_pg_channels(channel_ids_chunk)
-            # TODO exp. backoff here
-            # sleep(20)
 
         self._archive_s3_object(file_name)
         ias_history.completed = timezone.now()
