@@ -1,7 +1,5 @@
 from collections import defaultdict
 
-from elasticsearch_dsl.utils import AttrList
-
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
 from .constants import AnalysisFields
@@ -150,6 +148,18 @@ class ContextualAnalyzer(BaseAnalyzer):
         self._seen += 1
         return curr_channel_result
 
+    def _analyze_multi(self, values: list, count_field: str, params_field: str):
+        """
+        Wrapper method to call _analyze_attribute for attributes that contain multiple values
+        Same parameters should be passed as _analyze_attribute
+        :return: bool
+        """
+        contextual_failed = False
+        for value in values:
+            curr_contextual_failed = self._analyze_attribute(value, count_field, params_field)
+            contextual_failed = curr_contextual_failed if curr_contextual_failed is True else False
+        return contextual_failed
+
     def _analyze_attribute(self, value, count_field: str, params_field: str):
         """
         Analyze single attribute
@@ -170,7 +180,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             contextual_failed = True
         return contextual_failed
 
-    def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_):
+    def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_, **__):
         """
         Analyze placement content categories against targeted content categories
         :param placement_content_categories: list of content categories of placement
