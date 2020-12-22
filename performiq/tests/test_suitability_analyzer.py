@@ -6,8 +6,22 @@ from utils.unittests.int_iterator import int_iterator
 
 
 class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
+    def test_fails_excluded_content_categories(self):
+        _params = dict(
+            exclude_content_categories={"Beauty"},
+        )
+        params = get_params(_params)
+        data = dict(
+            content_categories=_params["exclude_content_categories"]
+        )
+        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
+        analyzer = SuitabilityAnalyzer(params)
+        result = analyzer.analyze(analysis)
+        self.assertEqual(result["passed"], False)
+        self.assertEqual(analysis.clean, False)
+
     def test_single_channel_score_passes(self):
-        """ Test analysis that channel passes performance """
+        """ Test analysis that channel passes suitability """
         _params = dict(
             score_threshold=50,
         )
@@ -35,18 +49,19 @@ class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
     def test_result_counts(self):
         _params = dict(
             score_threshold=50,
+            exclude_content_categories=["Gaming"]
         )
         params = get_params(_params)
         analyzer = SuitabilityAnalyzer(params)
         data = [
             # fails
-            dict(overall_score=30),
-            dict(overall_score=40),
+            dict(overall_score=30, content_categories=["Computers"]),
+            dict(overall_score=100, content_categories=["Gaming"]),
 
             # passes
-            dict(overall_score=50),
-            dict(overall_score=60),
-            dict(overall_score=70),
+            dict(overall_score=50, content_categories=["Sports"]),
+            dict(overall_score=60, content_categories=["Beauty"]),
+            dict(overall_score=70, content_categories=["Education"]),
         ]
         analyses = [
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=d)

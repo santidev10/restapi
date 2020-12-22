@@ -20,8 +20,8 @@ class ContextualAnalyzer(BaseAnalyzer):
                        AnalysisFields.CONTENT_QUALITY}
 
     def __init__(self, params: dict):
-        # Coerce list params to sets as ContextualAnalyzer checks for attributes membership as part of analysis
-        self._params = {
+        # Coerce list params to sets as analyzers check for attributes membership as part of analysis
+        self.params = {
             key: set(value) if isinstance(value, list) and value is not None else value
             for key, value in params.items()
         }
@@ -85,14 +85,14 @@ class ContextualAnalyzer(BaseAnalyzer):
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
                 percent = self.get_score(counts[key], self._seen)
-                targeted = str(key) in self._params.get(analysis_type, {})
+                targeted = str(key) in self.params.get(analysis_type, {})
                 percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
         percentage_results["content_categories"] = self._get_content_categories_result()
         # Check if params were applied for analysis
         params_exist = any(
-            len(self._params[field]) > 0 for field in self.ANALYSIS_FIELDS
+            len(self.params[field]) > 0 for field in self.ANALYSIS_FIELDS
         )
         final_result = {
             "overall_score": self.get_score(passed_count, self._seen) if params_exist else None,
@@ -153,8 +153,8 @@ class ContextualAnalyzer(BaseAnalyzer):
         Set single values as one element lists as values to analyze may have multiple values
             e.g. A channel may have multiple content categories and only one language
         :param count_field: str -> Field in self._total_result_counts to increment
-        :param params_field: str -> Field in self._params that should be checked
-        :param value: Actual value to analyze and compare against self._params[params_field]
+        :param params_field: str -> Field in self.params that should be checked
+        :param value: Actual value to analyze and compare against self.params[params_field]
         :return: bool
         """
         contextual_failed = False
@@ -162,16 +162,16 @@ class ContextualAnalyzer(BaseAnalyzer):
         for val in value:
             # Unable to analyze if param not defined, however we still want to count the occurrences of a value
             self._total_result_counts[count_field][val] += 1
-            if not self._params.get(params_field):
+            if not self.params.get(params_field):
                 continue
 
             # Check if value of current analysis matches params
-            # e.g. val = "Education" not in self._params[AnalysisFields.CONTENT_CATEGORIES]
-            if contextual_failed is False and val not in self._params[params_field]:
+            # e.g. val = "Education" not in self.params[AnalysisFields.CONTENT_CATEGORIES]
+            if contextual_failed is False and val not in self.params[params_field]:
                 contextual_failed = True
 
             # Channel has at least one content category that matched
-            if params_field == AnalysisFields.CONTENT_CATEGORIES and val in self._params[params_field]:
+            if params_field == AnalysisFields.CONTENT_CATEGORIES and val in self.params[params_field]:
                 content_category_matched = True
 
         if content_category_matched is True:
@@ -192,7 +192,7 @@ class ContextualAnalyzer(BaseAnalyzer):
                 "category": category,
                 # Whether or not a category was seen at least once
                 "matched": content_categories_counts[category] > 0,
-                "targeted": category in self._params[AnalysisFields.CONTENT_CATEGORIES]
+                "targeted": category in self.params[AnalysisFields.CONTENT_CATEGORIES]
             }
             for category in category_sorted_keys
         ]

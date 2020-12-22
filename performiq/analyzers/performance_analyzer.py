@@ -16,7 +16,11 @@ class PerformanceAnalyzer(BaseAnalyzer):
                        AnalysisFields.ACTIVE_VIEW_VIEWABILITY, AnalysisFields.VIDEO_QUARTILE_100_RATE}
 
     def __init__(self, params: dict):
-        self.params = params
+        # Coerce list params to sets as analyzers check for attributes membership as part of analysis
+        self.params = {
+            key: set(value) if isinstance(value, list) and value is not None else value
+            for key, value in params.items()
+        }
         # If a channel fails in any metric, it fails entirely
         self._failed_channels_count = 0
         self._seen = 0
