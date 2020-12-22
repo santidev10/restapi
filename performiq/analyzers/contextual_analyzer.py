@@ -36,6 +36,12 @@ class ContextualAnalyzer(BaseAnalyzer):
             matched_content_categories=0,
         )
         self._seen = 0
+        self._analyzers = {
+            AnalysisFields.CONTENT_CATEGORIES: self._analyze_content_categories,
+            AnalysisFields.CONTENT_TYPE: self._analyze_attribute,
+            AnalysisFields.CONTENT_QUALITY: self._analyze_attribute,
+            AnalysisFields.LANGUAGES: self._analyze_attribute,
+        }
 
     def get_results(self) -> dict:
         """
@@ -127,18 +133,15 @@ class ContextualAnalyzer(BaseAnalyzer):
         curr_channel_result = {
             "passed": True
         }
-        for params_field in self.ANALYSIS_FIELDS:
+        for params_field, analyze_func in self._analyzers.items():
             raw_value = channel_analysis.get(params_field)
-            # Check AttrList from elasticsearch_dsl AttrList type
-            mapped_value = [raw_value] if type(raw_value) not in {list, AttrList} else raw_value
-            mapped_value = [str(val) if val is not None else val for val in mapped_value]
-
+            # Get key for current params_field to increment in _total_result_counts
+            # e.g. count_field = content_categories_counts
             count_field = params_field + "_counts"
-            # Check if value matches params
-            curr_contextual_failed = self._analyze(count_field, params_field, mapped_value)
+            curr_contextual_failed = analyze_func(raw_value, count_field, params_field)
             if curr_contextual_failed is True:
                 contextual_failed = True
-            curr_channel_result[params_field] = mapped_value
+            curr_channel_result[params_field] = raw_value
 
         if contextual_failed is True:
             channel_analysis.clean = False
@@ -147,33 +150,45 @@ class ContextualAnalyzer(BaseAnalyzer):
         self._seen += 1
         return curr_channel_result
 
-    def _analyze(self, count_field: str, params_field: str, value) -> bool:
+    def _analyze_attribute(self, value, count_field: str, params_field: str):
         """
-        Analyze single metric
-        Set single values as one element lists as values to analyze may have multiple values
-            e.g. A channel may have multiple content categories and only one language
+        Analyze single attribute
         :param count_field: str -> Field in self._total_result_counts to increment
         :param params_field: str -> Field in self.params that should be checked
         :param value: Actual value to analyze and compare against self.params[params_field]
         :return: bool
         """
         contextual_failed = False
+        # Keep count of attributes
+        # e.g. self._total_result_counts[content_quality_counts]["0"] += 1
+        self._total_result_counts[count_field][value] += 1
+        if not self.params.get(params_field):
+            return
+        # Check if value of current analysis matches params
+        # e.g. val = "Education" not in self.params[AnalysisFields.CONTENT_CATEGORIES]
+        if contextual_failed is False and value not in self.params[params_field]:
+            contextual_failed = True
+        return contextual_failed
+
+    def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_):
+        """
+        Analyze placement content categories against targeted content categories
+        :param placement_content_categories: list of content categories of placement
+        :param count_field: Key of self._total_result_counts to increment category occurrence counts
+        """
+        if placement_content_categories is None:
+            return
+        contextual_failed = False
         content_category_matched = False
-        for val in value:
-            # Unable to analyze if param not defined, however we still want to count the occurrences of a value
-            self._total_result_counts[count_field][val] += 1
-            if not self.params.get(params_field):
-                continue
-
-            # Check if value of current analysis matches params
-            # e.g. val = "Education" not in self.params[AnalysisFields.CONTENT_CATEGORIES]
-            if contextual_failed is False and val not in self.params[params_field]:
-                contextual_failed = True
-
-            # Channel has at least one content category that matched
-            if params_field == AnalysisFields.CONTENT_CATEGORIES and val in self.params[params_field]:
+        # Check if placement contains all content categories targeted
+        if not self.params["content_categories"].issubset(placement_content_categories):
+            contextual_failed = True
+        # Increment category occurrences
+        for category in placement_content_categories:
+            self._total_result_counts[count_field][category] += 1
+            if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
                 content_category_matched = True
-
+        # Increment total counter of matched content categories. Should be incremented only once if any matched
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
         return contextual_failed
@@ -203,3 +218,4 @@ class ContextualAnalyzer(BaseAnalyzer):
             )
         }
         return result
+
