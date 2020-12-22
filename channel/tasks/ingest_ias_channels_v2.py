@@ -100,6 +100,7 @@ class IASChannelIngestor:
                 self.exceptions.append(e)
         # give me the exception type so i can catch it!
         if self.exceptions:
+            logger.info("IAS Channel Ingestor has uncaught exceptions!")
             raise Exception(self.exceptions)
 
     def _init_process_queue(self, file_name: str = None):
