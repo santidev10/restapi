@@ -47,7 +47,6 @@ class ChannelListExportSerializer(ListExportSerializerMixin, Serializer):
     ctr = FloatField(source="ads_stats.ctr")
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
-    brand_safety_score = SerializerMethodField()
     ias_verified = DateTimeField(source="ias_data.ias_verified", format="%Y-%m-%d", default="")
 
     def update(self, instance, validated_data):

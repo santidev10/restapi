@@ -2,7 +2,7 @@ from typing import Dict
 
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
-from .constants import AnalyzeSection
+from .constants import AnalysisResultSection
 from performiq.models.constants import AnalysisFields
 
 
@@ -11,12 +11,16 @@ class PerformanceAnalyzer(BaseAnalyzer):
     Analyzes channels based on ad performance metrics
     Once called, this will attempt to analyze all channels given in iq_channel_results parameter
     """
-    RESULT_KEY = AnalyzeSection.PERFORMANCE_RESULT_KEY
+    RESULT_KEY = AnalysisResultSection.PERFORMANCE_RESULT_KEY
     ANALYSIS_FIELDS = {AnalysisFields.CPV, AnalysisFields.CPM, AnalysisFields.CTR, AnalysisFields.VIDEO_VIEW_RATE,
                        AnalysisFields.ACTIVE_VIEW_VIEWABILITY, AnalysisFields.VIDEO_QUARTILE_100_RATE}
 
     def __init__(self, params: dict):
-        self.params = params
+        # Coerce list params to sets as analyzers check for attributes membership as part of analysis
+        self.params = {
+            key: set(value) if isinstance(value, list) and value is not None else value
+            for key, value in params.items()
+        }
         # If a channel fails in any metric, it fails entirely
         self._failed_channels_count = 0
         self._seen = 0
@@ -121,7 +125,9 @@ class PerformanceAnalyzer(BaseAnalyzer):
             }
         """
         self._add_performance_percentage_results()
-        overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen)
+        # Check if params were applied for analysis
+        params_exist = any(self.params.get(field) is not None for field in self.ANALYSIS_FIELDS)
+        overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen) if params_exist else None
         averages = self._calculate_averages()
         self._total_results["overall_score"] = overall_score
         for metric_name, average in averages.items():

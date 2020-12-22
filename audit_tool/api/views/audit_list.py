@@ -1,13 +1,15 @@
 from distutils.util import strtobool
+from datetime import timedelta
+from django.utils import timezone
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditMachine
 from audit_tool.models import AuditProcessor
 from utils.permissions import user_has_permission
-
 
 class AuditListApiView(APIView):
     permission_classes = (
@@ -44,17 +46,21 @@ class AuditListApiView(APIView):
         except ValueError:
             raise ValidationError("Expected num_days ({}) to be <int> type object. Received object of type {}."
                                   .format(query_params["num_days"], type(query_params["num_days"])))
+        active_machine_count = AuditMachine.objects.filter(
+            last_seen__gte=timezone.now() - timedelta(minutes=5)).count()
         if audit_id:
             audit_res = AuditProcessor.objects.get(id=int(audit_id))
             return Response({
                 'audits': [audit_res.to_dict(get_details=True)],
                 'audit_types': AuditProcessor.AUDIT_TYPES,
+                'active_machine_count': active_machine_count,
             })
         elif search:
             return Response({
                 'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source,
                                              cursor=cursor, limit=limit),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
+                'active_machine_count': active_machine_count,
             })
         else:
             return Response({
@@ -62,4 +68,5 @@ class AuditListApiView(APIView):
                                              source=source, cursor=cursor, limit=limit),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
                 'youtube_categories': AuditCategory.get_all(iab=False),
+                'active_machine_count': active_machine_count,
             })

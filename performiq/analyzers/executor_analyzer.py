@@ -33,9 +33,9 @@ class ExecutorAnalyzer(BaseAnalyzer):
         # Prepare results for each analyzer to add results to
         self.channel_analyses = self._prepare_data()
         self._analyzers = [
-            PerformanceAnalyzer(self.iq_campaign.params),
-            ContextualAnalyzer(self.iq_campaign.params),
-            SuitabilityAnalyzer(self.iq_campaign.params),
+            PerformanceAnalyzer(iq_campaign.params),
+            ContextualAnalyzer(iq_campaign.params),
+            SuitabilityAnalyzer(iq_campaign.params),
         ]
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY),
@@ -100,6 +100,19 @@ class ExecutorAnalyzer(BaseAnalyzer):
             analyzer.RESULT_KEY: analyzer.get_results()
             for analyzer in self._analyzers
         }
+        # Calculate total score average for all analysis sections. Only factor in section overall score if analysis
+        # was done (i.e. params were set for analysis)
+        sum_score = 0
+        sections_analyzed = 0
+        for result in all_results.values():
+            if result.get("overall_score") is not None:
+                sum_score += result["overall_score"]
+                sections_analyzed += 1
+        try:
+            total_score = round(sum_score / sections_analyzed, 4)
+        except ZeroDivisionError:
+            total_score = None
+        all_results["total_score"] = total_score
         return all_results
 
     def calculate_wastage_statistics(self):
@@ -160,8 +173,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
         if self.iq_campaign.campaign.oauth_type == OAuthType.GOOGLE_ADS.value:
             oauth_account = self.iq_campaign.campaign.account.oauth_account
         else:
-            oauth_account = self.iq_campaign.campaign.advertiser.oauth_accounts\
-                .filter(oauth_type=OAuthType.DV360.value).first()
+            oauth_account = OAuthAccount.objects.get(oauth_type=OAuthType.DV360.value, user=self.iq_campaign.user)
         return oauth_account
 
     def _save_results(self) -> None:

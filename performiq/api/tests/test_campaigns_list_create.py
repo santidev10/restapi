@@ -18,6 +18,7 @@ from performiq.utils.constants import CSVFieldTypeEnum
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.brand_safety import map_score_threshold
 
 
 class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
@@ -72,8 +73,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
-        iq_google = IQCampaign.objects.create(campaign=gads_campaign)
-        iq_dv360 = IQCampaign.objects.create(campaign=dv360_campaign)
+        iq_google = IQCampaign.objects.create(user=user, campaign=gads_campaign)
+        iq_dv360 = IQCampaign.objects.create(user=user, campaign=dv360_campaign)
         iq_csv = IQCampaign.objects.create(user=user, params=dict(csv_s3_key="test.csv"))
 
         expected_keys = {
@@ -180,8 +181,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
-        iq_google = IQCampaign.objects.create(campaign=gads_campaign, name="gads")
-        IQCampaign.objects.create(campaign=dv360_campaign, name="dv360")
+        iq_google = IQCampaign.objects.create(user=user, campaign=gads_campaign, name="gads")
+        IQCampaign.objects.create(user=user, campaign=dv360_campaign, name="dv360")
         IQCampaign.objects.create(user=user, name="csv")
         response = self.client.get(self._get_url() + "?analyzed=true&search=gads")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -194,8 +195,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
-        IQCampaign.objects.create(campaign=gads_campaign, name="gads case")
-        iq_dv360 = IQCampaign.objects.create(campaign=dv360_campaign, name="Dv360 TesTing CAse")
+        IQCampaign.objects.create(user=user, campaign=gads_campaign, name="gads case")
+        iq_dv360 = IQCampaign.objects.create(user=user, campaign=dv360_campaign, name="Dv360 TesTing CAse")
         IQCampaign.objects.create(user=user, name="csv case")
         response = self.client.get(self._get_url() + "?analyzed=true&search=testing")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -208,8 +209,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         user = self.create_admin_user()
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
-        IQCampaign.objects.create(campaign=gads_campaign, name="gads case")
-        IQCampaign.objects.create(campaign=dv360_campaign, name="Dv360 TesTing CAse")
+        IQCampaign.objects.create(user=user, campaign=gads_campaign, name="gads case")
+        IQCampaign.objects.create(user=user, campaign=dv360_campaign, name="Dv360 TesTing CAse")
         iq_csv = IQCampaign.objects.create(user=user, name="csv case", params=dict(csv_s3_key="test.csv"))
         response = self.client.get(self._get_url() + "?analyzed=true&search=CSV")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -217,3 +218,14 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["items_count"], 1)
         self.assertEqual(data["items"][0]["id"], iq_csv.id)
         self.assertEqual(data["items"][0]["name"], iq_csv.name)
+
+    def test_params_score_threshold(self):
+        """ Test that score threshold is serialized into original value as it is saved with a mapped value for analysis """
+        user = self.create_admin_user(f"test_{next(int_iterator)}.com")
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        _params = dict(campaign_id=gads_campaign.id, name="test_csv", score_threshold=2)
+        params = self._get_iqcampaign_params(_params)
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task"):
+            response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["params"]["score_threshold"], params["score_threshold"])

@@ -8,6 +8,7 @@ from performiq.models import IQCampaign
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
+from utils.brand_safety import map_score_threshold
 
 
 class IQCampaignSerializer(serializers.ModelSerializer):
@@ -35,17 +36,22 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     # Read only fields
     analysis_type = serializers.SerializerMethodField()
+    params = serializers.SerializerMethodField()
 
     class Meta:
         model = IQCampaign
         fields = "__all__"
 
+    def validate(self, data):
+        super().validate(data)
+        data["content_quality"] = [str(val) for val in data["content_quality"]]
+        data["content_type"] = [str(val) for val in data["content_type"]]
+        data["score_threshold"] = map_score_threshold(data["score_threshold"])
+        return data
+
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id", None)
-        # Only set user if IQCampaign is created from csv
         user_id = validated_data.pop("user_id")
-        if not validated_data.get("csv_s3_key"):
-            user_id = None
         iq_campaign = IQCampaign.objects.create(
             name=validated_data["name"],
             user_id=user_id,
@@ -61,14 +67,6 @@ class IQCampaignSerializer(serializers.ModelSerializer):
             campaign_id = None
         return campaign_id
 
-    def validate_content_quality(self, val):
-        validated = [str(val) for val in super().validate(val)]
-        return validated
-
-    def validate_content_type(self, val):
-        validated = [str(val) for val in super().validate(val)]
-        return validated
-
     def get_analysis_type(self, obj) -> int:
         """
         Get analysis type of IQCampaign
@@ -80,3 +78,8 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         else:
             analysis_type = DataSourceType(obj.campaign.oauth_type).value
         return analysis_type
+
+    def get_params(self, obj) -> dict:
+        params = obj.params
+        params["score_threshold"] = map_score_threshold(params.get("score_threshold"), reverse=True)
+        return params

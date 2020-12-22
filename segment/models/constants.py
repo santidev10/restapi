@@ -58,3 +58,8 @@ class SegmentListType(enum.Enum):
     WHITELIST = 0
     BLACKLIST = 1
 
+
+class SegmentVettingStatusEnum(enum.Enum):
+    NOT_VETTED = 0
+    VETTED_SAFE = 1
+    VETTED_RISKY = 2

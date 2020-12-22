@@ -18,7 +18,13 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
             languages=["en"],
         )
         params = get_params(_params)
-        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=_params)
+        data = dict(
+            content_categories=["Movies"],
+            content_quality="0",
+            content_type="0",
+            languages="en",
+        )
+        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
         analyzer = ContextualAnalyzer(params)
         result = analyzer.analyze(analysis)
         self.assertEqual(result["passed"], True)
@@ -33,8 +39,12 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
             languages=["en"],
         )
         params = get_params(_params)
-        data = params.copy()
-        data["content_categories"] = ["Automotive"]
+        data = dict(
+            content_categories=["Automotive"],
+            content_quality="0",
+            content_type="0",
+            languages="en",
+        )
         analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
         analyzer = ContextualAnalyzer(params)
         result = analyzer.analyze(analysis)
@@ -51,10 +61,12 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         )
         params = get_params(_params)
         analyzer = ContextualAnalyzer(params)
-
-        data = _params.copy()
-        data["content_categories"] = ["Music"]
-        data["content_quality"] = ["1"]
+        data = dict(
+            content_categories=["Music"],
+            content_quality="1",
+            content_type="0",
+            languages="en",
+        )
         analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
         analyzer.analyze(analysis)
         results = analyzer.get_results()
@@ -63,7 +75,6 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         self.assertEqual(results["content_categories"]["total_matched_percent"], 0)
         # Occurrences should still be counted if set in params
         categories = set(r["category"] for r in results["content_categories"]["category_occurrence"])
-        self.assertTrue("Music" not in categories)
         self.assertEqual(results["overall_score"], 100)
         # These assertions represent percentage occurrence
         self.assertEqual(results["content_quality"][0].get("1"), 100)
@@ -83,8 +94,8 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         # Total matched should be two, as two channels contain at least one content category
         data = [
             dict(content_categories=["Music", "Movies", "Television"]),
-            dict(content_categories=["Music"]),
-            dict(content_categories=["Cars"]),
+            dict(content_categories=["Music", "Instruments"]),
+            dict(content_categories=["Cars", "Automobiles", "Driving"]),
         ]
         analyses = [
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=d)
@@ -95,8 +106,12 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         results = analyzer.get_results()
         self.assertEqual(results["content_categories"]["total_matched_percent"], round(2 / 3 * 100, 4))
         self.assertEqual(results["content_categories"]["category_occurrence"][0]["category"], "Music")
-        categories = set(r["category"] for r in results["content_categories"]["category_occurrence"])
-        self.assertEqual(set(params["content_categories"]), categories)
+
+        all_categories = set()
+        for d in data:
+            all_categories.update(d["content_categories"])
+        seen_categories = set(r["category"] for r in results["content_categories"]["category_occurrence"])
+        self.assertEqual(all_categories, seen_categories)
 
     def test_percentages(self):
         """ Test percentage occurrences are sorted and calculated correctly """
