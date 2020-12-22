@@ -746,3 +746,54 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             self.client.get(url)
         args = mock_set_cache.call_args[1]
         self.assertEqual(args["timeout"], 14400)
+
+    def test_relevancy_score_sorting_with_category_filter(self):
+        """
+        test that searching for results by relevancy (_score) asc/desc works
+        when category filter is selected. Result items with matching
+        primary categories should appear first with a +10 scoring boost when
+        relevancy sorting is descending.
+        """
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+
+        channel_ids = [str(next(int_iterator)) for i in range(2)]
+        primary_category = "Music & Audio"
+        most_relevant_channel = Channel(**{
+            "meta": {
+                "id": channel_ids[0],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": primary_category
+            }
+        })
+        least_relevant_channel = Channel(**{
+            "meta": {
+                "id": channel_ids[1],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": "Social"
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([most_relevant_channel, least_relevant_channel])
+
+        # test sorting by _score:desc
+        desc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(desc_items[0]["general_data"]["primary_category"], primary_category)
+
+        # test sort _score:asc
+        asc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(asc_items[-1]["general_data"]["primary_category"], primary_category)
