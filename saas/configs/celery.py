@@ -170,7 +170,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="0", hour="*"),
     },
     "daily_ingest_ias_channels": {
-        "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
+        "task": "channel.tasks.ingest_ias_channels_v2.ingest_ias_channels",
         # defaults to twice per day, 0500, 1700 PST
         "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
@@ -222,7 +222,7 @@ CELERY_ROUTES_PREPARED = [
     ("*export*", {"queue": Queue.EXPORT}),
     ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
-    ("channel.tasks.ingest_ias_channels.*", {"queue": Queue.IAS}),
+    ("channel.tasks.ingest_ias_channels_v2.*", {"queue": Queue.IAS}),
     ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
