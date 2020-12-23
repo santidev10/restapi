@@ -16,7 +16,6 @@ def channel_outdated_scheduler():
     if get_queue_size(Queue.BRAND_SAFETY_CHANNEL_LIGHT) <= Schedulers.ChannelOutdated.get_minimum_threshold():
         channel_manager = ChannelManager()
         query = channel_manager.forced_filters() \
-                & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get() \
                 & QueryBuilder().build().must().range().field("brand_safety.updated_at") \
                     .lte(Schedulers.ChannelOutdated.UPDATE_TIME_THRESHOLD).get()
         sorts = ("brand_safety.updated_at", "-stats.subscribers")

@@ -11,7 +11,6 @@ from utils.utils import chunks_generator
 
 class BaseAuditor:
     es_model = None
-    _config = {} # should be set in __init__ on child classes
 
     def __init__(self, audit_utils=None):
         self.audit_utils = audit_utils or AuditUtils()
@@ -27,7 +26,6 @@ class BaseAuditor:
     def index_audit_results(self, es_manager, audit_results: list) -> None:
         """
         Update audits with audited brand safety scores
-        Check if each document should be upserted depending on config, as vetted videos should not always be updated
         :param es_manager: VideoManager | ChannelManager
         :param audit_results: list -> Channel | Video
         :param size: int -> Chunk size for each thread

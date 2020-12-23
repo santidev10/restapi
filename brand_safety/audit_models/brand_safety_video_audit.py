@@ -1,7 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 from brand_safety.auditors.utils import AuditUtils
-from brand_safety.models import BadWordCategory
 from es_components.models import Video
 
 
@@ -112,9 +111,6 @@ class BrandSafetyVideoAudit(object):
         Calculate brand safety score total and across categories
         This uses multipliers which depends on the location the word was found to determine a negative score
         to apply to both the overall score and category score
-
-        Also if vetting data in task_us_data.brand_safety exists, those category scores as well as the overall score
-        of the Video is automatically set to 0
         :return: tuple -> (int) total score, (dict) scores by category
         """
         brand_safety_score = BrandSafetyVideoScore(self.doc.main.id, self.default_category_scores)

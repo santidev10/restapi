@@ -70,18 +70,9 @@ class AuditUtils(object):
         self._bad_word_processors_by_language = self.get_language_processors()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
-        self._vetted_safe_score = self._get_vetted_score(safe=True)
-        self._vetted_unsafe_score = self._get_vetted_score(safe=False)
 
     # properties copying single underscore attributes are used by many audits and must be copied
     # as to not mutate each other's values
-    @property
-    def vetted_safe_score(self):
-        return self._vetted_safe_score.copy()
-
-    @property
-    def vetted_unsafe_score(self):
-        return self._vetted_unsafe_score.copy()
 
     @property
     def bad_word_processors_by_language(self):
@@ -143,28 +134,6 @@ class AuditUtils(object):
             for score in set(BadWord.objects.values_list("negative_score", flat=True))
         }
         return default_severity_counts
-
-    def _get_vetted_score(self, safe=True) -> dict:
-        """
-        Get default vetting score depending on safe parameter
-        If something is considered safe, then all scores should be raised to 100
-        Else set to 0
-        :param safe: bool -> If the channel or video is considered safe
-        :return:
-        """
-        if safe is True:
-            overall_score = 100
-        else:
-            overall_score = 0
-        scores = {
-            "overall_score": overall_score,
-            "categories": {
-                category_id: {
-                    "category_score": overall_score
-                } for category_id in self.bad_word_categories
-            }
-        }
-        return scores
 
     def get_brand_safety_regexp(self):
         """
@@ -317,19 +286,3 @@ class AuditUtils(object):
         ]
         manager.upsert(updated)
 
-    def get_brand_safety_data(self, doc):
-        """
-        Get brand safety scores depending on if doc has vetted brand safety categories
-        Items that are vetted safe by having no brand safety categories determines the item is safe
-        If it has brand safety categories, then it is not safe and should have scores of 0
-
-        If has brand safety categories, set all category scores and overall score to 0
-        Else, set all to 100
-        :param doc: Video | Channel
-        :return:
-        """
-        if any(category for category in doc.task_us_data.brand_safety):
-            bs_data = self.vetted_unsafe_score
-        else:
-            bs_data = self.vetted_safe_score
-        return bs_data

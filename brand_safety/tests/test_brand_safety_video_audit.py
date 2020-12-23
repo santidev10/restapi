@@ -78,22 +78,6 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         updated = self.video_manager.get([video.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_vetted_safe(self, *_):
-        """ Test scoring vetted safe videos should receive all scores of 100 """
-        video_auditor = VideoAuditor()
-        now = timezone.now()
-        video = Video(f"v_{next(int_iterator)}")
-        video.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[None]
-        )
-        self.video_manager.upsert([video])
-        video_auditor.process([video.main.id])
-        updated = self.video_manager.get([video.main.id])[0]
-        for category in updated.brand_safety.categories:
-            self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
-        self.assertEqual(updated.brand_safety.overall_score, 100)
-
     def test_special_characters(self, *_):
         en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
         sv_lang = AuditLanguage.objects.get_or_create(language="sv")[0]
