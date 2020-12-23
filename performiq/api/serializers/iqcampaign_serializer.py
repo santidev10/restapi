@@ -44,8 +44,6 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         super().validate(data)
-        data["content_quality"] = [str(val) for val in data["content_quality"]]
-        data["content_type"] = [str(val) for val in data["content_type"]]
         data["score_threshold"] = map_score_threshold(data["score_threshold"])
         return data
 
