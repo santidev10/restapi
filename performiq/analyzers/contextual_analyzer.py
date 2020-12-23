@@ -55,13 +55,13 @@ class ContextualAnalyzer(BaseAnalyzer):
                     "overall_score": 95.87,
                     "content_type": {
                         None: 52.89,
-                        "0": 39.67,
-                        "1": 7.44
+                        0: 39.67,
+                        1: 7.44
                     },
                     "content_quality": {
                         None: 52.89,
-                        "2": 19.83,
-                        "1": 27.27
+                        2: 19.83,
+                        1: 27.27
                     },
                     "content_categories": {
                         "top_occurrence": [
@@ -170,7 +170,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         contextual_failed = False
         # Keep count of attributes
-        # e.g. self._total_result_counts[content_quality_counts]["0"] += 1
+        # e.g. self._total_result_counts[content_quality_counts][0] += 1
         self._total_result_counts[count_field][value] += 1
         if not self.params.get(params_field):
             return
