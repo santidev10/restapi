@@ -11,6 +11,7 @@ from rest_framework.serializers import Serializer
 
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.query_repository import get_ias_verified_exists_filter
 from es_components.query_repository import get_last_vetted_at_exists_filter
 from utils.api.filters import FreeFieldOrderingFilter
@@ -208,10 +209,26 @@ class QueryGenerator:
 
             if value:
                 value = value.split(",") if isinstance(value, str) else value
-                filters.append(
-                    QueryBuilder().build().must().terms().field(field).value(value).get()
-                )
-
+                # Add +10 relevancy score boost to result item if primary category matches selected iab category filter
+                if field == "general_data.iab_categories":
+                    iab_categories = [{"terms": {field: [val for val in value]}}]
+                    primary_category = [{
+                        "terms": {
+                            "general_data.primary_category": [val for val in value if val in IAB_TIER1_CATEGORIES],
+                            "boost": 10
+                        }
+                    }]
+                    query = Q({
+                                "bool": {
+                                    "must": iab_categories,
+                                    "should": primary_category
+                                }
+                            })
+                    filters.append(query)
+                else:
+                    filters.append(
+                        QueryBuilder().build().must().terms().field(field).value(value).get()
+                    )
         return filters
 
     def __get_filters_must_not_terms(self):
