@@ -578,3 +578,58 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             self.client.get(url)
         args = mock_set_cache.call_args[1]
         self.assertEqual(args["timeout"], 14400)
+
+    def test_relevancy_score_sorting_with_category_filter(self):
+        """
+        test that searching for results by relevancy (_score) asc/desc works
+        when category filter is selected. Result items with matching
+        primary categories should appear first with a +10 scoring boost when
+        relevancy sorting is descending.
+        """
+        self.create_admin_user()
+        video_ids = [str(next(int_iterator)) for i in range(2)]
+        primary_category = "Music & Audio"
+        least_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[1],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": "Social"
+            },
+        })
+        most_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[0],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": primary_category
+            },
+        })
+        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([
+            most_relevant_video,
+            least_relevant_video
+        ])
+
+        desc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(
+            desc_items[0]["general_data"]["primary_category"],
+            primary_category
+        )
+
+        asc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(
+            asc_items[-1]["general_data"]["primary_category"],
+            primary_category
+        )
