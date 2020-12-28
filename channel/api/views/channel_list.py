@@ -148,12 +148,8 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     )
 
     def get_serializer_context(self):
-        try:
-            latest_ias_ingestion = IASHistory.objects.exclude(completed=None).latest("completed").started
-        except IASHistory.DoesNotExist:
-            latest_ias_ingestion = None
         context = {
-            "latest_ias_ingestion": latest_ias_ingestion
+            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
         }
         return context
 
