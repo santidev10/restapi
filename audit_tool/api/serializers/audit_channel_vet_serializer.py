@@ -53,7 +53,8 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
                 .select_related("channel__auditchannelmeta")
             history = [{
                 "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
-                "suitable": item.clean
+                "suitable": item.clean,
+                "processed_by": "dummy data"
             } for item in vetting_items if hasattr(item.channel, "auditchannelmeta")]
         # Set bool for get_language method to return correct language field
         self.has_vetting_history = bool(history)
