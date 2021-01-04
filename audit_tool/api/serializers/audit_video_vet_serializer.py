@@ -51,7 +51,8 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
                 .filter(video__video_id_hash=video_id_hash, processed__isnull=False, audit__isnull=False)
             history = [{
                 "data": f"{item.video.auditvideometa.name} - {item.processed.strftime('%b %d %Y')}",
-                "suitable": item.clean
+                "suitable": item.clean,
+                "processed_by": "dummy data"
             } for item in vetting_items if hasattr(item.video, "auditvideometa")]
         return history
 
