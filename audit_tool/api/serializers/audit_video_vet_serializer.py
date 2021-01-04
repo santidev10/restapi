@@ -49,10 +49,11 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             vetting_items = AuditVideoVet.objects \
                 .select_related("video", "video__auditvideometa") \
                 .filter(video__video_id_hash=video_id_hash, processed__isnull=False, audit__isnull=False)
+            vetters_map = self._get_vetters_map(vetting_items=vetting_items)
             history = [{
                 "data": f"{item.video.auditvideometa.name} - {item.processed.strftime('%b %d %Y')}",
                 "suitable": item.clean,
-                "processed_by": "dummy data"
+                "processed_by": vetters_map.get(item.processed_by_user_id, None)
             } for item in vetting_items if hasattr(item.video, "auditvideometa")]
         return history
 

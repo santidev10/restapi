@@ -109,10 +109,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         video_audit = AuditVideo.objects.create(video_id=v_id, video_id_hash=get_hash_name(v_id))
         video_meta = AuditVideoMeta.objects.create(video=video_audit, name="test meta name")
         historical_video_vet_1 = AuditVideoVet.objects.create(
-            audit=audit_1, video=video_audit, processed=before, clean=False
+            audit=audit_1, video=video_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditVideoVet.objects.create(
-            audit=audit_2, video=video_audit, processed=before, clean=True
+            audit=audit_2, video=video_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_video_vet = AuditVideoVet.objects.create(audit=audit_3, video=video_audit)
 
@@ -154,8 +154,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_video_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[1]["data"])
 
     def test_get_next_channel_vetting_item_with_history_success(self, *args):
@@ -172,10 +174,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
         channel_meta = AuditChannelMeta.objects.create(channel=channel_audit, name="test meta name")
         historical_channel_vet_1 = AuditChannelVet.objects.create(
-            audit=audit_1, channel=channel_audit, processed=before, clean=False
+            audit=audit_1, channel=channel_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditChannelVet.objects.create(
-            audit=audit_2, channel=channel_audit, processed=before, clean=True
+            audit=audit_2, channel=channel_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
 
@@ -220,8 +222,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_channel_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[1]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
 
     def test_get_next_video_vetting_item_missing(self, *args):
