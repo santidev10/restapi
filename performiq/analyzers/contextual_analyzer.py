@@ -90,7 +90,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
                 percent = self.get_score(counts[key], self._seen)
-                targeted = str(key) in self.params.get(analysis_type, {})
+                targeted = key in self.params.get(analysis_type, {})
                 percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
