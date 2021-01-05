@@ -72,3 +72,8 @@ class ESFieldMapping:
     SECONDARY = {
         "general_data.primary_category": "general_data.iab_categories"
     }
+
+
+IGNORE_CONTENT_CATEGORIES = {
+    "content channel"
+}
