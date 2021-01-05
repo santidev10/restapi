@@ -188,6 +188,8 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         if placement_content_categories is None:
             return
+        elif isinstance(placement_content_categories, str):
+            placement_content_categories = [placement_content_categories]
         contextual_failed = False
         content_category_matched = False
         # Check if placement contains all content categories targeted
