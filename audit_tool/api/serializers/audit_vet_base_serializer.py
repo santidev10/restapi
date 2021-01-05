@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+from django.db.models import QuerySet
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
@@ -76,6 +78,17 @@ class AuditVetBaseSerializer(Serializer):
 
     def get_vetting_history(self, *args, **kwargs):
         raise NotImplementedError
+
+    def _get_vetters_map(self, vetting_items: QuerySet) -> dict:
+        """
+        Given a vetting items QuerySet, get a user.id: formatted_user map of users for that queryset
+        NOTE: The mapped value is expected to be the formatted string reprsenting the user
+        :param vetting_items:
+        :return: dict
+        """
+        vetters = get_user_model().objects.filter(id__in=[item.processed_by_user_id for item in vetting_items])
+        vetters_map = {user.id: str(user) for user in vetters}
+        return vetters_map
 
     def save(self, *args, **kwargs):
         raise NotImplementedError
