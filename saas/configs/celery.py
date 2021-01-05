@@ -149,10 +149,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
     },
-    "audit_tool_check_in_vetting_items": {
-        "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items_task",
-        "schedule": crontab(minute="*/5"),
-    },
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
         "schedule": crontab(minute="*/10"),

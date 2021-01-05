@@ -7,8 +7,7 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
-from audit_tool.tasks.check_in_vetting_items import CHECKOUT_THRESHOLD
-from audit_tool.tasks.check_in_vetting_items import check_in_vetting_items
+from audit_tool.api.views.audit_vet_retrieve_update import CHECKOUT_THRESHOLD
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -32,8 +31,6 @@ class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
 
         self.assertTrue(all(item.checked_out_at is not None for item in video_vets))
         self.assertTrue(all(item.checked_out_at is not None for item in channel_vets))
-
-        check_in_vetting_items()
 
         self.assertTrue(all(item.checked_out_at is None for item in AuditVideoVet.objects.all()))
         self.assertTrue(all(item.checked_out_at is not None for item in AuditChannelVet.objects.all()))
