@@ -1,6 +1,5 @@
 from brand_safety.tasks.channel_update_helper import channel_update_helper
 from brand_safety.tasks.constants import Schedulers
-from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
