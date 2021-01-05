@@ -34,7 +34,7 @@ class ChannelOutdatedTestCase(ExtendedAPITestCase, ESTestCase):
         super().tearDownClass()
 
     def test_channel_outdated_scheduler(self):
-        """ Test scheduler should retrieve channels outdated brand safety data without task_us_data """
+        """ Test scheduler should retrieve channels outdated brand safety data """
         outdated = timezone.now() - timedelta(days=30)
         doc_has_task_us_data = Channel(
             id=f"test_channel_{next(int_iterator)}",
@@ -64,8 +64,8 @@ class ChannelOutdatedTestCase(ExtendedAPITestCase, ESTestCase):
             query = helper_mock.call_args.args[1]
             channels = self.channel_manager.search(query).execute()
         response_ids = [c.main.id for c in channels]
-        self.assertTrue(doc_has_task_us_data.main.id not in response_ids)
-        self.assertTrue(doc_outdated_bs_has_task_us_data.main.id not in response_ids)
+        self.assertTrue(doc_has_task_us_data.main.id in response_ids)
+        self.assertTrue(doc_outdated_bs_has_task_us_data.main.id in response_ids)
         self.assertTrue(doc_outdated_bs_no_task_us_data.main.id in response_ids)
 
     def test_outdated_task_success(self):

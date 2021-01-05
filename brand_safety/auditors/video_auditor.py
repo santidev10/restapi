@@ -14,7 +14,6 @@ class VideoAuditor(BaseAuditor):
     def __init__(self, *args, **kwargs):
         """
         Class to handle video brand safety scoring logic
-        :param ignore_vetted_videos: bool -> Determines if vetted videos should be indexed after
         :param audit_utils: AuditUtils -> Optional passing of an AuditUtils object, as it is expensive to instantiate
             since it compiles keyword processors of every brand safety BadWord row
         """
@@ -131,7 +130,7 @@ class VideoAuditor(BaseAuditor):
 
     def _check_rescore_channels(self, channels: list) -> None:
         """
-        Checks whether a new video's non vetted channel should be rescored
+        Checks whether a new video channel should be rescored
         If the video has a negative score, then it may have a large impact on its channels score
         Add channels to rescore to self.channels_to_rescore
         :param channels: list [Channel, ...]

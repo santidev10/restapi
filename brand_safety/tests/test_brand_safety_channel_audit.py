@@ -134,19 +134,3 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
-
-    def test_vetted_safe(self, *_):
-        """ Test scoring vetted safe channels should receive all scores of 100 """
-        channel_auditor = ChannelAuditor()
-        now = timezone.now()
-        channel = Channel(f"channel_{next(int_iterator)}")
-        channel.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[None]
-        )
-        self.channel_manager.upsert([channel])
-        channel_auditor.process([channel.main.id])
-        updated = self.channel_manager.get([channel.main.id])[0]
-        for category in updated.brand_safety.categories:
-            self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
-        self.assertEqual(updated.brand_safety.overall_score, 100)
