@@ -48,6 +48,12 @@ class AnalysisFields:
     CTR = "ctr"
     CPM = "average_cpm"
     CPV = "average_cpv"
+    CLICKS = "clicks"
+    # number of views that reached 100% of video
+    VIDEO_VIEWS_100_PERCENT = "video_views_100_percent"
+    ACTIVE_VIEW_MEASURABLE_IMPRESSIONS = "active_view_measurable_impressions"
+    ACTIVE_VIEW_IMPRESSIONS = "active_view_impressions"
+
     ADVERTISER_ID = "advertiser_id"
 
     # Elasticsearch Fields
