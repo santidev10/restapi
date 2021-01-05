@@ -4,6 +4,7 @@ from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
 from .constants import AnalysisFields
 from .constants import AnalysisResultSection
+from .constants import IGNORE_CONTENT_CATEGORIES
 
 
 class ContextualAnalyzer(BaseAnalyzer):
@@ -188,6 +189,8 @@ class ContextualAnalyzer(BaseAnalyzer):
         """
         if placement_content_categories is None:
             return
+        elif isinstance(placement_content_categories, str):
+            placement_content_categories = [placement_content_categories]
         contextual_failed = False
         content_category_matched = False
         # Check if placement contains all content categories targeted
@@ -195,6 +198,8 @@ class ContextualAnalyzer(BaseAnalyzer):
             contextual_failed = True
         # Increment category occurrences
         for category in placement_content_categories:
+            if category.lower() in IGNORE_CONTENT_CATEGORIES:
+                continue
             self._total_result_counts[count_field][category] += 1
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
                 content_category_matched = True
