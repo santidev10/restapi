@@ -510,8 +510,8 @@ PROXY_API_TOKEN = ""
 PROXY_HOST = ""
 PROXY_PORT = ""
 
-IAS_ARCHIVE_FOLDER = "archive/"
-IAS_PROCESSING_FOLDER = "processing/"
+# IAS_ARCHIVE_FOLDER = "archive/"
+# IAS_PROCESSING_FOLDER = "processing/"
 ARCHIVE_IAS = False
 
 PERFORMIQ_OAUTH_USER_AGENT = "Web application"
