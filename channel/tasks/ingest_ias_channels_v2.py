@@ -114,7 +114,7 @@ class IASChannelIngestor:
         if file_name and file_name in file_names:
             self.process_queue = [file_name]
         else:
-            # exclude items that are in ANY cf-ias subdirectory
+            # include only files in the top level cf-ias directory, files that are CSVs, and don't have an IGNORE flag
             self.process_queue = [file_name for file_name in file_names
                                   if "/" not in file_name
                                   and "IGNORE" not in file_name
