@@ -15,7 +15,6 @@ from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 from performiq.models import OAuthAccount
 from performiq.models.constants import AnalysisFields
-from performiq.models.constants import OAuthType
 from performiq.tasks.utils.get_csv_data import get_csv_data
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data
 from performiq.tasks.utils.get_dv360_data import get_dv360_data
@@ -58,7 +57,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
         """
         Merges Elasticsearch data by adding to each ChannelAnalysis object using ESFieldMapping
         First attempt to extract a value using a ESFieldMapping.PRIMARY field. If the document also as a SECONDARY
-            field, it is implied the final value should be a list with the combined values of the PRIMARY and SECONDARY fields
+            field, it is implied the final value should be a list with the combined values of the
+            PRIMARY and SECONDARY fields
         :param channel_data: list -> ChannelAnalysis instantiations
         :return: list
         """
@@ -171,16 +171,14 @@ class ExecutorAnalyzer(BaseAnalyzer):
             the data source is either Google Ads (Adwords API) or DV360 API
         :return:
         """
-        if self.iq_campaign.campaign.oauth_type == OAuthType.GOOGLE_ADS.value:
-            oauth_account = self.iq_campaign.campaign.account.oauth_account
-        else:
-            oauth_account = OAuthAccount.objects.get(oauth_type=OAuthType.DV360.value, user=self.iq_campaign.user)
+
+        oauth_account = OAuthAccount.objects.get(oauth_type=self.iq_campaign.campaign.oauth_type,
+                                                 user=self.iq_campaign.user)
         return oauth_account
 
     def _save_results(self) -> None:
         """
         Save final results stored in ChannelAnalysis objects
-        :param channel_analyses: ChannelAnalysis objects that have been during analysis
         :return: list
         """
         to_create = (

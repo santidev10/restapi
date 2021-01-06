@@ -2,6 +2,7 @@ from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELD
 from aw_reporting.adwords_reports import placement_performance_report
 from performiq.analyzers.constants import ADWORDS_COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
+from performiq.models import OAuthAccount
 from performiq.models.constants import AnalysisFields
 from performiq.oauth_utils import get_client
 from performiq.models import Campaign
@@ -21,7 +22,6 @@ ADWORDS_API_FIELD_MAPPING = {
     "Clicks": AnalysisFields.CLICKS,
     "ActiveViewMeasurableImpressions": AnalysisFields.ACTIVE_VIEW_MEASURABLE_IMPRESSIONS,
     "ActiveViewImpressions": AnalysisFields.ACTIVE_VIEW_IMPRESSIONS,
-
 }
 
 
@@ -34,10 +34,11 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
     """
     campaign_id = iq_campaign.campaign_id
     campaign = Campaign.objects.get(id=campaign_id)
+    oauth_account = OAuthAccount.objects.get(user=iq_campaign.user, oauth_type=campaign.oauth_type)
     account = campaign.account
     client = get_client(
         client_customer_id=account.id,
-        refresh_token=account.oauth_account.refresh_token,
+        refresh_token=oauth_account.refresh_token,
     )
     predicates = [
         {"field": "AdNetworkType1", "operator": "EQUALS", "values": ["YOUTUBE_WATCH", "YOUTUBE_SEARCH"]},
