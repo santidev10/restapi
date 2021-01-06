@@ -66,28 +66,29 @@ class ExecutorAnalyzer(BaseAnalyzer):
             c.channel_id: c for c in channel_data
             if len(str(c.channel_id)) == 24
         }
-        es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
-        for channel in es_data:
-            if not channel.main.id:
-                continue
-            mapped = {}
-            for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
-                # Map multi dot attribute fields to single keys
-                attr_value = attrgetter(es_field)(channel)
-                coercer = COERCE_FIELD_FUNCS.get(mapped_key)
-                try:
-                    # If has secondary field, it is implied that the final attr_value should be a list
-                    secondary_field = ESFieldMapping.SECONDARY[es_field]
-                    second_attr_value = attrgetter(secondary_field)(channel)
-                    if second_attr_value:
-                        # Check if the original attr_value is None
-                        attr_value = attr_value if attr_value is not None else []
-                        attr_value.extend(second_attr_value)
-                except (KeyError, AttributeError):
-                    pass
-                # Not all fields will need to be coerced
-                mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
-            by_id[channel.main.id].add_data(mapped)
+        for batch in chunks_generator(by_id.keys(), size=2000):
+            es_data = self.channel_manager.get(batch, skip_none=True)
+            for channel in es_data:
+                if not channel.main.id:
+                    continue
+                mapped = {}
+                for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
+                    # Map multi dot attribute fields to single keys
+                    attr_value = attrgetter(es_field)(channel)
+                    coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+                    try:
+                        # If has secondary field, it is implied that the final attr_value should be a list
+                        secondary_field = ESFieldMapping.SECONDARY[es_field]
+                        second_attr_value = attrgetter(secondary_field)(channel)
+                        if second_attr_value:
+                            # Check if the original attr_value is None
+                            attr_value = attr_value if attr_value is not None else []
+                            attr_value.extend(second_attr_value)
+                    except (KeyError, AttributeError):
+                        pass
+                    # Not all fields will need to be coerced
+                    mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
+                by_id[channel.main.id].add_data(mapped)
         return list(by_id.values())
 
     def get_results(self):

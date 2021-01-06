@@ -90,7 +90,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
                 percent = self.get_score(counts[key], self._seen)
-                targeted = str(key) in self.params.get(analysis_type, {})
+                targeted = key in self.params.get(analysis_type, {})
                 percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
@@ -128,6 +128,8 @@ class ContextualAnalyzer(BaseAnalyzer):
                 "content_type": 0
             }
         """
+        # Track if channel has been analyzed with valid params as not having params should not negatively impact score
+        analyzed = False
         contextual_failed = False
         curr_channel_result = {
             "passed": True
@@ -138,15 +140,18 @@ class ContextualAnalyzer(BaseAnalyzer):
             # e.g. count_field = content_categories_counts
             count_field = params_field + "_counts"
             curr_contextual_failed = analyze_func(raw_value, count_field, params_field)
-            if curr_contextual_failed is True:
-                contextual_failed = True
             curr_channel_result[params_field] = raw_value
+            if self.params.get(params_field):
+                analyzed = True
+                if curr_contextual_failed is True:
+                    contextual_failed = True
 
         if contextual_failed is True:
             channel_analysis.clean = False
             curr_channel_result["passed"] = False
             self._failed_channels.add(channel_analysis.channel_id)
-        self._seen += 1
+        if analyzed is True:
+            self._seen += 1
         return curr_channel_result
 
     def _analyze_multi(self, values: list, count_field: str, params_field: str):
@@ -191,18 +196,17 @@ class ContextualAnalyzer(BaseAnalyzer):
             return
         elif isinstance(placement_content_categories, str):
             placement_content_categories = [placement_content_categories]
-        contextual_failed = False
+        contextual_failed = True
         content_category_matched = False
-        # Check if placement contains all content categories targeted
-        if not self.params["content_categories"].issubset(placement_content_categories):
-            contextual_failed = True
         # Increment category occurrences
         for category in placement_content_categories:
             if category.lower() in IGNORE_CONTENT_CATEGORIES:
                 continue
-            self._total_result_counts[count_field][category] += 1
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
+                # Passes if at least one category matches
+                contextual_failed = False
                 content_category_matched = True
+            self._total_result_counts[count_field][category] += 1
         # Increment total counter of matched content categories. Should be incremented only once if any matched
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
