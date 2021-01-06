@@ -34,13 +34,18 @@ class ContextualAnalyzer(BaseAnalyzer):
             # multiple categories and this should only be incremented when at least one category matches
             matched_content_categories=0,
         )
-        self._seen = 0
+        # Total count of all placements seen. Used to calculate percentage occurrences
+        self._total_count = 0
+        # Total count of placements analyzed with valid params
+        self._total_analyzed = 0
         self._analyzers = {
             AnalysisFields.CONTENT_CATEGORIES: self._analyze_content_categories,
             AnalysisFields.CONTENT_TYPE: self._analyze_attribute,
             AnalysisFields.CONTENT_QUALITY: self._analyze_attribute,
             AnalysisFields.LANGUAGES: self._analyze_attribute,
         }
+        # Sections that should be used to calculate overall score
+        self._analyzed_sections = {}
 
     def get_results(self) -> dict:
         """
@@ -77,7 +82,6 @@ class ContextualAnalyzer(BaseAnalyzer):
                 }
         """
         percentage_results = {}
-        passed_count = self._seen - len(self._failed_channels)
         # Calculate percentage breakdown for languages, content_type, and content_quality analysis by
         # creating sorted list of how often values occur
         for analysis_type in {AnalysisFields.LANGUAGES, AnalysisFields.CONTENT_TYPE, AnalysisFields.CONTENT_QUALITY}:
@@ -89,8 +93,10 @@ class ContextualAnalyzer(BaseAnalyzer):
             # e.g. [{"en": 75, "targeted": True}, {"ko": 50, "targeted": False}, {"ja": 40, "targeted": False}, ...]
             percents = []
             for key in sorted(counts, key=counts.get, reverse=True):
-                percent = self.get_score(counts[key], self._seen)
-                targeted = str(key) in self.params.get(analysis_type, {})
+                percent = self.get_score(counts[key], self._total_count)
+                # param key of -1 denotes None values were targeted for content_quality and content_type
+                param_key = -1 if key is None else key
+                targeted = param_key in self.params.get(analysis_type, {})
                 percents.append({key: percent, "targeted": targeted})
             percentage_results[formatted_key] = percents
 
@@ -99,8 +105,9 @@ class ContextualAnalyzer(BaseAnalyzer):
         params_exist = any(
             len(self.params[field]) > 0 for field in self.ANALYSIS_FIELDS
         )
+        passed_count = self._total_count - len(self._failed_channels)
         final_result = {
-            "overall_score": self.get_score(passed_count, self._seen) if params_exist else None,
+            "overall_score": self.get_score(passed_count, self._total_analyzed) if params_exist else None,
             **percentage_results
         }
         return final_result
@@ -128,6 +135,8 @@ class ContextualAnalyzer(BaseAnalyzer):
                 "content_type": 0
             }
         """
+        # Track if channel has been analyzed with valid params as not having params should not negatively impact score
+        analyzed = False
         contextual_failed = False
         curr_channel_result = {
             "passed": True
@@ -138,18 +147,23 @@ class ContextualAnalyzer(BaseAnalyzer):
             # e.g. count_field = content_categories_counts
             count_field = params_field + "_counts"
             curr_contextual_failed = analyze_func(raw_value, count_field, params_field)
-            if curr_contextual_failed is True:
-                contextual_failed = True
             curr_channel_result[params_field] = raw_value
+            if self.params.get(params_field):
+                analyzed = True
+                if curr_contextual_failed is True:
+                    contextual_failed = True
 
         if contextual_failed is True:
             channel_analysis.clean = False
             curr_channel_result["passed"] = False
             self._failed_channels.add(channel_analysis.channel_id)
-        self._seen += 1
+
+        self._total_count += 1
+        if analyzed is True:
+            self._total_analyzed += 1
         return curr_channel_result
 
-    def _analyze_multi(self, values: list, count_field: str, params_field: str):
+    def _analyze_multi(self, values: list, count_field: str, params_field: str) -> bool:
         """
         Wrapper method to call _analyze_attribute for attributes that contain multiple values
         Same parameters should be passed as _analyze_attribute
@@ -158,10 +172,11 @@ class ContextualAnalyzer(BaseAnalyzer):
         contextual_failed = False
         for value in values:
             curr_contextual_failed = self._analyze_attribute(value, count_field, params_field)
-            contextual_failed = curr_contextual_failed if curr_contextual_failed is True else False
+            if curr_contextual_failed is True:
+                contextual_failed = curr_contextual_failed
         return contextual_failed
 
-    def _analyze_attribute(self, value, count_field: str, params_field: str):
+    def _analyze_attribute(self, value, count_field: str, params_field: str) -> bool:
         """
         Analyze single attribute
         :param count_field: str -> Field in self._total_result_counts to increment
@@ -169,40 +184,39 @@ class ContextualAnalyzer(BaseAnalyzer):
         :param value: Actual value to analyze and compare against self.params[params_field]
         :return: bool
         """
-        contextual_failed = False
+        contextual_failed = True
         # Keep count of attributes
         # e.g. self._total_result_counts[content_quality_counts][0] += 1
         self._total_result_counts[count_field][value] += 1
         if not self.params.get(params_field):
-            return
+            return False
         # Check if value of current analysis matches params
         # e.g. val = "Education" not in self.params[AnalysisFields.CONTENT_CATEGORIES]
-        if contextual_failed is False and value not in self.params[params_field]:
-            contextual_failed = True
+        if value in self.params[params_field]:
+            contextual_failed = False
         return contextual_failed
 
-    def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_, **__):
+    def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_, **__) -> bool:
         """
         Analyze placement content categories against targeted content categories
         :param placement_content_categories: list of content categories of placement
         :param count_field: Key of self._total_result_counts to increment category occurrence counts
         """
+        contextual_failed = True
+        content_category_matched = False
         if placement_content_categories is None:
-            return
+            return False
         elif isinstance(placement_content_categories, str):
             placement_content_categories = [placement_content_categories]
-        contextual_failed = False
-        content_category_matched = False
-        # Check if placement contains all content categories targeted
-        if not self.params["content_categories"].issubset(placement_content_categories):
-            contextual_failed = True
         # Increment category occurrences
         for category in placement_content_categories:
             if category.lower() in IGNORE_CONTENT_CATEGORIES:
                 continue
-            self._total_result_counts[count_field][category] += 1
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
+                # Passes if at least one category matches
+                contextual_failed = False
                 content_category_matched = True
+            self._total_result_counts[count_field][category] += 1
         # Increment total counter of matched content categories. Should be incremented only once if any matched
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
@@ -229,7 +243,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         result = {
             "category_occurrence": category_occurrence,
             "total_matched_percent": self.get_score(
-                self._total_result_counts["matched_content_categories"], self._seen
+                self._total_result_counts["matched_content_categories"], self._total_count
             )
         }
         return result

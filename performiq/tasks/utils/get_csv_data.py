@@ -21,11 +21,13 @@ logger = logging.getLogger(__name__)
 CSV_HEADER_MAPPING = {
     CSVFieldTypeEnum.AVERAGE_CPV.value: AnalysisFields.CPV,
     CSVFieldTypeEnum.AVERAGE_CPM.value: AnalysisFields.CPM,
-    CSVFieldTypeEnum.COST: AnalysisFields.COST,
+    CSVFieldTypeEnum.COST.value: AnalysisFields.COST,
     CSVFieldTypeEnum.CTR.value: AnalysisFields.CTR,
     CSVFieldTypeEnum.URL.value: "url",
     CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: AnalysisFields.VIDEO_QUARTILE_100_RATE,
     CSVFieldTypeEnum.VIEW_RATE.value: AnalysisFields.VIDEO_VIEW_RATE,
+    CSVFieldTypeEnum.VIEWS.value: AnalysisFields.VIDEO_VIEWS,
+    CSVFieldTypeEnum.IMPRESSIONS.value: AnalysisFields.IMPRESSIONS,
 }
 
 

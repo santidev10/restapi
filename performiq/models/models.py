@@ -45,7 +45,7 @@ class OAuthAccount(OAuthBase):
 
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
-    oauth_account = models.ForeignKey(OAuthAccount, related_name="accounts", on_delete=models.CASCADE)
+    oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True)
 
 

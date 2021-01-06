@@ -60,10 +60,10 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     :param filepath: Filepath of file being used to generate export
     :return: str file key stored on S3
     """
-    clean_ids = list(IQCampaignChannel.objects.filter(iq_campaign=iq_campaign, clean=True)
-                     .distinct()
-                     .values_list("channel_id", flat=True)[:EXPORT_LIMIT])
-
+    analyzed_clean = set(IQCampaignChannel.objects.filter(iq_campaign=iq_campaign, clean=True)
+                         .distinct()
+                         .values_list("channel_id", flat=True)[:EXPORT_LIMIT])
+    clean_ids = list(analyzed_clean)
     if len(clean_ids) < EXPORT_LIMIT:
         params_serializer = IQCampaignQuerySerializer(data=iq_campaign.params)
         params_serializer.is_valid()
@@ -74,7 +74,8 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
         for batch in bulk_search(Channel, query, sort=sort, cursor_field=SUBSCRIBERS_FIELD, batch_size=5000,
                                  source=(MAIN_ID_FIELD, f"{Sections.STATS}.subscribers"),
                                  include_cursor_exclusions=True):
-            clean_ids.extend(doc.main.id for doc in batch)
+            ids = [doc.main.id for doc in batch if doc.main.id not in analyzed_clean]
+            clean_ids.extend(ids)
             if len(clean_ids) >= EXPORT_LIMIT:
                 break
 
