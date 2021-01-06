@@ -114,10 +114,11 @@ class IASChannelIngestor:
         if file_name and file_name in file_names:
             self.process_queue = [file_name]
         else:
-            # include only files in the top level cf-ias directory, files that are CSVs, and don't have an IGNORE flag
+            # include only files in the top level cf-ias directory, files that are CSVs
+            # and don't start with an "IGNORE" flag
             self.process_queue = [file_name for file_name in file_names
                                   if "/" not in file_name
-                                  and "IGNORE" not in file_name
+                                  and not file_name.startswith("IGNORE")
                                   and file_name.endswith(".csv")]
 
     def _get_s3_file_names(self) -> list:
