@@ -18,7 +18,6 @@ from performiq.utils.constants import CSVFieldTypeEnum
 from saas.urls.namespaces import Namespace
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
-from utils.brand_safety import map_score_threshold
 
 
 class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
@@ -28,7 +27,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
     def _create_gads(self, user_id, email):
         oauth_account = OAuthAccount.objects.create(user_id=user_id,
                                                     oauth_type=OAuthType.GOOGLE_ADS.value, email=email)
-        account = Account.objects.create(oauth_account=oauth_account)
+        account = Account.objects.create()
+        account.oauth_accounts.add(oauth_account)
         campaign = Campaign.objects.create(oauth_type=oauth_account.oauth_type, account=account)
         return oauth_account, account, campaign
 
