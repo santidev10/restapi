@@ -79,7 +79,7 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
     :return:
     """
     client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
-    all_cids = [int(cid["customerId"]) for cid in get_all_customers(client)][:30]
+    all_cids = [int(cid["customerId"]) for cid in get_all_customers(client)]
     existing = oauth_account.gads_accounts.values_list("id", flat=True)
 
     for batch in chunks_generator(all_cids, size=20):
