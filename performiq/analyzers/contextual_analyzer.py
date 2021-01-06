@@ -191,18 +191,17 @@ class ContextualAnalyzer(BaseAnalyzer):
             return
         elif isinstance(placement_content_categories, str):
             placement_content_categories = [placement_content_categories]
-        contextual_failed = False
+        contextual_failed = True
         content_category_matched = False
-        # Check if placement contains all content categories targeted
-        if not self.params["content_categories"].issubset(placement_content_categories):
-            contextual_failed = True
         # Increment category occurrences
         for category in placement_content_categories:
             if category.lower() in IGNORE_CONTENT_CATEGORIES:
                 continue
-            self._total_result_counts[count_field][category] += 1
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
+                # Passes if at least one category matches
+                contextual_failed = False
                 content_category_matched = True
+            self._total_result_counts[count_field][category] += 1
         # Increment total counter of matched content categories. Should be incremented only once if any matched
         if content_category_matched is True:
             self._total_result_counts["matched_content_categories"] += 1
