@@ -115,7 +115,10 @@ class IASChannelIngestor:
             self.process_queue = [file_name]
         else:
             # exclude items that are in ANY cf-ias subdirectory
-            self.process_queue = [file_name for file_name in file_names if "/" not in file_name]
+            self.process_queue = [file_name for file_name in file_names
+                                  if "/" not in file_name
+                                  and "IGNORE" not in file_name
+                                  and file_name.endswith(".csv")]
 
     def _get_s3_file_names(self) -> list:
         """
