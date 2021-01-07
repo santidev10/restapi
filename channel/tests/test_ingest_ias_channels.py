@@ -26,6 +26,10 @@ CHANNEL_IDS = ["UCRI7hheejBbWS6etTNwMT0g", "UCZOlCVo53M355pFIsjWp3Ig", "UCtyKq8y
                "UCwlIUbhlimlpXfDcDFW9Asw", "UC9EtdoN22YDbV9QMH36t1eQ", "UCifaxjslmI28EZ9V1T9II1Q",
                "UC_5TjYhPRza9bB_EbWpRd3Q", "UCJmXLYHJI8VVgSzJ3ABNS5A", "UCK6MPLkl7yEgVxWP3cf2ujQ"]
 
+INVALID_FILE_NAMES = ["some/file.csv", "IGNORE_this.csv", "should_not_be_processed"]
+VALID_FILE_NAMES = ["should_be_processesed.csv", "also_valid.csv"]
+FILE_NAMES = INVALID_FILE_NAMES + VALID_FILE_NAMES
+
 
 def do_nothing(*args, **kwargs):
     pass
@@ -45,7 +49,6 @@ class IASChannelIngestorTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(CHANNEL_IDS), ias_channels.count())
         self.assertEqual(IASHistory.objects.filter(name=FILE_NAME).count(), 1)
 
-    @skip("Tech debt: Suddenly failing")
     @patch.object(IASChannelIngestor, "_archive_s3_object", do_nothing)
     @patch.object(IASChannelIngestor, "_make_working_copy_of_s3_object", do_nothing)
     @patch.object(IASChannelIngestor, "_get_channel_ids_from_file_name", return_value=CHANNEL_IDS)
@@ -59,7 +62,7 @@ class IASChannelIngestorTestCase(ExtendedAPITestCase, ESTestCase):
         :return:
         """
         # create random number of existing AuditChannels that overlap the incoming "csv"
-        audit_channel_create_count = random.randint(1, len(CHANNEL_IDS) - 1)
+        audit_channel_create_count = random.randint(2, len(CHANNEL_IDS) - 1)
         audit_channel_ids = CHANNEL_IDS[:audit_channel_create_count]
         audit_channel_instances = [AuditChannel(channel_id=channel_id, channel_id_hash=get_hash_name(channel_id))
                                    for channel_id in audit_channel_ids]
@@ -116,3 +119,10 @@ class IASChannelIngestorTestCase(ExtendedAPITestCase, ESTestCase):
         channel_ingestor.run(file_name=FILE_NAME)
         self.assertEqual(IASHistory.objects.filter(name=FILE_NAME).count(), 2)
         self.assertNotEqual(IASHistory.objects.get(pk=history.id).completed, IASHistory.objects.last())
+
+
+    @patch.object(IASChannelIngestor, "_get_s3_file_names", return_value=FILE_NAMES)
+    def test_invalid_file_names_ignored(self, *args, **kwargs):
+        channel_ingestor = IASChannelIngestor()
+        channel_ingestor._init_process_queue()
+        self.assertEqual(set(channel_ingestor.process_queue), set(VALID_FILE_NAMES))
