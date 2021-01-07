@@ -29,7 +29,7 @@ LOCK_NAME = "ingest_ias"
 CHANNEL_ID_CHUNK_SIZE = 10000
 
 # number of "sub chunks" to break each postgres filter (by id), bulk_create query into
-POSTGRES_CHUNK_SIZE = 2000
+POSTGRES_CHUNK_SIZE = 10000
 
 
 @celery_app.task(expires=TaskExpiration.INGEST_IAS, soft_time_limit=TaskTimeout.INGEST_IAS)
