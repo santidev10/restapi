@@ -144,7 +144,7 @@ class ContextualAnalyzer(BaseAnalyzer):
         for params_field, analyze_func in self._analyzers.items():
             raw_value = channel_analysis.get(params_field)
             # content_quality and content_type param of -1 indicates we should check for None values
-            if raw_value is None:
+            if params_field in {AnalysisFields.CONTENT_TYPE, AnalysisFields.CONTENT_QUALITY} and raw_value is None:
                 raw_value = -1
             # Get key for current params_field to increment in _total_result_counts
             # e.g. count_field = content_categories_counts
