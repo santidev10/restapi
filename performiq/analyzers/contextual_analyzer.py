@@ -213,7 +213,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             placement_content_categories = [placement_content_categories]
         # Increment category occurrences
         for category in placement_content_categories:
-            if category.lower() in IGNORE_CONTENT_CATEGORIES:
+            if (category or "").lower() in IGNORE_CONTENT_CATEGORIES:
                 continue
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
                 # Passes if at least one category matches
