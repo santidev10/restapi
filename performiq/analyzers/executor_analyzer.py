@@ -122,8 +122,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
             method has been called
         """
         wastage = [analysis for analysis in self.channel_analyses if analysis.clean is False]
-        total_spend = sum(analysis.get(AnalysisFields.COST, 0) for analysis in self.channel_analyses)
-        wastage_spend = sum(analysis.get(AnalysisFields.COST, 0) for analysis in wastage)
+        total_spend = sum(analysis.get(AnalysisFields.COST, 0) or 0 for analysis in self.channel_analyses)
+        wastage_spend = sum(analysis.get(AnalysisFields.COST, 0) or 0 for analysis in wastage)
         statistics = {
             "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
             "wastage_spend": wastage_spend,
