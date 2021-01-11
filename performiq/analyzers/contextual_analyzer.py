@@ -191,7 +191,8 @@ class ContextualAnalyzer(BaseAnalyzer):
         # Keep count of attributes
         # e.g. self._total_result_counts[content_quality_counts][0] += 1
         self._total_result_counts[count_field][value] += 1
-        if not self.params.get(params_field):
+        # value == -1, then value being analyzed is None and should not fail analysis
+        if not self.params.get(params_field) or value == -1:
             return False
         # Check if value of current analysis matches params
         # e.g. val = "Education" not in self.params[AnalysisFields.CONTENT_CATEGORIES]
