@@ -32,7 +32,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data={})
         ]
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=analyses),\
-             mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=analyses), \
+             mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=analyses), \
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
@@ -50,7 +50,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         params = get_params({})
         iq_campaign = IQCampaign.objects.create(params=params)
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=[]), \
-             mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=[]), \
+             mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=[]), \
              mock.patch("performiq.tasks.start_analysis.generate_exports", return_value=dict()),\
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create),\
              mock.patch("performiq.tasks.start_analysis._send_completion_email") as mock_email:
@@ -65,7 +65,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         params = get_params({})
         iq_campaign = IQCampaign.objects.create(params=params)
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=[]), \
-             mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=[]), \
+             mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=[]), \
              mock.patch("performiq.tasks.start_analysis.generate_exports", return_value=dict()),\
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
@@ -87,7 +87,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data={})
         ]
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=analyses), \
-             mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=analyses), \
+             mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=analyses), \
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
@@ -123,7 +123,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=analysis_data)
         ]
         with mock.patch.object(ExecutorAnalyzer, "_prepare_data", return_value=analyses), \
-             mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=analyses), \
+             mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=analyses), \
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
@@ -156,7 +156,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
         analyses = [
             ChannelAnalysis(channel_id, data=dict(cpm=1))
         ]
-        with mock.patch("performiq.analyzers.executor_analyzer.merge_es_data", return_value=analyses), \
+        with mock.patch("performiq.analyzers.executor_analyzer.ExecutorAnalyzer._merge_es_data", return_value=analyses), \
              mock.patch("performiq.analyzers.executor_analyzer.safe_bulk_create", new=patch_bulk_create):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
