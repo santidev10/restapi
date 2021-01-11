@@ -13,6 +13,7 @@ from performiq.api.urls.names import PerformIQPathName
 from performiq.utils.constants import CSVFieldTypeEnum
 from performiq.utils.map_csv_fields import CSVWithHeader
 from performiq.utils.map_csv_fields import CSVWithOnlyData
+from performiq.utils.map_csv_fields import AutomaticPlacementsReport
 from performiq.utils.map_csv_fields import ManagedPlacementsReport
 from saas.urls.namespaces import Namespace
 from utils.unittests.s3_mock import mock_s3
@@ -72,7 +73,8 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
             type_error_map = {
                 CSVWithOnlyData.get_type_string(): "CSV cannot have a header row",
                 CSVWithHeader.get_type_string(): "CSV must have at least two rows",
-                ManagedPlacementsReport.get_type_string(): "Managed placements reports must have at least 4 rows"
+                ManagedPlacementsReport.get_type_string(): "Placements reports must have at least 4 rows",
+                AutomaticPlacementsReport.get_type_string(): "Placements reports must have at least 4 rows"
             }
             for csv_type, expected_error in type_error_map.items():
                 with self.subTest((csv_type, expected_error)):

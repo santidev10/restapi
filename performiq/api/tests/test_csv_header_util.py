@@ -9,7 +9,7 @@ class MapCSVFieldsValidatorTestCase(testcases.TestCase):
 
     def test_managed_placements_report_failure(self):
         reports = {
-            "Managed placements reports must have at least 4 rows": [
+            "Placements reports must have at least 4 rows": [
                 ["Managed placements report"],
                 ["All time"],
                 ["Placement Status", "Placement", "Placement URL", "asdf"],
