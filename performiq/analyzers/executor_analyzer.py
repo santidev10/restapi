@@ -26,6 +26,11 @@ class ExecutorAnalyzer(BaseAnalyzer):
     """
     Manages PerformIQ analysis flow by providing data to all analyzers defined in self._analyzers
         and gathering / saving results
+
+    Usage:
+        1. Instantiate ExecutorAnalyzer which will prepare data
+        2. Call analyze method
+        3. Call get_results method to get formatted results from all analyzers
     """
     def __init__(self, iq_campaign: IQCampaign):
         self.iq_campaign = iq_campaign

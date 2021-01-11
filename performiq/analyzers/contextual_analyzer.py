@@ -19,6 +19,9 @@ class ContextualAnalyzer(BaseAnalyzer):
                        AnalysisFields.CONTENT_QUALITY}
 
     def __init__(self, params: dict):
+        """
+        :param params: IQCampaign params value
+        """
         # Coerce list params to sets as analyzers check for attributes membership as part of analysis
         self.params = {
             key: set(value) if isinstance(value, list) and value is not None else value
@@ -101,7 +104,7 @@ class ContextualAnalyzer(BaseAnalyzer):
             percentage_results[formatted_key] = percents
 
         percentage_results["content_categories"] = self._get_content_categories_result()
-        # Check if params were applied for analysis
+        # overall_score should be calculated only if params were applied for this analyzer
         params_exist = any(
             len(self.params[field]) > 0 for field in self.ANALYSIS_FIELDS
         )
@@ -181,7 +184,7 @@ class ContextualAnalyzer(BaseAnalyzer):
 
     def _analyze_attribute(self, value, count_field: str, params_field: str) -> bool:
         """
-        Analyze single attribute
+        Analyze single attribute by comparing to self.params
         :param count_field: str -> Field in self._total_result_counts to increment
         :param params_field: str -> Field in self.params that should be checked
         :param value: Actual value to analyze and compare against self.params[params_field]
@@ -202,12 +205,11 @@ class ContextualAnalyzer(BaseAnalyzer):
 
     def _analyze_content_categories(self, placement_content_categories: list, count_field: str, *_, **__) -> bool:
         """
-        Analyze placement content categories against targeted content categories
+        Analyze placement content categories against targeted content categories in self.params
         :param placement_content_categories: list of content categories of placement
         :param count_field: Key of self._total_result_counts to increment category occurrence counts
         """
         contextual_failed = True
-        content_category_matched = False
         if placement_content_categories is None:
             return False
         elif isinstance(placement_content_categories, str):
@@ -219,17 +221,15 @@ class ContextualAnalyzer(BaseAnalyzer):
             if category in self.params[AnalysisFields.CONTENT_CATEGORIES]:
                 # Passes if at least one category matches
                 contextual_failed = False
-                content_category_matched = True
             self._total_result_counts[count_field][category] += 1
         # Increment total counter of matched content categories. Should be incremented only once if any matched
-        if content_category_matched is True:
+        if contextual_failed is False:
             self._total_result_counts["matched_content_categories"] += 1
         return contextual_failed
 
     def _get_content_categories_result(self) -> dict:
         """
         Format counts of all content categories analyzed
-        :return:
         """
         # Get top content category occurrences and overall percentage match
         content_categories_counts = self._total_result_counts["content_categories_counts"]

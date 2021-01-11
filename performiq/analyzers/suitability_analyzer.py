@@ -7,6 +7,9 @@ class SuitabilityAnalyzer(BaseAnalyzer):
     RESULT_KEY = AnalysisResultSection.SUITABILITY_RESULT_KEY
 
     def __init__(self, params):
+        """
+        :param params: IQCampaign params value
+        """
         # Coerce list params to sets as analyzers check for attributes membership as part of analysis
         self.params = {
             key: set(value) if isinstance(value, list) and value is not None else value

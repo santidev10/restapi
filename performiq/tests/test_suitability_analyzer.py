@@ -37,7 +37,7 @@ class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
     def test_single_channel_score_fails(self):
         """ Test analysis that channel fails suitability """
         _params = dict(
-            score_threshold=50,
+            score_threshold=2,
         )
         params = get_params(_params)
         analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data={"overall_score": 25})
@@ -48,7 +48,7 @@ class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
     
     def test_result_counts(self):
         _params = dict(
-            score_threshold=50,
+            score_threshold=2,
             exclude_content_categories=["Gaming"]
         )
         params = get_params(_params)
@@ -59,9 +59,9 @@ class SuitabilityAnalyzerTestCase(ExtendedAPITestCase):
             dict(overall_score=100, content_categories=["Gaming"]),
 
             # passes
-            dict(overall_score=50, content_categories=["Sports"]),
-            dict(overall_score=60, content_categories=["Beauty"]),
-            dict(overall_score=70, content_categories=["Education"]),
+            dict(overall_score=80, content_categories=["Sports"]),
+            dict(overall_score=90, content_categories=["Beauty"]),
+            dict(overall_score=90, content_categories=["Education"]),
         ]
         analyses = [
             ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=d)
