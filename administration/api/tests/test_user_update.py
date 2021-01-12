@@ -88,7 +88,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertTrue(user_2.is_active)
 
         self.assertEqual(len(mail.outbox), 2)
-        self.assertTrue(f"http://{DEFAULT_DOMAIN}.com/login" in mail.outbox[0].alternatives[0][0])
+        self.assertTrue(f"http://www.{DEFAULT_DOMAIN}.com/login" in mail.outbox[0].alternatives[0][0])
         self.assertTrue(f"http://{sub_domain}.{DEFAULT_DOMAIN}.com/login" in mail.outbox[1].alternatives[0][0])
 
     def test_status_not_allow_none(self):
