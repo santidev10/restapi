@@ -157,19 +157,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             except Exception as e:
                 raise Exception("invalid permission name")
 
-    @property
-    def permissions(self):
-        if not self.perms or self.perms == {}:
-            pass
-            #INSERT CODE HERE TO MAP FROM V1 PERMS TO V2 PERMS
-        for i,v in PermissionItem.get_all_available_permissions().items():
-            if i not in self.perms and v == True:
-                self.perms.append(i)
-        perms = []
-        for i,v in self.perms.items():
-            perms.append(i)
-        return perms
-
     class Meta:
         """
         Meta params
@@ -248,13 +235,6 @@ class PermissionItem(models.Model):
     permission = models.CharField(unique=True, max_length=128)
     default_value = models.BooleanField(index=True, default=False)
     display = models.TextField(default="")
-
-    @staticmethod
-    def get_all_available_permissions():
-        all = {}
-        for p in PermissionItem.objects.all():
-            all[p.permission] = [p.default_value, p.display]
-        return all
 
     STATIC_PERMISSIONS = {
     #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, display]

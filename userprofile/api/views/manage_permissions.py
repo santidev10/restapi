@@ -7,7 +7,6 @@ class UserPermissionsManagement(APIView):
     """
     Get User Options & Permissions
     """
-
     def get(self, request):
         if not UserProfile.has_permission('user_management'):
             return Response({'error': 'You can not do this'})
