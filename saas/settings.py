@@ -310,9 +310,7 @@ CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
 ]
 
 CHANNEL_AUTHENTICATION_NOTIFY_TO = [
-    "andrii.dobrovolskyi@sigma.software"
-    "maria.konareva@sigma.software",
-    "sean.maguire@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
