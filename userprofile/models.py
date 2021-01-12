@@ -258,18 +258,25 @@ class PermissionItem(models.Model):
 
     STATIC_PERMISSIONS = {
     #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, display]
-        ['admin',                       False, "Admin"],
+        ['admin',                       False, "Admin (the powers of Zeus)"],
         ['ads_analyzer',                False, "Ads Analyzer"],
         ['audit_queue',                 False, "Audit Queue"],
         ['blocklist_manager',           False, "Blocklist Manager"],
         ['bste',                        False, "Brand Safety Tags Editor"],
+
         ['ctl',                         False, "Custom Target Lists"],
         ['ctl.read',                    False, "Read"],
         ['ctl.create',                  False, "Create"],
-        ['ctl.feature_list',            False, "Feature List"],
+        ['ctl.delete',                  False, "Delete"],
+        ['ctl.feature_list',            False, "Feature / Unfeature List"],
         ['ctl.export_basic',            False, "Export (basic)"],
         ['ctl.export_admin',            False, "Export (all data)"],
-        ['ctl.enable_vetting',          False, "Enable Vetting"],
+        ['ctl.see_all',                 False, "See all Lists"],
+        ['ctl.vet_enable',              False, "Enable Vetting"],
+        ['ctl.vet',                     False, "Vet Stuff"],
+        ['ctl.vet_admin',               False, "Vet Admin"],
+        ['ctl.vet_export',              False, "Download Vetted only Export"],
+
         ['domain_manager',              False, "Domain Manager"],
         ['pacing_report',               False, "Pacing Report"],
         ['performiq',                   False, "PerformIQ"],
