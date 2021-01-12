@@ -19,7 +19,7 @@ from utils.exception import retry
 from utils.utils import chunks_generator
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = os.environ.get("CTL_BATCH_SIZE", 2000)
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
 
 logger = logging.getLogger(__name__)
