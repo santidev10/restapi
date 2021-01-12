@@ -253,7 +253,7 @@ class PermissionItem(models.Model):
     def get_all_available_permissions():
         all = {}
         for p in PermissionItem.objects.all():
-            all[p.permission] = p.default_value
+            all[p.permission] = [p.default_value, p.display]
         return all
 
     STATIC_PERMISSIONS = {
