@@ -247,6 +247,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 class PermissionItem(models.Model):
     permission = models.CharField(unique=True, max_length=128)
     default_value = models.BooleanField(index=True, default=False)
+    display = models.TextField(default="")
 
     @staticmethod
     def get_all_available_permissions():
@@ -254,6 +255,41 @@ class PermissionItem(models.Model):
         for p in PermissionItem.objects.all():
             all[p.permission] = p.default_value
         return all
+
+    STATIC_PERMISSIONS = {
+    #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, description]
+        ['admin', False, "Admin"],
+        ['ads_analyzer', False, "Ads Analyzer"],
+        ['audit_queue', False, "Audit Queue"],
+        ['blocklist_manager', False, "Blocklist Manager"],
+        ['bste', False, "Brand Safety Tags Editor"],
+        ['ctl', False, "Custom Target Lists"],
+        ['ctl.read', False, "Read"],
+        ['ctl.create', False, "Create"],
+        ['ctl.feature_list', False, "Feature List"],
+        ['ctl.export_basic', False, "Export (basic)"],
+        ['ctl.export_admin', False, "Export (all data)"],
+        ['ctl.enable_vetting', False, "Enable Vetting"],
+        ['domain_manager', False, "Domain Manager"],
+        ['pacing_report', False, "Pacing Report"],
+        ['performiq', False, "PerformIQ"],
+        ['performiq.export', False, "Export"],
+        ['pricing_tool', False, "Pricing Tool"],
+        ['research', True, "Research"],
+        ['research.export', True, "Export"],
+        ['research.vetting', False, "Able to Vet items"],
+        ['research.vetting_data', False, "View vetting data & filters"],
+        ['research.brand_suitability', False, "View Brand Suitability Badges"],
+        ['user_management', False, "User Management"],
+    }
+
+    @staticmethod
+    def load_permissions():
+        for p in PermissionItem.STATIC_PERMISSIONS:
+            i, _ = PermissionItem.objects.get_or_create(perm=p[0])
+            i.default_value = p[1]
+            i.display = p[2]
+            i.save(update_fields=['default_value', 'display'])
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)
