@@ -114,6 +114,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(max_length=255, null=True, blank=True)
+    perms = JSONField(default={})
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -143,6 +144,31 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
+
+    def has_permission(self, perm):
+        # if user is admin, they automatically get whatever permission
+        if self.perms.get('admin') and self.perms.get('admin') == True:
+            return True
+        if self.perms.get(perm) and self.perms.get(perm) == True:
+            return True
+        elif self.perms.get(perm) is not None:
+            try:
+                return PermissionItem.objects.get(perm=perm).default_value
+            except Exception as e:
+                raise Exception("invalid permission name")
+
+    @property
+    def permissions(self):
+        if not self.perms or self.perms == {}:
+            pass
+            #INSERT CODE HERE TO MAP FROM V1 PERMS TO V2 PERMS
+        for i,v in PermissionItem.get_all_available_permissions().items():
+            if i not in self.perms and v == True:
+                self.perms.append(i)
+        perms = []
+        for i,v in self.perms.items():
+            perms.append(i)
+        return perms
 
     class Meta:
         """
@@ -218,6 +244,16 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             domain_name = None
         return domain_name
 
+class PermissionItem(models.Model):
+    permission = models.CharField(unique=True, max_length=128)
+    default_value = models.BooleanField(index=True, default=False)
+
+    @staticmethod
+    def get_all_available_permissions():
+        all = {}
+        for p in PermissionItem.objects.all():
+            all[p.permission] = p.default_value
+        return all
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)
