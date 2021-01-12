@@ -4,31 +4,45 @@ from .utils import Coercers
 from performiq.models.constants import AnalysisFields
 
 
-class AnalyzeSection:
+class AnalysisResultSection:
     PERFORMANCE_RESULT_KEY = "performance_results"
     CONTEXTUAL_RESULT_KEY = "contextual_results"
     SUITABILITY_RESULT_KEY = "suitability_results"
 
 
-ANALYZE_SECTIONS = {AnalyzeSection.PERFORMANCE_RESULT_KEY, AnalyzeSection.CONTEXTUAL_RESULT_KEY,
-                    AnalyzeSection.SUITABILITY_RESULT_KEY}
+ANALYSIS_RESULT_SECTIONS = [AnalysisResultSection.PERFORMANCE_RESULT_KEY, AnalysisResultSection.CONTEXTUAL_RESULT_KEY,
+                            AnalysisResultSection.SUITABILITY_RESULT_KEY]
 
 # Mapping of campaign data fields to function to coerce values
 COERCE_FIELD_FUNCS = {
     AnalysisFields.IMPRESSIONS: Coercers.integer,
     AnalysisFields.VIDEO_VIEWS: Coercers.integer,
     AnalysisFields.CTR: Coercers.percentage,
-    AnalysisFields.CPM: Coercers.cost,
-    AnalysisFields.CPV: Coercers.cost,
-    AnalysisFields.COST: Coercers.cost,
+    AnalysisFields.CPM: Coercers.float,
+    AnalysisFields.CPV: Coercers.float,
+    AnalysisFields.COST: Coercers.float,
     AnalysisFields.ACTIVE_VIEW_VIEWABILITY: Coercers.percentage,
     AnalysisFields.VIDEO_VIEW_RATE: Coercers.percentage,
     AnalysisFields.VIDEO_QUARTILE_100_RATE: Coercers.percentage,
     AnalysisFields.CONTENT_TYPE: Coercers.integer,
     AnalysisFields.CONTENT_QUALITY: Coercers.integer,
     "channel_url": Coercers.channel_url,
-    "cpm": Coercers.cost,
-    "cpv": Coercers.cost,
+    "cpm": Coercers.float,
+    "cpv": Coercers.float,
+}
+
+ADWORDS_COERCE_FIELD_FUNCS = {
+    **{
+        key: func for key, func in COERCE_FIELD_FUNCS.items()
+    },
+    "cpm": Coercers.cost_micros,
+    "cpv": Coercers.cost_micros,
+    AnalysisFields.CPM: Coercers.cost_micros,
+    AnalysisFields.CPV: Coercers.cost_micros,
+    AnalysisFields.COST: Coercers.cost_micros,
+    AnalysisFields.ACTIVE_VIEW_MEASURABLE_IMPRESSIONS: Coercers.integer,
+    AnalysisFields.ACTIVE_VIEW_IMPRESSIONS: Coercers.integer,
+    AnalysisFields.CLICKS: Coercers.integer,
 }
 
 
@@ -58,3 +72,8 @@ class ESFieldMapping:
     SECONDARY = {
         "general_data.primary_category": "general_data.iab_categories"
     }
+
+
+IGNORE_CONTENT_CATEGORIES = {
+    "content channel"
+}

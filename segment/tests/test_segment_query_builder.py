@@ -126,6 +126,7 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
         doc3 = self.channel_manager.model(f"channel_{next(int_iterator)}")
         doc4 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        doc5 = self.channel_manager.model(f"channel_{next(int_iterator)}")
         doc1.populate_general_data(
             iab_categories=["Car Culture", "Motorcycles"]
         )
@@ -137,6 +138,9 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         )
         doc4.populate_general_data(
             iab_categories=["Motorcycles", "Auto Safety"]
+        )
+        doc5.populate_general_data(
+            primary_category="Motorcycles"
         )
         self.channel_manager.upsert([doc1, doc2, doc3])
         params = dict(

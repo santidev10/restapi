@@ -1,4 +1,2 @@
-from .google_ads_scheduler import google_ads_update_scheduler
+from .google_ads_update import google_ads_update_task
 from .update_campaigns import update_campaigns_task
-from .update_campaigns import update_cid_campaigns_task
-from .update_campaigns import update_mcc_campaigns_task

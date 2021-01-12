@@ -278,7 +278,10 @@ class SegmentListGenerator:
         if query is None:
             query = segment.get_segment_items_query()
         if size is None:
-            size = segment.config.LIST_SIZE
+            if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+                size = segment.config.ADMIN_LIST_SIZE
+            else:
+                size = segment.config.USER_LIST_SIZE
         search_with_params = segment.generate_search_with_params(query=query, sort=segment.config.SORT_KEY)
         for doc in search_with_params.scan():
             all_items.append(doc)

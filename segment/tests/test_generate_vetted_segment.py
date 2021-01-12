@@ -1,6 +1,7 @@
 import boto3
 from django.conf import settings
 from django.utils import timezone
+from datetime import datetime
 import io
 from moto import mock_s3
 
@@ -93,6 +94,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     def test_vetted_channel_export_source_list_10k(self):
         """ Test that vetted channel exports with vetted lists <= 10k has vetted data """
+        user = self.create_admin_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         # Prepare docs to build segment
@@ -118,6 +120,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"title_{next(int_iterator)}",
             segment_type=1, list_type=0, audit_id=audit.id,
+            owner=user
         )
         CustomSegmentVettedFileUpload.objects.create(
             segment=segment,
@@ -140,6 +143,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     def test_vetted_video_export_source_list_10k(self):
         """ Test that vetted video exports with vetted lists <= 10k has vetted data """
+        user = self.create_admin_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         # Prepare docs to build segment
@@ -150,7 +154,8 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             age_group=0,
             brand_safety=[0],
             gender=0,
-            iab_categories=["Test"]
+            iab_categories=["Test"],
+            last_vetted_at=datetime.now(timezone.utc)
         )
         # Prepare inclusion source list of urls
         source_file = io.BytesIO()
@@ -165,6 +170,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"title_{next(int_iterator)}",
             segment_type=0, list_type=0, audit_id=audit.id,
+            owner=user
         )
         CustomSegmentVettedFileUpload.objects.create(
             segment=segment,

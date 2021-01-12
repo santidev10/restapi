@@ -4,6 +4,7 @@ from unittest.mock import PropertyMock
 from unittest.mock import patch
 
 from django.utils import timezone
+from django.test import override_settings
 from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
@@ -16,6 +17,8 @@ from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.research import ResearchPaginator
+from utils.es_components_cache import get_redis_client
+from utils.es_components_cache import flush_cache
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -526,3 +529,107 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual(len(buckets), 4)
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
+
+    def test_cache(self):
+        """ Test subsequent requests uses cache """
+        self.create_admin_user()
+        flush_cache()
+        url = self.get_url() + "?page=1&fields=main&sort=stats.views:desc"
+        self.client.get(url)
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
+            # Subsequent requests should use cache to retrieve but not set
+            self.client.get(url)
+        mock_set_cache.assert_not_called()
+        flush_cache()
+
+    def test_should_set_cache_threshold_expires(self):
+        """ Test should_set_cache returns True only if page being requested is a default page and time to live expires """
+        redis = get_redis_client()
+        flush_cache()
+        self.create_admin_user()
+        url = self.get_url() + "?page=1&fields=main&sort=stats.views:desc"
+        with override_settings(ES_CACHE_ENABLED=True):
+            # Initial request to set cache
+            self.client.get(url)
+        # Manually update ttl for key to be below threshold to refresh cache
+        cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
+        redis.expire(cache_key, 0)
+        # Cache is accessed twice for each get request, for a document count and a list of documents.
+        # Use side effect to return first [0 count, 0 ttl] and [[] documents, 0 ttl]
+        with patch("utils.es_components_cache.get_from_cache", side_effect=[(0, 0), ([], 0)]),\
+            patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
+
+            # Normally this would retrieve cached data as the key ttl would still be valid.
+            # However since redis.expire was used to manually reduce ttl, the cache should
+            # be refreshed
+            self.client.get(url)
+        self.assertEqual(mock_set_cache.call_count, 2)
+        flush_cache()
+
+    def test_default_page_extended_timeout(self):
+        """ Test that a default page uses an extended cache timeout e.g. First page of research with no filters """
+        self.create_admin_user()
+        url = self.get_url() + "page=1&fields=main&sort=stats.subscribers:desc"
+        # Initial request to set cache
+        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
+                override_settings(ES_CACHE_ENABLED=True):
+            self.client.get(url)
+        args = mock_set_cache.call_args[1]
+        self.assertEqual(args["timeout"], 14400)
+
+    def test_relevancy_score_sorting_with_category_filter(self):
+        """
+        test that searching for results by relevancy (_score) asc/desc works
+        when category filter is selected. Result items with matching
+        primary categories should appear first with a +10 scoring boost when
+        relevancy sorting is descending.
+        """
+        self.create_admin_user()
+        video_ids = [str(next(int_iterator)) for i in range(2)]
+        primary_category = "Music & Audio"
+        least_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[1],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": "Social"
+            },
+        })
+        most_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[0],
+            },
+            "general_data": {
+                "iab_categories": ["Music & Audio", "Social"],
+                "primary_category": primary_category
+            },
+        })
+        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([
+            most_relevant_video,
+            least_relevant_video
+        ])
+
+        desc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(
+            desc_items[0]["general_data"]["primary_category"],
+            primary_category
+        )
+
+        asc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.iab_categories": "Music & Audio",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(
+            asc_items[-1]["general_data"]["primary_category"],
+            primary_category
+        )

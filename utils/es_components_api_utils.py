@@ -11,6 +11,9 @@ from rest_framework.serializers import Serializer
 
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from es_components.iab_categories import IAB_TIER1_CATEGORIES
+from es_components.query_repository import get_ias_verified_exists_filter
+from es_components.query_repository import get_last_vetted_at_exists_filter
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
@@ -206,10 +209,26 @@ class QueryGenerator:
 
             if value:
                 value = value.split(",") if isinstance(value, str) else value
-                filters.append(
-                    QueryBuilder().build().must().terms().field(field).value(value).get()
-                )
-
+                # Add +10 relevancy score boost to result item if primary category matches selected iab category filter
+                if field == "general_data.iab_categories":
+                    iab_categories = [{"terms": {field: [val for val in value]}}]
+                    primary_category = [{
+                        "terms": {
+                            "general_data.primary_category": [val for val in value if val in IAB_TIER1_CATEGORIES],
+                            "boost": 10
+                        }
+                    }]
+                    query = Q({
+                                "bool": {
+                                    "must": iab_categories,
+                                    "should": primary_category
+                                }
+                            })
+                    filters.append(query)
+                else:
+                    filters.append(
+                        QueryBuilder().build().must().terms().field(field).value(value).get()
+                    )
         return filters
 
     def __get_filters_must_not_terms(self):
@@ -266,10 +285,24 @@ class QueryGenerator:
         else:
             return
 
-    def adapt_ias_filters(self, filters, value):
+    @staticmethod
+    def adapt_ias_filters(filters, value):
         if value is True or value == "true":
-            q = QueryBuilder().build().must().range().field("ias_data.ias_verified").gte("now-7d/d").get()
-            filters.append(q)
+            query = get_ias_verified_exists_filter()
+            filters.append(query)
+        return
+
+    @staticmethod
+    def adapt_last_vetted_at_exists_filter(filters, value):
+        """
+        modify task_us_data.last_vetted_at:exists to check if the date is greater than LAST_VETTED_AT_MIN_DATE
+        :param filters:
+        :param value:
+        :return: filters
+        """
+        if value is True or (isinstance(value, str) and value.lower() == "true"):
+            query = get_last_vetted_at_exists_filter()
+            filters.append(query)
         return
 
     def __get_filters_exists(self):
@@ -286,6 +319,9 @@ class QueryGenerator:
                 continue
             elif field == "ias_data.ias_verified":
                 self.adapt_ias_filters(filters, value)
+                continue
+            elif field == "task_us_data.last_vetted_at":
+                self.adapt_last_vetted_at_exists_filter(filters, value)
                 continue
 
             query = QueryBuilder().build()
@@ -343,6 +379,7 @@ class ESDictSerializer(Serializer):
             chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
         data = instance.to_dict()
         data = self._add_blocklist(data)
+        data = self._check_ias_verified(data)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -351,6 +388,17 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+
+    def _check_ias_verified(self, data: dict):
+        """
+        Only provide IAS data if channel was included in the last IAS data ingestion
+        """
+        try:
+            if data["ias_data"]["ias_verified"] < self.context["latest_ias_ingestion"]:
+                data.pop("ias_data", None)
+        except (KeyError, TypeError):
+            pass
+        return data
 
     def _add_blocklist(self, data: dict):
         """
@@ -398,7 +446,7 @@ class VettedStatusSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, is_default_page=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -410,6 +458,7 @@ class ESQuerysetAdapter:
         self.cached_aggregations = cached_aggregations
         # Additional control if cached methods should use cache
         self.from_cache = from_cache
+        self.is_default_page = is_default_page
 
     @cached_method(timeout=7200)
     def count(self):
@@ -647,6 +696,13 @@ class APIViewMixin:
         if self.vetting_admin_permission_class().has_permission(self.request):
             return self.admin_manager_class
         return self.manager_class
+
+    def is_default_page(self):
+        query_params = self.request.query_params
+        is_default_page = False
+        if query_params.get("page") == "1" and set(query_params.keys()) == {"page", "sort", "fields"}:
+            is_default_page = True
+        return is_default_page
 
 
 class PaginatorWithAggregationMixin:

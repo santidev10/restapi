@@ -1,9 +1,9 @@
 from django.conf import settings
-from google.ads.google_ads.v2.services.enums import AdNetworkTypeEnum
-from google.ads.google_ads.v2.services.enums import AgeRangeTypeEnum
-from google.ads.google_ads.v2.services.enums import DeviceEnum
-from google.ads.google_ads.v2.services.enums import GenderTypeEnum
-from google.ads.google_ads.v2.services.enums import ParentalStatusTypeEnum
+from google.ads.google_ads.v6.services.enums import AdNetworkTypeEnum
+from google.ads.google_ads.v6.services.enums import AgeRangeTypeEnum
+from google.ads.google_ads.v6.services.enums import DeviceEnum
+from google.ads.google_ads.v6.services.enums import GenderTypeEnum
+from google.ads.google_ads.v6.services.enums import ParentalStatusTypeEnum
 
 from aw_reporting.models.ad_words.constants import AgeRange
 from aw_reporting.models.ad_words.constants import Device
@@ -134,7 +134,7 @@ CITY_PERFORMANCE_FIELDS = {
 }
 
 GEO_TARGET_CONSTANT_FIELDS = {
-    "geo_target_constant": ("id", "name", "country_code", "target_type", "canonical_name")
+    "geo_target_constant": ("id", "name", "country_code", "target_type", "canonical_name", "parent_geo_target")
 }
 
 KEYWORD_PERFORMANCE_FIELDS = {

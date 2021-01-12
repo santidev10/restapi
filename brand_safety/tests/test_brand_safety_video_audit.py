@@ -78,39 +78,6 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         updated = self.video_manager.get([video.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
 
-    def test_vetted_safe(self, *_):
-        """ Test scoring vetted safe videos should receive all scores of 100 """
-        video_auditor = VideoAuditor()
-        now = timezone.now()
-        video = Video(f"v_{next(int_iterator)}")
-        video.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[None]
-        )
-        self.video_manager.upsert([video])
-        video_auditor.process([video.main.id])
-        updated = self.video_manager.get([video.main.id])[0]
-        for category in updated.brand_safety.categories:
-            self.assertEqual(updated.brand_safety.categories[category].category_score, 100)
-        self.assertEqual(updated.brand_safety.overall_score, 100)
-
-    def test_vetted_unsafe(self, *_):
-        """ Test scoring vetted unsafe videos should receive all scores of 0 """
-        video_auditor = VideoAuditor()
-        now = timezone.now()
-        video = Video(f"v_{next(int_iterator)}")
-        bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
-        video.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[str(bs_category.id)]
-        )
-        self.video_manager.upsert([video])
-        video_auditor.process([video.main.id])
-        updated = self.video_manager.get([video.main.id])[0]
-        for category in updated.brand_safety.categories:
-            self.assertEqual(updated.brand_safety.categories[category].category_score, 0)
-        self.assertEqual(updated.brand_safety.overall_score, 0)
-
     def test_special_characters(self, *_):
         en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
         sv_lang = AuditLanguage.objects.get_or_create(language="sv")[0]
@@ -158,22 +125,6 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(0 <= video_audit_score.overall_score <= 100)
         self.assertEqual(set(self.BS_WORDS), set(video_audit_score.hits))
         self.assertEqual(video_audit_score2.overall_score, 100)
-
-    def test_ignore_vetted_brand_safety(self, *_):
-        """ Test ignore_vetted_brand_safety parameter successfully runs audit without brand safety """
-        now = timezone.now()
-        video = Video(f"v_{next(int_iterator)}")
-        bs_category = BadWordCategory.objects.get(name=self.BS_CATEGORIES[0])
-        video.populate_task_us_data(
-            last_vetted_at=now,
-            brand_safety=[str(bs_category.id)]
-        )
-        self.video_manager.upsert([video])
-        auditor = VideoAuditor(ignore_vetted_brand_safety=True)
-        auditor.process([video.main.id])
-        updated = self.video_manager.get([video.main.id])[0]
-        # ignore_vetted_brand_safety=True should not automatically set scores to 0 because of task_us_data.brand_safety
-        self.assertTrue(updated.brand_safety.overall_score != 0)
 
     def test_channel_rescore(self, *_):
         """ Test that channels are collected if its video scores badly enough """

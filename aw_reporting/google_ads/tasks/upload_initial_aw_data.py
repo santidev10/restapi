@@ -3,6 +3,7 @@ import logging
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
+from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
 from saas import celery_app
@@ -17,11 +18,11 @@ def upload_initial_aw_data_task(connection_pk):
     :param connection_pk: str -> email
     :return:
     """
+    detect_success_aw_read_permissions()
     connection = AWConnection.objects.get(pk=connection_pk)
     client = get_web_app_client(
         refresh_token=connection.refresh_token,
     )
-
     mcc_to_update = Account.objects.filter(
         mcc_permissions__aw_connection=connection,
         update_time__isnull=True,  # they were not updated before

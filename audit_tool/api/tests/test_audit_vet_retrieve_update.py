@@ -1,5 +1,6 @@
-import json
+from datetime import timedelta
 from uuid import uuid4
+import json
 
 from django.utils import timezone
 from elasticsearch.exceptions import NotFoundError
@@ -12,6 +13,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.api.urls.names import AuditPathName
+from audit_tool.api.views.audit_vet_retrieve_update import CHECKOUT_THRESHOLD
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
@@ -20,12 +22,14 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
+from audit_tool.tests.utils import create_model_objs
 from brand_safety.models import BadWordCategory
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
 from saas.urls.namespaces import Namespace
+from segment.models.constants import SegmentTypeEnum
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -35,6 +39,15 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
     custom_segment_model = None
     custom_segment_export_model = None
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        create_model_objs()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def setUp(self):
         # Import and set models to avoid recursive ImportError
@@ -86,7 +99,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(self.mock_get_document.call_count, 0)
 
     def test_get_next_video_vetting_item_with_history_success(self, *args):
-        """ Test retrieving next vetting item in video audit """
+        """ Test retrieving next vetting item in video audit with history """
         user = self.create_admin_user()
         before = timezone.now()
         audit_1, segment_1 = self._create_segment_audit(user,
@@ -99,10 +112,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         video_audit = AuditVideo.objects.create(video_id=v_id, video_id_hash=get_hash_name(v_id))
         video_meta = AuditVideoMeta.objects.create(video=video_audit, name="test meta name")
         historical_video_vet_1 = AuditVideoVet.objects.create(
-            audit=audit_1, video=video_audit, processed=before, clean=False
+            audit=audit_1, video=video_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditVideoVet.objects.create(
-            audit=audit_2, video=video_audit, processed=before, clean=True
+            audit=audit_2, video=video_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_video_vet = AuditVideoVet.objects.create(audit=audit_3, video=video_audit)
 
@@ -144,12 +157,14 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_video_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[1]["data"])
 
     def test_get_next_channel_vetting_item_with_history_success(self, *args):
-        """ Test retrieving next vetting item in video audit """
+        """ Test retrieving next vetting item in channel audit with history """
         user = self.create_admin_user()
         before = timezone.now()
         audit_1, segment_1 = self._create_segment_audit(user,
@@ -162,10 +177,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
         channel_meta = AuditChannelMeta.objects.create(channel=channel_audit, name="test meta name")
         historical_channel_vet_1 = AuditChannelVet.objects.create(
-            audit=audit_1, channel=channel_audit, processed=before, clean=False
+            audit=audit_1, channel=channel_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditChannelVet.objects.create(
-            audit=audit_2, channel=channel_audit, processed=before, clean=True
+            audit=audit_2, channel=channel_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
 
@@ -210,8 +225,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_channel_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[1]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
 
     def test_get_next_video_vetting_item_missing(self, *args):
@@ -685,3 +702,172 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate_vetted.delay.assert_called_once()
+
+    def test_channel_history_no_meta_success(self, *args):
+        """ Test retrieving history for channels with no AuditChannelMeta does not throw exception """
+        user = self.create_admin_user()
+        before = timezone.now()
+        audit_1, segment_1 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user,
+                                                        segment_params=dict(segment_type=1, title="test_title_3"))
+        c_id = f"test_youtube_channel_id{next(int_iterator)}"
+        # AuditChannelMeta is usually created with AuditChannel
+        channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
+        AuditChannelVet.objects.create(
+            audit=audit_1, channel=channel_audit, processed=before, clean=False
+        )
+        AuditChannelVet.objects.create(
+            audit=audit_2, channel=channel_audit, processed=before, clean=True
+        )
+        new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
+
+        self.assertEqual(new_channel_vet.processed, None)
+        self.assertEqual(new_channel_vet.checked_out_at, None)
+        iab_categories = ['Video Gaming', 'PC Games', 'MMOs']
+        task_us = dict(iab_categories=iab_categories)
+        monetization = dict(is_monetizable=False)
+        general_data = dict(primary_category="Video Games")
+        mock_channel_doc = self._create_mock_document(Channel, channel_audit.channel_id, task_us_data=task_us,
+                                                      monetzation_data=monetization, general_data=general_data)
+        self.mock_get_document.return_value = mock_channel_doc
+        url = self._get_url(kwargs=dict(pk=audit_3.id))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["vetting_id"], new_channel_vet.id)
+
+    def test_patch_channel_primary_updates_iab_categories(self, *args):
+        """ Test that updating primary_category adds to general_data.iab_categories and task_us_data.iab_categories """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        audit_item = AuditChannel.objects.create(channel_id=audit_item_yt_id)
+        AuditChannelMeta.objects.create(channel=audit_item, name="test meta name")
+        vetting_item = AuditChannelVet.objects.create(audit=audit, channel=audit_item)
+        payload = {
+            "brand_safety": [],
+            "age_group": 1,
+            "content_quality": 1,
+            "content_type": 1,
+            "gender": 1,
+            "iab_categories": ["Industries"],
+            "is_monetizable": False,
+            "language": "ja",
+            "primary_category": "Automotive",
+            "suitable": True,
+            "vetting_id": vetting_item.id,
+        }
+        mock_doc = self._create_mock_document(Channel, audit_item.channel_id)
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch.object(ChannelManager, "upsert") as mock_upsert,\
+                patch.object(ChannelManager, "get", return_value=[mock_doc]):
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        upserted_doc = mock_upsert.call_args[0][0][0]
+        self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
+        self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
+
+    def test_patch_video_primary_updates_iab_categories(self, *args):
+        """ Test that updating primary_category adds to general_data.iab_categories and task_us_data.iab_categories """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="video"))
+        audit_item_yt_id = f"video_id{next(int_iterator)}"
+        audit_item = AuditVideo.objects.create(video_id=audit_item_yt_id)
+        AuditVideoMeta.objects.create(video=audit_item, name="test meta name")
+        vetting_item = AuditVideoVet.objects.create(audit=audit, video=audit_item)
+        payload = {
+            "brand_safety": [],
+            "age_group": 1,
+            "content_quality": 1,
+            "content_type": 1,
+            "gender": 1,
+            "iab_categories": ["Industries"],
+            "is_monetizable": False,
+            "language": "ja",
+            "primary_category": "Automotive",
+            "suitable": True,
+            "vetting_id": vetting_item.id,
+        }
+        mock_doc = self._create_mock_document(Video, audit_item.channel_id)
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch.object(VideoManager, "upsert") as mock_upsert,\
+                patch.object(VideoManager, "get", return_value=[mock_doc]):
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        upserted_doc = mock_upsert.call_args[0][0][0]
+        self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
+        self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
+
+    def test_check_in_threshold(self, *args):
+        """
+        Ensure that audit vet item check in/out is enforced
+        :param args:
+        :return:
+        """
+        user = self.create_admin_user()
+        before = timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD + 5)
+        after = timezone.now()
+        video_audit, video_segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.VIDEO.value, title="test_title_1"))
+        channel_audit, channel_segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.CHANNEL.value, title="test_title_2"))
+        audit_videos = []
+        audit_channels = []
+        video_vets = []
+        channel_vets = []
+        range_max = 3
+        for i in range(range_max):
+            audit_video = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
+            audit_videos.append(audit_video)
+            checked_out_at = before if i + 1 < range_max else after
+            video_vets.append(AuditVideoVet(audit=video_audit, video=audit_video, checked_out_at=checked_out_at))
+        for i in range(range_max):
+            audit_channel = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
+            audit_channels.append(audit_channel)
+            checked_out_at = before if i + 1 < range_max else after
+            channel_vets.append(AuditChannelVet(audit=channel_audit, channel=audit_channel, checked_out_at=checked_out_at))
+
+        AuditVideoVet.objects.bulk_create(video_vets)
+        AuditChannelVet.objects.bulk_create(channel_vets)
+
+        self.assertTrue(all(item.checked_out_at is not None for item in video_vets))
+        self.assertTrue(all(item.checked_out_at is not None for item in channel_vets))
+
+        for audit_video in audit_videos:
+            with self.subTest(audit_video):
+                mock_video_doc = self._create_mock_document(Video, audit_video.video_id)
+                self.mock_get_document.return_value = mock_video_doc
+                url = self._get_url(kwargs=dict(pk=video_audit.id))
+                response = self.client.get(url)
+                if audit_video == audit_videos[-1]:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("message", response.data.keys())
+                    self.assertIn("All items are checked out.", response.data.get("message", ""))
+                    continue
+                else:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("vetting_id", response.data.keys())
+                    vetting_id = response.data.get("vetting_id")
+                    valid_video_vet_ids = [video_vet.id for video_vet in video_vets[:-1]]
+                    self.assertIn(vetting_id, valid_video_vet_ids)
+
+        for audit_channel in audit_channels:
+            with self.subTest(audit_channel):
+                mock_channel_doc = self._create_mock_document(Video, audit_channel.channel_id)
+                self.mock_get_document.return_value = mock_channel_doc
+                url = self._get_url(kwargs=dict(pk=channel_audit.id))
+                response = self.client.get(url)
+                if audit_channel == audit_channels[-1]:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("message", response.data.keys())
+                    self.assertIn("All items are checked out.", response.data.get("message", ""))
+                    continue
+                else:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("vetting_id", response.data.keys())
+                    vetting_id = response.data.get("vetting_id")
+                    valid_channel_vet_ids = [channel_vet.id for channel_vet in channel_vets[:-1]]
+                    self.assertIn(vetting_id, valid_channel_vet_ids)

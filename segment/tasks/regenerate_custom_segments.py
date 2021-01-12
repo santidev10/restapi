@@ -48,9 +48,12 @@ def regenerate_custom_segments():
     for segment in query:
         logger.debug("Processing regenerating segment titled: %s", segment.title)
         export = segment.export
-        results = generate_segment(segment, export.query["body"], segment.config.LIST_SIZE, add_uuid=False)
+        size = segment.config.ADMIN_LIST_SIZE
+        results = generate_segment(segment, export.query["body"], size, add_uuid=False)
         segment.statistics = results["statistics"]
         segment.save()
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
+        if export.admin_filename is None:
+            export.admin_filename = results["admin_s3_key"]
         export.save()

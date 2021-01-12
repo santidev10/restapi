@@ -3,6 +3,7 @@ from copy import deepcopy
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
@@ -146,6 +147,12 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         "stats.views_per_video:percentiles",
     )
 
+    def get_serializer_context(self):
+        context = {
+            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
+        }
+        return context
+
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
             return ChannelAdminSerializer
@@ -187,8 +194,10 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
         self.add_fields()
-
-        return ESQuerysetAdapter(self.get_manager_class()(sections), cached_aggregations=self.get_cached_aggregations())
+        is_default_page = self.is_default_page()
+        return ESQuerysetAdapter(self.get_manager_class()(sections),
+                                 cached_aggregations=self.get_cached_aggregations(),
+                                 is_default_page=is_default_page)
 
     @staticmethod
     def get_own_channel_ids(user, query_params):

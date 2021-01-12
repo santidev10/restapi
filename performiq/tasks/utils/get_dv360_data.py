@@ -61,7 +61,7 @@ def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
                 "FILTER_ADVERTISER_CURRENCY",
                 "FILTER_PLACEMENT_ALL_YOUTUBE_CHANNELS",
             ],
-            date_range="LAST_90_DAYS",
+            date_range="ALL_TIME",
         )
         result = connector.download_metrics_report(**report_query)
         csv_generator = report_csv_generator(report_fp, result)

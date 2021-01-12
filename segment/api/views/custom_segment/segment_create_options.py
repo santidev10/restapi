@@ -19,8 +19,10 @@ from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
-from segment.utils.utils import with_unknown
+from segment.models.constants import SegmentVettingStatusEnum
 from segment.utils.query_builder import SegmentQueryBuilder
+from segment.utils.utils import set_user_perm_params
+from segment.utils.utils import with_unknown
 
 
 class SegmentCreateOptionsApiView(APIView):
@@ -34,7 +36,8 @@ class SegmentCreateOptionsApiView(APIView):
         }
         get_estimate = request.data.get("segment_type") is not None
         if get_estimate:
-            validator = CTLParamsSerializer(data=request.data)
+            data = set_user_perm_params(request, request.data)
+            validator = CTLParamsSerializer(data=data)
             validator.is_valid(raise_exception=True)
             params = validator.validated_data
             query_builder = SegmentQueryBuilder(params)
@@ -104,10 +107,6 @@ class SegmentCreateOptionsApiView(APIView):
                 **get_agg_min_max_filter_values({}, ads_stats_keys, "ads_stats"),
                 **get_agg_min_max_filter_values({}, stats_keys, "stats"),
             }
-        try:
-            latest_ias_date = IASHistory.objects.latest("started").started
-        except IASHistory.DoesNotExist:
-            latest_ias_date = timezone.now() - timedelta(days=7)
         options = {
             "age_groups": with_unknown(options=AuditAgeGroup.ID_CHOICES),
             "brand_safety_categories": [
@@ -127,11 +126,11 @@ class SegmentCreateOptionsApiView(APIView):
             "content_type_categories": with_unknown(options=AuditContentType.ID_CHOICES),
             "content_quality_categories": with_unknown(options=AuditContentQuality.ID_CHOICES),
             "ads_stats": ads_stats,
-            "latest_ias": latest_ias_date,
+            "latest_ias": IASHistory.get_last_ingested_timestamp() or timezone.now() - timedelta(days=7),
             "vetting_status": [
-                {"id": 0, "name": "Non-Vetted"},
-                {"id": 1, "name": "Vetted Safe"},
-                {"id": 2, "name": "Vetted Risky"},
+                {"id": SegmentVettingStatusEnum.NOT_VETTED.value, "name": "Non-Vetted"},
+                {"id": SegmentVettingStatusEnum.VETTED_SAFE.value, "name": "Vetted Safe"},
+                {"id": SegmentVettingStatusEnum.VETTED_RISKY.value, "name": "Vetted Risky"},
             ]
         }
         return options

@@ -1,3 +1,4 @@
+from django.conf import settings
 from googleads.errors import GoogleAdsServerFault
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
@@ -45,30 +46,9 @@ class AdWordsAuthApiView(APIView):
     no_mcc_error = "MCC account wasn't found. Please check that you " \
                    "really have access to at least one."
 
-    # first step
-    def get(self, *args, **kwargs):
-        redirect_url = self.request.query_params.get("redirect_url")
-        if not redirect_url:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=dict(error="Required query param: 'redirect_url'")
-            )
-
-        flow = self.get_flow(redirect_url)
-        authorize_url = flow.step1_get_authorize_url()
-        return Response(dict(authorize_url=authorize_url))
-
     # second step
     # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
     def post(self, request, *args, **kwargs):
-        # get refresh token
-        redirect_url = self.request.query_params.get("redirect_url")
-        if not redirect_url:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=dict(error="Required query param: 'redirect_url'")
-            )
-
         code = request.data.get("code")
         if not code:
             return Response(
@@ -76,7 +56,7 @@ class AdWordsAuthApiView(APIView):
                 data=dict(error="Required: 'code'")
             )
 
-        flow = self.get_flow(redirect_url)
+        flow = self.get_flow()
         try:
             credential = flow.step2_exchange(code)
         except client.FlowExchangeError as e:
@@ -91,32 +71,24 @@ class AdWordsAuthApiView(APIView):
                                 data=token_info)
             access_token = credential.access_token
             refresh_token = credential.refresh_token
-            try:
-                oauth_account = OAuthAccount.objects.get(
-                    user=self.request.user,
-                    email=token_info["email"]
+            if not refresh_token:
+                return Response(
+                    data=dict(error=self.lost_perm_error),
+                    status=HTTP_400_BAD_REQUEST,
                 )
-            except OAuthAccount.DoesNotExist:
-                if refresh_token:
-                    oauth_account = OAuthAccount.objects.create(
-                        oauth_type=OAuthType.GOOGLE_ADS.value,
-                        user=self.request.user,
-                        email=token_info["email"],
-                        token=access_token,
-                        refresh_token=refresh_token,
-                    )
-                else:
-                    return Response(
-                        data=dict(error=self.lost_perm_error),
-                        status=HTTP_400_BAD_REQUEST,
-                    )
-            else:
-                # update token
-                if refresh_token and oauth_account.refresh_token != refresh_token:
-                    oauth_account.revoked_access = False
-                    oauth_account.token = access_token
-                    oauth_account.refresh_token = refresh_token
-                    oauth_account.save()
+
+            oauth_account, _created = OAuthAccount.objects.update_or_create(
+                user=self.request.user,
+                email=token_info["email"],
+                oauth_type=OAuthType.GOOGLE_ADS.value,
+                defaults={
+                    "token": access_token,
+                    "refresh_token": refresh_token,
+                    "revoked_access": False,
+                    "is_enabled": True,
+                    "synced": False,
+                }
+            )
 
         # Get Name of First MCC Account
         try:
@@ -133,12 +105,18 @@ class AdWordsAuthApiView(APIView):
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=ex_token_error))
         except GoogleAdsServerFault as e:
+            error_strings = []
             for error in e.errors:
-                authentication_error = "AuthenticationError.CUSTOMER_NOT_FOUND"
-                if authentication_error in error.errorString:
-                    error_message = "Authentication error. Are you sure you have access to google ads?"
-                    return Response(status=HTTP_400_BAD_REQUEST,
-                                    data=dict(error=error_message))
+                error_strings.append(error.errorString)
+                # no assigned cids/not an ads user
+                if error.errorString in ["AuthenticationError.CUSTOMER_NOT_FOUND", "AuthenticationError.NOT_ADS_USER"]:
+                    response = AWAuthSerializer(oauth_account).data
+                    return Response(status=HTTP_200_OK, data=response)
+                if error.errorString == "AuthenticationError.OAUTH_TOKEN_INVALID":
+                    return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Invalid OAuth token!"))
+
+            return Response(status=HTTP_400_BAD_REQUEST, data={f"GoogleAds ServerFault: {', '.join(error_strings)}"})
+
         else:
             if mcc_accounts:
                 first = mcc_accounts[0]
@@ -151,20 +129,22 @@ class AdWordsAuthApiView(APIView):
             else:
                 response = "You have no accounts to sync."
                 status = HTTP_400_BAD_REQUEST
-            # TODO async this?
-            update_campaigns_task(oauth_account.id)
+            update_campaigns_task.delay(oauth_account.id)
             return Response(data=response, status=status)
     # pylint: enable=too-many-return-statements,too-many-branches,too-many-statements
 
-    def get_flow(self, redirect_url):
+    def get_flow(self):
         aw_settings = load_client_settings()
+        # new popup flow, different than redirect flow
         flow = client.OAuth2WebServerFlow(
             client_id=aw_settings.get("client_id"),
             client_secret=aw_settings.get("client_secret"),
             scope=self.scopes,
-            user_agent=aw_settings.get("user_agent"),
-            redirect_uri=redirect_url,
-            prompt="consent"
+            access_type="offline",
+            response_type="code",
+            prompt="consent",  # SEE https://github.com/googleapis/google-api-python-client/issues/213
+            redirect_uri=settings.GOOGLE_APP_OAUTH2_REDIRECT_URL,
+            origin=settings.GOOGLE_APP_OAUTH2_ORIGIN
         )
         return flow
 

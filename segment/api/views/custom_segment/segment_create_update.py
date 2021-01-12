@@ -13,6 +13,7 @@ from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
+from segment.utils.utils import set_user_perm_params
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.views import get_object
@@ -31,6 +32,8 @@ class SegmentCreateUpdateApiView(CreateAPIView):
     def _prep_request(self, request):
         request.upload_handlers = [TemporaryFileUploadHandler(request)]
         data = json.loads(request.data["data"])
+
+        data = set_user_perm_params(request, data)
         return request, data
 
     @segment_action(SegmentActionEnum.CREATE.value)

@@ -73,7 +73,7 @@ services:
       DO_SALESFORCE_UPDATE: 0
 
   pg:
-    image: postgres:12.2
+    image: postgres:12.4
     environment:
       POSTGRES_DB: saas
       POSTGRES_PASSWORD: password
@@ -84,7 +84,7 @@ services:
       retries: 5
 
   pg_audit:
-    image: postgres:12.2
+    image: postgres:12.4
     environment:
       POSTGRES_DB: audit
       POSTGRES_PASSWORD: password
@@ -95,7 +95,7 @@ services:
       retries: 5
 
   es:
-    image: elasticsearch:7.4.0
+    image: elasticsearch:7.9.1
     environment:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
@@ -129,7 +129,7 @@ services:
       CELERY_BROKER_URL: amqp://rabbitmq/restapi
 
   kibana:
-    image: kibana:7.4.0
+    image: kibana:7.9.1
     environment:
       ELASTICSEARCH_HOSTS: http://es:9200
 

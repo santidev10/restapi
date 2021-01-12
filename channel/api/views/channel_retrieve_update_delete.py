@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from audit_tool.models import IASHistory
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
 from channel.api.serializers.channel import ChannelAdminSerializer
 from channel.api.serializers.channel import ChannelSerializer
@@ -91,6 +92,12 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         flush_cache()
         return self.get(*args, **kwargs)
 
+    def _get_serializer_context(self):
+        context = {
+            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
+        }
+        return context
+
     def get(self, request, *args, **kwargs):
         if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
@@ -135,13 +142,14 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
+        context = self._get_serializer_context()
         if self.request and self.request.user and self.request.user.is_staff:
-            result = ChannelAdminSerializer(channel).data
+            serializer = ChannelAdminSerializer
         elif self.request.user.has_perm("userprofile.vet_audit_admin"):
-            result = ChannelWithVettedStatusSerializer(channel).data
+            serializer = ChannelWithVettedStatusSerializer
         else:
-            result = ChannelSerializer(channel).data
-
+            serializer = ChannelSerializer
+        result = serializer(channel, context=context).data
         result.update({
             "performance": {
                 "average_views": average_views,

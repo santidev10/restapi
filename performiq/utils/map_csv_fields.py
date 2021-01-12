@@ -1,13 +1,15 @@
 import csv
+import operator
 import string
 from io import StringIO
 from typing import Type
+from abc import ABC
+from abc import abstractmethod
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import URLValidator
 
-from performiq.api.serializers.map_csv_fields_serializer import CSVFileField
 from performiq.utils.constants import CSVFieldTypeEnum
 
 
@@ -15,6 +17,12 @@ from performiq.utils.constants import CSVFieldTypeEnum
 CURRENCY_STRINGS = ["USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW"]
 CURRENCY_SYMBOLS = ["$", "€", "¥", "£", "A$", "C$", "元", "HK$", "NZ$", "kr", "₩"]
 
+
+def is_float_validator(value):
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
 
 def is_currency_validator(value):
     if isinstance(value, float):
@@ -59,6 +67,7 @@ def is_integer_validator(value):
 
 def is_cpm_validator(value):
     is_currency_validator(value)
+    is_float_validator(value)
 
     if 1 <= float(value) <= 10:
         return value
@@ -67,7 +76,12 @@ def is_cpm_validator(value):
 
 def is_cpv_validator(value):
     is_currency_validator(value)
+    is_float_validator(value)
 
+    try:
+        float(value)
+    except ValueError:
+        raise ValidationError("Value not castable to float")
     if float(value) <= 0.1:
         return value
     raise ValidationError("value likely not cpv")
@@ -98,18 +112,303 @@ def is_url_validator(value):
     return value
 
 
+def is_header_row(row: list) -> bool:
+    """
+    check for signs that a row is a header row
+    :param row:
+    :return: Bool
+    """
+    # check for obvious numerics
+    numerics = [value for value in row
+                if type(value) in [int, float, complex]
+                or isinstance(value, str) and value.isnumeric()]
+    if numerics:
+        return False
+    # check for obvious urls
+    for value in row:
+        if isinstance(value, str):
+            for substr in ["www", "http", ".com"]:
+                if substr in value:
+                    return False
+    return True
+
+
+def decode_to_string(data: bytes) -> str:
+    """
+    decode a bytes object into a string, try multiple character encodings
+    NOTE: Google's reports use utf-16!
+    :param data:
+    :return: str
+    """
+    for encoding in ["utf-8", "utf-8-sig", "utf-16", "utf-32"]:
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValidationError("Could not find the right character encoding!")
+
+
+class AbstractCSVType(ABC):
+    """
+    Abstract class for validation with CSVHeaderUtil
+    """
+
+    def __init__(self, rows: list):
+        self.rows = rows
+
+    @abstractmethod
+    def is_valid(self):
+        """
+        raise ValidationErrors if the `rows` list passed in __init__ are invalid for the concrete type
+        :return:
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_type_string():
+        """
+        return a type string in snake case, e.g.: csv_type_asdf
+        :return:
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_first_data_row_index():
+        """
+        return the index of the first data row
+        :return:
+        """
+        pass
+
+
+class CSVWithOnlyData(AbstractCSVType):
+
+    def is_valid(self):
+        if not len(self.rows):
+            raise ValidationError("CSV must have at least one row")
+        if not len(self.rows[0]):
+            raise ValidationError("CSV must have at least one column")
+        if is_header_row(self.rows[0]):
+            raise ValidationError("CSV cannot have a header row")
+        return True
+
+    @staticmethod
+    def get_type_string():
+        return "csv_with_only_data"
+
+    @staticmethod
+    def get_first_data_row_index():
+        return 0
+
+
+class CSVWithHeader(AbstractCSVType):
+
+    def is_valid(self):
+        if len(self.rows) < 2:
+            raise ValidationError("CSV must have at least two rows")
+        if not len(self.rows[0]):
+            raise ValidationError("CSV must have at least one column")
+        if not is_header_row(self.rows[0]):
+            raise ValidationError("First row must be a header row")
+        # NOTE: disabling for now. Deleting columns in Excel by highlighting only sets cells to '', rather than
+        # actually removing the whole column. This seems like a common use case, so removing this empties check
+        # nulls = [value for value in self.rows[0] if not value]
+        # if nulls:
+        #     raise ValidationError("Header row invalid. Reason: empty header values detected")
+        if is_header_row(self.rows[1]):
+            raise ValidationError("Second row must be a data row")
+        return True
+
+    @staticmethod
+    def get_type_string():
+        return "csv_with_headers"
+
+    @staticmethod
+    def get_first_data_row_index():
+        return 1
+
+
+class AbstractPlacementsReport(AbstractCSVType):
+
+    VALID_SECOND_ROW_VALUE = "All time"
+
+    def is_valid(self):
+        if len(self.rows) < 4:
+            raise ValidationError("Placements reports must have at least 4 rows")
+        if not len(self.rows[0]):
+            raise ValidationError("CSV must have at least one column")
+        if not len(self.rows[0]) or self.rows[0][0] != self.VALID_FIRST_ROW_VALUE:
+            raise ValidationError(f"First row must be '{self.VALID_FIRST_ROW_VALUE}'")
+        if not len(self.rows[1]) or self.rows[1][0] != self.VALID_SECOND_ROW_VALUE:
+            raise ValidationError(f"Second must be '{self.VALID_SECOND_ROW_VALUE}'")
+        if not is_header_row(self.rows[2]):
+            raise ValidationError("Third row must be a header row")
+        return True
+
+    @staticmethod
+    def get_first_data_row_index():
+        return 3
+
+class ManagedPlacementsReport(AbstractPlacementsReport):
+
+    VALID_FIRST_ROW_VALUE = "Managed placements report"
+
+    @staticmethod
+    def get_type_string():
+        return "managed_placements_report"
+
+
+class AutomaticPlacementsReport(AbstractPlacementsReport):
+
+    VALID_FIRST_ROW_VALUE = "Automatic placements report"
+
+    @staticmethod
+    def get_type_string():
+        return "automatic_placements_report"
+
+
+class CSVHeaderUtil:
+
+    csv_header_types = [
+        CSVWithOnlyData,
+        CSVWithHeader,
+        ManagedPlacementsReport,
+        AutomaticPlacementsReport,
+    ]
+
+    def __init__(self, csv_file: Type[UploadedFile] = None, reader: csv.reader = None, rows: list = None,
+                 row_depth: int = 4):
+        """
+        takes either an UploadedFile, csv.reader, or list of rows, and an optional row_depth to validate or determine
+        the index of the first data row for the given csv representation
+        :param csv_file: UploadedFile. Encoding, delimiters will be determined by the util
+        :param reader: csv.reader instance.
+        :param rows: list of rows
+        :param row_depth: integer. default 4. max depth to scan to determine csv "type". Should be set to the lowest
+        required depth. Should be the max of all csv_header_types' data row index
+        """
+        if all(item is None for item in [csv_file, reader, rows]):
+            raise ValueError("Either csv_file, reader or rows must be passed!")
+
+        self.row_depth = row_depth
+        self.validation_errors = {}
+        self.valid_types = {}
+
+        if rows is not None:
+            self.rows = rows[:self.row_depth]
+        elif reader is not None:
+            self.reader = reader
+            self._init_rows_from_reader()
+        elif csv_file is not None:
+            csv_file.seek(0)
+            chunk = next(csv_file.chunks())
+            decoded = decode_to_string(chunk)
+            io_string = StringIO(decoded)
+            self.reader = get_reader(io_string)
+            self._init_rows_from_reader()
+
+        self._run_validation()
+
+        if csv_file:
+            csv_file.seek(0)
+
+    def _init_rows_from_reader(self):
+        """
+        take row samples from self.reader up to self.row_depth limit
+        :return:
+        """
+        self.rows = []
+        for i in range(self.row_depth):
+            try:
+                row = next(self.reader)
+            except StopIteration:
+                break
+            self.rows.append(row)
+
+    def _run_validation(self):
+        """
+        run through all registered validators, store type-mapped validation errors
+        :return:
+        """
+        for csv_type in self.csv_header_types:
+            csv_type_string = csv_type.get_type_string()
+
+            instance = csv_type(self.rows)
+            try:
+                instance.is_valid()
+            except ValidationError as e:
+                type_errors = self.validation_errors.get(csv_type_string, [])
+                type_errors.append(e.message)
+                self.validation_errors[csv_type_string] = type_errors
+                continue
+
+            self.valid_types[csv_type_string] = instance
+
+    def is_valid(self) -> bool:
+        """
+        True if there's at least one valid type in the valid_types dict
+        :return:
+        """
+        return True if self.valid_types else False
+
+    def get_first_data_row_index(self) -> int:
+        """
+        get the index of the first data row
+        :return: int
+        """
+        if not self.valid_types:
+            raise ValidationError(self.validation_errors)
+
+        indices = [instance.get_first_data_row_index() for valid_type, instance in self.valid_types.items()]
+
+        return max(indices)
+
+
+def get_reader(io_string: StringIO, row_depth: int = 5) -> csv.reader:
+    """
+    get a reader with the the most likely delimiter value
+    :param io_string:
+    :param row_depth:
+    :return csv.reader:
+    """
+    delimiter_map = {}
+    for delimiter in [",", "\t"]:
+        io_string.seek(0)
+        reader = csv.reader(io_string, delimiter=delimiter, quotechar="\"")
+        column_counts = []
+        for _ in range(row_depth):
+            try:
+                row = next(reader)
+            except StopIteration:
+                break
+            column_counts.append(len(row))
+
+        delimiter_map[delimiter] = max(column_counts)
+
+    if not delimiter_map:
+        raise ValidationError("No rows detected!")
+
+    delimiter_with_greatest_column_count = max(delimiter_map.items(), key=operator.itemgetter(1))[0]
+    io_string.seek(0)
+    return csv.reader(io_string, delimiter=delimiter_with_greatest_column_count, quotechar="\"")
+
+
 class CSVColumnMapper:
 
+    # NOTE: ordering matters here! Higher items have more priority for now
     alt_header_names = {
         CSVFieldTypeEnum.URL.value: ["url", "link", "www", "http"],
         CSVFieldTypeEnum.IMPRESSIONS.value: ["impression", "impres", "imp"],
         CSVFieldTypeEnum.VIEWS.value: ["views"],
         CSVFieldTypeEnum.COST.value: CURRENCY_STRINGS + ["$", "cost"],
-        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "avg", "average"],
-        CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "avg", "average"],
-        CSVFieldTypeEnum.VIEW_RATE.value: ["view rate"],
+        CSVFieldTypeEnum.CTR.value: ["ctr", "through rate", "through_rate", "click through", "click_through",
+                                     "clickthrough"],
+        CSVFieldTypeEnum.VIEW_RATE.value: ["view rate", "view_rate"],
         CSVFieldTypeEnum.VIDEO_PLAYED_TO_100_RATE.value: ["complet", "100", "play"],
-        CSVFieldTypeEnum.CTR.value: ["ctr", "through rate", "click through", "clickthrough"],
+        CSVFieldTypeEnum.AVERAGE_CPV.value: ["cpv", "cost per view", "cost_per_view"],
+        CSVFieldTypeEnum.AVERAGE_CPM.value: ["cpm", "mille"],
     }
 
     data_guess_functions = {
@@ -154,14 +453,57 @@ class CSVColumnMapper:
 
     def get_column_options(self) -> dict:
         """
-        public method for geting the default column_letter_key:label dict.
+        public method for getting the default column_letter_key:label dict.
         If no headers are present use "column A", etc. if headers are
         present, use the declared header values
         :return: dict
         """
-        letters = list(string.ascii_uppercase)[:len(self.header_row)]
-        labels = self.header_row if self.csv_has_header_row else [f"column {letter}" for letter in letters]
-        return dict(zip(letters, labels))
+        letter_label_template = "column {}"
+        column_letters = self._get_column_letters(self.header_row)
+        # use header labels unless falsy
+        if self.csv_has_header_row:
+            labels = []
+            for index, header in enumerate(self.header_row):
+                if header:
+                    labels.append(header)
+                    continue
+                # replace any empty header label with a generic "letter label"
+                letter_label = letter_label_template.format(column_letters[index])
+                labels.append(letter_label)
+        # use generic letter labels if csv has no headers
+        else:
+            labels = [letter_label_template.format(letter) for letter in column_letters]
+        return dict(zip(column_letters, labels))
+
+    def _get_column_letters(self, longest_row) -> list:
+        """
+        Given a header row, which presumes the max number of columns, get a list of the column letters/names
+        :param longest_row:
+        :return:
+        """
+        column_letters = list(string.ascii_uppercase)
+        if len(longest_row) <= len(column_letters):
+            return column_letters
+
+        position = len(column_letters)
+        non_alphabet_count = len(longest_row) - len(column_letters)
+        for _ in range(non_alphabet_count):
+            position += 1
+            column_letters.append(self._get_non_alphabet_excel_column_name(position))
+
+        return column_letters
+
+    def _get_non_alphabet_excel_column_name(self, position):
+        """
+        get the column name for excel columns past alphabet columns, e.g. AA, AB...
+        :param position:
+        :return:
+        """
+        name = ""
+        while position > 0:
+            position, remainder = divmod(position - 1, 26)
+            name = chr(65 + remainder) + name
+        return name
 
     def _init_csv_data(self):
         """
@@ -172,15 +514,24 @@ class CSVColumnMapper:
         # reset file position, grab first chunk to make header guess from
         self.csv_file.seek(0)
         chunk = next(self.csv_file.chunks())
-        decoded = chunk.decode("utf-8-sig", errors="ignore")
+        decoded = decode_to_string(chunk)
         io_string = StringIO(decoded)
-        reader = csv.reader(io_string, delimiter=",", quotechar="\"")
+        reader = get_reader(io_string)
+
+        # skip to the header row index, if it's not in row 0
+        util = CSVHeaderUtil(csv_file=self.csv_file)
+        data_row_index = util.get_first_data_row_index()
+        # ignores 0 and 1
+        if data_row_index:
+            for i in range(data_row_index - 1):
+                next(reader)
+
         self.header_row = next(reader)
-        self.csv_has_header_row = True if CSVFileField.is_header_row(self.header_row) else False
+        self.csv_has_header_row = True if is_header_row(self.header_row) else False
         self.data_row = next(reader) if self.csv_has_header_row else self.header_row
         self.header_map = {header.value: None for header in CSVFieldTypeEnum}
         self.available_headers = [header.value for header in CSVFieldTypeEnum]
-        column_letters = list(string.ascii_uppercase)[:len(self.available_headers)]
+        column_letters = self._get_column_letters(self.header_row)
 
         # initialize header/data guess maps
         self.header_guess_map = {letter: [] for letter in column_letters}

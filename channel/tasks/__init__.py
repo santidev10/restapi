@@ -1,2 +1,2 @@
-from .ingest_ias_channels import ingest_ias_channels
+from .ingest_ias_channels_v2 import ingest_ias_channels
 from .update_channels_percentiles import update_channels_percentiles

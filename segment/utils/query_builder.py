@@ -9,12 +9,14 @@ from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from es_components.constants import Sections
-from es_components.constants import LAST_VETTED_AT_MIN_DATE
 from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from es_components.query_repository import get_last_vetted_at_exists_filter
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
+from utils.brand_safety import map_score_threshold
 
 
 # pylint: disable=too-many-instance-attributes
@@ -172,17 +174,21 @@ class SegmentQueryBuilder:
                     .field(f"{Sections.GENERAL_DATA}.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
 
-        if self._params.get("content_categories"):
-            content_queries = Q("bool")
-            for category in self._params["content_categories"]:
-                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
-                    category).get()
-            must_queries.append(content_queries)
-
         if self._params.get("exclude_content_categories"):
             content_exclusion_queries = self._get_terms_query(self._params["exclude_content_categories"],
                                                               "general_data.iab_categories", "must_not")
-            must_queries.append(content_exclusion_queries)
+            primary_category_exclusion = self._get_terms_query(self._params["exclude_content_categories"],
+                                                               "general_data.primary_category", "must_not")
+            must_queries.extend((content_exclusion_queries, primary_category_exclusion))
+
+        if self._params.get("content_categories"):
+            content_queries = Q("bool")
+            content_categories = set(self._params["content_categories"]) \
+                                 - set(self._params.get("exclude_content_categories", []))
+            for category in content_categories:
+                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
+                    category).get()
+            must_queries.append(content_queries)
 
         if self._params.get("countries"):
             country_queries = Q("bool")
@@ -247,17 +253,20 @@ class SegmentQueryBuilder:
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             vetting_status_queries = Q("bool")
             for status in self._params["vetting_status"]:
-                if status == 0:
-                    vetting_status_queries |= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
-                elif status == 1:
+                if status == SegmentVettingStatusEnum.NOT_VETTED.value:
+                    vetting_status_queries |= QueryBuilder().build().must_not().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.last_vetted_at").get()
+                elif status == SegmentVettingStatusEnum.VETTED_SAFE.value:
                     vetting_status_safe = Q("bool")
-                    vetting_status_safe &= QueryBuilder().build().must_not().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_safe &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_safe &= QueryBuilder().build().must_not().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_safe &= get_last_vetted_at_exists_filter()
                     vetting_status_queries |= vetting_status_safe
-                elif status == 2:
+                elif status == SegmentVettingStatusEnum.VETTED_RISKY.value:
                     vetting_status_risky = Q("bool")
-                    vetting_status_risky &= QueryBuilder().build().must().exists().field(f"{Sections.TASK_US_DATA}.brand_safety").get()
-                    vetting_status_risky &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at").gte(LAST_VETTED_AT_MIN_DATE).get()
+                    vetting_status_risky &= QueryBuilder().build().must().exists() \
+                        .field(f"{Sections.TASK_US_DATA}.brand_safety").get()
+                    vetting_status_risky &= get_last_vetted_at_exists_filter()
                     vetting_status_queries |= vetting_status_risky
             must_queries.append(vetting_status_queries)
 
@@ -380,15 +389,6 @@ class SegmentQueryBuilder:
         :param score_threshold: int
         :return: int
         """
-        if score_threshold == 1:
-            threshold = 0
-        elif score_threshold == 2:
-            threshold = 70
-        elif score_threshold == 3:
-            threshold = 80
-        elif score_threshold == 4:
-            threshold = 90
-        else:
-            threshold = None
+        threshold = map_score_threshold(score_threshold)
         return threshold
 # pylint: enable=too-many-instance-attributes

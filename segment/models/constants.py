@@ -30,7 +30,8 @@ class VideoConfig:
     AUDIT_TYPE = 1
     SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
     RELATED_STATISTICS_MODEL = YTVideoStatistic
-    LIST_SIZE = 100000
+    USER_LIST_SIZE = 20000
+    ADMIN_LIST_SIZE = 100000
 
 
 class ChannelConfig:
@@ -38,7 +39,8 @@ class ChannelConfig:
     AUDIT_TYPE = 2
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
     RELATED_STATISTICS_MODEL = YTChannelStatistic
-    LIST_SIZE = 100000
+    USER_LIST_SIZE = 20000
+    ADMIN_LIST_SIZE = 100000
 
 
 class SegmentActionEnum(enum.IntEnum):
@@ -56,3 +58,8 @@ class SegmentListType(enum.Enum):
     WHITELIST = 0
     BLACKLIST = 1
 
+
+class SegmentVettingStatusEnum(enum.Enum):
+    NOT_VETTED = 0
+    VETTED_SAFE = 1
+    VETTED_RISKY = 2

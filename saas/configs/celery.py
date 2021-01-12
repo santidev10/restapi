@@ -105,14 +105,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
         "schedule": crontab(hour="*", minute="*/30"),
     },
-    "cache-research-videos-defaults": {
-        "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
-    "cache-research-channels-defaults": {
-        "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
+    # "cache-research-videos-defaults": {
+    #     "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
+    #     "schedule": crontab(hour="*", minute="*/30"),
+    # },
+    # "cache-research-channels-defaults": {
+    #     "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
+    #     "schedule": crontab(hour="*", minute="*/30"),
+    # },
     "cache_pricing_tool_filters": {
         "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
         "schedule": crontab(minute=0, hour="*/6"),
@@ -149,10 +149,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
     },
-    "audit_tool_check_in_vetting_items": {
-        "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items_task",
-        "schedule": crontab(minute="*/5"),
-    },
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
         "schedule": crontab(minute="*/10"),
@@ -170,7 +166,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="0", hour="*"),
     },
     "daily_ingest_ias_channels": {
-        "task": "channel.tasks.ingest_ias_channels.ingest_ias_channels",
+        "task": "channel.tasks.ingest_ias_channels_v2.ingest_ias_channels",
         # defaults to twice per day, 0500, 1700 PST
         "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
@@ -186,10 +182,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
         "schedule": crontab(minute="*/10"),
     },
-    # "performiq_google_ads_update": {
-    #     "task": "performiq.tasks.google_ads_scheduler.google_ads_update_scheduler",
-    #     "schedule": crontab(minute="*/10")
-    # },
+    "performiq_google_ads_update": {
+        "task": "performiq.tasks.google_ads_update.google_ads_update_task",
+        "schedule": crontab(minute="*/10")
+    },
 }
 
 
@@ -222,7 +218,7 @@ CELERY_ROUTES_PREPARED = [
     ("*export*", {"queue": Queue.EXPORT}),
     ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
-    ("channel.tasks.ingest_ias_channels.*", {"queue": Queue.IAS}),
+    ("channel.tasks.ingest_ias_channels_v2.*", {"queue": Queue.IAS}),
     ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
     ("*", {"queue": Queue.DEFAULT}),
 ]

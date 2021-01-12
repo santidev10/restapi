@@ -6,7 +6,7 @@ from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 
 
 def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str],
-                  ouath_type: int, defaults: Dict[str, str] = None) -> tuple:
+                  ouath_type: int, defaults: Dict[str, int] = None) -> tuple:
     """
     Prepare items to be updated or created for PerformIQ models. Metric numerical fields returned as string values
         from the API will be coerced using COERCE_FIELD_FUNCS

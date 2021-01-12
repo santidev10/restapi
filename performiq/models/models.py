@@ -39,11 +39,14 @@ class OAuthAccount(OAuthBase):
     token = models.CharField(null=True, max_length=255)
     refresh_token = models.CharField(null=True, max_length=150)
     revoked_access = models.BooleanField(default=False, db_index=True)
+    is_enabled = models.BooleanField(default=True, db_index=True)
+    synced = models.BooleanField(default=False, db_index=True)
 
 
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
-    oauth_account = models.ForeignKey(OAuthAccount, related_name="accounts", on_delete=models.CASCADE)
+    oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
+    updated_at = models.DateTimeField(auto_now_add=True, null=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):
@@ -90,11 +93,13 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
 
 
 class IQCampaign(models.Model):
+    completed = models.DateTimeField(default=None, null=True, db_index=True)
     created = models.DateTimeField(db_index=True, auto_now_add=True)
     params = JSONField(default=dict)
+    name = models.CharField(max_length=255, db_index=True, null=True)
     results = JSONField(default=dict)
     started = models.DateTimeField(default=None, null=True, db_index=True)
-    completed = models.DateTimeField(default=None, null=True, db_index=True)
+
     # campaign is the campaign object above, google ads or dv360, null if its a csv
     campaign = models.ForeignKey(Campaign, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     # Must store user for CSV type analysis

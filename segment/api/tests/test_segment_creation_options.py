@@ -35,17 +35,22 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         params.update(kwargs)
         return params
 
+    def _get_mock_data(self, hits_total=0, hits=None):
+        hits = hits or []
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 1
+        data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = hits_total
+        data.max_score = None
+        data.hits.hits = hits
+        return data
+
     def test_video_success(self, es_mock):
         """ Test options and estimate count retrieved for video """
         self.create_test_user()
-        data = types.SimpleNamespace()
-        data.hits = types.SimpleNamespace()
-        data.took = 5
-        data.timed_out = False
-        data.hits.total = types.SimpleNamespace()
-        data.hits.total.value = 602411
-        data.max_score = None
-        data.hits.hits = []
+        data = self._get_mock_data(hits_total=602411)
         es_mock.return_value = data
         payload = {
             "languages": ["es"],
@@ -64,14 +69,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
     def test_channel_success(self, es_mock):
         """ Test options and estimate count retrieved for channel """
         self.create_test_user()
-        data = types.SimpleNamespace()
-        data.hits = types.SimpleNamespace()
-        data.took = 7
-        data.timed_out = False
-        data.hits.total = types.SimpleNamespace()
-        data.hits.total.value = 33345
-        data.max_score = None
-        data.hits.hits = []
+        data = self._get_mock_data(hits_total=33345)
         es_mock.return_value = data
         payload = {
             "languages": ["es"],
@@ -142,3 +140,19 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         for i, lang_code in enumerate(cache.value["general_data.top_lang_code"]["buckets"]):
             self.assertEqual(response.data["options"]["languages"][i]["id"], lang_code["key"])
             self.assertEqual(response.data["options"]["languages"][i]["title"], LANGUAGES[lang_code["key"]])
+
+    def test_update_regular_user_vetted_safe_only(self, es_mock):
+        """ Test options and estimate count retrieved for channel """
+        self.create_test_user()
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 1,
+        }
+        payload = self._get_params(**payload)
+        with patch("segment.api.views.custom_segment.segment_create_options.SegmentQueryBuilder") as mock_query_builder:
+            mock_query_builder.return_value.execute.return_value = self._get_mock_data()
+            response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        params = mock_query_builder.call_args[0][0]
+        self.assertEqual(params["vetting_status"], [1])

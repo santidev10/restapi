@@ -151,7 +151,7 @@ class Command(BaseCommand):
     def get_algorithmic_scores(self):
         # get algorithmic score without id
         print('getting algorithmic scores...')
-        auditor = ChannelAuditor(ignore_vetted_brand_safety=True)
+        auditor = ChannelAuditor()
         slice_position = 0
         slice_size = 100
         while True:

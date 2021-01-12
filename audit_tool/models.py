@@ -135,6 +135,9 @@ class AuditProcessor(models.Model):
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
+    seed_status = models.IntegerField(db_index=True, default=0)
+    machine = models.IntegerField(db_index=True, default=None, null=True)
+    thread = models.IntegerField(db_index=True, default=None, null=True)
 
     class Meta:
         index_together = [
@@ -850,6 +853,19 @@ class IASHistory(Timestampable):
     name = models.CharField(max_length=100)
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
+
+    @staticmethod
+    def get_last_ingested_timestamp() -> datetime:
+        """
+        return the latest/newest completed IASHistory object's `started` timestamp
+        used for filtering to get the latest ias verified channels
+        :return datetime:
+        """
+        try:
+            return IASHistory.objects.exclude(completed=None).latest("completed").started
+        except IASHistory.DoesNotExist:
+            return None
+
 
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)

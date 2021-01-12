@@ -51,10 +51,12 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
             vetting_items = AuditChannelVet.objects \
                 .filter(channel__channel_id_hash=channel_id_hash, processed__isnull=False, audit__isnull=False) \
                 .select_related("channel__auditchannelmeta")
+            vetters_map = self._get_vetters_map(vetting_items=vetting_items)
             history = [{
                 "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
-                "suitable": item.clean
-            } for item in vetting_items]
+                "suitable": item.clean,
+                "processed_by": vetters_map.get(item.processed_by_user_id, None)
+            } for item in vetting_items if hasattr(item.channel, "auditchannelmeta")]
         # Set bool for get_language method to return correct language field
         self.has_vetting_history = bool(history)
         return history

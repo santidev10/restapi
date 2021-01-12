@@ -2,6 +2,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -73,7 +74,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([], response.json())
 
     def test_single(self):
-        start_date = date(datetime.now().year - 1, 12, 1)
+        start_date = (timezone.now() - timedelta(days=365)).date()
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
             name="Test Opportunity",
@@ -91,11 +92,10 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
             start_date=start_date
         )
         response = self._request()
-
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
-            start="{}-12-01".format(datetime.now().year - 1),
+            start=str(start_date),
         )], response.json())
 
     def test_no_active_opportunity(self):
