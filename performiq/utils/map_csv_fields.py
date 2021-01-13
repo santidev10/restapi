@@ -152,6 +152,8 @@ class AbstractCSVType(ABC):
     """
     Abstract class for validation with CSVHeaderUtil
     """
+    VALID_FIRST_ROW_VALUE = None
+    VALID_SECOND_ROW_VALUE = None
 
     def __init__(self, rows: list):
         self.rows = rows
@@ -233,16 +235,21 @@ class CSVWithHeader(AbstractCSVType):
 class AbstractPlacementsReport(AbstractCSVType):
 
     VALID_SECOND_ROW_VALUE = "All time"
+    VALID_MONTH_NAMES = {"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"}
 
     def is_valid(self):
         if len(self.rows) < 4:
             raise ValidationError("Placements reports must have at least 4 rows")
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
+
         if not len(self.rows[0]) or self.rows[0][0] != self.VALID_FIRST_ROW_VALUE:
             raise ValidationError(f"First row must be '{self.VALID_FIRST_ROW_VALUE}'")
-        if not len(self.rows[1]) or self.rows[1][0] != self.VALID_SECOND_ROW_VALUE:
-            raise ValidationError(f"Second must be '{self.VALID_SECOND_ROW_VALUE}'")
+
+        date_str = str(self.rows[1][0])[:3].lower()
+        if not len(self.rows[1]) or self.rows[1][0] != self.VALID_SECOND_ROW_VALUE \
+                and date_str not in self.VALID_MONTH_NAMES:
+            raise ValidationError(f"Second must be either '{self.VALID_SECOND_ROW_VALUE}' or date range.")
         if not is_header_row(self.rows[2]):
             raise ValidationError("Third row must be a header row")
         return True
