@@ -75,7 +75,9 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         placement = OpPlacement.objects.create(
             opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE)
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            end=end
+        )
         cost, delivered_units = 12, 123
         flight = Flight.objects.create(id=123,
                                        placement=placement,
@@ -856,6 +858,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         placement = OpPlacement.objects.create(
             opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM,
+            end=end,
         )
         flight = Flight.objects.create(
             id=next(int_iterator),
@@ -947,7 +950,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertGreater(update_delay_days, 0)
         start = end = date(2019, 1, 1)
         opportunity = Opportunity.objects.create()
-        placement = OpPlacement.objects.create(opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+        placement = OpPlacement.objects.create(opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV, end=end)
         campaign = Campaign.objects.create(salesforce_placement=placement)
         CampaignStatistic.objects.create(campaign=campaign, date=start, video_views=1)
         flight = Flight.objects.create(
