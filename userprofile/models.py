@@ -114,6 +114,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(max_length=255, null=True, blank=True)
+    perms = JSONField(default=dict)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -143,6 +144,18 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
+
+    def has_permission(self, perm):
+        # if user is admin, they automatically get whatever permission
+        if self.perms.get('admin') and self.perms.get('admin') == True:
+            return True
+        if self.perms.get(perm) and self.perms.get(perm) == True:
+            return True
+        elif self.perms.get(perm) is not None:
+            try:
+                return PermissionItem.objects.get(perm=perm).default_value
+            except Exception as e:
+                raise Exception("invalid permission name")
 
     class Meta:
         """
@@ -218,6 +231,52 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             domain_name = None
         return domain_name
 
+class PermissionItem(models.Model):
+    permission = models.CharField(unique=True, max_length=128)
+    default_value = models.BooleanField(db_index=True, default=False)
+    display = models.TextField(default="")
+
+    STATIC_PERMISSIONS = [
+    #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, display]
+        ['admin',                       False, "Admin (the powers of Zeus)"],
+        ['ads_analyzer',                False, "Ads Analyzer"],
+        ['audit_queue',                 False, "Audit Queue"],
+        ['blocklist_manager',           False, "Blocklist Manager"],
+        ['bste',                        False, "Brand Safety Tags Editor"],
+
+        ['ctl',                         False, "Custom Target Lists"],
+        ['ctl.read',                    False, "Read"],
+        ['ctl.create',                  False, "Create"],
+        ['ctl.delete',                  False, "Delete"],
+        ['ctl.feature_list',            False, "Feature / Unfeature List"],
+        ['ctl.export_basic',            False, "Export (basic)"],
+        ['ctl.export_admin',            False, "Export (all data)"],
+        ['ctl.see_all',                 False, "See all Lists"],
+        ['ctl.vet_enable',              False, "Enable Vetting"],
+        ['ctl.vet',                     False, "Vet Stuff"],
+        ['ctl.vet_admin',               False, "Vet Admin"],
+        ['ctl.vet_export',              False, "Download Vetted only Export"],
+
+        ['domain_manager',              False, "Domain Manager"],
+        ['pacing_report',               False, "Pacing Report"],
+        ['performiq',                   False, "PerformIQ"],
+        ['performiq.export',            False, "Export"],
+        ['pricing_tool',                False, "Pricing Tool"],
+        ['research',                    True,  "Research"],
+        ['research.export',             True,  "Export"],
+        ['research.vetting',            False, "Able to Vet items"],
+        ['research.vetting_data',       False, "View vetting data & filters"],
+        ['research.brand_suitability',  False, "View Brand Suitability Badges"],
+        ['user_management',             False, "User Management"],
+    ]
+
+    @staticmethod
+    def load_permissions():
+        for p in PermissionItem.STATIC_PERMISSIONS:
+            i, _ = PermissionItem.objects.get_or_create(perm=p[0])
+            i.default_value = p[1]
+            i.display = p[2]
+            i.save(update_fields=['default_value', 'display'])
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)
