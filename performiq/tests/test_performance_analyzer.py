@@ -19,8 +19,12 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
             video_view_rate=50,
             video_quartile_100_rate=50
         )
+        data = _params.copy()
+        data["average_cpm"] -= 0.5
+        data["average_cpv"] -= 0.5
+        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=data)
+
         params = get_params(_params)
-        analysis = ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=_params)
         analyzer = PerformanceAnalyzer(params)
         result = analyzer.analyze(analysis)
         self.assertEqual(result["passed"], True)
@@ -73,8 +77,8 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
     def test_overall_performance(self):
         _params = dict(
             active_view_viewability=1,
-            average_cpm=1,
-            average_cpv=1,
+            average_cpm=6,
+            average_cpv=6,
             ctr=1,
             video_view_rate=1,
             video_quartile_100_rate=1,
@@ -84,8 +88,8 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
             # should fail
             dict(
                 active_view_viewability=0,
-                average_cpm=0,
-                average_cpv=0,
+                average_cpm=10,
+                average_cpv=10,
                 ctr=0,
                 video_view_rate=0,
                 video_quartile_100_rate=0,
@@ -93,8 +97,8 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
             # should fail
             dict(
                 active_view_viewability=0,
-                average_cpm=0,
-                average_cpv=0,
+                average_cpm=8,
+                average_cpv=8,
                 ctr=0,
                 video_view_rate=0,
                 video_quartile_100_rate=0,
