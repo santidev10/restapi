@@ -198,7 +198,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         protocol = "http://"
         if request.is_secure():
             protocol = "https://"
-        host = self.domain_name or f"{DEFAULT_DOMAIN}.com"
+        host = self.domain_name or f"www.{DEFAULT_DOMAIN}.com"
         host_address = f"{protocol}{host}"
         link = f"{host_address}/login"
         subject = "Access to ViewIQ"
@@ -224,7 +224,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     def domain_name(self):
         try:
             if self.domain.domain == DEFAULT_DOMAIN:
-                domain_name = f"{DEFAULT_DOMAIN}.com"
+                domain_name = f"www.{DEFAULT_DOMAIN}.com"
             else:
                 domain_name = f"{self.domain.domain}.{DEFAULT_DOMAIN}.com"
         except (WhiteLabel.DoesNotExist, AttributeError):

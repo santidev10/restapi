@@ -75,7 +75,7 @@ def send_admin_notification(channel_id):
     to = settings.CHANNEL_AUTHENTICATION_NOTIFY_TO
     subject = "Channel Authentication"
     message = f"Dear Admin, A new channel {channel_id} " \
-              f"(https://viewiq.com/research/channels/{channel_id}) " \
+              f"(https://www.viewiq.com/research/channels/{channel_id}) " \
               f"has just authenticated on ViewIQ"
 
     send_mail(subject, message, sender, to, fail_silently=False)

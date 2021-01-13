@@ -1,6 +1,5 @@
 from brand_safety.tasks.channel_update_helper import channel_update_helper
 from brand_safety.tasks.constants import Schedulers
-from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
@@ -16,7 +15,6 @@ def channel_outdated_scheduler():
     if get_queue_size(Queue.BRAND_SAFETY_CHANNEL_LIGHT) <= Schedulers.ChannelOutdated.get_minimum_threshold():
         channel_manager = ChannelManager()
         query = channel_manager.forced_filters() \
-                & QueryBuilder().build().must_not().exists().field(Sections.TASK_US_DATA).get() \
                 & QueryBuilder().build().must().range().field("brand_safety.updated_at") \
                     .lte(Schedulers.ChannelOutdated.UPDATE_TIME_THRESHOLD).get()
         sorts = ("brand_safety.updated_at", "-stats.subscribers")

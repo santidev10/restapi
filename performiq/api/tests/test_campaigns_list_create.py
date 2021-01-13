@@ -27,7 +27,8 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
     def _create_gads(self, user_id, email):
         oauth_account = OAuthAccount.objects.create(user_id=user_id,
                                                     oauth_type=OAuthType.GOOGLE_ADS.value, email=email)
-        account = Account.objects.create(oauth_account=oauth_account)
+        account = Account.objects.create()
+        account.oauth_accounts.add(oauth_account)
         campaign = Campaign.objects.create(oauth_type=oauth_account.oauth_type, account=account)
         return oauth_account, account, campaign
 
@@ -217,3 +218,14 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["items_count"], 1)
         self.assertEqual(data["items"][0]["id"], iq_csv.id)
         self.assertEqual(data["items"][0]["name"], iq_csv.name)
+
+    def test_params_score_threshold(self):
+        """ Test that score threshold is serialized into original value as it is saved with a mapped value for analysis """
+        user = self.create_admin_user(f"test_{next(int_iterator)}.com")
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        _params = dict(campaign_id=gads_campaign.id, name="test_csv", score_threshold=2)
+        params = self._get_iqcampaign_params(_params)
+        with mock.patch("performiq.api.views.campaigns_list_create.start_analysis.start_analysis_task"):
+            response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["params"]["score_threshold"], params["score_threshold"])

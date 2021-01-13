@@ -15,7 +15,6 @@ from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
 from performiq.models import OAuthAccount
 from performiq.models.constants import AnalysisFields
-from performiq.models.constants import OAuthType
 from performiq.tasks.utils.get_csv_data import get_csv_data
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data
 from performiq.tasks.utils.get_dv360_data import get_dv360_data
@@ -27,15 +26,20 @@ class ExecutorAnalyzer(BaseAnalyzer):
     """
     Manages PerformIQ analysis flow by providing data to all analyzers defined in self._analyzers
         and gathering / saving results
+
+    Usage:
+        1. Instantiate ExecutorAnalyzer which will prepare data
+        2. Call analyze method
+        3. Call get_results method to get formatted results from all analyzers
     """
     def __init__(self, iq_campaign: IQCampaign):
         self.iq_campaign = iq_campaign
         # Prepare results for each analyzer to add results to
         self.channel_analyses = self._prepare_data()
         self._analyzers = [
-            PerformanceAnalyzer(self.iq_campaign.params),
-            ContextualAnalyzer(self.iq_campaign.params),
-            SuitabilityAnalyzer(self.iq_campaign.params),
+            PerformanceAnalyzer(iq_campaign.params),
+            ContextualAnalyzer(iq_campaign.params),
+            SuitabilityAnalyzer(iq_campaign.params),
         ]
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.BRAND_SAFETY),
@@ -58,7 +62,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
         """
         Merges Elasticsearch data by adding to each ChannelAnalysis object using ESFieldMapping
         First attempt to extract a value using a ESFieldMapping.PRIMARY field. If the document also as a SECONDARY
-            field, it is implied the final value should be a list with the combined values of the PRIMARY and SECONDARY fields
+            field, it is implied the final value should be a list with the combined values of the
+            PRIMARY and SECONDARY fields
         :param channel_data: list -> ChannelAnalysis instantiations
         :return: list
         """
@@ -66,28 +71,29 @@ class ExecutorAnalyzer(BaseAnalyzer):
             c.channel_id: c for c in channel_data
             if len(str(c.channel_id)) == 24
         }
-        es_data = self.channel_manager.get(by_id.keys(), skip_none=True)
-        for channel in es_data:
-            if not channel.main.id:
-                continue
-            mapped = {}
-            for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
-                # Map multi dot attribute fields to single keys
-                attr_value = attrgetter(es_field)(channel)
-                coercer = COERCE_FIELD_FUNCS.get(mapped_key)
-                try:
-                    # If has secondary field, it is implied that the final attr_value should be a list
-                    secondary_field = ESFieldMapping.SECONDARY[es_field]
-                    second_attr_value = attrgetter(secondary_field)(channel)
-                    if second_attr_value:
-                        # Check if the original attr_value is None
-                        attr_value = attr_value if attr_value is not None else []
-                        attr_value.extend(second_attr_value)
-                except (KeyError, AttributeError):
-                    pass
-                # Not all fields will need to be coerced
-                mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
-            by_id[channel.main.id].add_data(mapped)
+        for batch in chunks_generator(by_id.keys(), size=2000):
+            es_data = self.channel_manager.get(batch, skip_none=True)
+            for channel in es_data:
+                if not channel.main.id:
+                    continue
+                mapped = {}
+                for es_field, mapped_key in ESFieldMapping.PRIMARY.items():
+                    # Map multi dot attribute fields to single keys
+                    attr_value = attrgetter(es_field)(channel)
+                    coercer = COERCE_FIELD_FUNCS.get(mapped_key)
+                    try:
+                        # If has secondary field, it is implied that the final attr_value should be a list
+                        secondary_field = ESFieldMapping.SECONDARY[es_field]
+                        second_attr_value = attrgetter(secondary_field)(channel)
+                        if second_attr_value:
+                            # Check if the original attr_value is None
+                            attr_value = attr_value if attr_value is not None else []
+                            attr_value.extend(second_attr_value)
+                    except (KeyError, AttributeError):
+                        pass
+                    # Not all fields will need to be coerced
+                    mapped[mapped_key] = coercer(attr_value) if coercer and attr_value is not None else attr_value
+                by_id[channel.main.id].add_data(mapped)
         return list(by_id.values())
 
     def get_results(self):
@@ -121,8 +127,8 @@ class ExecutorAnalyzer(BaseAnalyzer):
             method has been called
         """
         wastage = [analysis for analysis in self.channel_analyses if analysis.clean is False]
-        total_spend = sum(analysis.get(AnalysisFields.COST, 0) for analysis in self.channel_analyses)
-        wastage_spend = sum(analysis.get(AnalysisFields.COST, 0) for analysis in wastage)
+        total_spend = sum(analysis.get(AnalysisFields.COST, 0) or 0 for analysis in self.channel_analyses)
+        wastage_spend = sum(analysis.get(AnalysisFields.COST, 0) or 0 for analysis in wastage)
         statistics = {
             "wastage_channels_percent": self.get_score(len(wastage), len(self.channel_analyses)),
             "wastage_spend": wastage_spend,
@@ -170,16 +176,14 @@ class ExecutorAnalyzer(BaseAnalyzer):
             the data source is either Google Ads (Adwords API) or DV360 API
         :return:
         """
-        if self.iq_campaign.campaign.oauth_type == OAuthType.GOOGLE_ADS.value:
-            oauth_account = self.iq_campaign.campaign.account.oauth_account
-        else:
-            oauth_account = OAuthAccount.objects.get(oauth_type=OAuthType.DV360.value, user=self.iq_campaign.user)
+
+        oauth_account = OAuthAccount.objects.get(oauth_type=self.iq_campaign.campaign.oauth_type,
+                                                 user=self.iq_campaign.user)
         return oauth_account
 
     def _save_results(self) -> None:
         """
         Save final results stored in ChannelAnalysis objects
-        :param channel_analyses: ChannelAnalysis objects that have been during analysis
         :return: list
         """
         to_create = (

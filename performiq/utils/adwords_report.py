@@ -10,7 +10,6 @@ def get_campaign_report(client, fields, predicates: list = None, date_range: dic
     :param client: get_client function client result
     :param predicates: dict -> Adwords report selector predicates
     :param date_range: dict -> Date range for report
-    :param addl_fields: Additional report fields to retrieve
     :return: list -> namedtuples
     """
     predicates = predicates or [{"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]}]

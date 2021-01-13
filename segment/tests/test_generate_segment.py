@@ -1,7 +1,8 @@
 import csv
 import io
-from uuid import uuid4
+from http.client import IncompleteRead
 from mock import patch
+from uuid import uuid4
 
 import boto3
 from django.conf import settings
@@ -843,3 +844,18 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(segment.statistics["subscribers"], 500)
         self.assertEqual(segment.statistics["views"], 1000)
         self.channel_manager.delete([doc.main.id for doc in docs])
+
+    @mock_s3
+    def test_generate_retry(self):
+        """ Test that generate_segment function retries with network related exceptions """
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user, uuid=uuid4(), list_type=0,
+        )
+        with patch("segment.tasks.generate_segment.GenerateSegmentUtils",
+                   side_effect=[ConnectionError, IncompleteRead(""), GenerateSegmentUtils(segment)]):
+            results = generate_segment(segment, Q(), 1)
+        self.assertTrue(results)

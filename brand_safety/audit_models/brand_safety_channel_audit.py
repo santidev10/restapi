@@ -1,6 +1,5 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
-from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 
 

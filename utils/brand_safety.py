@@ -50,3 +50,24 @@ def map_brand_safety_score(score):
         except ValueError:
             pass
     return mapped
+
+
+def map_score_threshold(score_threshold: int, reverse=False):
+    """
+    Map score threshold values to brand safety overall scores
+    :param score_threshold: int
+    :param reverse: bool -> Get overall score to threshold
+    :return: int
+    """
+    score_threshold_mapping = {
+        1: 0,
+        2: 70,
+        3: 80,
+        4: 90
+    }
+    if reverse is True:
+        score_threshold_mapping = {
+            val: key for key, val in score_threshold_mapping.items()
+        }
+    threshold = score_threshold_mapping.get(score_threshold)
+    return threshold

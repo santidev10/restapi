@@ -1,7 +1,5 @@
 import concurrent.futures
-import datetime
 import logging
-from typing import List
 
 from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
@@ -18,7 +16,6 @@ from performiq.oauth_utils import get_client
 from saas import celery_app
 from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator
-from utils.datetime import now_in_default_tz
 
 
 logger = logging.getLogger(__name__)
@@ -74,23 +71,6 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
     oauth_account.save(update_fields=["synced"])
 
 
-def _get_cids_to_update(all_cids: List[int]) -> List[int]:
-    """
-    Get CID's to update based on updated_at
-    Some Oauth accounts will retrieve the same Google Ads CID's as they may have shared access to MCC accounts.
-    To prevent constant updating of same Google Ads CID's from different OAuthAccounts, exclude recently
-    updated accounts
-    :param all_cids: CID's retrieved with get_all_customers
-    :return:
-    """
-    recently = now_in_default_tz() - datetime.timedelta(minutes=GADS_CID_UPDATE_THRESHOLD)
-    recently_updated = Account.objects \
-        .filter(id__in=all_cids, updated_at__gte=recently) \
-        .values_list("id", flat=True)
-    to_update_cids = list(set(all_cids) - set(recently_updated))
-    return to_update_cids
-
-
 def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
     """
     Update campaigns for MCC account
@@ -100,15 +80,17 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
     """
     client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
     all_cids = [int(cid["customerId"]) for cid in get_all_customers(client)]
-    to_update_cids = _get_cids_to_update(all_cids)
+    existing = oauth_account.gads_accounts.values_list("id", flat=True)
 
-    for batch in chunks_generator(to_update_cids, size=20):
+    for batch in chunks_generator(all_cids, size=20):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
             all_args = [(cid, oauth_account.refresh_token) for cid in batch]
             futures = [executor.submit(get_report, *args) for args in all_args]
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
-            update_create_campaigns(report, account_id, oauth_account)
+            update_create_campaigns(report, account_id)
+
+    oauth_account.gads_accounts.add(*set(all_cids) - set(existing))
 
 
 def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
@@ -119,7 +101,8 @@ def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
     :param oauth_account: str -> OAuthAccount
     """
     account_id, report = get_report(account_id, oauth_account.refresh_token)
-    update_create_campaigns(report, account_id, oauth_account)
+    update_create_campaigns(report, account_id)
+    oauth_account.gads_accounts.add(account_id)
 
 
 def get_report(account_id: int, refresh_token: str):
@@ -130,9 +113,9 @@ def get_report(account_id: int, refresh_token: str):
     return account_id, report
 
 
-def update_create_campaigns(report, account_id, oauth_account):
+def update_create_campaigns(report, account_id):
     """ Update or create campaigns from Adwords API Campaign Report """
-    account, _ = Account.objects.get_or_create(id=account_id, defaults=dict(oauth_account_id=oauth_account.id))
+    account, _ = Account.objects.get_or_create(id=account_id)
     to_update, to_create = prepare_items(
         report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value,
         defaults={"account_id": account.id}

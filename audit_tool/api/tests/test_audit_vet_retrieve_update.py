@@ -1,5 +1,6 @@
-import json
+from datetime import timedelta
 from uuid import uuid4
+import json
 
 from django.utils import timezone
 from elasticsearch.exceptions import NotFoundError
@@ -12,7 +13,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.api.urls.names import AuditPathName
-from audit_tool.tests.utils import create_model_objs
+from audit_tool.api.views.audit_vet_retrieve_update import CHECKOUT_THRESHOLD
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
@@ -21,12 +22,14 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
+from audit_tool.tests.utils import create_model_objs
 from brand_safety.models import BadWordCategory
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
 from saas.urls.namespaces import Namespace
+from segment.models.constants import SegmentTypeEnum
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -109,10 +112,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         video_audit = AuditVideo.objects.create(video_id=v_id, video_id_hash=get_hash_name(v_id))
         video_meta = AuditVideoMeta.objects.create(video=video_audit, name="test meta name")
         historical_video_vet_1 = AuditVideoVet.objects.create(
-            audit=audit_1, video=video_audit, processed=before, clean=False
+            audit=audit_1, video=video_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditVideoVet.objects.create(
-            audit=audit_2, video=video_audit, processed=before, clean=True
+            audit=audit_2, video=video_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_video_vet = AuditVideoVet.objects.create(audit=audit_3, video=video_audit)
 
@@ -154,8 +157,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_video_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(video_meta.name in vetting_history[1]["data"])
 
     def test_get_next_channel_vetting_item_with_history_success(self, *args):
@@ -172,10 +177,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_audit = AuditChannel.objects.create(channel_id=c_id, channel_id_hash=get_hash_name(c_id))
         channel_meta = AuditChannelMeta.objects.create(channel=channel_audit, name="test meta name")
         historical_channel_vet_1 = AuditChannelVet.objects.create(
-            audit=audit_1, channel=channel_audit, processed=before, clean=False
+            audit=audit_1, channel=channel_audit, processed=before, clean=False, processed_by_user_id=user.id
         )
         historical_video_vet_2 = AuditChannelVet.objects.create(
-            audit=audit_2, channel=channel_audit, processed=before, clean=True
+            audit=audit_2, channel=channel_audit, processed=before, clean=True, processed_by_user_id=user.id
         )
         new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
 
@@ -220,8 +225,10 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
         self.assertEqual(vetting_history[0]["suitable"], historical_channel_vet_1.clean)
+        self.assertEqual(vetting_history[0]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
+        self.assertEqual(vetting_history[1]["processed_by"], str(user))
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
 
     def test_get_next_video_vetting_item_missing(self, *args):
@@ -793,3 +800,74 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         upserted_doc = mock_upsert.call_args[0][0][0]
         self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
         self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
+
+    def test_check_in_threshold(self, *args):
+        """
+        Ensure that audit vet item check in/out is enforced
+        :param args:
+        :return:
+        """
+        user = self.create_admin_user()
+        before = timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD + 5)
+        after = timezone.now()
+        video_audit, video_segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.VIDEO.value, title="test_title_1"))
+        channel_audit, channel_segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.CHANNEL.value, title="test_title_2"))
+        audit_videos = []
+        audit_channels = []
+        video_vets = []
+        channel_vets = []
+        range_max = 3
+        for i in range(range_max):
+            audit_video = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
+            audit_videos.append(audit_video)
+            checked_out_at = before if i + 1 < range_max else after
+            video_vets.append(AuditVideoVet(audit=video_audit, video=audit_video, checked_out_at=checked_out_at))
+        for i in range(range_max):
+            audit_channel = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
+            audit_channels.append(audit_channel)
+            checked_out_at = before if i + 1 < range_max else after
+            channel_vets.append(AuditChannelVet(audit=channel_audit, channel=audit_channel, checked_out_at=checked_out_at))
+
+        AuditVideoVet.objects.bulk_create(video_vets)
+        AuditChannelVet.objects.bulk_create(channel_vets)
+
+        self.assertTrue(all(item.checked_out_at is not None for item in video_vets))
+        self.assertTrue(all(item.checked_out_at is not None for item in channel_vets))
+
+        for audit_video in audit_videos:
+            with self.subTest(audit_video):
+                mock_video_doc = self._create_mock_document(Video, audit_video.video_id)
+                self.mock_get_document.return_value = mock_video_doc
+                url = self._get_url(kwargs=dict(pk=video_audit.id))
+                response = self.client.get(url)
+                if audit_video == audit_videos[-1]:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("message", response.data.keys())
+                    self.assertIn("All items are checked out.", response.data.get("message", ""))
+                    continue
+                else:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("vetting_id", response.data.keys())
+                    vetting_id = response.data.get("vetting_id")
+                    valid_video_vet_ids = [video_vet.id for video_vet in video_vets[:-1]]
+                    self.assertIn(vetting_id, valid_video_vet_ids)
+
+        for audit_channel in audit_channels:
+            with self.subTest(audit_channel):
+                mock_channel_doc = self._create_mock_document(Video, audit_channel.channel_id)
+                self.mock_get_document.return_value = mock_channel_doc
+                url = self._get_url(kwargs=dict(pk=channel_audit.id))
+                response = self.client.get(url)
+                if audit_channel == audit_channels[-1]:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("message", response.data.keys())
+                    self.assertIn("All items are checked out.", response.data.get("message", ""))
+                    continue
+                else:
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertIn("vetting_id", response.data.keys())
+                    vetting_id = response.data.get("vetting_id")
+                    valid_channel_vet_ids = [channel_vet.id for channel_vet in channel_vets[:-1]]
+                    self.assertIn(vetting_id, valid_channel_vet_ids)

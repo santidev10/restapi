@@ -10,8 +10,10 @@ from channel.models import AuthChannel
 from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
+from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
+from userprofile.models import WhiteLabel
 from utils.unittests.celery import mock_send_task
 from utils.unittests.response import MockResponse
 from utils.unittests.reverse import reverse
@@ -204,3 +206,35 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         device_auth_token = UserDeviceToken.objects.get(user=user, key=data["auth_token"])
         self.assertFalse(device_auth_token.key.startswith("temp_"))
         self.assertTrue(device_auth_token.created_at > before)
+
+    @mock_send_task()
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_domain_set(self, mock_youtube, flow, *args):
+        """ Test that domain foriegn key is set correctly when creating user through channel authentication """
+        host_domain, _ = WhiteLabel.objects.get_or_create(domain="rc")
+        user_details = {
+            "email": "test_domain@test.test",
+            "image": {"isDefault": False},
+        }
+        youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
+
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
+        with patch("channel.api.views.channel_authentication.requests.get",
+                   return_value=MockResponse(json=user_details)),\
+                patch.object(WhiteLabel, "extract_sub_domain", return_value=host_domain.domain):
+            response = self.client.post(self.url, dict(code="code"), )
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        created_user = UserProfile.objects.get(email=user_details["email"])
+        self.assertNotEqual(created_user.domain.domain, DEFAULT_DOMAIN)
+        self.assertEqual(created_user.domain.domain, host_domain.domain)

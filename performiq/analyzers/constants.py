@@ -32,15 +32,18 @@ COERCE_FIELD_FUNCS = {
 }
 
 ADWORDS_COERCE_FIELD_FUNCS = {
-    key: func for key, func in COERCE_FIELD_FUNCS.items()
-}
-ADWORDS_COERCE_FIELD_FUNCS.update({
+    **{
+        key: func for key, func in COERCE_FIELD_FUNCS.items()
+    },
     "cpm": Coercers.cost_micros,
     "cpv": Coercers.cost_micros,
     AnalysisFields.CPM: Coercers.cost_micros,
     AnalysisFields.CPV: Coercers.cost_micros,
     AnalysisFields.COST: Coercers.cost_micros,
-})
+    AnalysisFields.ACTIVE_VIEW_MEASURABLE_IMPRESSIONS: Coercers.integer,
+    AnalysisFields.ACTIVE_VIEW_IMPRESSIONS: Coercers.integer,
+    AnalysisFields.CLICKS: Coercers.integer,
+}
 
 
 class DataSourceType(enum.IntEnum):
@@ -69,3 +72,8 @@ class ESFieldMapping:
     SECONDARY = {
         "general_data.primary_category": "general_data.iab_categories"
     }
+
+
+IGNORE_CONTENT_CATEGORIES = {
+    "content channel"
+}

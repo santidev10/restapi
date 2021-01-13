@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 from collections import defaultdict
+from http.client import IncompleteRead
 
 from django.conf import settings
 from elasticsearch_dsl import Q
@@ -14,16 +15,18 @@ from segment.models.constants import VideoConfig
 from segment.models.constants import ChannelConfig
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from utils.exception import retry
 from utils.utils import chunks_generator
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = os.environ.get("CTL_BATCH_SIZE", 2000)
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
 
 logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
+@retry(count=10, delay=5, exceptions=(ConnectionError, IncompleteRead))
 def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments

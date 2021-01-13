@@ -23,6 +23,7 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
+from userprofile.models import WhiteLabel
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.es_components_cache import flush_cache
@@ -171,13 +172,16 @@ class ChannelAuthenticationApiView(APIView):
             google_id = response.get("sub")
             # Obtaining user extra data
             user_data = self.obtain_extra_user_data(access_token, google_id)
+            domain = WhiteLabel.extract_sub_domain(self.request.get_host() or "")
+            domain_obj = WhiteLabel.get(domain)
             user_data.update(dict(
                 email=email,
                 google_account_id=google_id,
                 status=UserStatuses.PENDING.value,
                 is_active=False,
                 user_type=UserTypeCreator.CREATOR.value,
-                password=hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest()
+                password=hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest(),
+                domain_id=domain_obj.id,
             ))
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)

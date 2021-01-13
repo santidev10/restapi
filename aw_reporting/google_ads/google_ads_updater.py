@@ -244,10 +244,6 @@ class GoogleAdsUpdater:
                 )
                 self.execute(updater, client)
 
-            except AccountInactiveError:
-                self.account.is_active = False
-                self.account.save()
-
             except (RefreshError, HttpAccessTokenRefreshError) as e:
                 logger.warning((permission, e))
                 aw_connection.revoked_access = True
@@ -261,6 +257,10 @@ class GoogleAdsUpdater:
                     permission.save()
                 else:
                     raise
+
+            except AccountInactiveError:
+                self.account.is_active = False
+                self.account.save()
 
             # pylint: disable=broad-except
             except Exception:

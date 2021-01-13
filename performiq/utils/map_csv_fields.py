@@ -230,28 +230,43 @@ class CSVWithHeader(AbstractCSVType):
         return 1
 
 
-class ManagedPlacementsReport(AbstractCSVType):
+class AbstractPlacementsReport(AbstractCSVType):
+
+    VALID_SECOND_ROW_VALUE = "All time"
 
     def is_valid(self):
         if len(self.rows) < 4:
-            raise ValidationError("Managed placements reports must have at least 4 rows")
+            raise ValidationError("Placements reports must have at least 4 rows")
         if not len(self.rows[0]):
             raise ValidationError("CSV must have at least one column")
-        if not len(self.rows[0]) or self.rows[0][0] != "Managed placements report":
-            raise ValidationError("First row must be 'Managed placements report'")
-        if not len(self.rows[1]) or self.rows[1][0] != "All time":
-            raise ValidationError("Second must be 'All time'")
+        if not len(self.rows[0]) or self.rows[0][0] != self.VALID_FIRST_ROW_VALUE:
+            raise ValidationError(f"First row must be '{self.VALID_FIRST_ROW_VALUE}'")
+        if not len(self.rows[1]) or self.rows[1][0] != self.VALID_SECOND_ROW_VALUE:
+            raise ValidationError(f"Second must be '{self.VALID_SECOND_ROW_VALUE}'")
         if not is_header_row(self.rows[2]):
             raise ValidationError("Third row must be a header row")
         return True
 
     @staticmethod
+    def get_first_data_row_index():
+        return 3
+
+class ManagedPlacementsReport(AbstractPlacementsReport):
+
+    VALID_FIRST_ROW_VALUE = "Managed placements report"
+
+    @staticmethod
     def get_type_string():
         return "managed_placements_report"
 
+
+class AutomaticPlacementsReport(AbstractPlacementsReport):
+
+    VALID_FIRST_ROW_VALUE = "Automatic placements report"
+
     @staticmethod
-    def get_first_data_row_index():
-        return 3
+    def get_type_string():
+        return "automatic_placements_report"
 
 
 class CSVHeaderUtil:
@@ -260,6 +275,7 @@ class CSVHeaderUtil:
         CSVWithOnlyData,
         CSVWithHeader,
         ManagedPlacementsReport,
+        AutomaticPlacementsReport,
     ]
 
     def __init__(self, csv_file: Type[UploadedFile] = None, reader: csv.reader = None, rows: list = None,

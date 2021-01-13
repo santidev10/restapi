@@ -854,6 +854,19 @@ class IASHistory(Timestampable):
     started = models.DateTimeField(auto_now_add=True, db_index=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
 
+    @staticmethod
+    def get_last_ingested_timestamp() -> datetime:
+        """
+        return the latest/newest completed IASHistory object's `started` timestamp
+        used for filtering to get the latest ias verified channels
+        :return datetime:
+        """
+        try:
+            return IASHistory.objects.exclude(completed=None).latest("completed").started
+        except IASHistory.DoesNotExist:
+            return None
+
+
 class IASChannel(Timestampable):
     channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, on_delete=models.CASCADE)
     ias_verified = models.DateTimeField(db_index=True, auto_now_add=True)

@@ -22,6 +22,8 @@ from utils.views import get_object
 from utils.views import validate_fields
 
 
+CHECKOUT_THRESHOLD = 10
+
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
     REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "content_quality", "gender", "iab_categories",
@@ -134,8 +136,12 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         # id_key = video.video_id, channel.channel_id
         id_key = segment.config.DATA_FIELD + "." + segment.config.DATA_FIELD + "_id"
+        # get the next vetting model for this audit, that wasn't processed, that has either: never been checked out OR
+        # was checked out over CHECKOUT_THRESHOLD minutes ago
         next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(
-            Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now() - timedelta(minutes=30))).first()
+            Q(checked_out_at__isnull=True)
+            | Q(checked_out_at__lt=timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD))
+        ).first()
         # If next item is None, then all are checked out
         if next_item:
             try:
