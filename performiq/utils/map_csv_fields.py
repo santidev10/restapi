@@ -249,7 +249,8 @@ class AbstractPlacementsReport(AbstractCSVType):
         date_str = str(self.rows[1][0])[:3].lower()
         if not len(self.rows[1]) or self.rows[1][0] != self.VALID_SECOND_ROW_VALUE \
                 and date_str not in self.VALID_MONTH_NAMES:
-            raise ValidationError(f"Second must be either '{self.VALID_SECOND_ROW_VALUE}' or date range.")
+            raise ValidationError(f"Second must be either '{self.VALID_SECOND_ROW_VALUE}' "
+                                  f"or date range in format 'Month dd, yyyy - Month dd, yyyy'.")
         if not is_header_row(self.rows[2]):
             raise ValidationError("Third row must be a header row")
         return True
