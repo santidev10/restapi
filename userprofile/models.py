@@ -114,7 +114,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(max_length=255, null=True, blank=True)
-    perms = JSONField(default={})
+    perms = JSONField(default=dict)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -233,10 +233,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
 class PermissionItem(models.Model):
     permission = models.CharField(unique=True, max_length=128)
-    default_value = models.BooleanField(index=True, default=False)
+    default_value = models.BooleanField(db_index=True, default=False)
     display = models.TextField(default="")
 
-    STATIC_PERMISSIONS = {
+    STATIC_PERMISSIONS = [
     #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, display]
         ['admin',                       False, "Admin (the powers of Zeus)"],
         ['ads_analyzer',                False, "Ads Analyzer"],
@@ -268,7 +268,7 @@ class PermissionItem(models.Model):
         ['research.vetting_data',       False, "View vetting data & filters"],
         ['research.brand_suitability',  False, "View Brand Suitability Badges"],
         ['user_management',             False, "User Management"],
-    }
+    ]
 
     @staticmethod
     def load_permissions():
