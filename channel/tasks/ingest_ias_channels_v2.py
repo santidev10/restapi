@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from elasticsearch.exceptions import TransportError
+from elasticsearch.helpers.errors import BulkIndexError
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 
@@ -100,7 +101,9 @@ class IASChannelIngestor:
                 self.exceptions.append(e)
         # give me the exception type so i can catch it!
         if self.exceptions:
-            logger.error("IAS Channel Ingestor has uncaught exceptions!")
+            exceptions = [f"{type(exception).__module__}.{type(exception).__qualname__}"
+                          for exception in self.exceptions]
+            logger.error(f"IAS Channel Ingestor has uncaught exceptions: {', '.join(exceptions)}")
             logger.error(self.exceptions)
             raise Exception(self.exceptions)
 
@@ -183,7 +186,7 @@ class IASChannelIngestor:
         return channel_ids
 
     # exp. backoff w/ noise, intended to catch ES query queue limit exceeded exception
-    @backoff(max_backoff=60, exceptions=(TransportError,))
+    @backoff(max_backoff=60, exceptions=(TransportError, BulkIndexError))
     def _upsert_es_channels(self, channel_ids: list):
         """
         given a list of channel ids, add missing channel records in elasticsearch. Update ALL given ids' ias_verified
