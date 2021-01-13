@@ -57,6 +57,7 @@ PROJECT_APPS = (
     "channel",
     "dashboard",
     "email_reports",
+    "ftux",
     "healthcheck",
     "keyword_tool",
     "performiq",
