@@ -16,7 +16,7 @@ class FTUX(models.Model):
 
 class FTUXUser(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-    ftux = models.ForeignKey(FTUX)
+    ftux = models.ForeignKey(FTUX, on_delete=models.CASCADE)
     last_seen = models.DateTimeField(default=None, null=True, db_index=True)
 
     class Meta:
