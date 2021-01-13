@@ -177,3 +177,29 @@ class PerformanceAnalyzerTestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(results["ctr"]["performance"], round(2 / 3 * 100, 2), delta=1)
         # Only two items in data have video_view_rate, one pass one fail, so should be average of 2
         self.assertAlmostEqual(results["video_view_rate"]["performance"], round(1 / 2 * 100, 2), delta=1)
+
+    def test_comparison_direction(self):
+        """ Test that average_cpm and average_cpv fields pass when lower than threshold as lower cost is favorable """
+        params = dict(
+            average_cpm=1.5,
+            average_cpv=0.02,
+        )
+        analyzer = PerformanceAnalyzer(params)
+        data = [
+            # Fails average_cpm, passes average_cpv
+            dict(average_cpm=2.00, average_cpv=0.01),
+            # Passes average_cpm, fails average_cpv
+            dict(average_cpm=1.3, average_cpv=0.5),
+        ]
+        analyses = [
+            ChannelAnalysis(f"channel_id_{next(int_iterator)}", data=d) for d in data
+        ]
+        for a in analyses:
+            analyzer.analyze(a)
+        results = analyzer.get_results()
+        self.assertTrue(results["average_cpm"]["passed"] == results["average_cpv"]["passed"] == 1)
+        self.assertTrue(results["average_cpm"]["failed"] == results["average_cpv"]["failed"] == 1)
+        self.assertAlmostEqual((data[0]["average_cpm"] + data[1]["average_cpm"]) / 2, results["average_cpm"]["avg"])
+        self.assertAlmostEqual((data[0]["average_cpv"] + data[1]["average_cpv"]) / 2, results["average_cpv"]["avg"])
+        # Failing in any one benchmark fails entire analysis
+        self.assertEqual(results["overall_score"], 0)
