@@ -16,6 +16,7 @@ class IQCampaignQuerySerializer(serializers.Serializer):
     content_type = serializers.ListField()
     ctr = AdsPerformanceRangeField(required=False, default=None)
     exclude_content_categories = NullableListField(default=None)
+    languages = serializers.ListField(required=False, default=None)
     score_threshold = serializers.IntegerField()
     video_quartile_100_rate = AdsPerformanceRangeField(default=None)
     video_view_rate = AdsPerformanceRangeField(default=None)
