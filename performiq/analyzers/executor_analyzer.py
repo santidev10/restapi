@@ -88,7 +88,7 @@ class ExecutorAnalyzer(BaseAnalyzer):
                         combined = []
                         if isinstance(attr_value, (list, AttrList)):
                             combined.extend(attr_value)
-                        else:
+                        elif attr_value is not None:
                             combined.append(attr_value)
                         # If has secondary field, it is implied that the final attr_value should be a list
                         secondary_field = ESFieldMapping.SECONDARY[es_field]
