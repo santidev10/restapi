@@ -89,8 +89,11 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     def _get_body(self):
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
+    def get_account_ids(self):
+        return self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+
     def _get_campaign_ids(self):
-        account_ids = self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        account_ids = self.get_account_ids()
         campaigns = Campaign.objects.filter(account_id__in=account_ids) \
             .values_list("id", flat=True)
         campaigns_ids = list(campaigns)

@@ -88,6 +88,7 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
                 "ad__ad_group__id",
                 "ad__ad_group__name",
                 "ad__id",
+                "ad__creative_tracking_url_template",
                 "ad__creative_name",
                 "ad__ad_group__videos_stats__creative__id",
                 named=True
