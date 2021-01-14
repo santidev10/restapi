@@ -100,7 +100,7 @@ def perform_get(sc, get_from_days):
         (Category, "get_categories", None),
         (Opportunity, "get_opportunities", f"MAX_Placement_End_Date__c > {end_date_threshold}"),
         (OpPlacement, "get_placements", f"Placement_End_Date__c > {end_date_threshold}"),
-        (Flight, "get_flights", f"Flight_End_Date__c > {end_date_threshold}"),
+        (Flight, "get_flights", f"Placement__r.Placement_End_Date__c > {end_date_threshold}"),
         (Activity, "get_activities", None),
     ]
     for model, method, condition in data:
@@ -325,7 +325,7 @@ def flights_to_update_qs(force_update, today):
     else:
         date_filters = Q(
             start__lte=today,
-            end__gte=today - timedelta(days=settings.SALESFORCE_UPDATE_DELAY_DAYS)
+            placement__end__gte=today - timedelta(days=settings.SALESFORCE_UPDATE_DELAY_DAYS)
         )
 
     regular_placement = Q(placement__goal_type_id__in=(SalesForceGoalType.CPM, SalesForceGoalType.CPV))

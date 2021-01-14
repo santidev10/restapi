@@ -14,6 +14,11 @@ class PerformanceAnalyzer(BaseAnalyzer):
     RESULT_KEY = AnalysisResultSection.PERFORMANCE_RESULT_KEY
     ANALYSIS_FIELDS = {AnalysisFields.CPV, AnalysisFields.CPM, AnalysisFields.CTR, AnalysisFields.VIDEO_VIEW_RATE,
                        AnalysisFields.ACTIVE_VIEW_VIEWABILITY, AnalysisFields.VIDEO_QUARTILE_100_RATE}
+    # Config to pass kwarg to self.passes method
+    ANALYSIS_COMPARISON = {
+        AnalysisFields.CPV: "-",
+        AnalysisFields.CPM: "-"
+    }
 
     def __init__(self, params: dict):
         """
@@ -60,7 +65,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
                 continue
             self._add_averages(metric_name, metric_value)
             try:
-                if self.passes(metric_value, threshold):
+                passes_direction = self.ANALYSIS_COMPARISON.get(metric_name, "+")
+                if self.passes(metric_value, threshold, passes_direction):
                     self._total_results[metric_name]["passed"] += 1
                 else:
                     self._total_results[metric_name]["failed"] += 1
