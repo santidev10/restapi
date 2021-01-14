@@ -1,7 +1,9 @@
+import pytz
 from datetime import datetime
 from datetime import timedelta
 
-import pytz
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db.models import Max
 
 from aw_reporting.adwords_reports import ad_performance_report
@@ -66,23 +68,25 @@ class AdUpdater(UpdateMixin):
                 if ad_id not in updated_ads:
                     updated_ads.append(ad_id)
 
-                    stats = {
+                    ad_data = {
                         "headline": row_obj.Headline,
                         "creative_name": row_obj.ImageCreativeName,
                         "display_url": row_obj.DisplayUrl,
                         "status": row_obj.Status,
-                        "is_disapproved": self.is_ad_disapproved(row_obj)
+                        "is_disapproved": self.is_ad_disapproved(row_obj),
+                        "creative_tracking_url_template": self.get_creative_tracking_url_template(row_obj)
                     }
                     kwargs = {
                         "id": ad_id, "ad_group_id": int(row_obj.AdGroupId)
                     }
 
+                    # update the ad
                     if ad_id in ad_ids:
                         Ad.objects.filter(**kwargs).update(**stats)
                     else:
                         ad_ids.append(ad_id)
-                        stats.update(kwargs)
-                        create_ad.append(Ad(**stats))
+                        ad_data.update(kwargs)
+                        create_ad.append(Ad(**ad_data))
                 # -- update ads
                 # insert stats
                 stats = {
@@ -106,3 +110,21 @@ class AdUpdater(UpdateMixin):
         return campaign_row.CombinedApprovalStatus == "disapproved" \
             if hasattr(campaign_row, "CombinedApprovalStatus") \
             else False
+
+    def get_creative_tracking_url_template(self, row):
+        """
+        Gets the creative tracking url template field from the supplied row. Returns either a valid URL or None
+        :param row:
+        :return:
+        """
+        value = getattr(row, "CreativeTrackingUrlTemplate", None)
+        if not value:
+            return None
+
+        validator = URLValidator()
+        try:
+            validator(value)
+        except ValidationError:
+            return None
+
+        return value
