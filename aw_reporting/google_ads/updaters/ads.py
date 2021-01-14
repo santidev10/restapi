@@ -82,7 +82,7 @@ class AdUpdater(UpdateMixin):
 
                     # update the ad
                     if ad_id in ad_ids:
-                        Ad.objects.filter(**kwargs).update(**stats)
+                        Ad.objects.filter(**kwargs).update(**ad_data)
                     else:
                         ad_ids.append(ad_id)
                         ad_data.update(kwargs)
