@@ -20,18 +20,20 @@ CAMPAIGN_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "CampaignName", "ServingStat
                                       "EndDate", "Amount", "TotalAmount", "AdvertisingChannelType",
                                       "BiddingStrategyType", "ActiveViewViewability") \
                                      + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+
 AD_GROUP_PERFORMANCE_REPORT_FIELDS = ("CampaignId", "AdGroupId", "AdGroupName", "AdGroupStatus", "AdGroupType", "Date",
                                       "Device", "AdNetworkType1", "AveragePosition", "ActiveViewImpressions",
                                       "Engagements", "ContentBidCriterionTypeGroup", "CpvBid", "CpmBid", "CpcBid",
                                       "BiddingStrategyType",) + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
+
 GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName", "IsNegative") + MAIN_STATISTICS_FILEDS
 
-DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId",
-                                             "Date") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
+DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId", "Date") + MAIN_STATISTICS_FILEDS \
+                                            + COMPLETED_FIELDS
 
 AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id", "ImageCreativeName", "DisplayUrl", "Status", "Date",
-                                "AveragePosition",
-                                "CombinedApprovalStatus") + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+                                "AveragePosition", "CombinedApprovalStatus","CreativeTrackingUrlTemplate") \
+                               + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
 
 class AWErrorType:
