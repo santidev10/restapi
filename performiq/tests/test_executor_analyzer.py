@@ -56,17 +56,21 @@ class ExecutorAnalyzerTestCase(ExtendedAPITestCase):
             executor_analyzer = ExecutorAnalyzer(iq_campaign)
             merged = executor_analyzer._merge_es_data(channel_analyses)
         with self.subTest("Document has no primary category or iab categories"):
-            self.assertEqual(set([doc1.general_data.primary_category, *(doc1.general_data.iab_categories or [])]),
-                             set(merged[0].get("content_categories")))
+            expected = [val for val in [doc1.general_data.primary_category, *(doc1.general_data.iab_categories or [])]
+                        if val is not None]
+            self.assertEqual(set(expected), set(merged[0].get("content_categories")))
 
         with self.subTest("Document has primary category and has no iab categories"):
-            self.assertEqual(set([doc2.general_data.primary_category, *(doc2.general_data.iab_categories or [])]),
-                             set(merged[1].get("content_categories")))
+            expected = [val for val in [doc2.general_data.primary_category, *(doc2.general_data.iab_categories or [])]
+                        if val is not None]
+            self.assertEqual(set(expected), set(merged[1].get("content_categories")))
 
         with self.subTest("Document both primary category and iab categories"):
-            self.assertEqual(set([doc3.general_data.primary_category, *(doc3.general_data.iab_categories or [])]),
-                             set(merged[2].get("content_categories")))
+            expected = [val for val in [doc3.general_data.primary_category, *(doc3.general_data.iab_categories or [])]
+                        if val is not None]
+            self.assertEqual(set(expected), set(merged[2].get("content_categories")))
 
         with self.subTest("Document has no primary category and has iab categories"):
-            self.assertEqual(set([doc4.general_data.primary_category, *(doc4.general_data.iab_categories or [])]),
-                             set(merged[3].get("content_categories")))
+            expected = [val for val in [doc4.general_data.primary_category, *(doc4.general_data.iab_categories or [])]
+                        if val is not None]
+            self.assertEqual(set(expected), set(merged[3].get("content_categories")))
