@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import timedelta
 from io import StringIO
+from typing import Union
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -144,13 +145,20 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         return csv_file.getvalue()
 
     @staticmethod
-    def _get_revenue(obj, campaign_prefix, rate_field=None):
+    def _get_revenue(obj, campaign_prefix, rate_field=None) -> Union[float, None]:
+        """
+        calcuate revenue from the given stats object. If not calculable, return None
+        :param obj:
+        :param campaign_prefix:
+        :param rate_field:
+        :return: float/none
+        """
         goal_type_id = getattr(obj, f"{campaign_prefix}salesforce_placement__goal_type_id")
         ordered_rate = getattr(obj, rate_field) if rate_field \
             else getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
 
         # validate
-        if ordered_rate is None:
+        if ordered_rate is None or goal_type_id is None:
             return None
         try:
             ordered_rate = float(ordered_rate)
