@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from userprofile.models import PermissionItem
 from userprofile.models import UserProfile
 from userprofile.constants import StaticPermissions
-from utils.permissions import check_static_permission
+from utils.permissions import has_static_permission
 
 
 class UserPermissionsManagement(APIView):
@@ -14,7 +14,7 @@ class UserPermissionsManagement(APIView):
     Get User Options & Permissions
     """
     permission_classes = (
-        check_static_permission(StaticPermissions.USER_MANAGEMENT),
+        has_static_permission(StaticPermissions.USER_MANAGEMENT),
     )
 
     def get(self, request):

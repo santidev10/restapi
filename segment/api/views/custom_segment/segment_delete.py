@@ -1,15 +1,11 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import DestroyAPIView
-from rest_framework.permissions import IsAdminUser
 
 from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
-from userprofile.constants import StaticPermissions
-from utils.permissions import check_static_permission
-from utils.permissions import or_permission_classes
 
 
 class SegmentDeleteApiView(DestroyAPIView):

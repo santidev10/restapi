@@ -62,7 +62,7 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         self.assertTrue("Invalid" in err and invalid_permission_name in err)
 
         payload = json.dumps({
-            StaticPermissions.RESEARCH_VETTING: None
+            StaticPermissions.RESEARCH__VETTING: None
         })
         response = self.client.post(self._get_url(user_id=user.id), payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

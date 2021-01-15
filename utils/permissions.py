@@ -114,7 +114,7 @@ class IsVettingAdmin(permissions.BasePermission):
             or request.user.has_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
 
 
-def check_static_permission(*permission_items):
+def has_static_permission(*permission_items):
     class HasPermission(permissions.BasePermission):
         def has_permission(self, request, *_):
             for perm in permission_items:
