@@ -57,7 +57,7 @@ class GenerateExportsTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(lines), len(clean))
 
     @mock_s3
-    def test_optimized_export(self):
+    def test_optimized_ads_stats_export(self):
         """ Test optimized export returns correct matches """
         user = self.create_test_user()
         params = get_params(dict(
@@ -88,4 +88,30 @@ class GenerateExportsTestCase(ExtendedAPITestCase, ESTestCase):
         # Skip header
         lines = lines.decode('utf-8').split()[1:]
         # doc1 is the only doc with average_cpm and average_cpv less than param threshold
+        self.assertEqual(lines[0].split("/channel/")[-1], doc1.main.id)
+
+    @mock_s3
+    def test_default_vetted_safe(self):
+        """ Test that exports only include vetted safe items """
+        user = self.create_test_user()
+        params = get_params(dict(score_threshold=1))
+        iq_campaign = IQCampaign.objects.create(params=params, user=user)
+
+        doc1 = self._get_base_doc()
+        doc1.populate_task_us_data(brand_safety=None, last_vetted_at=LAST_VETTED_AT_MIN_DATE)
+
+        doc2 = self._get_base_doc()
+        doc2.populate_task_us_data(brand_safety=["Profanity"], last_vetted_at=LAST_VETTED_AT_MIN_DATE)
+
+        self.channel_manager.upsert([doc1, doc2])
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
+
+        with mock.patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            results = generate_exports(iq_campaign)
+        lines = conn.Object(settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME,
+                            results["recommended_export_filename"]).get()["Body"].read()
+        # Skip header
+        lines = lines.decode('utf-8').split()[1:]
+        # doc1 vetted safe
         self.assertEqual(lines[0].split("/channel/")[-1], doc1.main.id)
