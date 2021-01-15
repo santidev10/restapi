@@ -38,7 +38,7 @@ class SegmentExport(APIView):
             if hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
-                if request.user.has_permission(StaticPermissions.CTL_VET_ADMIN):
+                if request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
                     if related_file_obj.admin_filename:
                         admin_s3_key = segment.get_admin_s3_key()
                         response["download_url"] = segment.s3.generate_temporary_url(admin_s3_key)

@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import permissions
 
 from userprofile.models import UserDeviceToken
@@ -117,8 +118,9 @@ class IsVettingAdmin(permissions.BasePermission):
 def has_static_permission(*permission_items):
     class HasPermission(permissions.BasePermission):
         def has_permission(self, request, *_):
-            for perm in permission_items:
-                if request.user.has_permission(perm):
-                    return True
+            if isinstance(request.user, get_user_model()):
+                for perm in permission_items:
+                    if request.user.has_permission(perm):
+                        return True
             return False
     return HasPermission
