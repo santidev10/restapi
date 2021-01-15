@@ -148,13 +148,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     def has_permission(self, perm):
         # if user is admin, they automatically get whatever permission
-        if self.perms.get('admin') and self.perms.get('admin') == True:
-            return True
-        if self.perms.get(perm) and self.perms.get(perm) == True:
+        if self.perms.get("admin") and self.perms.get("admin") is True:
             return True
         elif self.perms.get(perm) is not None:
+            return self.perms[perm]
+        else:
+            # Attempt to return the default permission value being checked as permission was not set on user
             try:
-                return PermissionItem.objects.get(perm=perm).default_value
+                return PermissionItem.objects.get(permission=perm).default_value
             except Exception as e:
                 raise Exception("invalid permission name")
 
