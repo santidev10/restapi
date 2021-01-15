@@ -7,11 +7,12 @@ from rest_framework.views import APIView
 
 from userprofile.api.serializers.white_label import WhiteLabelSerializer
 from userprofile.api.views.user_avatar import ImageUploadParser
+from userprofile.constants import StaticPermissions
 from userprofile.models import WhiteLabel
 from utils.file_storage.s3_connector import upload_file
 from utils.permissions import ReadOnly
 from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from utils.permissions import has_static_permission
 from utils.views import CustomAPIException
 from utils.views import get_object
 from utils.views import validate_fields
@@ -20,7 +21,7 @@ from utils.views import validate_fields
 class WhiteLabelApiView(APIView):
     READ_ONLY = ("GET",)
     permission_classes = (
-        or_permission_classes(user_has_permission("userprofile.domain_management"), ReadOnly),
+        or_permission_classes(has_static_permission(StaticPermissions.DOMAIN_MANAGER), ReadOnly),
     )
     parser_classes = (JSONParser, ImageUploadParser)
     IMAGE_FIELDS = ("favicon", "logo")

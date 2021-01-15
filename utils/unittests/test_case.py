@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
+from userprofile.constants import StaticPermissions
 from utils.unittests.patch_user_settings import patch_user_settings
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,8 @@ class TestUserMixin:
         return user
 
     def create_admin_user(self, **kwargs):
-        return self.create_test_user(is_staff=True, is_superuser=True, **kwargs)
+        admin_perm = {StaticPermissions.ADMIN: True}
+        return self.create_test_user(is_staff=True, is_superuser=True, perms=admin_perm, **kwargs)
 
     def fill_all_groups(self, user):
         all_perm_groups = Group.objects.values_list("name", flat=True)
