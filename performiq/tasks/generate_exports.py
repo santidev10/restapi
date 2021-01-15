@@ -17,6 +17,7 @@ from performiq.analyzers.constants import ANALYSIS_RESULT_SECTIONS
 from performiq.api.serializers.query_serializer import IQCampaignQuerySerializer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
+from segment.models.constants import SegmentVettingStatusEnum
 from segment.utils.bulk_search import bulk_search
 from segment.utils.query_builder import SegmentQueryBuilder
 from performiq.utils.s3_exporter import PerformS3Exporter
@@ -67,7 +68,11 @@ def create_recommended_export(iq_campaign: IQCampaign, exporter: PerformS3Export
     if len(clean_ids) < EXPORT_LIMIT:
         params_serializer = IQCampaignQuerySerializer(data=iq_campaign.params)
         params_serializer.is_valid()
-        query = SegmentQueryBuilder(params_serializer.validated_data).query_body
+
+        query_params = params_serializer.validated_data
+        # Recommended export should retrieve vetted safe items by default
+        query_params["vetting_status"] = [SegmentVettingStatusEnum.VETTED_SAFE.value]
+        query = SegmentQueryBuilder(query_params).query_body
         query &= QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
             .gte(LAST_VETTED_AT_MIN_DATE).get()
         sort = [{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}]
