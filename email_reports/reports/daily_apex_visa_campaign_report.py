@@ -38,7 +38,7 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     attachment_filename = "daily_campaign_report.csv"
     historical_filename = "apex_visa_historical.csv"
 
-    def __init__(self, is_historical=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         is_historical: Bool: If True, fetches ALL VideoCreativeStatistic records
         for the given Accounts ids, rather than just the previous day's
@@ -47,23 +47,29 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
 
         self.today = now_in_default_tz().date()
         self.yesterday = self.today - timedelta(days=1)
-        self.is_historical = is_historical
         self.user = get_user_model().objects.filter(email=settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR).first()
         self.from_email = settings.EXPORTS_EMAIL_ADDRESS
         self.to = settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES
         self.cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
+    def historical(self):
+        """
+        write a historical report to the local filesystem. DOES NOT SEND email report
+        :return:
+        """
+        self.is_historical = True
+        self._write_historical()
+
     def send(self):
+        """
+        used by automated task to send the daily report to defined recipients
+        :return:
+        """
         if not self.to:
             logger.error(f"No recipients set for {self.__class__.__name__} Apex campaign report")
             return
 
         if not isinstance(self.user, get_user_model()):
-            return
-
-        # TODO for 5.11: use separate method from send() to generate historicals
-        if self.is_historical:
-            self._write_historical()
             return
 
         csv_context = self._get_csv_file_context()
