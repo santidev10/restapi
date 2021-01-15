@@ -42,11 +42,6 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         model = IQCampaign
         fields = "__all__"
 
-    def validate(self, data):
-        super().validate(data)
-        data["score_threshold"] = map_score_threshold(data["score_threshold"])
-        return data
-
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id", None)
         user_id = validated_data.pop("user_id")
@@ -76,8 +71,3 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         else:
             analysis_type = DataSourceType(obj.campaign.oauth_type).value
         return analysis_type
-
-    def get_params(self, obj) -> dict:
-        params = obj.params
-        params["score_threshold"] = map_score_threshold(params.get("score_threshold"), reverse=True)
-        return params
