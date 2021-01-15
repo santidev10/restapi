@@ -40,6 +40,12 @@ class NullableListField(serializers.ListField):
 class AdsPerformanceRangeField(serializers.CharField):
     """ Field to validate for range query values """
     def __init__(self, *_, **kwargs):
+        """
+        reverse determines comma placement that will determine direction of range for scalar values
+            If reverse is True, value will map to '0,value', for retrieving values 0 to value
+            If False, value will map to 'value,', for retrieving values greater than value
+        """
+        self.reverse = kwargs.pop("reverse", False)
         super().__init__(allow_null=True, allow_blank=True, **kwargs)
 
     def run_validation(self, data=None):
@@ -51,9 +57,8 @@ class AdsPerformanceRangeField(serializers.CharField):
         return data
 
     def validate_stats_field(self, val):
-        # If val is int, imply val is lower bound
         if type(val) in {int, float}:
-            val = str(val) + ","
+            val = str(val) + "," if self.reverse is False else f"0, {val}"
         bounds = val.replace(" ", "").split(",")
         # coerce ",", ", " to None
         if not [bound for bound in bounds if bound]:
