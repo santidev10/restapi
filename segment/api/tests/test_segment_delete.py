@@ -20,6 +20,7 @@ from segment.models import CustomSegmentFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_exporter import SegmentExporter
+from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.datetime import now_in_default_tz
 from utils.unittests.patch_bulk_create import patch_bulk_create
@@ -30,6 +31,10 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_DELETE,
                        kwargs=dict(segment_type=segment_type, pk=str(pk)))
+
+    @classmethod
+    def setUpTestData(cls):
+        PermissionItem.load_permissions()
 
     def test_not_found(self):
         self.create_admin_user()
