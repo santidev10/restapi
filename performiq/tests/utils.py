@@ -20,7 +20,7 @@ def get_params(params):
         ctr=0,
         exclude_content_categories=[],
         languages=[],
-        score_threshold=0,
+        score_threshold=1,
         video_view_rate=0,
         video_quartile_100_rate=0,
         name="test",

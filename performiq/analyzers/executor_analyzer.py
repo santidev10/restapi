@@ -1,6 +1,8 @@
 from operator import attrgetter
 from typing import List
 
+from elasticsearch_dsl import AttrList
+
 from .base_analyzer import BaseAnalyzer
 from .constants import COERCE_FIELD_FUNCS
 from .base_analyzer import ChannelAnalysis
@@ -82,13 +84,17 @@ class ExecutorAnalyzer(BaseAnalyzer):
                     attr_value = attrgetter(es_field)(channel)
                     coercer = COERCE_FIELD_FUNCS.get(mapped_key)
                     try:
+                        # ESFieldMapping.PRIMARY value may be either a single or list value
+                        combined = []
+                        if isinstance(attr_value, (list, AttrList)):
+                            combined.extend(attr_value)
+                        elif attr_value is not None:
+                            combined.append(attr_value)
                         # If has secondary field, it is implied that the final attr_value should be a list
                         secondary_field = ESFieldMapping.SECONDARY[es_field]
-                        second_attr_value = attrgetter(secondary_field)(channel)
-                        if second_attr_value:
-                            # Check if the original attr_value is None
-                            attr_value = attr_value if attr_value is not None else []
-                            attr_value.extend(second_attr_value)
+                        second_attr_value = attrgetter(secondary_field)(channel) or []
+                        combined.extend(second_attr_value)
+                        attr_value = combined
                     except (KeyError, AttributeError):
                         pass
                     # Not all fields will need to be coerced

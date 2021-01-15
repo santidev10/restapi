@@ -8,7 +8,6 @@ from performiq.models import IQCampaign
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField
 from utils.views import get_object
-from utils.brand_safety import map_score_threshold
 
 
 class IQCampaignSerializer(serializers.ModelSerializer):
@@ -36,16 +35,11 @@ class IQCampaignSerializer(serializers.ModelSerializer):
 
     # Read only fields
     analysis_type = serializers.SerializerMethodField()
-    params = serializers.SerializerMethodField()
+    params = serializers.JSONField(read_only=True)
 
     class Meta:
         model = IQCampaign
         fields = "__all__"
-
-    def validate(self, data):
-        super().validate(data)
-        data["score_threshold"] = map_score_threshold(data["score_threshold"])
-        return data
 
     def create(self, validated_data):
         campaign_id = validated_data.pop("campaign_id", None)
@@ -76,8 +70,3 @@ class IQCampaignSerializer(serializers.ModelSerializer):
         else:
             analysis_type = DataSourceType(obj.campaign.oauth_type).value
         return analysis_type
-
-    def get_params(self, obj) -> dict:
-        params = obj.params
-        params["score_threshold"] = map_score_threshold(params.get("score_threshold"), reverse=True)
-        return params

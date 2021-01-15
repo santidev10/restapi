@@ -1,6 +1,7 @@
 from .base_analyzer import BaseAnalyzer
 from .base_analyzer import ChannelAnalysis
 from .constants import AnalysisResultSection
+from utils.brand_safety import map_score_threshold
 
 
 class SuitabilityAnalyzer(BaseAnalyzer):
@@ -15,6 +16,8 @@ class SuitabilityAnalyzer(BaseAnalyzer):
             key: set(value) if isinstance(value, list) and value is not None else value
             for key, value in params.items()
         }
+        # Score threshold set in params is original value from 1 - 4. Map value to compare overall_scores of 0-100
+        self.params["score_threshold"] = map_score_threshold(self.params.get("score_threshold"))
         self._failed_channels = set()
         self._result_counts = dict(
             passed=0,
