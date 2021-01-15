@@ -16,6 +16,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from .constants import StaticPermissions
 from administration.notifications import send_html_email
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Opportunity
@@ -237,37 +238,37 @@ class PermissionItem(models.Model):
     display = models.TextField(default="")
 
     STATIC_PERMISSIONS = [
-    #   [FEATURE.PERMISSION_NAME, DEFAULT_VALUE, display]
-        ['admin',                       False, "Admin (the powers of Zeus)"],
-        ['ads_analyzer',                False, "Ads Analyzer"],
-        ['audit_queue',                 False, "Audit Queue"],
-        ['blocklist_manager',           False, "Blocklist Manager"],
-        ['bste',                        False, "Brand Safety Tags Editor"],
+    #   [FEATURE.PERMISSION_NAME,                   DEFAULT_VALUE, display]
+        [StaticPermissions.ADMIN,                       False, "Admin (the powers of Zeus)"],
+        [StaticPermissions.ADS_ANALYZER,                False, "Ads Analyzer"],
+        [StaticPermissions.AUDIT_QUEUE,                 False, "Audit Queue"],
+        [StaticPermissions.BLOCKLIST_MANAGER,           False, "Blocklist Manager"],
+        [StaticPermissions.BSTE,                        False, "Brand Safety Tags Editor"],
 
-        ['ctl',                         False, "Custom Target Lists"],
-        ['ctl.read',                    False, "Read"],
-        ['ctl.create',                  False, "Create"],
-        ['ctl.delete',                  False, "Delete"],
-        ['ctl.feature_list',            False, "Feature / Unfeature List"],
-        ['ctl.export_basic',            False, "Export (basic)"],
-        ['ctl.export_admin',            False, "Export (all data)"],
-        ['ctl.see_all',                 False, "See all Lists"],
-        ['ctl.vet_enable',              False, "Enable Vetting"],
-        ['ctl.vet',                     False, "Vet Stuff"],
-        ['ctl.vet_admin',               False, "Vet Admin"],
-        ['ctl.vet_export',              False, "Download Vetted only Export"],
+        [StaticPermissions.CTL,                         False, "Custom Target Lists"],
+        [StaticPermissions.CTL_READ,                    False, "Read"],
+        [StaticPermissions.CTL_CREATE,                  False, "Create"],
+        [StaticPermissions.CTL_DELETE,                  False, "Delete"],
+        [StaticPermissions.CTL_FEATURE_LIST,            False, "Feature / Unfeature List"],
+        [StaticPermissions.CTL_EXPORT_BASIC,            False, "Export (basic)"],
+        [StaticPermissions.CTL_EXPORT_ADMIN,            False, "Export (all data)"],
+        [StaticPermissions.CTL_SEE_ALL,                 False, "See all Lists"],
+        [StaticPermissions.CTL_VET_ENABLE,              False, "Enable Vetting"],
+        [StaticPermissions.CTL_VET,                     False, "Vet Stuff"],
+        [StaticPermissions.CTL_VET_ADMIN,               False, "Vet Admin"],
+        [StaticPermissions.CTL_VET_EXPORT,              False, "Download Vetted only Export"],
 
-        ['domain_manager',              False, "Domain Manager"],
-        ['pacing_report',               False, "Pacing Report"],
-        ['performiq',                   False, "PerformIQ"],
-        ['performiq.export',            False, "Export"],
-        ['pricing_tool',                False, "Pricing Tool"],
-        ['research',                    True,  "Research"],
-        ['research.export',             True,  "Export"],
-        ['research.vetting',            False, "Able to Vet items"],
-        ['research.vetting_data',       False, "View vetting data & filters"],
-        ['research.brand_suitability',  False, "View Brand Suitability Badges"],
-        ['user_management',             False, "User Management"],
+        [StaticPermissions.DOMAIN_MANAGER,              False, "Domain Manager"],
+        [StaticPermissions.PACING_REPORT,               False, "Pacing Report"],
+        [StaticPermissions.PERFORMIQ,                   False, "PerformIQ"],
+        [StaticPermissions.PERFORMIQ_EXPORT,            False, "Export"],
+        [StaticPermissions.PRICING_TOOL,                False, "Pricing Tool"],
+        [StaticPermissions.RESEARCH,                    True,  "Research"],
+        [StaticPermissions.RESEARCH_EXPORT,             True,  "Export"],
+        [StaticPermissions.RESEARCH_VETTING,            False, "Able to Vet items"],
+        [StaticPermissions.RESEARCH_VETTING_DATA,       False, "View vetting data & filters"],
+        [StaticPermissions.RESEARCH_BRAND_SUITABILITY,  False, "View Brand Suitability Badges"],
+        [StaticPermissions.USER_MANAGEMENT,             False, "User Management"],
     ]
 
     @staticmethod

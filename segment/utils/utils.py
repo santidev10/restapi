@@ -9,6 +9,7 @@ from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
 from segment.models.persistent.base import BasePersistentSegment
+from userprofile.constants import StaticPermissions
 
 
 class ModelDoesNotExist(Exception):
@@ -178,8 +179,12 @@ def set_user_perm_params(request, ctl_params):
     return ctl_params
 
 
-class CustomSegmentOwnerPermission(permissions.BasePermission):
+class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
+    """ Check if user is admin or is CTL creator """
     def has_permission(self, request, view):
+        if request.user.has_permission(StaticPermissions.ADMIN):
+            return True
+
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])
         except CustomSegment.DoesNotExist:

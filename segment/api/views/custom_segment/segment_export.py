@@ -1,24 +1,23 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAdminUser
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.utils.segment_action import segment_action
 from segment.models.constants import SegmentActionEnum
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
-from segment.utils.utils import CustomSegmentOwnerPermission
+from segment.utils.utils import AdminCustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from utils.permissions import check_static_permission
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
 class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
-            CustomSegmentOwnerPermission,
-            user_has_permission("userprofile.vet_audit_admin"),
-            IsAdminUser
+            AdminCustomSegmentOwnerPermission,
+            check_static_permission(StaticPermissions.CTL_VET_ADMIN)
         ),
     )
 
@@ -39,7 +38,7 @@ class SegmentExport(APIView):
             if hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
-                if request.user.is_staff or request.user.has_perm('userprofile.vet_audit_admin'):
+                if request.user.has_permission(StaticPermissions.CTL_VET_ADMIN):
                     if related_file_obj.admin_filename:
                         admin_s3_key = segment.get_admin_s3_key()
                         response["download_url"] = segment.s3.generate_temporary_url(admin_s3_key)

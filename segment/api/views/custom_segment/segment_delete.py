@@ -6,19 +6,15 @@ from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
-from segment.utils.utils import CustomSegmentOwnerPermission
+from segment.utils.utils import AdminCustomSegmentOwnerPermission
+from userprofile.constants import StaticPermissions
+from utils.permissions import check_static_permission
 from utils.permissions import or_permission_classes
 
 
 class SegmentDeleteApiView(DestroyAPIView):
     serializer_class = CTLSerializer
-
-    permission_classes = (
-        or_permission_classes(
-            IsAdminUser,
-            CustomSegmentOwnerPermission
-        ),
-    )
+    permission_classes = (AdminCustomSegmentOwnerPermission,)
 
     @segment_action(SegmentActionEnum.DELETE.value)
     def delete(self, request, *args, **kwargs):

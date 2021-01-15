@@ -35,3 +35,41 @@ class UserStatuses(ExtendedEnum):
     PENDING = "pending"
     REJECTED = "rejected"
     ACTIVE = "active"
+
+
+class StaticPermissions:
+    # FEATURE.PERMISSION_NAME. Descriptions of permissions are in userprofile.models.PermissionItem
+    ADMIN = "admin"
+    ADS_ANALYZER = "ads_analyzer"
+    AUDIT_QUEUE = "audit_queue"
+    BLOCKLIST_MANAGER = "blocklist_manager"
+    BSTE = "bste"
+
+    CTL = "ctl"
+    CTL_READ = "ctl.read"
+    CTL_CREATE = "ctl.create"
+    CTL_DELETE = "ctl.delete"
+    CTL_FEATURE_LIST = "ctl.feature_list"
+    CTL_EXPORT_BASIC = "ctl.export_basic"
+    CTL_EXPORT_ADMIN = "export_admin"
+    CTL_SEE_ALL = "ctl.see_all"
+    CTL_VET_ENABLE = "ctl.vet_enable"
+    CTL_VET = "ctl.vet"
+    CTL_VET_ADMIN = "ctl.vet_admin"
+    CTL_VET_EXPORT = "ctl.vet_export"
+
+    DOMAIN_MANAGER = "domain_manager"
+    PACING_REPORT = "pacing_report"
+
+    PERFORMIQ = "performiq"
+    PERFORMIQ_EXPORT = "performiq.export"
+
+    PRICING_TOOL = "pricing_tool"
+
+    RESEARCH = "research"
+    RESEARCH_EXPORT = "research.export"
+    RESEARCH_VETTING = "research.vetting"
+    RESEARCH_VETTING_DATA = "research.vetting_data"
+    RESEARCH_BRAND_SUITABILITY = "research.brand_suitability"
+
+    USER_MANAGEMENT = "user_management"
