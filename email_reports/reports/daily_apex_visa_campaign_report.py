@@ -58,7 +58,6 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         write a historical report to the local filesystem. DOES NOT SEND email report
         :return:
         """
-        self.is_historical = True
         self._write_historical()
 
     def send(self):
@@ -112,7 +111,7 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         :return:
         """
         campaign_ids = self._get_campaign_ids()
-        stats = self.get_stats(campaign_ids)
+        stats = self.get_stats(campaign_ids, is_historical=True)
 
         if not stats.exists():
             return
@@ -175,14 +174,14 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     def get_campaign_name(account_name):
         return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name, None)
 
-    def get_stats(self, campaign_ids):
+    def get_stats(self, campaign_ids: list, is_historical: bool = False):
         """
         get stats day-by-day, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
         yesterday's.
         """
         filter_kwargs = {"ad_group__campaign__id__in": campaign_ids, }
-        if not self.is_historical:
+        if not is_historical:
             filter_kwargs["date"] = self.yesterday
 
         return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \

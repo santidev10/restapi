@@ -33,14 +33,14 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
     def _get_subject(self):
         return f"Daily Disney Campaign Report for {self.yesterday}"
 
-    def get_stats(self, campaign_ids):
+    def get_stats(self, campaign_ids: list, is_historical: bool = False):
         """
         get stats day-by-day, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
         yesterday's.
         """
         filter_kwargs = {"ad__ad_group__campaign__id__in": campaign_ids, }
-        if not self.is_historical:
+        if not is_historical:
             filter_kwargs["date"] = self.yesterday
 
         return AdStatistic.objects.filter(**filter_kwargs) \
