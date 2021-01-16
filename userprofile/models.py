@@ -260,6 +260,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.CTL__VET_EXPORT,                 False, "Download Vetted only Export"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False, "Domain Manager"],
+        [StaticPermissions.DASHBOARD,                       False, "Home Dashboard"],
         [StaticPermissions.PACING_REPORT,                   False, "Pacing Report"],
         [StaticPermissions.PERFORMIQ,                       False, "PerformIQ"],
         [StaticPermissions.PERFORMIQ__EXPORT,               False, "Export"],

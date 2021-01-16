@@ -6,14 +6,17 @@ from rest_framework.response import Response
 from .utils.get_campaigns import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
 from performiq.api.views.utils.paginator import PerformIQPaginatior
-from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.models import IQCampaign
 import performiq.tasks.start_analysis as start_analysis
+from userprofile.constants import StaticPermissions
 from utils.lang import get_request_prefix
+from utils.permissions import has_static_permission
 
 
 class PerformIQCampaignListCreateAPIView(APIView):
-    permission_classes = (PerformIQPermission,)
+    permission_classes = (
+        has_static_permission(StaticPermissions.PERFORMIQ),
+    )
     pagination_class = PerformIQPaginatior
 
     def get(self, request, *args, **kwargs):

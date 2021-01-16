@@ -64,6 +64,7 @@ class StaticPermissions:
     CTL__VET_ADMIN = "ctl.vet_admin"
     CTL__VET_EXPORT = "ctl.vet_export"
 
+    DASHBOARD = "dashboard"
     DOMAIN_MANAGER = "domain_manager"
     PACING_REPORT = "pacing_report"
 
