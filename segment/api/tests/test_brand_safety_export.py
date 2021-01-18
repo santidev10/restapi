@@ -11,10 +11,15 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BrandSafetyListExportAPIViewTestCase(ExtendedAPITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        PermissionItem.load_permissions()
+
     def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_EXPORT,
                        kwargs=dict(segment_type=segment_type, pk=pk))

@@ -6,13 +6,14 @@ from rest_framework.views import APIView
 from segment.api.mixins import DynamicPersistentModelViewMixin
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 from utils.views import get_object
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit_segments"),
+        has_static_permission(StaticPermissions.CTL__FEATURE_LIST),
     )
 
     def get(self, request, pk, *_):

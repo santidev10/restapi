@@ -10,8 +10,8 @@ from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import SegmentTypeEnum
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
@@ -23,6 +23,10 @@ STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly
 
 class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
     THRESHOLD = MINIMUM_ITEMS_COUNT
+
+    @classmethod
+    def setUpTestData(cls):
+        PermissionItem.load_permissions()
 
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_LIST,
@@ -96,10 +100,9 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
 
     def test_custom_segment_download_url_permission(self):
-        Permissions.sync_groups()
-        user = self.create_test_user()
-        user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_AUDIT)
-        user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY)
+        self.create_test_user(perms={
+            StaticPermissions.CTL__FEATURE_LIST: True
+        })
         segment = CustomSegment.objects.create(
             segment_type=SegmentTypeEnum.CHANNEL.value,
             uuid=uuid.uuid4(),
@@ -112,7 +115,6 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
             query={"params": {"some": "params"}},
             download_url="https://www.somedownloadurl.com/path/to/some/export.csv",
         )
-
         response = self.client.get(self._get_url("channel"))
         self.assertIn("items", response.data)
         self.assertEqual(len(response.data["items"]), 1)

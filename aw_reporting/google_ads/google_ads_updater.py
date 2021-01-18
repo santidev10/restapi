@@ -76,8 +76,10 @@ class GoogleAdsUpdater:
         AdGroupCriteriaUpdater,
     )
 
-    def __init__(self, account):
+    def __init__(self, account, updaters: tuple = tuple()):
         self.account = account
+        if updaters:
+            self.main_updaters = updaters
 
     def update_all_except_campaigns(self):
         """

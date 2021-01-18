@@ -1,6 +1,7 @@
 from segment.api.segment_list_adapter import SegmentListAPIViewAdapter
 from segment.utils.utils import get_persistent_segment_model_by_type
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 
 
 class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
@@ -8,7 +9,7 @@ class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
     Retrieve preview data for persistent segments
     """
     permission_classes = (
-        user_has_permission("userprofile.view_audit_segments"),
+        has_static_permission(StaticPermissions.CTL__FEATURE_LIST),
     )
 
     @property

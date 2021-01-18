@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import timedelta
 from io import StringIO
+from typing import Union
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -38,7 +39,7 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     attachment_filename = "daily_campaign_report.csv"
     historical_filename = "apex_visa_historical.csv"
 
-    def __init__(self, is_historical=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         is_historical: Bool: If True, fetches ALL VideoCreativeStatistic records
         for the given Accounts ids, rather than just the previous day's
@@ -47,23 +48,28 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
 
         self.today = now_in_default_tz().date()
         self.yesterday = self.today - timedelta(days=1)
-        self.is_historical = is_historical
         self.user = get_user_model().objects.filter(email=settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR).first()
         self.from_email = settings.EXPORTS_EMAIL_ADDRESS
         self.to = settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES
         self.cc = settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
+    def historical(self):
+        """
+        write a historical report to the local filesystem. DOES NOT SEND email report
+        :return:
+        """
+        self._write_historical()
+
     def send(self):
+        """
+        used by automated task to send the daily report to defined recipients
+        :return:
+        """
         if not self.to:
             logger.error(f"No recipients set for {self.__class__.__name__} Apex campaign report")
             return
 
         if not isinstance(self.user, get_user_model()):
-            return
-
-        # TODO for 5.11: use separate method from send() to generate historicals
-        if self.is_historical:
-            self._write_historical()
             return
 
         csv_context = self._get_csv_file_context()
@@ -89,8 +95,11 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     def _get_body(self):
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
+    def get_account_ids(self):
+        return self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+
     def _get_campaign_ids(self):
-        account_ids = self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        account_ids = self.get_account_ids()
         campaigns = Campaign.objects.filter(account_id__in=account_ids) \
             .values_list("id", flat=True)
         campaigns_ids = list(campaigns)
@@ -102,7 +111,7 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         :return:
         """
         campaign_ids = self._get_campaign_ids()
-        stats = self.get_stats(campaign_ids)
+        stats = self.get_stats(campaign_ids, is_historical=True)
 
         if not stats.exists():
             return
@@ -135,13 +144,20 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
         return csv_file.getvalue()
 
     @staticmethod
-    def _get_revenue(obj, campaign_prefix, rate_field=None):
+    def _get_revenue(obj, campaign_prefix, rate_field=None) -> Union[float, None]:
+        """
+        calcuate revenue from the given stats object. If not calculable, return None
+        :param obj:
+        :param campaign_prefix:
+        :param rate_field:
+        :return: float/none
+        """
         goal_type_id = getattr(obj, f"{campaign_prefix}salesforce_placement__goal_type_id")
         ordered_rate = getattr(obj, rate_field) if rate_field \
             else getattr(obj, f"{campaign_prefix}salesforce_placement__ordered_rate")
 
         # validate
-        if ordered_rate is None:
+        if ordered_rate is None or goal_type_id is None:
             return None
         try:
             ordered_rate = float(ordered_rate)
@@ -158,14 +174,14 @@ class DailyApexVisaCampaignEmailReport(BaseEmailReport):
     def get_campaign_name(account_name):
         return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name, None)
 
-    def get_stats(self, campaign_ids):
+    def get_stats(self, campaign_ids: list, is_historical: bool = False):
         """
         get stats day-by-day, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
         yesterday's.
         """
         filter_kwargs = {"ad_group__campaign__id__in": campaign_ids, }
-        if not self.is_historical:
+        if not is_historical:
             filter_kwargs["date"] = self.yesterday
 
         return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
