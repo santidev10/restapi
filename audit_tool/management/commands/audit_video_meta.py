@@ -84,7 +84,7 @@ class Command(BaseCommand):
         with PidFile(piddir=".", pidname="audit_video_meta_{}.pid".format(self.thread_id)):
             # self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type=1,
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type__in=[1,2],
                                                            source__in=[0,2]).order_by("pause", "id")[self.machine_number]
             # pylint: disable=broad-except
             except Exception as e:
@@ -199,14 +199,15 @@ class Command(BaseCommand):
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit).filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
+                if self.audit.params.get("audit_type_original") and self.audit.params["audit_type_original"] == 2:
+                    if AuditChannelProcessor.objects.filter(audit=self.audit, processed__isnull=True).exists():
+                        raise Exception("videos done, but channels still processing.")
+                    else:
+                        self.audit.audit_type = 2
                 self.audit.completed = timezone.now()
                 self.audit.pause = 0
-                self.audit.save(update_fields=["completed", "pause"])
+                self.audit.save(update_fields=["completed", "pause", "audit_type"])
                 print("Audit completed, all videos processed")
-                if self.audit.params.get("audit_type_original"):
-                    if self.audit.params["audit_type_original"] == 2:
-                        self.audit.audit_type = 2
-                        self.audit.save(update_fields=["audit_type"])
                 if self.audit.source == 0:
                     AuditExporter.objects.create(
                         audit=self.audit,
