@@ -2,11 +2,11 @@ import csv
 import logging
 import os
 import re
+import requests
 import tempfile
+
 from collections import defaultdict
 from datetime import timedelta
-
-import requests
 from dateutil.parser import parse
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -14,6 +14,7 @@ from django.db.models import F
 from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
@@ -50,6 +51,7 @@ class Command(BaseCommand):
     categories = {}
     audit = None
     acps = {}
+    NUM_THREADS = settings.AUDIT_VIDEO_NUM_THREADS
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
                          "?key={key}&part=id,status,snippet,statistics,contentDetails,player&id={id}"
@@ -219,10 +221,18 @@ class Command(BaseCommand):
             raise Exception("not first thread but audit is done")
         videos = {}
         start = self.thread_id * num
+        threads = []
         for video in pending_videos[start:start + num]:
             videos[video.video.video_id] = video
             if len(videos) == 50:
-                self.do_check_video(videos)
+                t = Thread(target=self.do_check_video, args=(videos,))
+                threads.append(t)
+                t.start()
+                if len(threads) >= self.NUM_THREADS:
+                    for t in threads:
+                        t.join()
+                    threads = []
+                # self.do_check_video(videos)
                 videos = {}
         if len(videos) > 0:
             self.do_check_video(videos)
