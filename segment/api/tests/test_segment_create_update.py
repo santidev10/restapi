@@ -382,6 +382,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         with patch("segment.models.custom_segment.SegmentExporter"):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        self.assertTrue("No valid source urls" in ctl.statistics["error"])
 
     def test_fail_exclusion_empty(self, mock_generate):
         self.create_admin_user()
@@ -391,7 +393,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             "exclusion_hit_threshold": 1,
         }
         exclusion_file = BytesIO()
-        exclusion_file.name = "test_exclusion.csv"
+        exclusion_file.name = "test_exclusion_fail.csv"
         payload = self.get_params(**payload)
         form = dict(
             exclusion_file=exclusion_file,
@@ -399,6 +401,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         )
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        self.assertTrue("empty exclusion" in ctl.statistics["error"])
 
     def test_fail_inclusion_empty(self, mock_generate):
         self.create_admin_user()
@@ -416,6 +420,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         )
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        self.assertTrue("empty inclusion" in ctl.statistics["error"])
 
     def test_create_with_source_success(self, mock_generate):
         """ Test creates source with success with at least one valid url"""
