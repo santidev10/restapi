@@ -8,7 +8,6 @@ from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-from userprofile.models import PermissionItem
 from userprofile.constants import StaticPermissions
 
 
@@ -22,10 +21,6 @@ class UserPermissionsManagement(ExtendedAPITestCase):
             [Namespace.USER_PROFILE],
             query_params=params
         )
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def test_permissions_fail(self):
         self.create_test_user()

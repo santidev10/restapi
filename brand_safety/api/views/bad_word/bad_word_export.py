@@ -4,7 +4,9 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
+from userprofile.constants import StaticPermissions
 from utils.api.file_list_api_view import FileListApiView
+from utils.permissions import has_static_permission
 
 
 class BadWordCSVRendered(CSVStreamingRenderer):
@@ -18,7 +20,7 @@ class BadWordCSVRendered(CSVStreamingRenderer):
 
 
 class BadWordExportApiView(FileListApiView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (has_static_permission(StaticPermissions.ADMIN),)
     serializer_class = BadWordSerializer
     renderer_classes = (BadWordCSVRendered,)
     queryset = BadWord.objects.all().order_by("name")

@@ -11,7 +11,6 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import SegmentTypeEnum
 from userprofile.constants import StaticPermissions
-from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
@@ -23,10 +22,6 @@ STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly
 
 class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
     THRESHOLD = MINIMUM_ITEMS_COUNT
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_LIST,

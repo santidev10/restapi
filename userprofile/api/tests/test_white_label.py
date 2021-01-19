@@ -11,7 +11,6 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.models import WhiteLabel
-from userprofile.models import PermissionItem
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -24,7 +23,6 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         default, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
         default.config = dict(domain_name=DEFAULT_DOMAIN)
         default.save()
-        PermissionItem.load_permissions()
 
     def _create_whitelabel(self, domain, config):
         white_label = WhiteLabel.objects.create(domain=domain, config=config)

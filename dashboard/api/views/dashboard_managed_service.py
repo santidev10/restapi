@@ -28,7 +28,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
     serializer_class = DashboardManagedServiceSerializer
     pagination_class = DashboardManagedServicePaginator
     permission_classes = (
-        has_static_permission(StaticPermissions.DASHBOARD),
+        has_static_permission(StaticPermissions.MANAGED_SERVICE),
     )
 
     def get_queryset(self, **filters):

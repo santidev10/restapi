@@ -20,6 +20,7 @@ from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.channel import VettingAdminChannelManager
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
@@ -37,6 +38,7 @@ from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import IsVettingAdmin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from utils.permissions import has_static_permission
 
 
 class ChannelsNotFound(Exception):
@@ -82,11 +84,7 @@ class ChannelESFilterBackend(ESFilterBackend):
 class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.channel_list"),
-            user_has_permission("userprofile.settings_my_yt_channels"),
-            IsAdminUser
-        ),
+        has_static_permission(StaticPermissions.RESEARCH),
     )
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator

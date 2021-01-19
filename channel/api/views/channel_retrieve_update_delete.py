@@ -16,16 +16,16 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_delete_channels
 from utils.es_components_api_utils import get_fields
 from utils.es_components_cache import flush_cache
-from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from utils.utils import prune_iab_categories
+from utils.permissions import has_static_permission
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -41,9 +41,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                                          AddFieldsMixin):
     permission_classes = (
         or_permission_classes(
-            user_has_permission("userprofile.channel_details"),
+            has_static_permission(StaticPermissions.RESEARCH__CHANNEL_DETAIL),
             OwnChannelPermissions,
-            OnlyAdminUserOrSubscriber),)
+        ),
+    )
 
     __channel_manager = None
     video_manager = VideoManager((Sections.GENERAL_DATA, Sections.STATS))

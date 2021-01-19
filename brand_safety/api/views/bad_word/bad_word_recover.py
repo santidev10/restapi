@@ -1,14 +1,15 @@
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 
 
 class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (has_static_permission(StaticPermissions.ADMIN),)
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
 

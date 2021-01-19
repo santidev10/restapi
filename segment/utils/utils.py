@@ -184,7 +184,6 @@ class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.user.has_permission(StaticPermissions.ADMIN):
             return True
-
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])
         except CustomSegment.DoesNotExist:
