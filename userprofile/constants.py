@@ -66,6 +66,8 @@ class StaticPermissions:
 
     DASHBOARD = "dashboard"
     DOMAIN_MANAGER = "domain_manager"
+
+    MANAGED_SERVICE = "managed_service"
     PACING_REPORT = "pacing_report"
 
     PERFORMIQ = "performiq"
