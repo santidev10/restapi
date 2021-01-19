@@ -63,7 +63,10 @@ def sync_dv_partners(oauth_account_ids: list = False, force_all=False, sync_adve
         resource = get_discovery_resource(credentials)
         try:
             partners_response = request_partners(resource)
-        except HttpAccessTokenRefreshError:
+        except (HttpAccessTokenRefreshError, HttpError) as err:
+            # OAuth revoked access also includes HttpError 403
+            if isinstance(err, HttpError) and getattr(err, "args", [{"status": None}])[0]["status"] != "403":
+                raise
             account.revoked_access = True
             account.save(update_fields=["revoked_access"])
             continue
