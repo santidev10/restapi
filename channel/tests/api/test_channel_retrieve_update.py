@@ -14,6 +14,7 @@ from es_components.managers import ChannelManager
 from es_components.models.channel import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
 from utils.unittests.celery import mock_send_task
@@ -74,7 +75,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_user_can_not_update_not_own_channel(self, *args):
-        self.create_test_user(auth=True)
+        self.create_test_user(auth=True, perms={StaticPermissions.RESEARCH__CHANNEL_DETAIL: False})
         channel_id = "test_channel_id"
 
         url = self._get_url(channel_id)

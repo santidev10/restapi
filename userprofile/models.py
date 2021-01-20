@@ -267,6 +267,8 @@ class PermissionItem(models.Model):
         [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
         [StaticPermissions.RESEARCH,                        True,   "Research"],
+        [StaticPermissions.RESEARCH__CHANNEL_DETAIL,        True,   "Channel detail page"],
+        [StaticPermissions.RESEARCH__VIDEO_DETAIL,          True,   "Video detail page"],
         [StaticPermissions.RESEARCH__EXPORT,                True,   "Export"],
         [StaticPermissions.RESEARCH__VETTING,               False,  "Able to Vet items"],
         [StaticPermissions.RESEARCH__VETTING_DATA,          False,  "View vetting data & filters"],

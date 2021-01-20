@@ -19,16 +19,20 @@ class UserPermissionsManagement(APIView):
 
     def get(self, request):
         user = self._validate_request(request)
-        response_data = []
+        permissions = []
         for p in PermissionItem.objects.all():
             enabled = user.perms.get(p.permission)
             if enabled is None:
                 enabled = p.default_value
-            response_data.append({
+            permissions.append({
                 "perm": p.permission,
                 "enabled": enabled,
                 "text": p.display
             })
+        response_data = {
+            "email": user.email,
+            "permissions": permissions,
+        }
         return Response(response_data)
 
     def post(self, request):

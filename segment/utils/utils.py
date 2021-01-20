@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 
@@ -182,7 +183,7 @@ def set_user_perm_params(request, ctl_params):
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
     """ Check if user is admin or is CTL creator """
     def has_permission(self, request, view):
-        if request.user.has_permission(StaticPermissions.ADMIN):
+        if isinstance(request.user, get_user_model()) and request.user.has_permission(StaticPermissions.ADMIN):
             return True
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])

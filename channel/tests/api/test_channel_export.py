@@ -16,6 +16,7 @@ from es_components.models import Channel
 from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -45,7 +46,11 @@ class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_no_permissions(self):
-        self.create_test_user()
+        user = self.create_test_user()
+        user.perms = {
+            StaticPermissions.RESEARCH__EXPORT: False
+        }
+        user.save(update_fields=["perms"])
 
         response = self._request()
 

@@ -83,6 +83,6 @@ class ExtendedAPITestCase(APITestCase, APITestUserMixin):
         return patch_user_settings(self.request_user, **kwargs)
 
     @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
+    def setUpClass(cls):
+        super().setUpClass()
         PermissionItem.load_permissions()
