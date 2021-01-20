@@ -70,7 +70,8 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         response = self.client.get(self._get_url(user.id))
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        management_perm = [perm for perm in data if perm["perm"] == StaticPermissions.USER_MANAGEMENT][0]
+        management_perm = [perm for perm in data["permissions"] if perm["perm"] == StaticPermissions.USER_MANAGEMENT][0]
+        self.assertEqual(user.email, data["email"])
         self.assertEqual(management_perm["enabled"], True)
         self.assertTrue(len(data) > 0)
 

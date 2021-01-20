@@ -11,6 +11,7 @@ from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
 from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -42,7 +43,7 @@ class KeywordListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_no_permissions(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.RESEARCH__EXPORT: False})
 
         response = self._request()
 
