@@ -2,35 +2,6 @@ from django.conf.urls import include
 from django.conf.urls import url
 
 import aw_creation.api.views.ad_creation_available_ad_formats
-import aw_creation.api.views.ad_creation_duplicate
-import aw_creation.api.views.ad_creation_list_setup
-import aw_creation.api.views.ad_creation_setup
-import aw_creation.api.views.ad_group_creation_duplicate
-import aw_creation.api.views.ad_group_creation_list_setup
-import aw_creation.api.views.ad_group_creation_setup
-import aw_creation.api.views.ad_group_creation_targeting_export
-import aw_creation.api.views.audience_flat_list
-import aw_creation.api.views.audience_tool_list
-import aw_creation.api.views.audience_tool_list_export
-import aw_creation.api.views.aw_creation_change_status
-import aw_creation.api.views.aw_creation_changed_accounts_list
-import aw_creation.api.views.aw_creation_code_retrieve
-import aw_creation.api.views.campaign_creation_duplicate
-import aw_creation.api.views.campaign_creation_list_setup
-import aw_creation.api.views.campaing_creation_setup
-import aw_creation.api.views.creation_options
-import aw_creation.api.views.document_to_changes
-import aw_creation.api.views.geo_target_list
-import aw_creation.api.views.items_from_segment_ids
-import aw_creation.api.views.performance_targeting_filters
-import aw_creation.api.views.performance_targeting_item
-import aw_creation.api.views.performance_targeting_report
-import aw_creation.api.views.targeting_items_import
-import aw_creation.api.views.targeting_items_search
-import aw_creation.api.views.topic_tool_flat_list
-import aw_creation.api.views.topic_tool_list
-import aw_creation.api.views.topic_tool_list_export
-import aw_creation.api.views.youtube_video_from_url
 import aw_creation.api.views.youtube_video_search
 from aw_creation.api import views
 from aw_creation.api.urls.names import Name
