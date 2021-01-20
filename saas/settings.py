@@ -563,12 +563,13 @@ CUSTOM_SEGMENT_REGENERATION_DAYS_THRESHOLD = 7
 DEMO_SOURCE_ACCOUNT_ID = 8277883480
 
 DOMAIN_MANAGEMENT_PERMISSIONS = ()
-try:
-    from .configs.settings_from_s3 import *
-except BaseException as ex:
-    print(ex)
 
 try:
     from .local_settings import *
 except ImportError:
     pass
+
+try:
+    from .configs.settings_from_s3 import *
+except BaseException as ex:
+    print(ex)
