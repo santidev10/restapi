@@ -240,6 +240,8 @@ class Command(BaseCommand):
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
         for i in d:
+            if not i.get("snippet"):
+                continue
             db_video = AuditVideo.get_or_create(i["id"]["videoId"])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i["snippet"]["title"]
