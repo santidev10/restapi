@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
 from utils.views import xlsx_response
 from userprofile.constants import StaticPermissions
 

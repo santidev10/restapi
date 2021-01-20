@@ -5,9 +5,14 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
 from cache.constants import FORECAST_TOOL_FILTERS_KEY
 from cache.models import CacheItem
+from userprofile.constants import StaticPermissions
 
 
 class ForecastToolFiltersApiView(RetrieveAPIView):
+    permission_classes = (
+        StaticPermissions()(StaticPermissions.FORECAST_TOOL),
+    )
+
     def get(self, request, *args, **kwargs):
         try:
             cached_filters_object = CacheItem.objects.get(key=FORECAST_TOOL_FILTERS_KEY)

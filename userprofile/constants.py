@@ -68,6 +68,8 @@ class StaticPermissions:
 
     DASHBOARD = "dashboard"
     DOMAIN_MANAGER = "domain_manager"
+    FORECAST_TOOL = "forecast_tool"
+    HEALTH_CHECK_TOOL = "health_check_tool"
 
     MANAGED_SERVICE = "managed_service"
     MANAGED_SERVICE__EXPORT = "managed_service.export"
@@ -97,6 +99,7 @@ class StaticPermissions:
     RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
 
     USER_MANAGEMENT = "user_management"
+    CHF_TRENDS = "chf_trends"
 
     def __call__(self, *permission_items):
         class HasPermission(permissions.BasePermission):
