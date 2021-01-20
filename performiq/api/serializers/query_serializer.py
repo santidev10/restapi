@@ -9,8 +9,8 @@ class IQCampaignQuerySerializer(serializers.Serializer):
     Serializer dedicated to formatting field values for SegmentQueryBuilder
     """
     active_view_viewability = AdsPerformanceRangeField(default=None)
-    average_cpm = AdsPerformanceRangeField(default=None)
-    average_cpv = AdsPerformanceRangeField(default=None)
+    average_cpm = AdsPerformanceRangeField(reverse=True, default=None)
+    average_cpv = AdsPerformanceRangeField(reverse=True, default=None)
     content_categories = NullableListField(default=None)
     content_quality = serializers.ListField()
     content_type = serializers.ListField()
