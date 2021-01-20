@@ -1,5 +1,7 @@
-from utils.lang import ExtendedEnum
+from django.contrib.auth import get_user_model
+from rest_framework import permissions
 
+from utils.lang import ExtendedEnum
 
 DEFAULT_DOMAIN = "viewiq"
 
@@ -68,6 +70,17 @@ class StaticPermissions:
     DOMAIN_MANAGER = "domain_manager"
 
     MANAGED_SERVICE = "managed_service"
+    MANAGED_SERVICE__EXPORT = "managed_service.export"
+    MANAGED_SERVICE__PERFORMANCE_GRAPH = "managed_service.performance_graph"
+    MANAGED_SERVICE__DELIVERY = "managed_service.delivery"
+    MANAGED_SERVICE__CAMPAIGNS_SEGMENTED = "managed_service.campaigns_segmented"
+    MANAGED_SERVICE__CONVERSIONS = "managed_service.conversions"
+    MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS = "managed_service.visible_all_accounts"
+    MANAGED_SERVICE__REAL_GADS_COST = "managed_service.real_gads_cost"
+    MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY = "managed_service.global_account_visibility"
+    MANAGED_SERVICE__AUDIENCES = "managed_service.audiences"
+    MANAGED_SERVICE__SERVICE_COSTS = "managed_service.service_costs"
+
     PACING_REPORT = "pacing_report"
 
     PERFORMIQ = "performiq"
@@ -84,3 +97,13 @@ class StaticPermissions:
     RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
 
     USER_MANAGEMENT = "user_management"
+
+    def __call__(self, *permission_items):
+        class HasPermission(permissions.BasePermission):
+            def has_permission(self, request, *_):
+                if isinstance(request.user, get_user_model()):
+                    for perm in permission_items:
+                        if request.user.has_permission(perm):
+                            return True
+                return False
+        return HasPermission
