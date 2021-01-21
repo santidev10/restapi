@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir=".", pidname="calculate_completion.pid"):
             audits = AuditProcessor.objects.filter(completed__isnull=True,
-                                                   started__lt=timezone.now() - timedelta(hours=1))
+                                                   started__lt=timezone.now() - timedelta(minutes=30))
             for audit in audits:
                 if not audit.cached_data or not audit.cached_data.get("total"):
                     continue
