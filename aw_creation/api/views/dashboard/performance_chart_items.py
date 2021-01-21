@@ -10,9 +10,9 @@ from aw_creation.models import AccountCreation
 from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import MANAGED_SERVICE_DELIVERY_DATA
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
-from utils.permissions import UserHasDashboardPermission
 
 
 class DashboardPerformanceChartItemsApiView(APIView):
@@ -23,7 +23,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data

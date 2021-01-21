@@ -3,10 +3,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_reporting.models import Account
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 
 
 class AccountCreationByAccountAPIView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+
     def get(self, request, account_id):
         user = request.user
         user_settings = user.get_aw_settings()

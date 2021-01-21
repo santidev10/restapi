@@ -20,6 +20,7 @@ from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from aw_reporting.models import CONVERSIONS
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import UserHasDashboardPermission
@@ -32,7 +33,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 class DashboardAccountCreationListApiView(ListAPIView):
     serializer_class = DashboardAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),

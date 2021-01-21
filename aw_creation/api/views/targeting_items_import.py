@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from aw_creation.api.serializers import add_targeting_list_items_info
 from aw_reporting.models import Audience
 from aw_reporting.models import Topic
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 from utils.views import XLSX_CONTENT_TYPE
 from .document_import_base import DOCUMENT_LOAD_ERROR_TEXT
 from .document_import_base import DocumentImportBaseAPIView
@@ -15,7 +15,7 @@ from .document_import_base import DocumentImportBaseAPIView
 
 class TargetingItemsImportApiView(DocumentImportBaseAPIView):
     parser_classes = (MultiPartParser,)
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
 
     def post(self, request, list_type, **_):
 

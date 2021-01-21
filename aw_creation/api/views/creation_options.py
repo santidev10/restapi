@@ -17,10 +17,13 @@ from aw_creation.models import FrequencyCap
 from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models.creation import BUDGET_TYPE_CHOICES
+from userprofile.constants import StaticPermissions
 from .schemas import CREATION_OPTIONS_SCHEMA
 
 
 class CreationOptionsApiView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+
     @swagger_auto_schema(
         operation_description="Allowed options for account creations",
         responses={

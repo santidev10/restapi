@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import AnalyticsPerformanceWeeklyReport
+from userprofile.constants import StaticPermissions
 from utils.views import xlsx_response
 
 
@@ -18,6 +19,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
 
     {"campaigns": ["1", "2"]}
     """
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def get_filters(self):
         data = self.request.data

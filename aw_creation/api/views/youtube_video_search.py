@@ -9,9 +9,11 @@ from rest_framework.status import HTTP_200_OK
 
 from .schemas import VIDEO_FORMAT_PARAMETER
 from .schemas import VIDEO_RESPONSE_SCHEMA
+from userprofile.constants import StaticPermissions
 
 
 class YoutubeVideoSearchApiView(GenericAPIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         manual_parameters=[

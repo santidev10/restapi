@@ -16,9 +16,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
-from utils.permissions import MediaBuyingAddOnPermission
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 def is_demo(*args, **kwargs):
@@ -28,11 +26,7 @@ def is_demo(*args, **kwargs):
 
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AccountCreationSetupSerializer
-    permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.settings_my_aw_accounts"),
-            MediaBuyingAddOnPermission),
-    )
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     @swagger_auto_schema(
         operation_description="Get account creation",

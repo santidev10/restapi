@@ -84,6 +84,8 @@ class StaticPermissions:
     MANAGED_SERVICE__AUDIENCES = "managed_service.audiences"
     MANAGED_SERVICE__SERVICE_COSTS = "managed_service.service_costs"
 
+    MEDIA_BUYING = "media_buying"
+
     PACING_REPORT = "pacing_report"
 
     PERFORMIQ = "performiq"

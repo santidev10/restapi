@@ -271,13 +271,13 @@ class PermissionItem(models.Model):
         [StaticPermissions.MANAGED_SERVICE__DELIVERY,                   False,  "Managed Service Delivery"],
         [StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED,        False,  "Managed Service Campaigns Segmented"],
         [StaticPermissions.MANAGED_SERVICE__CONVERSIONS,                False,  "Managed Service Conversions"],
-
         [StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS,       False,  "Managed Service ALl Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST,             False,  "Managed Service Real Google Ads Cost"],
         [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  True,   "Managed Service Audiences Tab"],
         [StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS,              False,  "Managed Service Service Costs"],
 
+        [StaticPermissions.MEDIA_BUYING,                    False,  "Media Buying"],
         [StaticPermissions.PACING_REPORT,                   False,  "Pacing Report"],
         [StaticPermissions.PERFORMIQ,                       False,  "PerformIQ"],
         [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],

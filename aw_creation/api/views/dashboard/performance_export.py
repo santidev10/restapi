@@ -34,9 +34,7 @@ from utils.views import xlsx_response
 
 
 class DashboardPerformanceExportApiView(APIView):
-    permission_classes = (
-        StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),
-    )
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def post(self, request, pk, **_):
         self._validate_request_payload()

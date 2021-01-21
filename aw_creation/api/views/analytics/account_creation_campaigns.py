@@ -1,6 +1,5 @@
 from django.db.models import Q
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,10 +7,11 @@ from aw_creation.models import AccountCreation
 from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSerializer
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
+from userprofile.constants import StaticPermissions
 
 
 class AnalyticsAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     def get(self, request, pk):
         account_creation = self._get_account_creation(pk)

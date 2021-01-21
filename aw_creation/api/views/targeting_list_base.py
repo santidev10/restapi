@@ -5,9 +5,11 @@ from aw_creation.api.serializers import AdGroupTargetingListSerializer
 from aw_creation.api.serializers import add_targeting_list_items_info
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 
 
 class TargetingListBaseAPIClass(GenericAPIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
     serializer_class = AdGroupTargetingListSerializer
 
     def get_user(self):
