@@ -42,13 +42,20 @@ def update_tts_url_transcripts_task():
 class TtsUrlTranscriptsUpdater:
 
     CURSOR_FILE = "update_tts_url_transcripts_cursor"
-    EMAILER_LOCK_NAME = "update_tts_url_transcripts_emailer_lock"
+    EMAIL_LOCK_NAME = "update_tts_url_transcripts_emailer_lock"
+    EMAIL_LOCK_TIME_MINUTES = 60  # minimum time between emails
 
     def __init__(self):
         self.cursor = self._get_cursor()
         self.video_process_limit = settings.TRANSCRIPTS_NUM_VIDEOS
 
     def run(self):
+        """
+        main run method for updater. gets videos from AuditVideoTranscript, creates a query based on those videos'
+        ids, passes query to pull_tts_url_transcripts_with_lock function, updates the cursor and writes it to file, and
+        emails progress every 60m
+        :return:
+        """
         video_ids = self._get_video_ids_to_update()
         if not video_ids:
             self._email_transcripts_update_complete()
@@ -60,8 +67,10 @@ class TtsUrlTranscriptsUpdater:
         self._email_progress()
 
     def _email_transcripts_update_complete(self):
+        """ email alert when transcripts update is complete """
         try:
-            lock(lock_name=self.EMAILER_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
+            lock(lock_name=self.EMAIL_LOCK_NAME, max_retries=1,
+                 expire=timedelta(minutes=self.EMAIL_LOCK_TIME_MINUTES).total_seconds())
         except Retry:
             return
         subject = "Update TTS URL Transcripts Task COMPLETE!!!"
@@ -76,7 +85,8 @@ class TtsUrlTranscriptsUpdater:
     def _email_progress(self) -> None:
         """ email progress of pointer from ceiling as a percentage of items processed """
         try:
-            lock(lock_name=self.EMAILER_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
+            lock(lock_name=self.EMAIL_LOCK_NAME, max_retries=1,
+                 expire=timedelta(minutes=self.EMAIL_LOCK_TIME_MINUTES).total_seconds())
         except Retry:
             return
         percentage = round((self.cursor / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
