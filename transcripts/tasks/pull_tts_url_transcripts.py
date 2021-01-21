@@ -80,6 +80,7 @@ def pull_tts_url_transcripts_with_lock(lock_name: str, *args, **kwargs):
     except Retry:
         pass
     except NoMoreProxiesAvailableException:
+        logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
         unlock(lock_name)
         # pylint: disable=no-value-for-parameter
         lock(lock_name=lock_name, max_retries=1, expire=timedelta(minutes=5).total_seconds())
@@ -146,7 +147,6 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
                         logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
                                     f"seconds.")
                     logger.info(failure.message)
-                    logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                     transcripts_scraper.send_yt_blocked_email()
                     raise NoMoreProxiesAvailableException()
                 if isinstance(failure, ConnectionError) or str(failure) == "Exceeded connection attempts to URL.":
