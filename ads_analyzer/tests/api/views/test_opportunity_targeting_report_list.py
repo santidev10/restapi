@@ -60,9 +60,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
-        self.user = self.create_test_user()
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
+        self.user = self.create_test_user(perms={
+            StaticPermissions.ADS_ANALYZER: True
+        })
 
     def test_empty(self):
         response = self._request()
@@ -141,8 +141,10 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     @mock_s3
     def test_all_report_list(self):
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
+        })
+        self.user.save()
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
@@ -161,8 +163,10 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     @mock_s3
     def test_get_report_by_recipients(self):
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
+        })
+        self.user.save()
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
