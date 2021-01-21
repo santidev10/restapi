@@ -221,7 +221,7 @@ class Command(BaseCommand):
         r = requests.get(url)
         data = r.json()
         if "error" in data:
-            if data["error"]["message"] in ["Invalid video.", "Not Found", "Requested entity was not found."]:
+            if (data["error"].get("code") and str(data["error"]["code"]) == "404") or data["error"]["message"] in ["Invalid video.", "Not Found", "Requested entity was not found."]:
                 avp.processed = timezone.now()
                 avp.clean = False
                 avp.save(update_fields=["clean", "processed"])
