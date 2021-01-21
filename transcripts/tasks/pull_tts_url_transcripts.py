@@ -53,17 +53,6 @@ def pull_tts_url_transcripts_task():
     query = get_video_transcripts_query(lang_codes=lang_codes, country_codes=country_codes,
                                         iab_categories=iab_categories, brand_safety_score=brand_safety_score)
     pull_tts_url_transcripts_with_lock(lock_name=LOCK_NAME, query=query, num_vids=num_vids)
-    # TODO remove
-    # # pylint: enable=broad-except
-    # try:
-    #     pull_tts_url_transcripts_with_lock(query=query, lock_name=LOCK_NAME, num_vids=num_vids)
-    # # pylint: disable=broad-except
-    # except Exception as e:
-    #     if not isinstance(e, Retry):
-    #         logger.error(e)
-    #         if not isinstance(e, NoMoreProxiesAvailableException):
-    #             unlock(LOCK_NAME)
-    #     pass
 
 
 def pull_tts_url_transcripts_with_lock(lock_name: str, *args, **kwargs):
