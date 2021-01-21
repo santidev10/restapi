@@ -656,6 +656,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         ("Global account visibility is OFF", (False, False), dict()),
     ])
     def test_global_account_visibility(self, global_account_visibility, is_none):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility
+        })
         account = self.account
         manager = account.managers.first()
         any_date = date(2018, 1, 1)
@@ -664,7 +668,6 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \

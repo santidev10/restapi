@@ -265,10 +265,13 @@ class AWSetupHealthCheckListTestCase(APITestCase):
         for global_account_visibility, count in ((True, 0), (False, 1))
     ])
     def test_global_account_visibility(self, global_account_visibility, expected_count):
+        self.create_test_user(perms={
+            StaticPermissions.HEALTH_CHECK_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False
+        })
         Opportunity.objects.create(id=next(int_iterator), probability=100)
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
         }
         with self.patch_user_settings(**user_settings):

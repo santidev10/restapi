@@ -374,8 +374,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
+
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+        })
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \
@@ -389,14 +393,17 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         ("Visible all accounts is OFF", (False, 0), dict()),
     ])
     def test_visible_all_accounts(self, visible_all_accounts, expected_count):
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
+        })
         account, campaign = self._create_ad_group_statistic("1")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \
