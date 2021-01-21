@@ -149,7 +149,7 @@ class UserUpdateSerializer(ModelSerializer):
             # Reject if changing admin access and auth user is not superuser
             admin_access = [item for item in access if item["name"].lower() == "admin"][0]
             if target.is_staff != admin_access["value"] and user.is_superuser is False:
-                exception = ValidationError("You do not have permission to perform this action.")
+                exception = ValidationError("You must be a superuser to grant 'admin' access.")
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
             data["admin"] = admin_access["value"]
