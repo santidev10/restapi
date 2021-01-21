@@ -22,6 +22,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.tools.health_check_tool import AGE_RANGES
 from aw_reporting.tools.health_check_tool import GENDERS
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -33,7 +34,9 @@ class AWSetupHealthCheckListTestCase(APITestCase):
     url = reverse(Name.HealthCheck.LIST, [Namespace.AW_REPORTING])
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.HEALTH_CHECK_TOOL: True,
+        })
 
     def test_fail_get_list(self):
         self.__create_not_auth_user()

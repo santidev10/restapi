@@ -22,6 +22,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.generic_test import generic_test
@@ -33,7 +34,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     url = reverse(Name.GlobalTrends.DATA, [Namespace.AW_REPORTING])
 
     def _create_test_data(self, uid=1, manager=None):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         account = self.create_account(user, "{}".format(uid), manager)
         campaign = Campaign.objects.create(
             id=uid, name="", account=account)

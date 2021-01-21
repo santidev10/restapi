@@ -8,13 +8,16 @@ from aw_reporting.models import Category
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
 from aw_reporting.models import UserRole
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
+
     def setUp(self):
         self.url = reverse("aw_reporting_urls:pacing_report_filters")
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     def test_get_filters_no_permission(self):
         response = self.client.get(self.url)

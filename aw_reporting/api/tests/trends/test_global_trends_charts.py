@@ -25,6 +25,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import as_datetime
 from utils.lang import flatten
 from utils.unittests.generic_test import generic_test
@@ -36,7 +37,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
     url = reverse(Name.GlobalTrends.CHARTS, [Namespace.AW_REPORTING])
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         self.account, self.campaign, self.ad_group = self.create_data(next(int_iterator))
 
     def create_data(self, uid):

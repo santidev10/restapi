@@ -3,6 +3,7 @@ from typing import List
 from django.db import models
 
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 
 
 class UserRelatedManagerMixin:
@@ -23,12 +24,8 @@ class UserRelatedManagerMixin:
         return queryset
 
     def __is_account_filter_applicable(self, user):
-        user_settings = user.get_aw_settings()
-        global_visibility = user_settings.get(
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
-        visible_all_accounts = user_settings.get(
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS, False)
-
+        global_visibility = user.has_permission(StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY)
+        visible_all_accounts = user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS)
         return global_visibility & (not visible_all_accounts)
 
     def __filter_by_account_ids(self, queryset, account_ids: List[int]):
