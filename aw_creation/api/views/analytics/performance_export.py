@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
