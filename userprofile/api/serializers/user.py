@@ -2,7 +2,6 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import PermissionsMixin
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
@@ -10,6 +9,7 @@ from rest_framework.serializers import SerializerMethodField
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.constants import StaticPermissions
 from userprofile.models import WhiteLabel
 
 
@@ -50,6 +50,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "last_name",
             "logo_url",
+            "perms",
             "phone_number",
             "phone_number_verified",
             "profile_image_url",
@@ -82,8 +83,8 @@ class UserSerializer(ModelSerializer):
                     ad_group__campaign__account__mcc_permissions__aw_connection__user_relations__user=obj) \
             .exists()
 
-    def get_can_access_media_buying(self, obj: PermissionsMixin):
-        return obj.has_perm("userprofile.view_media_buying")
+    def get_can_access_media_buying(self, obj: get_user_model()):
+        return obj.has_permission(StaticPermissions.MEDIA_BUYING)
 
     def validate_sub_domain(self, sub_domain):
         sub_domain_obj = WhiteLabel.get(sub_domain)

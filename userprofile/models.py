@@ -233,6 +233,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             domain_name = None
         return domain_name
 
+
 class PermissionItem(models.Model):
     permission = models.CharField(unique=True, max_length=128)
     default_value = models.BooleanField(db_index=True, default=False)
@@ -243,9 +244,28 @@ class PermissionItem(models.Model):
         [StaticPermissions.ADMIN,                           False,  "Admin (the powers of Zeus)"],
         [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer"],
         [StaticPermissions.ADS_ANALYZER__RECIPIENTS,        False,  "View all Ads Analyzer reports"],
+
         [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue"],
+        [StaticPermissions.AUDIT_QUEUE__READ,               False,  "Audit Queue Read"],
+        [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
+        [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
+
+
         [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager"],
+        [StaticPermissions.BLOCKLIST_MANAGER__READ,         False,  "Blocklist Manager Read"],
+        [StaticPermissions.BLOCKLIST_MANAGER__CREATE,       False,  "Blocklist Manager Create"],
+        [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
+
+        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL)"],
+        [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
+
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor"],
+        [StaticPermissions.BSTE__READ,                      False,  "Brand Safety Tags Editor Read"],
+        [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
+        [StaticPermissions.BSTE__DELETE,                    False,  "Brand Safety Tags Editor Delete"],
+        [StaticPermissions.BSTE__EXPORT,                    False,  "Brand Safety Tags Editor Export"],
+
+        [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends"],
 
         [StaticPermissions.CTL,                             False,  "Custom Target Lists"],
         [StaticPermissions.CTL__READ,                       False,  "Read"],
@@ -261,6 +281,10 @@ class PermissionItem(models.Model):
         [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager"],
+        [StaticPermissions.DOMAIN_MANAGER__READ,            False, "Domain Manager Read"],
+        [StaticPermissions.DOMAIN_MANAGER__CREATE,          False, "Domain Manager Create"],
+        [StaticPermissions.DOMAIN_MANAGER__DELETE,          False, "Domain Manager Delete"],
+
         [StaticPermissions.DASHBOARD,                       False,  "Home Dashboard"],
         [StaticPermissions.FORECAST_TOOL,                   False,  "Forecasting Tool"],
         [StaticPermissions.HEALTH_CHECK_TOOL,               False,  "Health Check Tool"],
@@ -282,14 +306,19 @@ class PermissionItem(models.Model):
         [StaticPermissions.PERFORMIQ,                       False,  "PerformIQ"],
         [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
+
         [StaticPermissions.RESEARCH,                        True,   "Research"],
+        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age and Gender data"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View Brand Suitability Badges"],
         [StaticPermissions.RESEARCH__CHANNEL_DETAIL,        True,   "Channel detail page"],
-        [StaticPermissions.RESEARCH__VIDEO_DETAIL,          True,   "Video detail page"],
+        [StaticPermissions.RESEARCH__MONETIZATION,          True,   "Monetization Data"],
         [StaticPermissions.RESEARCH__EXPORT,                True,   "Export"],
+        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts Data"],
         [StaticPermissions.RESEARCH__VETTING,               False,  "Able to Vet items"],
         [StaticPermissions.RESEARCH__VETTING_DATA,          False,  "View vetting data & filters"],
-        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View Brand Suitability Badges"],
-        [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends"],
+        [StaticPermissions.RESEARCH__VIDEO_DETAIL,          True,   "Video detail page"],
+
+        [StaticPermissions.USER_ANALYTICS,                  False,  "User Analyics"],
         [StaticPermissions.USER_MANAGEMENT,                 False,  "User Management"],
     ]
 

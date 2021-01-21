@@ -48,11 +48,26 @@ class StaticPermissions:
     ADMIN = "admin"
     ADS_ANALYZER = "ads_analyzer"
     ADS_ANALYZER__RECIPIENTS = "ads_analyzer.recipients"
+
     AUDIT_QUEUE = "audit_queue"
+    AUDIT_QUEUE__READ = "audit_queue.read"
+    AUDIT_QUEUE__CREATE = "audit_queue.create"
+    AUDIT_QUEUE__SET_PRIORITY = "audit_queue.set_priority"
+
     BLOCKLIST_MANAGER = "blocklist_manager"
+    BLOCKLIST_MANAGER__READ = "blocklist_manager.read"
+    BLOCKLIST_MANAGER__CREATE = "blocklist_manager.create"
+    BLOCKLIST_MANAGER__DELETE = "blocklist_manager.delete"
+    BLOCKLIST_MANAGER__EXPORT = "blocklist_manager.export"
+
     BSTE = "bste"
+    BSTE__READ = "bste.read"
+    BSTE__CREATE = "bste.create"
+    BSTE__DELETE = "bste.delete"
+    BSTE__EXPORT = "bste.export"
 
     BSTL = "bstl"
+    BSTL__EXPORT = "bstl.export"
 
     CTL = "ctl"
     CTL__READ = "ctl.read"
@@ -68,7 +83,12 @@ class StaticPermissions:
     CTL__VET_EXPORT = "ctl.vet_export"
 
     DASHBOARD = "dashboard"
+
     DOMAIN_MANAGER = "domain_manager"
+    DOMAIN_MANAGER__READ = "domain_manager.read"
+    DOMAIN_MANAGER__CREATE = "domain_manager.create"
+    DOMAIN_MANAGER__DELETE = "domain_manager.delete"
+
     FORECAST_TOOL = "forecast_tool"
     HEALTH_CHECK_TOOL = "health_check_tool"
 
@@ -94,13 +114,17 @@ class StaticPermissions:
     PRICING_TOOL = "pricing_tool"
 
     RESEARCH = "research"
+    RESEARCH__AGE_GENDER = "research.age_gender"
+    RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
     RESEARCH__CHANNEL_DETAIL = "research.channel_detail"
     RESEARCH__EXPORT = "research.export"
+    RESEARCH__MONETIZATION = "research.monetization"
+    RESEARCH__TRANSCRIPTS = "research.transcripts"
     RESEARCH__VETTING = "research.vetting"
     RESEARCH__VETTING_DATA = "research.vetting_data"
     RESEARCH__VIDEO_DETAIL = "research.video_detail"
-    RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
 
+    USER_ANALYTICS = "user_analytics"
     USER_MANAGEMENT = "user_management"
     CHF_TRENDS = "chf_trends"
 
@@ -113,3 +137,11 @@ class StaticPermissions:
                             return True
                 return False
         return HasPermission
+
+    @staticmethod
+    def perms():
+        items = {
+            attr: getattr(StaticPermissions, attr)
+            for attr in dir(StaticPermissions) if attr[:2] != "__"
+        }
+        return items
