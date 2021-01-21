@@ -142,6 +142,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
     @mock_s3
     def test_all_report_list(self):
         self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER: True,
             StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
         })
         self.user.save()
@@ -164,6 +165,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
     @mock_s3
     def test_get_report_by_recipients(self):
         self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER: True,
             StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
         })
         self.user.save()
