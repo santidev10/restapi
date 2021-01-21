@@ -393,12 +393,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         ("Visible all accounts is OFF", (False, 0), dict()),
     ])
     def test_visible_all_accounts(self, visible_all_accounts, expected_count):
+        account, campaign = self._create_ad_group_statistic("1")
         self.create_test_user(perms={
             StaticPermissions.CHF_TRENDS: True,
             StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
         })
-        account, campaign = self._create_ad_group_statistic("1")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)

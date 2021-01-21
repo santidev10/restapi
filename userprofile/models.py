@@ -242,6 +242,7 @@ class PermissionItem(models.Model):
     #   [FEATURE.PERMISSION_NAME,                       DEFAULT_VALUE, display]
         [StaticPermissions.ADMIN,                           False,  "Admin (the powers of Zeus)"],
         [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer"],
+        [StaticPermissions.ADS_ANALYZER__RECIPIENTS,        False,  "View all Ads Analyzer reports"],
         [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue"],
         [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager"],
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor"],

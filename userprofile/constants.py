@@ -47,6 +47,7 @@ class StaticPermissions:
     """
     ADMIN = "admin"
     ADS_ANALYZER = "ads_analyzer"
+    ADS_ANALYZER__RECIPIENTS = "ads_analyzer.recipients"
     AUDIT_QUEUE = "audit_queue"
     BLOCKLIST_MANAGER = "blocklist_manager"
     BSTE = "bste"

@@ -12,8 +12,7 @@ from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.s3_mock import mock_s3
@@ -42,18 +41,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingRecipientBaseAPI
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_user_with_permissions(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_opportunity_report_recipients_list")
-
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_user_with_permissions_group(self):
-        user = self.create_test_user()
-        Permissions.sync_groups()
-        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
-
+        self.create_test_user(perms={
+            StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
+        })
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
