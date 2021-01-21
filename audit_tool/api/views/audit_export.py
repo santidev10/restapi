@@ -24,6 +24,7 @@ from audit_tool.models import BlacklistItem
 from brand_safety.auditors.video_auditor import VideoAuditor
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
 from utils.brand_safety import map_brand_safety_score
 from utils.permissions import user_has_permission
@@ -32,7 +33,7 @@ from utils.utils import chunks_generator
 
 class AuditExportApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        StaticPermissions()(StaticPermissions.AUDIT_QUEUE),
     )
 
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \

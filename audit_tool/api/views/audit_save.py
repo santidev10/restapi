@@ -17,17 +17,13 @@ from audit_tool.models import AuditProcessor
 from audit_tool.tasks.generate_audit_items import generate_audit_items
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_audit"),
-            user_has_permission("userprofile.vet_audit_admin"),
-        ),
+        StaticPermissions()(StaticPermissions.AUDIT_QUEUE, StaticPermissions.CTL__VET_ADMIN),
     )
     LANGUAGES_REVERSE = {}
 

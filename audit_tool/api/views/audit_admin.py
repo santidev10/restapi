@@ -6,13 +6,13 @@ from rest_framework.views import APIView
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
 class AuditAdminAPIView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.vet_audit_admin"),
+        StaticPermissions()(StaticPermissions.CTL__VET_ADMIN),
     )
 
     def patch(self, request, *_, **__):

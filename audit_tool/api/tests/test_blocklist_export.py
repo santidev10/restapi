@@ -1,17 +1,10 @@
-import json
-from mock import patch
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.api.urls.names import AuditPathName
-from audit_tool.models import BlacklistItem
-from audit_tool.models import get_hash_name
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.models import Channel
-from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
