@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
@@ -39,6 +40,7 @@ class Command(BaseCommand):
     max_pages = 200
     MAX_EMPTY_PLAYLIST_PAGES = 3
     audit = None
+    NUM_THREADS = settings.AUDIT_CHANNEL_NUM_THREADS
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -134,9 +136,20 @@ class Command(BaseCommand):
         pending_channels = pending_channels.filter(channel__processed_time__isnull=False)
         start = self.thread_id * num
         counter = 0
+        threads = []
         for channel in pending_channels[start:start + num]:
             counter += 1
-            self.do_check_channel(channel)
+            t = Thread(target=self.do_check_channel, args=(channel,))
+            threads.append(t)
+            t.start()
+            if len(threads) >= self.NUM_THREADS:
+                for t in threads:
+                    t.join()
+                threads = []
+            # self.do_check_channel(channel)
+        if len(threads) > 0:
+            for t in threads:
+                t.join()
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=["updated"])
         print("Done one step, continuing audit {}.".format(self.audit.id))

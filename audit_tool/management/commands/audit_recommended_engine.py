@@ -221,7 +221,7 @@ class Command(BaseCommand):
         r = requests.get(url)
         data = r.json()
         if "error" in data:
-            if data["error"]["message"] in ["Invalid video.", "Not Found"]:
+            if (data["error"].get("code") and str(data["error"]["code"]) == "404") or data["error"]["message"] in ["Invalid video.", "Not Found", "Requested entity was not found."]:
                 avp.processed = timezone.now()
                 avp.clean = False
                 avp.save(update_fields=["clean", "processed"])
@@ -240,6 +240,8 @@ class Command(BaseCommand):
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
         for i in d:
+            if not i.get("snippet"):
+                continue
             db_video = AuditVideo.get_or_create(i["id"]["videoId"])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i["snippet"]["title"]
