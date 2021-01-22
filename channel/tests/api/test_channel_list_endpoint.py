@@ -19,6 +19,7 @@ from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.es_components_cache import flush_cache
 from utils.redis import get_redis_client
@@ -503,10 +504,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_channel_ids.sort())
 
     def test_permissions(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         channel_id = str(next(int_iterator))
         channel = Channel(**{
             "meta": {"id": channel_id},
@@ -534,8 +534,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotIn("blacklist_data", item_fields)
 
         # audit vet admin
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
+        user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data['items']

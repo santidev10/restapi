@@ -71,6 +71,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "last_login",
                 "last_name",
                 "logo_url",
+                "perms",
                 "phone_number",
                 "phone_number_verified",
                 "token",

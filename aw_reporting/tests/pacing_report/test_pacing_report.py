@@ -20,6 +20,7 @@ from aw_reporting.models.salesforce_constants import PlacementAlert
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.utils import get_dates_range
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -185,10 +186,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account1.id]
         }
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
         user.aw_settings.update(**user_settings)
         report = PacingReport()
         opportunities = report.get_opportunities(dict(), user=user)

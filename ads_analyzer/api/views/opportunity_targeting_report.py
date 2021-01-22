@@ -24,7 +24,7 @@ class Paginator(CustomPageNumberPaginator):
 
 class FilterBackend(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
-        if not request.user.has_perm("userprofile.view_opportunity_report_recipients_list"):
+        if not request.user.has_permission(StaticPermissions.ADS_ANALYZER__RECIPIENTS):
             return queryset.filter(recipients=request.user)
 
         recipients = request.query_params.dict().get("recipients")

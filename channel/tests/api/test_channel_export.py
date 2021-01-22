@@ -76,9 +76,9 @@ class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_success_allowed_user(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
-
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -111,11 +111,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_success_allowed_user(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         self._request_collect_file()
-
-        user.remove_custom_user_permission("channel_list")
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -341,8 +340,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_filter_brand_safety_not_allowed(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
 
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
