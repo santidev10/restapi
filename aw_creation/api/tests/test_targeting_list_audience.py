@@ -32,7 +32,7 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_export_list(self):
-        user = self.create_test_user(auth=False, perms={StaticPermissions.MANAGED_SERVICE__EXPORT: True,})
+        user = self.create_test_user()
         ad_group = self.create_ad_group(user)
         for i in range(10):
             Audience.objects.create(
@@ -54,6 +54,10 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertIn(response.status_code,
                       (HTTP_403_FORBIDDEN, HTTP_401_UNAUTHORIZED))
 
+        user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+        })
+        user.save()
         token = UserDeviceToken.objects.create(user=user)
         url = "{}?{}".format(
             str(url),

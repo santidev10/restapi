@@ -140,8 +140,9 @@ class StaticPermissions:
 
     @staticmethod
     def perms():
-        items = {
-            attr: getattr(StaticPermissions, attr)
-            for attr in dir(StaticPermissions) if attr[:2] != "__"
-        }
-        return items
+        perm_names = [
+            getattr(StaticPermissions, attr)
+            for attr in dir(StaticPermissions)
+            if attr[:2] != "__" and isinstance(getattr(StaticPermissions, attr), str)
+        ]
+        return perm_names

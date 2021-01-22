@@ -154,7 +154,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
             return ChannelAdminSerializer
-        if self.request.user.has_perm("userprofile.vet_audit_admin"):
+        if self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             return ChannelWithVettedStatusSerializer
         return ChannelSerializer
 
@@ -176,7 +176,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.monetization_filter"):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__MONETIZATION):
             sections += (Sections.MONETIZATION,)
         else:
             with mutate_query_params(self.request.query_params):
@@ -200,7 +200,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     @staticmethod
     def get_own_channel_ids(user, query_params):
         own_channels = int(query_params.get("own_channels", "0"))
-        user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
+        user_can_see_own_channels = user.has_permission(StaticPermissions.RESEARCH)
 
         if own_channels and not user_can_see_own_channels:
             raise UserChannelsNotAvailable

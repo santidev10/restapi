@@ -21,6 +21,7 @@ from es_components.managers.video import VideoManager
 from userprofile.api.views.user_auth import UserAuthApiView
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
 from userprofile.models import WhiteLabel
@@ -174,6 +175,11 @@ class ChannelAuthenticationApiView(APIView):
             user_data = self.obtain_extra_user_data(access_token, google_id)
             domain = WhiteLabel.extract_sub_domain(self.request.get_host() or "")
             domain_obj = WhiteLabel.get(domain)
+
+            # Authentication through Google OAuth should not grant Managed Service permissions
+            disabled_managed_service_perms = {
+                perm_name: False for perm_name in StaticPermissions.perms() if StaticPermissions.MANAGED_SERVICE in perm_name
+            }
             user_data.update(dict(
                 email=email,
                 google_account_id=google_id,
@@ -182,6 +188,7 @@ class ChannelAuthenticationApiView(APIView):
                 user_type=UserTypeCreator.CREATOR.value,
                 password=hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest(),
                 domain_id=domain_obj.id,
+                perms=disabled_managed_service_perms,
             ))
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)

@@ -53,7 +53,10 @@ class AdCreationDuplicateAPITestCase(AwReportingAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         ad = self.create_ad_creation(owner=self.user)
         url = self._get_url(ad.id)
