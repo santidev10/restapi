@@ -14,6 +14,7 @@ from es_components.models import Video
 from es_components.models.video import VideoSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -63,8 +64,9 @@ class VideoListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_success_allowed_user(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
 
         response = self._request()
 
@@ -150,8 +152,9 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_success_allowed_user(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         self._request_collect_file()
 
         user.remove_custom_user_permission("video_list")
@@ -304,7 +307,9 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_filter_brand_safety_not_allowed(self, *args):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         user.add_custom_user_permission("research_exports")
 
         videos = [Video(next(int_iterator)) for _ in range(2)]

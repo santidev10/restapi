@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
+from userprofile.constants import StaticPermissions
 from userprofile.models import WhiteLabel
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -35,8 +36,9 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
 
     def test_permissions_success(self):
         """ Should accept GET request for all with permissions """
-        user = self.create_test_user()
-        user.add_custom_user_permission("domain_management")
+        self.create_test_user(perms={
+            StaticPermissions.DOMAIN_MANAGER: True,
+        })
         response = self.client.get(self._url + "?all=true")
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
