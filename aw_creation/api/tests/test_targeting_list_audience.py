@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_creation.models import *
 from aw_reporting.models import Audience
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserDeviceToken
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -31,7 +32,7 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_export_list(self):
-        user = self.create_test_user(auth=False)
+        user = self.create_test_user(auth=False, perms={StaticPermissions.MANAGED_SERVICE__EXPORT: True,})
         ad_group = self.create_ad_group(user)
         for i in range(10):
             Audience.objects.create(

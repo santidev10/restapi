@@ -14,7 +14,7 @@ class AccountCreationByAccountAPIView(APIView):
         user = request.user
         user_settings = user.get_aw_settings()
         accounts_queryset = Account.objects.all()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS)
             accounts_queryset = accounts_queryset \

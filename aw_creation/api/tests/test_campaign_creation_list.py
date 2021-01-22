@@ -11,6 +11,7 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import Language
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -40,11 +41,15 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
     }
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,

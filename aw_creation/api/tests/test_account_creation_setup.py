@@ -34,7 +34,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -45,7 +45,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     @classmethod
     def setUpClass(cls):
         super(AccountCreationSetupAPITestCase, cls).setUpClass()
-        Permissions.sync_groups()
 
     def _get_url(self, account_id):
         return reverse(Name.CreationSetup.ACCOUNT,
@@ -53,8 +52,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                        args=(account_id,))
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     @staticmethod
     def create_account_creation(owner, start=None, end=None, is_managed=True):
@@ -106,7 +106,10 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         return account_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         today = datetime.now().date()
         defaults = dict(
