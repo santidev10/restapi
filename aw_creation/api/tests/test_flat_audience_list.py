@@ -14,6 +14,7 @@ class AudienceFlatListTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
             StaticPermissions.MEDIA_BUYING: True,
         })
 

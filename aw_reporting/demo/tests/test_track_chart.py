@@ -25,7 +25,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.create_test_user(perms={
-            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.CHF_TRENDS: True,
         })
 
     def test_success_get(self):

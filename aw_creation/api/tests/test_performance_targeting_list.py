@@ -10,7 +10,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
-from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
@@ -50,7 +50,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
     }
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.MANAGED_SERVICE: True,})
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
@@ -121,12 +121,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get_demo(self):
         recreate_test_demo_data()
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
+        self.user.save()
         url = reverse("aw_creation_urls:performance_targeting_list")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
