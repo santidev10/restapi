@@ -14,7 +14,7 @@ class Ad(BaseStatisticModel):
     display_url = models.TextField(null=True)
     status = models.CharField(max_length=10, null=True, db_index=True)
     is_disapproved = models.BooleanField(default=False, null=False, db_index=True)
-    creative_tracking_url_template = models.URLField(null=True, default=None)
+    creative_tracking_url_template = models.URLField(max_length=255, null=True, default=None)
 
     def __str__(self):
         return "%s #%s" % (self.creative_name, self.id)
