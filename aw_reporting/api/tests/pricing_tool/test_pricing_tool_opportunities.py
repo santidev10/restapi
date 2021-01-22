@@ -31,6 +31,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import device_str
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
@@ -2094,8 +2095,12 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         _, campaign = self._create_opportunity_campaign("1")
         campaign.account = Account.objects.create(id="1")
         campaign.save()
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: []}
+
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
+        self.user.save()
+        user_settings = {UserSettingsKey.VISIBLE_ACCOUNTS: []}
         with self.patch_user_settings(**user_settings):
             response = self._request()
 
@@ -2123,8 +2128,12 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         account_2 = Account.objects.create(id=2, name="")
         Campaign.objects.create(
             id=2, account=account_2, salesforce_placement=placement)
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
+        self.user.save()
+        user_settings = {UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
         with self.patch_user_settings(**user_settings):
             response = self._request()
 
@@ -2152,8 +2161,11 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                                          video_views_100_quartile=20,
                                          impressions=100)
 
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
+        self.user.save()
+        user_settings = {UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
 
         with self.patch_user_settings(**user_settings):
             response = self._request(min_video100rate=10,
@@ -2176,8 +2188,11 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                                          campaign=campaign_2,
                                          video_views=2,
                                          impressions=10)
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
+        self.user.save()
+        user_settings = {UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
         with self.patch_user_settings(**user_settings):
             response = self._request(min_video_view_rate=10,
                                      max_video_view_rate=30)

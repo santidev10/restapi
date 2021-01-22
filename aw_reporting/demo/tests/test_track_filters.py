@@ -2,6 +2,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -10,7 +11,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.CHF_TRENDS: True,})
         url = reverse("aw_reporting_urls:track_filters")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.data import DEMO_DATA_HOURLY_LIMIT
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -23,7 +24,9 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         recreate_test_demo_data()
 
     def setUp(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
     def test_success_get(self):
         today = datetime.now().date()
