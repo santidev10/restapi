@@ -234,6 +234,9 @@ class Command(BaseCommand):
                     threads = []
                 # self.do_check_video(videos)
                 videos = {}
+        if len(threads) > 0:
+            for t in threads:
+                t.join()
         if len(videos) > 0:
             self.do_check_video(videos)
         self.audit.updated = timezone.now()

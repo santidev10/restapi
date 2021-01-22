@@ -498,6 +498,7 @@ TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 AUDIT_SUBSCRIBER_SYNC_THRESHOLD = 4500
 AUDIT_VIDEO_NUM_THREADS = 20
+AUDIT_CHANNEL_NUM_THREADS = 20
 TRANSCRIPTS_LANG_CODES = ["en"]
 TRANSCRIPTS_COUNTRY_CODES = ["US"]
 TRANSCRIPTS_CATEGORIES = []
@@ -519,9 +520,9 @@ PERFORMIQ_OAUTH_CLIENT_ID = "832846444492-s0tktc1j0klmt16pdemo9s8hf73t3cie.apps.
 PERFORMIQ_OAUTH_CLIENT_SECRET = "CuLTRo8NoeKZpakATPHbCkai"
 
 TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
-    "george.su@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",
-    "alex.peace@channelfactory.com"
+    "alex.peace@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
