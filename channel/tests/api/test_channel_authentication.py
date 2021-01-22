@@ -266,7 +266,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
                    return_value=MockResponse(json=user_details)):
             response = self.client.post(self.url, dict(code="code"), )
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        disabled_managed_service_perms = [perm_name for perm_name in StaticPermissions.perms()
+        disabled_managed_service_perms = [perm_name for perm_name in StaticPermissions.all_perms()
                                           if StaticPermissions.MANAGED_SERVICE in perm_name]
         user = UserProfile.objects.get(email=user_details["email"])
         expected_vals = {

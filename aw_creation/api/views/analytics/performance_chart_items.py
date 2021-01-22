@@ -19,7 +19,7 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data

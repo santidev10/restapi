@@ -8,7 +8,6 @@ from segment.models.constants import SegmentActionEnum
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
-from utils.permissions import has_static_permission
 from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
@@ -17,7 +16,7 @@ class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
             AdminCustomSegmentOwnerPermission,
-            has_static_permission(StaticPermissions.CTL__VET_ADMIN)
+            StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN)
         ),
     )
 

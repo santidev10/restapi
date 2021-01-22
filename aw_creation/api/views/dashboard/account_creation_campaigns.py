@@ -11,7 +11,7 @@ from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_queryset(self, account_id):
         types_hidden = self.request.user.get_aw_settings().get(

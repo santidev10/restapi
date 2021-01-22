@@ -9,7 +9,7 @@ from .topic_tool_list import TopicToolListApiView
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
     export_fields = ("id", "name", "parent_id")
     file_name = "topic_list"
 

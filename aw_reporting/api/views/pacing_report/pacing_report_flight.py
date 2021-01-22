@@ -8,7 +8,7 @@ from utils.views import get_object
 
 
 class FlightAPIView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *args, **kwargs):
         flight = get_object(Flight, id=kwargs["pk"])

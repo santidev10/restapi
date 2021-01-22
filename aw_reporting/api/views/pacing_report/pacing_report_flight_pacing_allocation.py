@@ -21,7 +21,7 @@ class PacingReportFlightAllocationAPIView(APIView):
     MIN_ALLOCATION_SUM = 99
     MAX_ALLOCATION_SUM = 101
 
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *args, **kwargs):
         pk = kwargs["pk"]

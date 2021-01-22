@@ -20,7 +20,7 @@ class HealthCheckPaginator(CustomPageNumberPaginator):
 
 
 class HealthCheckApiView(ListAPIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.HEALTH_CHECK_TOOL),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.HEALTH_CHECK_TOOL),)
     paginator = HealthCheckPaginator()
 
     def get_queryset(self):

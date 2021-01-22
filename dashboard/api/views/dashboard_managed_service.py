@@ -17,7 +17,6 @@ from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class DashboardManagedServicePaginator(CustomPageNumberPaginator):
@@ -28,7 +27,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
     serializer_class = DashboardManagedServiceSerializer
     pagination_class = DashboardManagedServicePaginator
     permission_classes = (
-        has_static_permission(StaticPermissions.MANAGED_SERVICE),
+        StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),
     )
 
     def get_queryset(self, **filters):

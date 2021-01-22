@@ -6,13 +6,12 @@ from performiq.models import IQCampaign
 from performiq.models.constants import EXPORT_RESULTS_KEYS
 from performiq.utils.s3_exporter import PerformS3Exporter
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 from utils.views import get_object
 
 
 class PerformIQCampaignExportAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.PERFORMIQ),
+        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
 
     EXPORT_TYPES = {

@@ -308,19 +308,19 @@ class PermissionItem(models.Model):
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
 
         [StaticPermissions.RESEARCH,                        True,   "Research"],
-        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos and audience data"],
-        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age and Gender data"],
-        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View Brand Suitability Badges"],
+        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
+        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
         [StaticPermissions.RESEARCH__CHANNEL_DETAIL,        False,  "Channel detail page"],
-        [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization Data"],
+        [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization data"],
         [StaticPermissions.RESEARCH__EXPORT,                False,  "Export"],
-        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts Data"],
-        [StaticPermissions.RESEARCH__VETTING,               False,  "Able to Vet items"],
+        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts data"],
+        [StaticPermissions.RESEARCH__VETTING,               False,  "Able to vet items"],
         [StaticPermissions.RESEARCH__VETTING_DATA,          False,  "View vetting data & filters"],
         [StaticPermissions.RESEARCH__VIDEO_DETAIL,          False,  "Video detail page"],
 
-        [StaticPermissions.USER_ANALYTICS,                  False,  "User Analyics"],
-        [StaticPermissions.USER_MANAGEMENT,                 False,  "User Management"],
+        [StaticPermissions.USER_ANALYTICS,                  False,  "User analytics"],
+        [StaticPermissions.USER_MANAGEMENT,                 False,  "User management"],
     ]
 
     @staticmethod

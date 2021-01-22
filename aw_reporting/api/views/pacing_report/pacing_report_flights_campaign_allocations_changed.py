@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def get(self, request, *_, **kwargs):
         """

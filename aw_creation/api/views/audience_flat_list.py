@@ -6,7 +6,7 @@ from userprofile.constants import StaticPermissions
 
 
 class AudienceFlatListApiView(ListAPIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
     serializer_class = AudienceHierarchySerializer
 
     def get_queryset(self):

@@ -46,7 +46,7 @@ from video.constants import TERMS_FILTER
 class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.RESEARCH),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
@@ -114,7 +114,7 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.is_staff:
             return VideoAdminSerializer
-        if self.request.user.has_perm("userprofile.vet_audit_admin"):
+        if self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             return VideoWithVettedStatusSerializer
         return VideoSerializer
 
@@ -140,13 +140,14 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
             with mutate_query_params(self.request.query_params):
                 self.request.query_params["channel.id"] = [channel_id]
 
-        if not self.request.user.has_perm("userprofile.transcripts_filter") and \
-            not self.request.user.is_staff:
+        if not self.request.user.has_permission(StaticPermissions.RESEARCH__TRANSCRIPTS) and \
+            not self.request.user.has_permission(StaticPermissions.ADMIN):
             if "transcripts" in self.request.query_params:
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["transcripts"] = None
 
-        if not self.request.user.has_perm("vet_audit_admin") and not self.request.user.is_staff:
+        if not self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN) \
+                and not self.request.user.has_permission(StaticPermissions.ADMIN):
             vetted_params = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
             with mutate_query_params(self.request.query_params):
                 for param in vetted_params:

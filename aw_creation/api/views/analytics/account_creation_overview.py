@@ -34,7 +34,7 @@ from utils.datetime import now_in_default_tz
 
 
 class AnalyticsAccountCreationOverviewAPIView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
     HAS_STATISTICS_KEY = "has_statistics"
 
     def post(self, request, pk):

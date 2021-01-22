@@ -129,7 +129,8 @@ class StaticPermissions:
     USER_MANAGEMENT = "user_management"
     CHF_TRENDS = "chf_trends"
 
-    def __call__(self, *permission_items):
+    @staticmethod
+    def has_perms(*permission_items):
         class HasPermission(permissions.BasePermission):
             def has_permission(self, request, *_):
                 if isinstance(request.user, get_user_model()):
@@ -140,7 +141,7 @@ class StaticPermissions:
         return HasPermission
 
     @staticmethod
-    def perms():
+    def all_perms():
         perm_names = [
             getattr(StaticPermissions, attr)
             for attr in dir(StaticPermissions)

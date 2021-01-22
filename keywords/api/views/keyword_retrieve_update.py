@@ -9,13 +9,12 @@ from es_components.managers import KeywordManager
 from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
 from utils.api.research import ESRetrieveAdapter
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class KeywordRetrieveUpdateApiView(RetrieveAPIView):
     serializer_class = KeywordWithViewsHistorySerializer
     permission_classes = (
-        has_static_permission(StaticPermissions.RESEARCH),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     def get_object(self):

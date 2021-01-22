@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 class DashboardAccountCreationDetailsAPIView(APIView):
     serializer_class = DashboardAccountCreationDetailsSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def post(self, request, pk):
         account_creation = self._get_account_creation(request, pk)

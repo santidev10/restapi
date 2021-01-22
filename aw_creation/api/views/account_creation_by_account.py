@@ -8,7 +8,7 @@ from userprofile.constants import UserSettingsKey
 
 
 class AccountCreationByAccountAPIView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get(self, request, account_id):
         user = request.user

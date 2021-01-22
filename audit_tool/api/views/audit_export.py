@@ -33,7 +33,7 @@ from utils.utils import chunks_generator
 
 class AuditExportApiView(APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.AUDIT_QUEUE),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE),
     )
 
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \

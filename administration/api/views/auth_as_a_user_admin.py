@@ -14,7 +14,7 @@ class AuthAsAUserAdminApiView(APIView):
     """
     Login as a user endpoint
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
 
     def get(self, request, pk):
         """

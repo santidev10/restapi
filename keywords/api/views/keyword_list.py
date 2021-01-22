@@ -20,12 +20,11 @@ from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.permissions import has_static_permission
 
 
 class KeywordListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.RESEARCH),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator

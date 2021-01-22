@@ -17,7 +17,7 @@ class AccountKPIFiltersAPIView(APIView):
     GET: Retrieve kpi_filters for aggregated targeting statistics
 
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]

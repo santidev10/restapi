@@ -19,7 +19,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
 
     {"campaigns": ["1", "2"]}
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def get_filters(self):
         data = self.request.data
