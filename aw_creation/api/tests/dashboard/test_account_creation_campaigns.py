@@ -8,6 +8,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
@@ -17,17 +18,14 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(DashboardAccountCreationCampaignsAPITestCase, cls).setUpClass()
-        Permissions.sync_groups()
-
     def _get_url(self, account_id):
         return reverse(Name.Dashboard.CAMPAIGNS, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_id,))
 
     def test_success_get_chf_account(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         account = Account.objects.create(id=1, name="")
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -47,7 +45,9 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(campaign["ad_groups"][0]["id"], ad_group_id)
 
     def test_demo_account_campaigns_status_not_none(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
         recreate_test_demo_data()
         account = Account.objects.get(id=DEMO_ACCOUNT_ID)
@@ -61,7 +61,9 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         """
         Jira ticket: https://channelfactory.atlassian.net/browse/VIQ2-530
         """
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
         url = self._get_url("07c1856dc03f")
         response = self.client.get(url)

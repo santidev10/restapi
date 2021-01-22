@@ -16,6 +16,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -49,7 +50,9 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
     }
 
     def create_test_user(self, auth=True, connected=True):
-        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth)
+        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth, perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         if connected:
             AWConnectionToUserRelation.objects.create(
                 # user must have a connected account not to see demo data

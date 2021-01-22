@@ -33,6 +33,7 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -77,7 +78,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
     def setUp(self):
         super(AnalyticsAccountCreationListAPITestCase, self).setUp()
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.MANAGED_SERVICE: True,})
         self.mcc_account = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
