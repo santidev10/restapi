@@ -59,7 +59,7 @@ class KeywordListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_success_allowed_user(self):
-        user = self.create_test_user(perms={
+        self.create_test_user(perms={
             StaticPermissions.RESEARCH__EXPORT: True,
         })
         response = self._request()
@@ -106,7 +106,6 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
         })
         self._request_collect_file()
 
-        user.remove_custom_user_permission("keyword_list")
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
 

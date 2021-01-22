@@ -7,7 +7,6 @@ from rest_framework.test import APITestCase
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import StaticPermissions
 from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
