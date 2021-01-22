@@ -8,15 +8,19 @@ from aw_reporting.models import Category
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
 from aw_reporting.models import UserRole
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
+
     def setUp(self):
         self.url = reverse("aw_reporting_urls:pacing_report_filters")
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     def test_get_filters_no_permission(self):
+        self.user.delete()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
@@ -26,7 +30,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         and carefully check user roles (am, sales, ad_ops)
         :return:
         """
-        self.create_test_user()
         for uid, name in (("1", UserRole.AD_OPS_NAME),
                           ("2", UserRole.ACCOUNT_MANAGER_NAME),
                           ("3", "Super-sales-man")):
@@ -69,7 +72,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
     def test_category(self):
-        self.create_test_user()
         categories = [
             Category.objects.create(id="1"),
             Category.objects.create(id="2"),
@@ -86,7 +88,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(categories_data_ids, category_ids)
 
     def test_sales(self):
-        self.create_test_user()
         test_user = User.objects.create(id="1",
                                         name="Test User",
                                         is_active=True)
@@ -104,7 +105,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data["ad_ops"]), 0)
 
     def test_account_managers(self):
-        self.create_test_user()
         test_user = User.objects.create(id="1",
                                         name="Test User",
                                         is_active=True)
@@ -122,7 +122,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data["ad_ops"]), 0)
 
     def test_ad_ops(self):
-        self.create_test_user()
         test_user = User.objects.create(id="1",
                                         name="Test User",
                                         is_active=True)
@@ -145,7 +144,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
         Root cause: select query includes "start" column
         """
-        self.create_test_user()
         test_territory = "test region"
         date_1 = date(2018, 1, 1)
         date_2 = date(2018, 1, 2)
@@ -168,7 +166,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
         Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
         """
-        self.create_test_user()
         Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 1")
         Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 2")
         response = self.client.get(self.url)

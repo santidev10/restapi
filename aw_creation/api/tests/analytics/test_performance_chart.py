@@ -42,6 +42,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
@@ -111,7 +112,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
             CityStatistic.objects.create(city=city, **stats)
 
     def test_success_get_filter_dates(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -134,7 +137,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data[2]["title"], "#2")
 
     def test_success_get_filter_items(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -164,7 +169,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
                           Dimension.LOCATION, Dimension.ADS)
     ])
     def test_all_dimensions(self, dimension):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -184,7 +191,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(response.data[0]["data"]), 1)
 
     def test_success_get_no_account(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
 
         account_creation = AccountCreation.objects.create(name="", owner=user,
@@ -203,7 +212,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
@@ -220,7 +231,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo_data(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
@@ -237,7 +250,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_cpm_cpv_is_visible(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         account_creation_id = DEMO_ACCOUNT_ID
         test_cases = product(
@@ -270,7 +285,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cost_does_not_reflect_to_aw_rates_setting(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
@@ -332,7 +349,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
     def test_account_visibility_independent(self):
         any_indicator = Indicator.CPV
         any_dimension = Dimension.ADS
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         manager = self._create_manager_with_connection(user)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)

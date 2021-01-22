@@ -27,16 +27,16 @@ from aw_reporting.models import device_str
 from aw_reporting.models import dict_quartiles_to_rates
 from es_components.constants import Sections
 from es_components.managers import VideoManager
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
-from utils.permissions import UserHasDashboardPermission
 
 logger = logging.getLogger(__name__)
 
 
 class DashboardAccountCreationDetailsAPIView(APIView):
     serializer_class = DashboardAccountCreationDetailsSerializer
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     def post(self, request, pk):
         account_creation = self._get_account_creation(request, pk)

@@ -3,14 +3,16 @@ from django.utils import timezone
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from utils.permissions import user_has_permission
 
 from audit_tool.models import AuditMachine
 from audit_tool.models import AuditProcessor
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
+
 
 class DashboardAuditQueueAPIView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        has_static_permission(StaticPermissions.AUDIT_QUEUE),
     )
 
     def get(self, request, *args, **kwargs):

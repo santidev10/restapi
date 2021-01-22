@@ -4,6 +4,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.reverse import reverse
 from utils.unittests.s3_mock import mock_s3
@@ -11,6 +12,8 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):
+    def setUp(self) -> None:
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     @mock_s3
     def test_success(self, *args, **kwargs):

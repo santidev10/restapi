@@ -14,16 +14,12 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
-from utils.permissions import MediaBuyingAddOnPermission
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class AdCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdCreationSetupSerializer
-    permission_classes = (or_permission_classes(
-        user_has_permission("userprofile.settings_my_aw_accounts"),
-        MediaBuyingAddOnPermission),)
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Get Ad creation",

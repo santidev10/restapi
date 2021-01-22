@@ -20,6 +20,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
 from utils.unittests.patch_now import patch_now
 from utils.unittests.recalculate_de_norm_fields import recalculate_de_norm_fields
@@ -34,7 +35,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 content_type="application/json")
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.PRICING_TOOL: True,
+        })
 
     def test_failed_access(self):
         self.user.delete()
@@ -705,6 +708,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         self.assertIsNone(response.data["charts"]["cpv"])
 
     def test_filter_hidden_campaigns(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.PRICING_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
         opportunity = Opportunity.objects.create()
         stats_date = datetime(2017, 1, 1)
         placement_1 = OpPlacement.objects.create(
@@ -736,7 +743,6 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         cost=1, impressions=1,
                                         average_position=1)
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
         }
 

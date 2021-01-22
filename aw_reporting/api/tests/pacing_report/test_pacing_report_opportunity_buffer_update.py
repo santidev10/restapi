@@ -16,13 +16,14 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportOpportunityBufferTestCase(APITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         self.pacing_report = PacingReport()
 
     def test_fail_access_update(self):

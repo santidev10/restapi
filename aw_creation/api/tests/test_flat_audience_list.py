@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_reporting.models import Audience
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -12,7 +13,10 @@ class AudienceFlatListTestCase(ExtendedAPITestCase):
     url = reverse(Namespace.AW_CREATION + ":" + Name.AUDIENCE_LIST_FLAT)
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_search_topics(self):
         audience_1 = Audience.objects.create(id=1, name="name 1")

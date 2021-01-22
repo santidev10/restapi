@@ -14,6 +14,7 @@ from es_components.managers import ChannelManager
 from es_components.models.channel import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
 from utils.unittests.celery import mock_send_task
@@ -56,9 +57,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_admin_user_can_update_any_channel(self, *args):
-        user = self.create_test_user(auth=True)
-        user.is_staff = True
-        user.save()
+        self.create_admin_user(auth=True)
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.get",
@@ -74,7 +73,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_user_can_not_update_not_own_channel(self, *args):
-        self.create_test_user(auth=True)
+        self.create_test_user(auth=True, perms={StaticPermissions.RESEARCH__CHANNEL_DETAIL: False})
         channel_id = "test_channel_id"
 
         url = self._get_url(channel_id)
@@ -86,8 +85,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_enterprise_user_should_be_able_to_see_channel_details(self, *args):
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
+        self.create_admin_user(auth=True)
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.model.get",
@@ -101,8 +99,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_enterprise_user_should_be_able_to_see_chart_data(self, *args):
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
+        self.create_admin_user()
         channel_id = "test_channel_id"
         stats = {
             "subscribers_raw_history": {
@@ -142,9 +139,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         """
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
-        user.refresh_from_db()
+        self.create_admin_user()
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.model.get",

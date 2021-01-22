@@ -11,7 +11,7 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 
 
 class AccountBreakoutAPIView(APIView):
@@ -19,7 +19,7 @@ class AccountBreakoutAPIView(APIView):
     GET: Retrieve campaign breakout details
     POST: Create breakout campaigns
     """
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions.MEDIA_BUYING,)
 
     def get(self, request, *args, **kwargs):
         """

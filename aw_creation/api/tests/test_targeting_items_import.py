@@ -5,17 +5,22 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from aw_creation.models import TargetingItem
 from aw_reporting.models import Audience
 from aw_reporting.models import Topic
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class TargetingImportTestCase(ExtendedAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         topics = ((3, "Arts & Entertainment"),)
         for uid, name in topics:

@@ -8,6 +8,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHistory
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -19,7 +20,7 @@ class PacingReportStatus(ExtendedAPITestCase):
                        args=args)
 
     def setUp(self):
-        self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         c1 = Campaign.objects.create(id="1")
         c2 = Campaign.objects.create(id="2")
         CampaignHistory.objects.create(campaign=c1, changes=dict(budget=1))

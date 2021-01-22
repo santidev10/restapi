@@ -1,5 +1,4 @@
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,11 +7,11 @@ from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSe
 from aw_reporting.models import Campaign
 from aw_reporting.models import campaign_type_str
 from userprofile.constants import UserSettingsKey
-from utils.permissions import UserHasDashboardPermission
+from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     def get_queryset(self, account_id):
         types_hidden = self.request.user.get_aw_settings().get(

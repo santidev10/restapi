@@ -4,9 +4,11 @@ from rest_framework.views import APIView
 
 from aw_reporting.api.views.trends.constants import INDICATORS
 from aw_reporting.models import DATE_FORMAT
+from userprofile.constants import StaticPermissions
 
 
 class TrackApiBase(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.CHF_TRENDS),)
 
     def get_filters(self):
         data = self.request.query_params

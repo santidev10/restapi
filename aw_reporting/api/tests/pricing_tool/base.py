@@ -8,6 +8,7 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -20,7 +21,7 @@ class PricingToolTestCaseBase(APITestCase):
                                 content_type="application/json")
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PRICING_TOOL: True})
 
     @staticmethod
     def _create_opportunity_campaign(_id, goal_type=SalesForceGoalType.CPV,

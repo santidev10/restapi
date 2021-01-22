@@ -12,6 +12,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
+
     def _get_url(self, flight_id):
         url = reverse(f"aw_reporting_urls:{Name.PacingReport.FLIGHT}", kwargs={"pk": flight_id})
         return url

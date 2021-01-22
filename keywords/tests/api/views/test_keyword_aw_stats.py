@@ -9,6 +9,7 @@ from aw_reporting.models import KeywordStatistic
 from es_components.tests.utils import ESTestCase
 from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -31,7 +32,7 @@ class KeywordAWStatsPermissionsApiViewTestCase(KeywordBaseAWStatsTestCase):
         self.assertEqual(HTTP_401_UNAUTHORIZED, response.status_code)
 
     def test_no_permissions(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.RESEARCH: False})
 
         response = self.client.get(self.get_url(args=("keyword",)))
 

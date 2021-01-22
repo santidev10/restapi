@@ -2,17 +2,18 @@ from datetime import datetime
 from datetime import timedelta
 
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_200_OK
 
 from brand_safety.api.serializers.bad_word_history_serializer import BadWordHistorySerializer
 from brand_safety.models import BadWordHistory
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 
 
 class BadWordHistoryApiView(ListAPIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (has_static_permission(StaticPermissions.ADMIN),)
     serializer_class = BadWordHistorySerializer
 
     NUM_ENTRIES = 500

@@ -12,12 +12,13 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
 from aw_reporting.reports.tasks import export_pacing_report
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.celery import utils
 from utils.datetime import now_in_default_tz
 
 
 class PacingReportCollectView(ListAPIView, PacingReportHelper):
-    permission_classes = tuple()
+    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
 
     def get(self, request, *args, **kwargs):
         filters = request.GET

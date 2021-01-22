@@ -1,29 +1,23 @@
 from django.conf import settings
-from django.db.models import BooleanField
-from django.db.models import Case
 from django.db.models import Q
 from django.db.models import Sum
-from django.db.models import When
 from django.http import HttpResponseForbidden
 
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceSerializer
-from dashboard.api.views.constants import DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX
-from dashboard.utils import get_cache_key
-from rest_framework.generics import ListAPIView
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 
 
 class DashboardManagedServicePaginator(CustomPageNumberPaginator):
@@ -34,10 +28,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
     serializer_class = DashboardManagedServiceSerializer
     pagination_class = DashboardManagedServicePaginator
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_dashboard"),
-            IsAdminUser
-        ),
+        has_static_permission(StaticPermissions.MANAGED_SERVICE),
     )
 
     def get_queryset(self, **filters):

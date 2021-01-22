@@ -2,13 +2,16 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import BudgetType
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_get(self):
         url = reverse("aw_creation_urls:creation_options")

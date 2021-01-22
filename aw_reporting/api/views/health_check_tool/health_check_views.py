@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from aw_reporting.models import Opportunity
 from aw_reporting.tools.health_check_tool import HealthCheckTool
 from utils.api_paginator import CustomPageNumberPaginator
+from userprofile.constants import StaticPermissions
 
 
 class HealthCheckPaginator(CustomPageNumberPaginator):
@@ -19,7 +20,7 @@ class HealthCheckPaginator(CustomPageNumberPaginator):
 
 
 class HealthCheckApiView(ListAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions()(StaticPermissions.HEALTH_CHECK_TOOL),)
     paginator = HealthCheckPaginator()
 
     def get_queryset(self):

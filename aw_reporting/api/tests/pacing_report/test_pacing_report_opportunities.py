@@ -34,6 +34,7 @@ from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -47,7 +48,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES)
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     def test_forbidden_get_opportunities(self):
         self.user.delete()
@@ -1065,12 +1066,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         for global_account_visibility, count in ((True, 0), (False, 1))
     ])
     def test_global_account_visibility(self, global_account_visibility, expected_count):
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
+            StaticPermissions.PACING_REPORT: True,
+        })
         opp = Opportunity.objects.create(id=next(int_iterator), probability=100)
         placement = OpPlacement.objects.create(name="pl_1", opportunity=opp)
         Campaign.objects.create(name="c", salesforce_placement=placement)
+
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
         }
         with self.patch_user_settings(**user_settings):
@@ -1079,6 +1084,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], expected_count)
 
     def test_shows_last_account_update_time(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.PACING_REPORT: True,
+        })
         test_update_time = datetime(2018, 10, 11, 12, 13, 14, tzinfo=pytz.utc)
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
@@ -1090,7 +1099,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         account = Account.objects.create(update_time=test_update_time)
         Campaign.objects.create(account=account, salesforce_placement=placement)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -1099,6 +1108,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(opportunity_data["aw_update_time"], test_update_time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     def test_goal_on_recalculation(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.PACING_REPORT: True,
+        })
         now = datetime(2018, 10, 10, 10, 10)
         today = now.date()
         yesterday = today - timedelta(days=1)
@@ -1130,12 +1143,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             campaign=campaign,
             video_views=ordered_units * 2,
         )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1148,6 +1156,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         ("False", (False,), dict()),
     ])
     def test_margin_cap_required(self, margin_cap_required):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.PACING_REPORT: True,
+        })
         opp = Opportunity.objects.create(
             id=next(int_iterator),
             margin_cap_required=margin_cap_required,
@@ -1155,16 +1167,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         placement = OpPlacement.objects.create(name="p", opportunity=opp)
         Campaign.objects.create(name="c", salesforce_placement=placement)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["margin_cap_required"], margin_cap_required)
 
     def test_outgoing_fee(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.PACING_REPORT: True,
+        })
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
             probability=100,
@@ -1189,11 +1201,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         expected_spent = flight.cost / total * left
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)

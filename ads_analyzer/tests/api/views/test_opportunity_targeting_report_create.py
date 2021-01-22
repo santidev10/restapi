@@ -17,8 +17,7 @@ from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
 from saas import celery_app
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.celery import mock_send_task
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -65,18 +64,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_user_with_permissions(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("create_opportunity_report")
-
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_user_with_permissions_group(self):
-        user = self.create_test_user()
-        Permissions.sync_groups()
-        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
-
+        self.create_test_user(perms={
+            StaticPermissions.ADS_ANALYZER: True
+        })
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -8,12 +8,12 @@ from rest_framework.views import APIView
 
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditProcessorCache
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class AuditHistoryApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        StaticPermissions()(StaticPermissions.AUDIT_QUEUE),
     )
 
     def get(self, request):

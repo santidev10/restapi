@@ -36,6 +36,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
@@ -90,7 +91,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             RemarkStatistic.objects.create(remark=remark_list, **stats)
 
     def test_success_get_filter_dates(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="",
@@ -151,7 +154,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
 
     def test_success_get_video(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -200,7 +205,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.ADS)
 
         today = datetime.now().date()
@@ -252,7 +259,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_get_demo_video(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.VIDEO)
 
         response = self.client.post(url)
@@ -293,7 +302,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
 
     def test_success_get_filter_items(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -326,7 +337,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_get_all_dimensions(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -344,7 +357,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertGreater(len(response.data), 1)
 
     def test_success_get_view_rate_calculation(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -379,7 +394,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         for hide_costs, dimension in product((True, False), ALL_DIMENSIONS)
     ])
     def test_all_dimensions_hide_costs_independent(self, hide_dashboard_costs, dimension):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -409,7 +426,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         views = 123, 234
         costs = 12, 23
 
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -458,7 +477,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         views = 123, 234
         costs = 12, 23
 
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -499,7 +520,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                     self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_device_cost(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -543,7 +566,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_ads_average_rate(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -597,7 +622,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         for args in product((True, False), ALL_DIMENSIONS)
     ])
     def test_convention_independent(self, show_conversions, dimension):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)

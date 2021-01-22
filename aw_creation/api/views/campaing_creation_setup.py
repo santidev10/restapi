@@ -17,19 +17,12 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models import FrequencyCap
 from aw_creation.models import LocationRule
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from utils.permissions import MediaBuyingAddOnPermission
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = CampaignCreationSetupSerializer
-    permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.settings_my_aw_accounts"),
-            MediaBuyingAddOnPermission
-        ),
-    )
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Update campaign creation",

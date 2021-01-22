@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -21,7 +22,9 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         recreate_test_demo_data()
 
     def setUp(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
 
     def test_success_daily(self):
         today = datetime.now().date()

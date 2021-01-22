@@ -12,6 +12,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -24,7 +25,9 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         cost = 60.0
         impressions = 30
         expected_average_cpm = cost / impressions * 1000 + ForecastToolEstimate.CPM_BUFFER
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.FORECAST_TOOL: True,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)

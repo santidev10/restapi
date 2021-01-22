@@ -34,6 +34,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -158,16 +159,15 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         return self.client.post(url, "{}", content_type="application/json")
 
     def test_no_demo_data(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_report_empty(sheet))
@@ -178,15 +178,14 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
     ])
     def test_column_set(self, section):
         shared_columns = COLUMN_SET_BY_SECTION_NAME.get(section)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         row_index = get_section_start_row(sheet, section)
@@ -199,14 +198,13 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
     ])
     def test_column_set_no_conversions(self, section):
         shared_columns = COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS.get(section)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         row_index = get_section_start_row(sheet, section)
@@ -217,7 +215,11 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
 
         video_title = "title"
         video_id = str(next(int_iterator))
@@ -233,11 +235,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         YTVideoStatistic.objects.create(date=any_date_1, ad_group=ad_group, yt_id=video_id, impressions=impressions[0])
         YTVideoStatistic.objects.create(date=any_date_2, ad_group=ad_group, yt_id=video_id, impressions=impressions[1])
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with patch_now(today), \
-             self.patch_user_settings(**user_settings):
+        with patch_now(today):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -250,7 +248,11 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
 
         video_title = "title"
         video_id = str(next(int_iterator))
@@ -271,11 +273,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         VideoCreativeStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
         VideoCreativeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with patch_now(today), \
-             self.patch_user_settings(**user_settings):
+        with patch_now(today):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -288,7 +286,11 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -303,11 +305,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         AgeRangeStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
         AgeRangeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with patch_now(today), \
-             self.patch_user_settings(**user_settings):
+        with patch_now(today):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -320,7 +318,11 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -335,11 +337,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         GenderStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
         GenderStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with patch_now(today), \
-             self.patch_user_settings(**user_settings):
+        with patch_now(today):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -350,7 +348,11 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_targeting_section(self):
         today = any_date = date(2018, 1, 1)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -365,11 +367,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         YTChannelStatistic.objects.create(yt_id="1", impressions=5, **common)
         YTVideoStatistic.objects.create(yt_id="1", impressions=6, **common)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with patch_now(today), \
-             self.patch_user_settings(**user_settings):
+        with patch_now(today):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -388,34 +386,31 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(sheet[row_index][2].value, value, name)
 
     def test_budget(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         opportunity = Opportunity.objects.create(budget=123.45678)
         placement = OpPlacement.objects.create(opportunity=opportunity)
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
 
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         header_value = get_title_cell(sheet).value
         self.assertIn("Client Budget: ${}".format(opportunity.budget), header_value)
 
     def test_contracted_rate(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         opportunity = Opportunity.objects.create(contracted_cpm=.2, contracted_cpv=.5)
         placement = OpPlacement.objects.create(opportunity=opportunity)
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         header_value = get_title_cell(sheet).value
@@ -424,17 +419,16 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(expected_rates, header_value)
 
     def test_contracted_units(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         opportunity = Opportunity.objects.create(video_views=1234, impressions=6432)
         placement = OpPlacement.objects.create(opportunity=opportunity)
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
 
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         header_value = get_title_cell(sheet).value
@@ -449,14 +443,13 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for section in SECTIONS_WITH_CTA:
 
             shared_columns = COLUMN_SET_BY_SECTION_NAME.get(section)
-            self.create_test_user()
-
-            user_settings = {
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-                UserSettingsKey.SHOW_CONVERSIONS: True,
-            }
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(section):
+            self.create_test_user(perms={
+                StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+                StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+                StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+            })
+            with self.subTest(section):
                 response = self._request(DEMO_ACCOUNT_ID)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 sheet = get_sheet_from_response(response)
@@ -469,13 +462,12 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for section in SECTIONS_WITH_CTA:
 
             shared_columns = COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS.get(section)
-            self.create_test_user()
-
-            user_settings = {
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            }
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(section):
+            self.create_test_user(perms={
+                StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+                StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+            })
+            with self.subTest(section):
                 response = self._request(DEMO_ACCOUNT_ID)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 sheet = get_sheet_from_response(response)

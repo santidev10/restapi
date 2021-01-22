@@ -15,6 +15,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -42,7 +43,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_bad_request_on_empty_campaign_set(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -53,7 +54,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_bad_request_on_wrong_campaign_set(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -66,7 +67,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_bad_request_on_wrong_percentage(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -84,7 +85,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -110,7 +111,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_2.goal_allocation, allocation_2)
 
     def test_success_response(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -144,7 +145,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(by_id[4]["goal_allocation"], allocation_4)
 
     def test_reject_invalid_allocation_values(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -168,7 +169,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_allocation_within_margin(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -192,7 +193,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertTrue(self.min_allocation <= sum([allocation_1, allocation_2]) <= self.max_allocation)
 
     def test_reject_allocation_outside_margin(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -232,7 +233,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertTrue(sum([allocation_3, allocation_4]) >= self.max_allocation)
 
     def test_reject_allocation_min_budget(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
@@ -253,7 +254,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_campaign_budget_history(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)

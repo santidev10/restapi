@@ -4,15 +4,14 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PermissionsAPITestCase(ExtendedAPITestCase):
 
     def test_users_list_media_buying_add_on(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        self.create_admin_user()
 
         allowed_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"
@@ -34,14 +33,12 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
                 self.assertIs(user["can_access_media_buying"], False)
 
     def test_update_media_buying_add_have_no_affect(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        self.create_admin_user()
 
         test_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"
         )
-        self.assertFalse(test_user.has_perm("userprofile,view_media_buying"))
+        self.assertFalse(test_user.perms.get(StaticPermissions.MEDIA_BUYING), False)
 
         url = reverse("admin_api_urls:user_details", args=(test_user.id,))
         response = self.client.put(
@@ -51,12 +48,10 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["can_access_media_buying"], False)
         test_user.refresh_from_db()
-        self.assertFalse(test_user.has_perm("userprofile,view_media_buying"))
+        self.assertFalse(test_user.perms.get(StaticPermissions.MEDIA_BUYING), False)
 
     def test_update_send_email_to_the_user(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        self.create_admin_user()
 
         test_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"

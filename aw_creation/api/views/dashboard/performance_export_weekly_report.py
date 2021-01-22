@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
 from utils.views import xlsx_response
+from userprofile.constants import StaticPermissions
 
 
 class DashboardPerformanceExportWeeklyReportApiView(APIView):
@@ -19,6 +19,7 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
 
     {"campaigns": ["1", "2"]}
     """
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def get_filters(self):
         data = self.request.data
@@ -29,9 +30,10 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
+        user = request.user
         queryset = AccountCreation.objects.all()
-        user_settings = request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        user_settings = user.get_aw_settings()
+        if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = queryset.filter(account_id__in=visible_accounts)
         try:
@@ -40,10 +42,8 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         filters = self.get_filters()
-        show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
-        managed_service_hide_delivery_data = request.user.has_custom_user_group(
-            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
-        )
+        show_conversions = user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
+        managed_service_hide_delivery_data = not user.has_permission(StaticPermissions.MANAGED_SERVICE__DELIVERY)
         report = DashboardPerformanceWeeklyReport(
             item.account, show_conversions, managed_service_hide_delivery_data,
             **filters

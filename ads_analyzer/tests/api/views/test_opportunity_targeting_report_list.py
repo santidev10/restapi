@@ -14,8 +14,7 @@ from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.s3_mock import mock_s3
@@ -44,18 +43,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_user_with_permissions(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("create_opportunity_report")
-
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_user_with_permissions_group(self):
-        user = self.create_test_user()
-        Permissions.sync_groups()
-        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
-
+        self.create_test_user(perms={
+            StaticPermissions.ADS_ANALYZER: True
+        })
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -70,9 +60,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
-        self.user = self.create_test_user()
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
+        self.user = self.create_test_user(perms={
+            StaticPermissions.ADS_ANALYZER: True
+        })
 
     def test_empty(self):
         response = self._request()
@@ -151,8 +141,11 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     @mock_s3
     def test_all_report_list(self):
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER: True,
+            StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
+        })
+        self.user.save()
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
@@ -171,8 +164,11 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     @mock_s3
     def test_get_report_by_recipients(self):
-        Permissions.sync_groups()
-        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        self.user.perms.update({
+            StaticPermissions.ADS_ANALYZER: True,
+            StaticPermissions.ADS_ANALYZER__RECIPIENTS: True
+        })
+        self.user.save()
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)

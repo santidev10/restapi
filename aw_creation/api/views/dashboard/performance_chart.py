@@ -11,8 +11,8 @@ from aw_creation.models import AccountCreation
 from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.charts.dashboard_charts import Indicator
 from aw_reporting.models import DATE_FORMAT
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
-from utils.permissions import UserHasDashboardPermission
 
 
 class DashboardPerformanceChartApiView(APIView):
@@ -23,7 +23,7 @@ class DashboardPerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data

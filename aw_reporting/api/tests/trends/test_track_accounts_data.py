@@ -16,6 +16,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.patch_now import patch_now
@@ -25,7 +26,9 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.DATA)
 
     def setUp(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         self.account = self.create_account(user)
         self.campaign = Campaign.objects.create(
             id="1", name="", account=self.account)

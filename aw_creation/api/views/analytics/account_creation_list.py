@@ -29,6 +29,7 @@ from aw_creation.models import default_languages
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from aw_reporting.models import CONVERSIONS
+from userprofile.constants import StaticPermissions
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -38,7 +39,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 class AnalyticsAccountCreationListApiView(ListAPIView):
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),

@@ -2,9 +2,11 @@ from rest_framework.generics import ListAPIView
 
 from aw_creation.api.serializers import TopicHierarchySerializer
 from aw_reporting.models import Topic
+from userprofile.constants import StaticPermissions
 
 
 class TopicToolListApiView(ListAPIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
     serializer_class = TopicHierarchySerializer
 
     def get_queryset(self):

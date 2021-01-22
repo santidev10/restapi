@@ -16,6 +16,7 @@ from es_components.constants import Sections
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.tasks import update_segment_statistics
+from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.views import get_object
@@ -30,10 +31,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                        "language", "vetting_id", "suitable", "language")
 
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.vet_audit"),
-            user_has_permission("userprofile.vet_audit_admin")
-        ),
+        StaticPermissions()(StaticPermissions.CTL__VET, StaticPermissions.CTL__VET_ADMIN),
     )
 
     def get(self, request, *args, **kwargs):

@@ -34,6 +34,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -87,8 +88,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             RemarkStatistic.objects.create(remark=remark_list, **stats)
 
     def test_success_regardless_global_account_visibility(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
@@ -105,7 +107,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cta_fields_in_topic_dimension_response(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.add_custom_user_permission("view_dashboard")
         self._hide_demo_data(user)
 
@@ -125,8 +129,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.assertIn(field, response.data.get("items")[0].keys())
 
     def test_cta_fields_in_gender_dimension_response(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
@@ -149,8 +154,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         for dimension in ALL_DIMENSIONS
     ])
     def test_conversions_are_hidden(self, dimension):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
@@ -177,8 +183,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         for dimension in ALL_DIMENSIONS
     ])
     def test_conversions_are_visible(self, dimension):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
@@ -201,8 +208,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertIsNotNone(item["view_through"])
 
     def test_shows_real_aw_cost_gender(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)

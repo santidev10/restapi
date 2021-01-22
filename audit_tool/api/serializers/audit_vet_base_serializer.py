@@ -13,6 +13,7 @@ from rest_framework.serializers import SerializerMethodField
 from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
+from userprofile.constants import StaticPermissions
 
 
 class AuditVetBaseSerializer(Serializer):
@@ -314,7 +315,7 @@ class AuditVetBaseSerializer(Serializer):
         limbo_data = {}
         try:
             # If vetting admin, accept vetting result as final
-            if self.context["user"].has_perm("userprofile.vet_audit_admin"):
+            if self.context["user"].has_permission(StaticPermissions.CTL__VET_ADMIN):
                 limbo_data["limbo_status"] = False
                 return limbo_data
         except (KeyError, AttributeError):

@@ -3,15 +3,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_reporting.models import Account
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 
 
 class AccountCreationByAccountAPIView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+
     def get(self, request, account_id):
         user = request.user
         user_settings = user.get_aw_settings()
         accounts_queryset = Account.objects.all()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS)
             accounts_queryset = accounts_queryset \
