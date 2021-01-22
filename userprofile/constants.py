@@ -114,6 +114,7 @@ class StaticPermissions:
     PRICING_TOOL = "pricing_tool"
 
     RESEARCH = "research"
+    RESEARCH__AUTH = "research.auth"
     RESEARCH__AGE_GENDER = "research.age_gender"
     RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
     RESEARCH__CHANNEL_DETAIL = "research.channel_detail"

@@ -14,6 +14,7 @@ from es_components.managers import VideoManager
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.permissions import PermissionGroupNames
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.research import ResearchPaginator
@@ -357,9 +358,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertIn("blacklist_data", item_fields)
 
     def test_vetting_admin_aggregations_guard(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("video_list")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
 
         video_ids = []
         for i in range(2):
@@ -404,7 +406,9 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
                 self.assertNotIn(aggregation, response_aggregation_keys)
 
         # admin should see aggs
-        user.is_staff = True
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
         user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -415,10 +419,11 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
                 self.assertIn(aggregation, response_aggregation_keys)
 
         # vetting admin should see aggs
-        user.is_staff = False
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
         user.save()
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data['aggregations']
@@ -432,10 +437,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         test that a regular user can filter on RISKY or above scores, while
         admin users can additionally filter on HIGH_RISK scores
         """
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("video_list")
-        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
 
         video_id = str(next(int_iterator))
         video_id_2 = str(next(int_iterator))
@@ -468,27 +473,31 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual(len(items), 1)
 
         # regular admin, all filters available
-        user.is_staff = True
-        user.save(update_fields=['is_staff'])
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
         # vetting admin, all filters available
-        user.is_staff = False
-        user.save(update_fields=['is_staff'])
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
     def test_non_admin_brand_safety_exclusion(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("video_list")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
 
         url = self.get_url() + urlencode({
             "aggregations": ",".join(ALLOWED_VIDEO_AGGREGATIONS),
@@ -505,8 +514,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertNotIn(constants.HIGH_RISK, labels)
 
         # admin should see HIGH_RISK agg
-        user.is_staff = True
-        user.save(update_fields=["is_staff"])
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data["aggregations"]
@@ -517,10 +528,11 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertIn(constants.HIGH_RISK, labels)
 
         # vetting admin should see HIGH_RISK agg
-        user.is_staff = False
-        user.save(update_fields=["is_staff"])
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data["aggregations"]

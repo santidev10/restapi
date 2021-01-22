@@ -110,11 +110,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             Sections.BRAND_SAFETY, Sections.IAS_DATA)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
-        if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
-            or self.request.user.is_staff:
+        if channel_id in user_channels or self.request.user.has_permission(StaticPermissions.RESEARCH__AUTH):
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        if self.request.user.has_perm("userprofile.monetization_filter"):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__MONETIZATION):
             allowed_sections_to_load += (Sections.MONETIZATION,)
 
         self.add_fields()
@@ -144,9 +143,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             )
 
         context = self._get_serializer_context()
-        if self.request and self.request.user and self.request.user.is_staff:
+        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             serializer = ChannelAdminSerializer
-        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+        elif self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             serializer = ChannelWithVettedStatusSerializer
         else:
             serializer = ChannelSerializer

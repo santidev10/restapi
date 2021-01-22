@@ -48,7 +48,7 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["can_access_media_buying"], False)
         test_user.refresh_from_db()
-        self.assertFalse(test_user.has_perm("userprofile,view_media_buying"))
+        self.assertFalse(test_user.perms.get(StaticPermissions.MEDIA_BUYING), False)
 
     def test_update_send_email_to_the_user(self):
         self.create_admin_user()

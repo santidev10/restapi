@@ -28,7 +28,7 @@ class AuditSaveApiView(APIView):
     LANGUAGES_REVERSE = {}
 
     def post(self, request):
-        if not request.user.has_perm("userprofile.view_audit"):
+        if not request.user.has_permission(StaticPermissions.AUDIT_QUEUE):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         query_params = request.query_params
         user_id = request.user.id
@@ -311,7 +311,7 @@ class AuditSaveApiView(APIView):
         data = request.data
         audit_id = data.get("audit_id")
         segment_id = data.get("segment_id")
-        if not request.user.has_perm("userprofile.vet_audit_admin"):
+        if not request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         if not audit_id and not segment_id:
             raise ValidationError("You must provide a segment_id or audit_id.")

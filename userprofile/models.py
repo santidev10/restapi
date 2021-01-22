@@ -308,6 +308,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
 
         [StaticPermissions.RESEARCH,                        True,   "Research"],
+        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos and audience data"],
         [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age and Gender data"],
         [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View Brand Suitability Badges"],
         [StaticPermissions.RESEARCH__CHANNEL_DETAIL,        False,  "Channel detail page"],
