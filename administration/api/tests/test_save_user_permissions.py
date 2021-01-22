@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -37,7 +38,7 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         test_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"
         )
-        self.assertFalse(test_user.has_perm("userprofile,view_media_buying"))
+        self.assertFalse(test_user.perms.get(StaticPermissions.MEDIA_BUYING), False)
 
         url = reverse("admin_api_urls:user_details", args=(test_user.id,))
         response = self.client.put(

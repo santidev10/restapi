@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
@@ -36,8 +35,6 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import IsVettingAdmin
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from utils.permissions import has_static_permission
 
 

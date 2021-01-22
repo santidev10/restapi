@@ -250,11 +250,11 @@ class PermissionItem(models.Model):
         [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
         [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
 
-
         [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager"],
         [StaticPermissions.BLOCKLIST_MANAGER__READ,         False,  "Blocklist Manager Read"],
         [StaticPermissions.BLOCKLIST_MANAGER__CREATE,       False,  "Blocklist Manager Create"],
         [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
+        [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
 
         [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL)"],
         [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
