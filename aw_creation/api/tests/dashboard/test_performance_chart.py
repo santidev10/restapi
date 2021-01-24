@@ -23,6 +23,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -50,8 +51,9 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         )
 
     def create_test_user(self, auth=True):
-        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth)
-        user.add_custom_user_permission("view_dashboard")
+        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth, perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         return user
 
     def test_success_on_no_global_account_visibility(self):

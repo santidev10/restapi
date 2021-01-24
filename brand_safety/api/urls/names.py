@@ -11,18 +11,6 @@ class BrandSafetyPathName:
         HISTORY = "bad_word_history"
         RECOVER = "bad_word_recover"
 
-    class BadVideo:
-        LIST_AND_CREATE = "bad_video_list_create"
-        CATEGORY_LIST = "bad_video_category_list"
-        UPDATE_DELETE = "bad_video_update_delete"
-        EXPORT = "bad_video_export"
-
-    class BadChannel:
-        LIST_AND_CREATE = "bad_channel_list_create"
-        CATEGORY_LIST = "bad_channel_category_list"
-        UPDATE_DELETE = "bad_channel_update_delete"
-        EXPORT = "bad_channel_export"
-
     class BrandSafety:
         GET_BRAND_SAFETY_CHANNEL = "brand_safety_channel"
         GET_BRAND_SAFETY_VIDEO = "brand_safety_video"

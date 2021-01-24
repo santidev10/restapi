@@ -15,6 +15,7 @@ from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.tasks.generate_segment import generate_segment
+from userprofile.constants import StaticPermissions
 from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
@@ -278,7 +279,7 @@ class SegmentListGenerator:
         if query is None:
             query = segment.get_segment_items_query()
         if size is None:
-            if segment.owner.is_staff or segment.owner.has_perm("userprofile.vet_audit_admin"):
+            if segment.owner.has_permission(StaticPermissions.CTL__VET_ADMIN):
                 size = segment.config.ADMIN_LIST_SIZE
             else:
                 size = segment.config.USER_LIST_SIZE

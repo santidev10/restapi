@@ -10,6 +10,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -56,7 +57,7 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
         return campaign_1, campaign_2, campaign_3
 
     def test_success(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         campaign_1, campaign_2, campaign_3 = self._create_mock_data()
         h1 = CampaignHistory.objects.create(campaign=campaign_1, changes=dict(budget=1))
         h2 = CampaignHistory.objects.create(campaign=campaign_2, changes=dict(budget=2))
@@ -77,7 +78,7 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
     def test_should_not_get_synced(self):
         """ Response should not return already synced data """
         now = timezone.now()
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         campaign_1, campaign_2, campaign_3 = self._create_mock_data()
 
         h1 = CampaignHistory.objects.create(owner=user, campaign=campaign_1, changes=dict(budget=1), sync_at=now)
@@ -94,7 +95,7 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
 
     def test_should_retrieved_latest_change(self):
         """ Response should return latest changes for budgets with multiple change histories """
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         campaign_1, campaign_2, campaign_3 = self._create_mock_data()
 
         CampaignHistory.objects.create(owner=user, campaign=campaign_1, changes=dict(budget=1))

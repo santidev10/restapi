@@ -16,6 +16,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
@@ -27,8 +28,9 @@ class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
         return reverse(Name.CreationSetup.CAMPAIGN_DUPLICATE, [Namespace.AW_CREATION], args=(campaign_id,))
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     @staticmethod
     def create_campaign_creation(owner):
@@ -88,7 +90,10 @@ class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
         return campaign_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         campaign = self.create_campaign_creation(self.user)
         url = self._get_url(campaign.id)

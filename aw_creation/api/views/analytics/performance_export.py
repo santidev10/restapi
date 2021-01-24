@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -19,11 +18,12 @@ from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+from userprofile.constants import StaticPermissions
 from utils.views import xlsx_response
 
 
 class AnalyticsPerformanceExportApiView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def post(self, request, pk, **_):
         user = request.user

@@ -30,7 +30,7 @@ class WhiteLabelApiView(APIView):
     def get(self, request):
         all_domains = request.query_params.get("all")
         if all_domains:
-            if not request.user or not request.user.has_perm("userprofile.domain_management"):
+            if not request.user or not request.user.has_permission(StaticPermissions.DOMAIN_MANAGER):
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
             data = {
                 "domains": WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data,

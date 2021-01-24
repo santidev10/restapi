@@ -2,8 +2,11 @@ from datetime import datetime
 
 from rest_framework.views import APIView
 
+from userprofile.constants import StaticPermissions
+
 
 class PacingReportHelper(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
     date_format = "%Y-%m-%d"
 
     def get_filters(self):

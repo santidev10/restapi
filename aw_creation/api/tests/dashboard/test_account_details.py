@@ -27,6 +27,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -82,12 +83,14 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
 
     def setUp(self):
         super(DashboardAccountCreationDetailsAPITestCase, self).setUp()
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_dashboard")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
     def test_properties(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         account = Account.objects.create()
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -99,8 +102,9 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
 
     def test_properties_demo(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
@@ -111,8 +115,9 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
 
     def test_demo_details_for_chf_acc(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }

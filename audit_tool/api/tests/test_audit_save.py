@@ -13,8 +13,7 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import Permissions
-from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -23,10 +22,6 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     url = reverse(AuditPathName.AUDIT_SAVE, [Namespace.AUDIT_TOOL])
     custom_segment_model = None
     custom_segment_export_model = None
-
-    @classmethod
-    def setUpClass(cls):
-        Permissions.sync_groups()
 
     @classmethod
     def tearDownClass(cls):
@@ -103,8 +98,9 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
 
     def test_enable_vetting_creates_audit(self):
         """ Saving audit instructions for the first time should create audit and vetting items """
-        user = self.create_test_user()
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+        user = self.create_test_user(perms={
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
         segment = self.custom_segment_model.objects.create(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4(),
         )

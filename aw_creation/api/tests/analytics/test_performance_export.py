@@ -41,6 +41,7 @@ from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -49,6 +50,12 @@ from utils.unittests.xlsx import get_sheet_from_response
 
 
 class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
+    def setUp(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
+
     def _get_url(self, account_creation_id):
         return reverse(Name.Analytics.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
                        args=(account_creation_id,))
@@ -109,11 +116,10 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIsNotNone(sheet[3][0].value)
 
     def test_success(self):
-        user = self.create_test_user()
-        self._hide_demo_data_fallback(user)
+        self._hide_demo_data_fallback(self.user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
+        account_creation = AccountCreation.objects.create(name="", owner=self.user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
@@ -130,7 +136,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        self.create_test_user()
 
         today = datetime.now().date()
         filters = dict(
@@ -145,11 +150,10 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assert_demo_data(response)
 
     def test_report_is_xlsx_formatted(self):
-        user = self.create_test_user()
-        self._hide_demo_data_fallback(user)
+        self._hide_demo_data_fallback(self.user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
+        account_creation = AccountCreation.objects.create(name="", owner=self.user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
@@ -165,11 +169,10 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.fail("Report is not an xls")
 
     def test_report_percent_formatted(self):
-        user = self.create_test_user()
-        self._hide_demo_data_fallback(user)
+        self._hide_demo_data_fallback(self.user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
+        account_creation = AccountCreation.objects.create(name="", owner=self.user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
@@ -196,13 +199,11 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
                              "Cell[{}:{}]".format(row, column))
 
     def test_aw_data_in_summary_row(self):
-        user = self.create_test_user()
-        self._hide_demo_data_fallback(user)
+        self._hide_demo_data_fallback(self.user)
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
+        account_creation = AccountCreation.objects.create(name="", owner=self.user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
@@ -235,16 +236,14 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             average_cpv)
 
     def test_ignores_hide_costs(self):
-        user = self.create_test_user()
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
 
         account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
+        account_creation = AccountCreation.objects.create(name="", owner=self.user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
@@ -271,10 +270,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
 
     def test_success_for_linked_account(self):
-        user = self.create_test_user()
-        self._add_aw_connection(user)
+        self._add_aw_connection(self.user)
         manager = Account.objects.create(id=next(int_iterator))
-        AWAccountPermission.objects.create(aw_connection=user.aw_connections.first().connection,
+        AWAccountPermission.objects.create(aw_connection=self.user.aw_connections.first().connection,
                                            account=manager)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)

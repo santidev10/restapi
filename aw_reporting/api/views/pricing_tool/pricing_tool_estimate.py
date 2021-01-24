@@ -3,9 +3,12 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from aw_reporting.tools.pricing_tool import PricingTool
+from userprofile.constants import StaticPermissions
 
 
 class PricingToolEstimateView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.PRICING_TOOL),)
+
     @staticmethod
     def post(request):
         toll_obj = PricingTool(user=request.user, **request.data)

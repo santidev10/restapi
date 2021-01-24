@@ -1,12 +1,12 @@
 from rest_framework.generics import DestroyAPIView
-from rest_framework.permissions import IsAdminUser
 
 from administration.models import UserAction
+from userprofile.constants import StaticPermissions
 
 
 class UserActionDeleteAdminApiView(DestroyAPIView):
     """
     User action delete endpoint
     """
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
     queryset = UserAction.objects.all()

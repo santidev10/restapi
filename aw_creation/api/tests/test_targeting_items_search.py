@@ -11,6 +11,7 @@ from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from keyword_tool.models import KeyWord
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -18,11 +19,15 @@ class TargetingItemsSearchAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def setUp(self):
         super().setUp()
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "gangnam"))
         response = self.client.get(url)

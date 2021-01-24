@@ -22,6 +22,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.tools.health_check_tool import AGE_RANGES
 from aw_reporting.tools.health_check_tool import GENDERS
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -33,7 +34,9 @@ class AWSetupHealthCheckListTestCase(APITestCase):
     url = reverse(Name.HealthCheck.LIST, [Namespace.AW_REPORTING])
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.HEALTH_CHECK_TOOL: True,
+        })
 
     def test_fail_get_list(self):
         self.__create_not_auth_user()
@@ -262,10 +265,13 @@ class AWSetupHealthCheckListTestCase(APITestCase):
         for global_account_visibility, count in ((True, 0), (False, 1))
     ])
     def test_global_account_visibility(self, global_account_visibility, expected_count):
+        self.create_test_user(perms={
+            StaticPermissions.HEALTH_CHECK_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False
+        })
         Opportunity.objects.create(id=next(int_iterator), probability=100)
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
         }
         with self.patch_user_settings(**user_settings):

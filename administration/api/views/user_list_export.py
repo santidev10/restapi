@@ -1,8 +1,8 @@
 import pytz
-from rest_framework.permissions import IsAdminUser
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from aw_reporting.models import Account
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserProfile
 from utils.api.file_list_api_view import FileListApiView
 from utils.datetime import now_in_default_tz
@@ -55,7 +55,7 @@ class UserListCSVRendered(CSVStreamingRenderer):
 
 
 class UserListExportApiView(FileListApiView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
     renderer_classes = (UserListCSVRendered,)
     queryset = UserProfile.objects.all().order_by("last_name")
 

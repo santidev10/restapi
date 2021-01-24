@@ -29,10 +29,12 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.calculations import all_stats_aggregator
+from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
 
 
 class AnalyticsAccountCreationOverviewAPIView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
     HAS_STATISTICS_KEY = "has_statistics"
 
     def post(self, request, pk):

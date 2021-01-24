@@ -6,6 +6,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
@@ -13,7 +14,9 @@ class TrackFiltersAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.FILTERS)
 
     def test_success_get(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         account = self.create_account(user)
         for i in range(1, 3):
             Campaign.objects.create(
@@ -57,7 +60,9 @@ class TrackFiltersAPITestCase(AwReportingAPITestCase):
 
     def test_demo_account(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 

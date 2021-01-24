@@ -1,13 +1,15 @@
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
+from userprofile.constants import StaticPermissions
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     @staticmethod
     def create_account_creation(owner, start, end):

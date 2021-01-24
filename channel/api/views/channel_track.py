@@ -5,16 +5,13 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from channel.utils import track_channels
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
+from utils.permissions import has_static_permission
 
 
 class ChannelTrackApiView(APIView, PermissionRequiredMixin):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.vet_audit"),
-            user_has_permission("userprofile.vet_audit_admin")
-        ),
+        has_static_permission(StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__VET),
     )
 
     def post(self, request, *args, **kwargs):

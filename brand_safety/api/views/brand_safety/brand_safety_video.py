@@ -10,14 +10,13 @@ from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from utils.brand_safety import get_brand_safety_data
+from utils.permissions import has_static_permission
 
 
 class BrandSafetyVideoAPIView(APIView):
-    permission_required = (
-        "userprofile.channel_list",
-        "userprofile.settings_my_yt_channels"
-    )
+    permission_required = (has_static_permission(StaticPermissions.RESEARCH),)
     video_manager = VideoManager(sections=Sections.BRAND_SAFETY)
     MAX_SIZE = 10000
 

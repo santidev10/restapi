@@ -14,6 +14,7 @@ from aw_reporting.tools.health_check_tool import GENDERS
 from aw_reporting.tools.health_check_tool import HealthCheckTool
 from aw_reporting.tools.health_check_tool import MALE_GENDER
 from aw_reporting.tools.health_check_tool import UNDETERMINED_GENDER
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 AGE_18_24 = "18-24"
@@ -21,6 +22,11 @@ AGE_25_34 = "25-34"
 
 
 class SetupHealthCheckToolTestCase(APITestCase):
+    def setUp(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.HEALTH_CHECK_TOOL: True,
+        })
+
     def test_match_custom_affinity_targeting_1(self):
         opportunity = Opportunity.objects.create(
             id="1", name="", targeting_tactics="Custom Affinity")

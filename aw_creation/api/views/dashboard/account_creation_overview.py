@@ -31,6 +31,7 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.constants import CONVERSIONS
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationOverviewAPIView(APIView):

@@ -4,12 +4,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditProcessor
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class AuditStopApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        StaticPermissions()(StaticPermissions.AUDIT_QUEUE),
     )
 
     def post(self, request):

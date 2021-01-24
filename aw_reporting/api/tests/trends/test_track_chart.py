@@ -20,6 +20,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.unittests.generic_test import generic_test
 from utils.unittests.patch_now import patch_now
 
@@ -28,7 +29,9 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.CHART)
 
     def setUp(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         account = self.create_account(user)
         self.campaign = Campaign.objects.create(
             id="1", name="", account=account)

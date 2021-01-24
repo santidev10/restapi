@@ -3,10 +3,13 @@ from rest_framework.views import APIView
 
 from aw_reporting.api.serializers import FlightSerializer
 from aw_reporting.models import Flight
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
 class FlightAPIView(APIView):
+    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+
     def patch(self, request, *args, **kwargs):
         flight = get_object(Flight, id=kwargs["pk"])
         data = request.data

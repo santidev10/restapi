@@ -16,6 +16,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -34,7 +35,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_global_accounts(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
 
         def new_account(new_id):
             return Account.objects.create(id=new_id)
@@ -60,7 +63,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account["id"], child_account.id)
 
     def test_success_get(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         account = self.create_account(user)
         manager = account.managers.first()
         for i in range(1, 3):
@@ -99,7 +104,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_demo_account(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
@@ -127,7 +134,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         )
 
     def test_account_managers(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_account_manager = User.objects.create(id="123",
                                                    name="Test User Name",
@@ -163,7 +172,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [expected_am_data])
 
     def test_account_managers_inactive(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_account_manager = User.objects.create(id="123",
                                                    name="Test User Name",
@@ -197,7 +208,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [])
 
     def test_ad_ops_manager(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_ad_ops = User.objects.create(id="123",
                                           name="Test User Name",
@@ -232,7 +245,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [expected_ad_ops_data])
 
     def test_ad_ops_manager_inactive(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_ad_ops = User.objects.create(id="123",
                                           name="Test User Name (inactive)",
@@ -265,7 +280,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [])
 
     def test_sales_manager(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_sales = User.objects.create(id="123",
                                          name="Test User Name",
@@ -300,7 +317,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [expected_sales_data])
 
     def test_sales_manager_inactive(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_sales = User.objects.create(id="123",
                                          name="Test User Name",
@@ -333,7 +352,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(account_managers, [])
 
     def test_brand(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_brand_1 = "test brand 1"
         test_brand_2 = "test brand 2"
@@ -367,7 +388,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["brands"], expected_brands)
 
     def test_goal_types(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         manager = Account.objects.create(id=111)
         test_account = Account.objects.create()
         test_account.managers.add(manager)
@@ -389,7 +412,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         Opportunity.objects.create(id=next(int_iterator), territory=test_territory_2)
         Opportunity.objects.create(id=next(int_iterator), territory=test_territory_1)
         Opportunity.objects.create(id=next(int_iterator), territory=test_territory_2)
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         expected_regions = [
             dict(
                 id=territory,
@@ -409,7 +434,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
         Root cause: select query includes 'start' column
         """
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         test_territory = "test region"
         date_1 = date(2018, 1, 1)
         date_2 = date(2018, 1, 2)
@@ -432,7 +459,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
         Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
         """
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 1")
         Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 2")
         response = self.client.get(self.url)

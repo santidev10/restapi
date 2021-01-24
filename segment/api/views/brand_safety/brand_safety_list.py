@@ -62,7 +62,7 @@ class CustomSegmentListApiView(APIView):
         self.data['items'] = serialized
 
     def get_custom_segment_serializer_class(self):
-        if self.request.user.has_perm('userprofile.download_audit'):
+        if self.request.user.has_permission(StaticPermissions.CTL__EXPORT_BASIC):
             return CTLSerializer
         return CTLWithoutDownloadUrlSerializer
 

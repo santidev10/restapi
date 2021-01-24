@@ -16,16 +16,11 @@ from segment.api.serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.custom_segment import CustomSegment
-from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.s3_mock import mock_s3 as mock_s3
 
 
 class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def _get_url(self, reverse_args=None):
         return reverse(f"{Namespace.SEGMENT_V2}:{Name.CUSTOM_SEGMENT_UPDATE}", args=reverse_args)

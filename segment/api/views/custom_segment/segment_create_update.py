@@ -14,18 +14,15 @@ from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import set_user_perm_params
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
+from utils.permissions import has_static_permission
 
 
 class SegmentCreateUpdateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.custom_target_list_creation"),
-            IsAdminUser
-        ),
+        has_static_permission(StaticPermissions.CTL__CREATE),
     )
     parser_classes = [MultiPartParser]
 

@@ -4,13 +4,17 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import Topic
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class TopicToolTestCase(ExtendedAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def create_topic(self, name="Parent", uid=10000):
         parent = Topic.objects.create(id=uid, name=name)

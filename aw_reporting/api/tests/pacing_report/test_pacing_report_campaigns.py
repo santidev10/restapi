@@ -15,7 +15,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import PacingReportChartId
-from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
@@ -24,7 +24,10 @@ from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 class PacingReportTestCase(APITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.PACING_REPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
 
     def test_forbidden_get(self):
         self.user.delete()
@@ -159,12 +162,8 @@ class PacingReportTestCase(APITestCase):
             status="serving",
         )
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -225,12 +224,8 @@ class PacingReportTestCase(APITestCase):
             status="serving",
         )
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
 
         split_allocation = (100 - allocation_2 - allocation_4) / 2
@@ -276,12 +271,8 @@ class PacingReportTestCase(APITestCase):
             status="serving",
         )
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -332,13 +323,8 @@ class PacingReportTestCase(APITestCase):
             goal_allocation=allocation_2,
             status="serving",
         )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

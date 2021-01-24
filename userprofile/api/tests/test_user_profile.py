@@ -53,6 +53,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "last_login",
                 "last_name",
                 "logo_url",
+                "perms",
                 "phone_number",
                 "phone_number_verified",
                 "profile_image_url",

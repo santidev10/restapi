@@ -3,11 +3,11 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from segment.models import CustomSegment
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 
 
 class ItemsFromSegmentIdsApiView(APIView):
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
 
     def post(self, request, segment_type, **_):
         all_related_items = []

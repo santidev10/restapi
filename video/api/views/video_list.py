@@ -15,6 +15,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers.video import VettingAdminVideoManager
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
@@ -45,11 +46,7 @@ from video.constants import TERMS_FILTER
 class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.video_list"),
-            user_has_permission("userprofile.settings_my_yt_channels"),
-            IsAdminUser
-        ),
+        StaticPermissions()(StaticPermissions.RESEARCH),
     )
 
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)

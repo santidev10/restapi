@@ -25,6 +25,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -98,7 +99,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
 
     def setUp(self):
         super(AnalyticsAccountCreationDetailsAPITestCase, self).setUp()
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.MANAGED_SERVICE: True,})
 
     def test_success_get(self):
         account = Account.objects.create(id=1, name="",

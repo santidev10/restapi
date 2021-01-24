@@ -8,17 +8,13 @@ from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer i
     OpportunityTargetReportRecipientsSerializer
 from ads_analyzer.models import OpportunityTargetingReport
 from utils.datetime import now_in_default_tz
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class OpportunityTargetingReportRecipientsAPIView(ListAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_opportunity_report_recipients_list"),
-        ),
+         StaticPermissions()(StaticPermissions.ADS_ANALYZER__RECIPIENTS),
     )
-
     serializer_class = OpportunityTargetReportRecipientsSerializer
 
     def get_queryset(self):

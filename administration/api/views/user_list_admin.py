@@ -3,11 +3,11 @@ from django.db.models import Q
 from django.db.models import Value
 from django.db.models.functions import Concat
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from administration.api.serializers import UserSerializer
+from userprofile.constants import StaticPermissions
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -31,7 +31,7 @@ class UserListAdminApiView(ListAPIView):
     """
     serializer_class = UserSerializer
     pagination_class = UserPaginator
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
     allowed_sorts = (
         "last_name",
         "first_name",

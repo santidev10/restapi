@@ -33,6 +33,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
@@ -76,7 +77,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     url = reverse(Name.Dashboard.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.DASHBOARD])
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self.user.add_custom_user_permission("view_dashboard")
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
