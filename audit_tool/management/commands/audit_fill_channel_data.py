@@ -86,7 +86,8 @@ class Command(BaseCommand):
             total_pending = total_to_go - count
             if total_pending < 0:
                 total_pending = 0
-            self.fill_recent_video_timestamp()
+            if thread_id == 0:
+                self.fill_recent_video_timestamp()
             raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
 
     def fill_recent_video_timestamp(self):
