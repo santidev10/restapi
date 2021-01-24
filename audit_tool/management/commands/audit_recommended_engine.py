@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
@@ -51,6 +52,7 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
+    NUM_THREADS = settings.AUDIT_RECO_NUM_THREADS
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
@@ -155,8 +157,19 @@ class Command(BaseCommand):
         pending_videos = self.check_complete()
         num = 50
         start = self.thread_id * num
+        threads = []
         for video in pending_videos[start:start + num]:
-            self.do_recommended_api_call(video)
+            t = Thread(target=self.do_recommended_api_call, args=(video,))
+            threads.append(t)
+            t.start()
+            if len(threads) >= self.NUM_THREADS:
+                for t in threads:
+                    t.join()
+                threads = []
+            # self.do_recommended_api_call(video)
+        if len(threads) > 0:
+            for t in threads:
+                t.join()
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=["updated"])
         self.check_complete()
