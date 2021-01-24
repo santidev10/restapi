@@ -95,8 +95,6 @@ class Command(BaseCommand):
             "-id")
         for c in channels[:5000]:
             videos = AuditVideoMeta.objects.filter(video__channel__channel_id=c.channel.channel_id).order_by("-publish_date")
-            # db_videos = AuditVideo.objects.filter(channel=c.channel).values_list("id", flat=True)
-            # videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")
             try:
                 c.last_uploaded = videos[0].publish_date
                 c.last_uploaded_view_count = videos[0].views
@@ -104,8 +102,9 @@ class Command(BaseCommand):
                 c.save(update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
             # pylint: disable=broad-except
             except Exception:
-                c.video_count = 0
-                c.save(update_fields=['video_count'])
+                if videos.count() == 0:
+                    c.video_count = 0
+                    c.save(update_fields=['video_count'])
             # pylint: enable=broad-except
                 pass
 
