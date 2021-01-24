@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -36,7 +37,7 @@ class Command(BaseCommand):
         "countries": {},
         "languages": {}
     }
-
+    NUM_THREADS = settings.AUDIT_FILL_CHANNEL_DATA_NUM_THREADS
     def __init__(self, stdout=None, stderr=None, no_color=False, force_color=False):
         super(Command, self).__init__(stdout=stdout, stderr=stderr, no_color=no_color, force_color=force_color)
         self.thread_id = None
@@ -59,27 +60,41 @@ class Command(BaseCommand):
             channels = {}
             num = 500
             start = thread_id * num
+            threads = []
             for channel in pending_channels[start:start + num]:
                 channels[channel.channel.channel_id] = channel
                 count += 1
                 if len(channels) == 50:
-                    self.do_channel_metadata_api_call(channels)
+                    t = Thread(target=self.do_channel_metadata_api_call, args=(channels,))
+                    threads.append(t)
+                    t.start()
+                    if len(threads) >= self.NUM_THREADS:
+                        for t in threads:
+                            t.join()
+                        threads = []
+                    # self.do_channel_metadata_api_call(channels)
                     channels = {}
             if len(channels) > 0:
-                self.do_channel_metadata_api_call(channels)
+                # self.do_channel_metadata_api_call(channels)
+                t = Thread(target=self.do_channel_metadata_api_call, args=(channels,))
+                threads.append(t)
+                t.start()
+            if len(threads) > 0:
+                for t in threads:
+                    t.join()
             logger.info("Done %s channels", count)
             total_pending = total_to_go - count
             if total_pending < 0:
                 total_pending = 0
-            self.fill_recent_video_timestamp()
+            if thread_id == 0:
+                self.fill_recent_video_timestamp()
             raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
 
     def fill_recent_video_timestamp(self):
         channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_view_count__isnull=True).order_by(
             "-id")
         for c in channels[:5000]:
-            db_videos = AuditVideo.objects.filter(channel=c.channel).values_list("id", flat=True)
-            videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")
+            videos = AuditVideoMeta.objects.filter(video__channel__channel_id=c.channel.channel_id).order_by("-publish_date")
             try:
                 c.last_uploaded = videos[0].publish_date
                 c.last_uploaded_view_count = videos[0].views
@@ -87,6 +102,9 @@ class Command(BaseCommand):
                 c.save(update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
             # pylint: disable=broad-except
             except Exception:
+                if videos.count() == 0:
+                    c.video_count = 0
+                    c.save(update_fields=['video_count'])
             # pylint: enable=broad-except
                 pass
 
