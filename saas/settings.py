@@ -339,10 +339,10 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
     "maria.konareva@sigma.software",
-    "oleksandr.demianyshyn@sigma.software",
+    "sergey.zhiltsov@sigma.software",
     "megumi.sato@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -352,9 +352,8 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
-    "oleksandr.demianyshyn@sigma.software",
     "sergey.zhiltsov@sigma.software",
 ]
 
@@ -366,7 +365,6 @@ UI_ERROR_REPORT_EMAIL_ADDRESSES = [
 GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
     "servando.berna@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
