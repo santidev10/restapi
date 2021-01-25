@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from django.utils import timezone
 from django.test import override_settings
-from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
 from brand_safety import constants
@@ -15,7 +14,6 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.constants import StaticPermissions
-from userprofile.permissions import PermissionGroupNames
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.research import ResearchPaginator
 from utils.es_components_cache import get_redis_client
@@ -303,10 +301,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_video_ids.sort())
 
     def test_permissions(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("video_list")
-
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__VIDEO_DETAIL: True,
+        })
         video_id = str(next(int_iterator))
         video = Video(**{
             "meta": {"id": video_id},
@@ -334,8 +332,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertNotIn("blacklist_data", item_fields)
 
         # audit vet admin
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
+        user.save()
         response = self.client.get(self.get_url())
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data['items']
@@ -346,7 +346,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertNotIn("blacklist_data", item_fields)
 
         # admin
-        user.is_staff = True
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+            StaticPermissions.CTL__VET_ADMIN: False
+        })
         user.save()
         response = self.client.get(self.get_url())
         self.assertEqual(response.status_code, HTTP_200_OK)

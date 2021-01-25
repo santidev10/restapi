@@ -18,7 +18,10 @@ class SegmentListApiView(ListAPIView):
     serializer_class = CTLSerializer
     pagination_class = SegmentPaginator
     queryset = CustomSegment.objects.all().select_related("export").order_by("created_at")
-    permission_classes = (StaticPermissions.CTL, StaticPermissions.CTL__SEE_ALL)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.CTL,
+                                    StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__SEE_ALL),
+    )
 
     def _do_filters(self, queryset):
         """
