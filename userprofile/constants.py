@@ -50,18 +50,15 @@ class StaticPermissions:
     ADS_ANALYZER__RECIPIENTS = "ads_analyzer.recipients"
 
     AUDIT_QUEUE = "audit_queue"
-    AUDIT_QUEUE__READ = "audit_queue.read"
     AUDIT_QUEUE__CREATE = "audit_queue.create"
     AUDIT_QUEUE__SET_PRIORITY = "audit_queue.set_priority"
 
     BLOCKLIST_MANAGER = "blocklist_manager"
-    BLOCKLIST_MANAGER__READ = "blocklist_manager.read"
     BLOCKLIST_MANAGER__CREATE = "blocklist_manager.create"
     BLOCKLIST_MANAGER__DELETE = "blocklist_manager.delete"
     BLOCKLIST_MANAGER__EXPORT = "blocklist_manager.export"
 
     BSTE = "bste"
-    BSTE__READ = "bste.read"
     BSTE__CREATE = "bste.create"
     BSTE__DELETE = "bste.delete"
     BSTE__EXPORT = "bste.export"
@@ -70,7 +67,6 @@ class StaticPermissions:
     BSTL__EXPORT = "bstl.export"
 
     CTL = "ctl"
-    CTL__READ = "ctl.read"
     CTL__CREATE = "ctl.create"
     CTL__DELETE = "ctl.delete"
     CTL__FEATURE_LIST = "ctl.feature_list"
@@ -85,7 +81,7 @@ class StaticPermissions:
     DASHBOARD = "dashboard"
 
     DOMAIN_MANAGER = "domain_manager"
-    DOMAIN_MANAGER__READ = "domain_manager.read"
+    DOMAIN_MANAGER__READ_ALL = "domain_manager.read_all"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"
     DOMAIN_MANAGER__DELETE = "domain_manager.delete"
 
@@ -130,13 +126,53 @@ class StaticPermissions:
     CHF_TRENDS = "chf_trends"
 
     @staticmethod
-    def has_perms(*permission_items):
+    def has_perms(*permission_items, method=None):
+        """
+        Method to handle processing permissions depending on method kwarg
+
+        :param permission_items: Variable args of permission names to be checked
+            Should be constant values defined in StaticPermissions
+        :param method: comma separated string of HTTP request methods that should check for permission_items
+            If method is None, then all view methods will be checked with permission_items
+
+            Example Usage:
+            or_permission_classes(
+                StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER,
+                                            StaticPermissions.DOMAIN_MANAGER__READ_ALL, method="get"),
+                StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER__CREATE, method="patch,post"),
+            )
+
+            Method call with method="get" will check StaticPermissions.DOMAIN_MANAGER and
+                StaticPermissions.DOMAIN_MANAGER__READ_ALL permissions only if GET request
+            Method call with method="patch,post" will check StaticPermissions.DOMAIN_MANAGER__CREATE for
+                PATCH and POST requests
+
+            If current request is using PATCH, then has_perms(method="get") will return False to allow the next
+                has_perms(method="patch,post") check to handle method
+        :return: bool
+        """
+        valid_methods = {"get", "post", "patch", "delete"}
+
+        method = set(method.split(",")) if method else valid_methods
+        if method and not method.issubset(valid_methods):
+            raise ValueError(f"method must be either a single string value or "
+                             f"comma separated string containing only these values: {valid_methods}")
+
         class HasPermission(permissions.BasePermission):
             def has_permission(self, request, *_):
-                if isinstance(request.user, get_user_model()):
+                if not isinstance(request.user, get_user_model()):
+                    return False
+
+                user = request.user
+                request_method = request.method.lower()
+                if request_method in method:
                     for perm in permission_items:
-                        if request.user.has_permission(perm):
+                        if user.has_permission(perm):
                             return True
+                    return False
+
+                # If current request method is not in permissions definition, return False to allow next permissions
+                # definition to handle
                 return False
         return HasPermission
 
