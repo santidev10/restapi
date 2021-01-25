@@ -14,7 +14,7 @@ MINIMUM_ITEMS_COUNT = 100
 
 class CustomSegmentListApiView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL),
     )
 
     def __init__(self, *args, **kwargs):

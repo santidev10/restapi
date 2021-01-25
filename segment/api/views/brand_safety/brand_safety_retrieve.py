@@ -10,5 +10,5 @@ class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, Retrieve
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL),
     )

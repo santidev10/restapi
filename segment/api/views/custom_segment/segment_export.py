@@ -1,5 +1,7 @@
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
@@ -16,7 +18,8 @@ class SegmentExport(APIView):
     permission_classes = (
         or_permission_classes(
             AdminCustomSegmentOwnerPermission,
-            StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN)
+            StaticPermissions.has_perms(StaticPermissions.CTL__EXPORT_BASIC, StaticPermissions.CTL__EXPORT_ADMIN,
+                                        StaticPermissions.CTL__VET_EXPORT)
         ),
     )
 
@@ -25,6 +28,9 @@ class SegmentExport(APIView):
         segment = get_object(CustomSegment, f"Custom segment with id: {pk} not found.", id=pk)
         response = {}
         if request.query_params.get("vetted"):
+            if not request.user.has_permission(StaticPermissions.CTL__VET_EXPORT):
+                raise PermissionDenied
+
             s3_key = segment.get_vetted_s3_key()
             if hasattr(segment, "vetted_export") and segment.s3.exists(s3_key, get_key=False):
                 response["download_url"] = segment.s3.generate_temporary_url(s3_key)
@@ -37,7 +43,7 @@ class SegmentExport(APIView):
             if hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
-                if request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+                if request.user.has_permission(StaticPermissions.CTL__EXPORT_ADMIN):
                     if related_file_obj.admin_filename:
                         admin_s3_key = segment.get_admin_s3_key()
                         response["download_url"] = segment.s3.generate_temporary_url(admin_s3_key)

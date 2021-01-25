@@ -37,7 +37,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
     def test_permissions_success(self):
         """ Should accept GET request for all with permissions """
         self.create_test_user(perms={
-            StaticPermissions.DOMAIN_MANAGER: True,
+            StaticPermissions.DOMAIN_MANAGER__READ_ALL: True,
         })
         response = self.client.get(self._url + "?all=true")
         data = response.data

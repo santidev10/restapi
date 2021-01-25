@@ -8,7 +8,7 @@ class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
     Retrieve preview data for persistent segments
     """
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL),
     )
 
     @property

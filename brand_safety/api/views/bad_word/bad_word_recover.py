@@ -8,7 +8,7 @@ from userprofile.constants import StaticPermissions
 
 
 class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
 

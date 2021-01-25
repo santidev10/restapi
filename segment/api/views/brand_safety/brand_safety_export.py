@@ -12,7 +12,7 @@ from utils.views import get_object
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL__EXPORT),
     )
 
     def get(self, request, pk, *_):

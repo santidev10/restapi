@@ -12,7 +12,7 @@ from userprofile.constants import StaticPermissions
 
 
 class BadWordHistoryApiView(ListAPIView):
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
     serializer_class = BadWordHistorySerializer
 
     NUM_ENTRIES = 500
