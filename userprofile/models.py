@@ -283,7 +283,6 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.DASHBOARD,                       False,  "Home Dashboard"],
         [StaticPermissions.FORECAST_TOOL,                   False,  "Forecasting Tool"],
-        [StaticPermissions.HEALTH_CHECK_TOOL,               False,  "Health Check Tool"],
 
         [StaticPermissions.MANAGED_SERVICE,                             False,  "Managed Service Read"],
         [StaticPermissions.MANAGED_SERVICE__EXPORT,                     False,  "Managed Service Export"],

@@ -86,7 +86,6 @@ class StaticPermissions:
     DOMAIN_MANAGER__DELETE = "domain_manager.delete"
 
     FORECAST_TOOL = "forecast_tool"
-    HEALTH_CHECK_TOOL = "health_check_tool"
 
     MANAGED_SERVICE = "managed_service"
     MANAGED_SERVICE__EXPORT = "managed_service.export"
