@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import boto3
 import requests
+import unicodedata
 from botocore.client import Config
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
@@ -203,7 +204,7 @@ class AuditExportApiView(APIView):
         if clean is not None:
             clean_string = 'true' if clean else 'false'
         try:
-            name = audit.params['name'].replace("/", "-")
+            name = unicodedata.normalize("NFKD", audit.params['name'].replace("/", "-"))
         # pylint: disable=broad-except
         except Exception:
         # pylint: enable=broad-except
@@ -506,7 +507,7 @@ class AuditExportApiView(APIView):
         if clean is not None:
             clean_string = 'true' if clean else 'false'
         try:
-            name = audit.params['name'].replace("/", "-")
+            name = unicodedata.normalize("NFKD", audit.params['name'].replace("/", "-"))
         # pylint: disable=broad-except
         except Exception:
         # pylint: enable=broad-except
@@ -770,9 +771,13 @@ class AuditExportApiView(APIView):
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
             download_file_name = file_name
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
-            os.remove(myfile.name)
-            print("copied {} to S3".format(file_name))
+            try:
+                AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
+                os.remove(myfile.name)
+                print("copied {} to S3".format(file_name))
+            except Exception as e:
+                os.remove(myfile.name)
+                raise Exception("problem copying file {} to S3".format(download_file_name))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
