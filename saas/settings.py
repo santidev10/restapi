@@ -339,10 +339,10 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
     "maria.konareva@sigma.software",
-    "oleksandr.demianyshyn@sigma.software",
+    "sergey.zhiltsov@sigma.software",
     "megumi.sato@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -352,9 +352,8 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
-    "oleksandr.demianyshyn@sigma.software",
     "sergey.zhiltsov@sigma.software",
 ]
 
@@ -366,7 +365,6 @@ UI_ERROR_REPORT_EMAIL_ADDRESSES = [
 GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
     "servando.berna@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -497,8 +495,10 @@ WATSON_NUM_VIDEOS = 100
 TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 AUDIT_SUBSCRIBER_SYNC_THRESHOLD = 4500
+AUDIT_FILL_CHANNEL_DATA_NUM_THREADS = 25
 AUDIT_VIDEO_NUM_THREADS = 20
 AUDIT_CHANNEL_NUM_THREADS = 20
+AUDIT_RECO_NUM_THREADS = 20
 TRANSCRIPTS_LANG_CODES = ["en"]
 TRANSCRIPTS_COUNTRY_CODES = ["US"]
 TRANSCRIPTS_CATEGORIES = []

@@ -463,7 +463,7 @@ class AuditChannel(models.Model):
 
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255, default=None, null=True)
+    name = models.TextField(default=None, null=True)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
     language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name="ac_language",
