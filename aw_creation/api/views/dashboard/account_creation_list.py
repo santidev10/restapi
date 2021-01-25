@@ -23,7 +23,6 @@ from aw_reporting.models import CONVERSIONS
 from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.permissions import UserHasDashboardPermission
 
 
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):

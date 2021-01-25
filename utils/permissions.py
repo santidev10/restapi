@@ -75,10 +75,6 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
         return request.user.has_permission(self.permission)
 
 
-class UserHasDashboardPermission(UserHasPermissionBase):
-    permission = StaticPermissions.DASHBOARD
-
-
 def user_has_permission(perm):
     """
     Create class inherited from UserHasPermissionBase

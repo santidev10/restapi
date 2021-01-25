@@ -281,7 +281,6 @@ class PermissionItem(models.Model):
         [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],
         [StaticPermissions.DOMAIN_MANAGER__DELETE,          False,  "Domain Manager Delete"],
 
-        [StaticPermissions.DASHBOARD,                       False,  "Home Dashboard"],
         [StaticPermissions.FORECAST_TOOL,                   False,  "Forecasting Tool"],
 
         [StaticPermissions.MANAGED_SERVICE,                             False,  "Managed Service Read"],

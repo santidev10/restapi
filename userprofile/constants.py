@@ -78,8 +78,6 @@ class StaticPermissions:
     CTL__VET_ADMIN = "ctl.vet_admin"
     CTL__VET_EXPORT = "ctl.vet_export"
 
-    DASHBOARD = "dashboard"
-
     DOMAIN_MANAGER = "domain_manager"
     DOMAIN_MANAGER__READ_ALL = "domain_manager.read_all"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"
@@ -150,7 +148,7 @@ class StaticPermissions:
                 has_perms(method="patch,post") check to handle method
         :return: bool
         """
-        valid_methods = {"get", "post", "patch", "delete"}
+        valid_methods = {"get", "post", "patch", "put", "delete"}
 
         method = set(method.split(",")) if method else valid_methods
         if method and not method.issubset(valid_methods):
