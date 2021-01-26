@@ -42,10 +42,6 @@ from utils.unittests.reverse import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(AccountCreationSetupAPITestCase, cls).setUpClass()
-
     def _get_url(self, account_id):
         return reverse(Name.CreationSetup.ACCOUNT,
                        [Namespace.AW_CREATION],
