@@ -110,11 +110,12 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
+        user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
 
         indicators = Indicator.CPM, Indicator.CPV
         dimensions = ALL_DIMENSIONS
@@ -125,10 +126,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         for indicator, dimension, account_id, is_staff in test_data:
             msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
                   "".format(indicator, dimension, account_id, is_staff)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
-                user.is_staff = is_staff
-                user.save()
+            with self.subTest(msg=msg):
                 response = self._request(account_id,
                                          indicator=indicator,
                                          dimention=dimension)

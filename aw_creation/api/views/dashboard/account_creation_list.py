@@ -90,7 +90,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
     def get_queryset(self, **filters):
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
-            if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
+            if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         queryset = AccountCreation.objects.all() \
             .annotate(is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),

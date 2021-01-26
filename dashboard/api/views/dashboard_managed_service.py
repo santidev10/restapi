@@ -37,7 +37,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         """
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
-            if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
+            if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         queryset = AccountCreation.objects \
             .filter(

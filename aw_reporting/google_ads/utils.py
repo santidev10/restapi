@@ -15,7 +15,7 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 
-AD_WORDS_STABILITY_STATS_DAYS_COUNT = 10
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 30
 """int: Number of days, when Ads data can be changed by Google Ads.
 
 Syncronization of Campaign stats, AdGroup stats, and other stats

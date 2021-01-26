@@ -43,7 +43,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
         dimension = kwargs.get("dimension")
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:

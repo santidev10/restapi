@@ -32,6 +32,7 @@ from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
@@ -159,7 +160,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.stats = {}
         self.plan_rates = {}
         self.daily_chart = defaultdict(list)
-        self.show_client_cost = not self.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        self.show_client_cost = not self.user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -335,7 +336,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _fields_to_exclude(self):
         user = self.user
-        if user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if not user.has_permission(StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS):
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
 

@@ -35,7 +35,7 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
             raise Http404
         filters = {"is_deleted": False}
         user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             filters["account_id__in"] = visible_accounts
         try:

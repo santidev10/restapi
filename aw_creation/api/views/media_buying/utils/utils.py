@@ -3,6 +3,7 @@ from rest_framework.exceptions import ValidationError
 
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.models import AccountCreation
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 
 
@@ -24,7 +25,7 @@ def validate_targeting(value, valid_targeting, should_raise=True):
 def get_account_creation(user, pk, should_raise=True):
     queryset = AccountCreation.objects.all()
     user_settings = user.get_aw_settings()
-    if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+    if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
         visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         queryset = queryset.filter(account__id__in=visible_accounts)
     try:
