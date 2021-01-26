@@ -21,6 +21,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         default, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
         default.config = dict(domain_name=DEFAULT_DOMAIN)
         default.save()

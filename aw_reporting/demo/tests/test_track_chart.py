@@ -21,6 +21,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         recreate_test_demo_data()
 
     def setUp(self):

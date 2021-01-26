@@ -20,6 +20,7 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS,
                                                    Sections.ADS_STATS))
         video_manager = VideoManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS))
