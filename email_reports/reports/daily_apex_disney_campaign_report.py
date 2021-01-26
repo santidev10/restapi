@@ -3,6 +3,7 @@ import enum
 import logging
 from typing import Union
 from urllib import parse
+from urllib.parse import ParseResult
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -113,20 +114,32 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
         url = stats.ad__creative_tracking_url_template
         if not url:
             return None, None, None
-        parser = TrackingUrlTemplateDisneyIdParser(url)
+        parser = DisneyTrackingUrlTemplateIdParser(url)
         return parser.get_campaign_id(), parser.get_placement_id(), parser.get_creative_id()
 
 
-class TrackingUrlTemplateDisneyIdParser:
+class DisneyTrackingUrlTemplateIdParser:
     """
     Utility class to parse Disney ids from an Ad's creative_tracking_url_template
     """
 
     def __init__(self, url: str):
         self.url = url
-        self.parse_result = parse.urlparse(url)
+        self._init_parse_result()
 
-    def _is_integer(self, value: Union[str, None]) -> Union[str, None]:
+    def _init_parse_result(self):
+        """
+        initialize the parse_result parameter. validates hostname
+        :return:
+        """
+        parse_result = parse.urlparse(self.url)
+        if parse_result.hostname != "ad.doubleclick.net":
+            self.parse_result = None
+            return
+        self.parse_result = parse_result
+
+    @staticmethod
+    def _is_integer(value: Union[str, None]) -> Union[str, None]:
         """
         check that the passed string id can be cast to an integer. return None if not
         also returns none if no value
@@ -143,15 +156,16 @@ class TrackingUrlTemplateDisneyIdParser:
 
     def _get_campaign_placement_path_part(self) -> Union[str, None]:
         """
-        given a ParseResult instantiated from an Ad's creative_tracking_url_template, parse out the raw part
-        that contains the campaign and placement id
+        given a ParseResult loaded from self.campaign_placement_path_part, instantiated from an Ad's
+        creative_tracking_url_template, parse out the raw part that contains the campaign and placement id
         value should look like: B24747908.284532709
-        :param parse_result:
         :return:
         """
         if hasattr(self, "campaign_placement_path_part"):
             return self.campaign_placement_path_part
 
+        if not self.parse_result or not isinstance(self.parse_result, ParseResult):
+            return None
         path_parts = self.parse_result.path.split("/")
         candidates = [part for part in path_parts if part.startswith("B") and len(part.split(".")) == 2]
         self.campaign_placement_path_part = candidates[-1] if candidates else None
@@ -160,7 +174,6 @@ class TrackingUrlTemplateDisneyIdParser:
     def get_campaign_id(self) -> Union[str, None]:
         """
         given a ParseResult instantiated from an Ad's creative_tracking_url_template, parse the campaign id
-        :param parse_result:
         :return:
         """
         raw = self._get_campaign_placement_path_part()
@@ -185,6 +198,8 @@ class TrackingUrlTemplateDisneyIdParser:
         :param parse_result:
         :return:
         """
+        if not self.parse_result:
+            return None
         params = self.parse_result.params
         if not params:
             return None
