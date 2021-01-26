@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.models import AWAccountPermission, Flight, FlightStatistic
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
