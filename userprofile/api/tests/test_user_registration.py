@@ -13,9 +13,10 @@ from userprofile.constants import UserTypeRegular
 from userprofile.models import UserProfile
 from utils.unittests.generic_test import generic_test
 from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class UserRegistrationTestCase(APITestCase):
+class UserRegistrationTestCase(ExtendedAPITestCase):
     registration_url = reverse(UserprofilePathName.CREATE_USER, [Namespace.USER_PROFILE])
     auth_url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
 
