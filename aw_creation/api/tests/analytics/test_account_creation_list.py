@@ -86,9 +86,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = False
-        user.is_superuser = False
-        user.update_access([{"name": "Tools", "value": True}])
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+        })
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
         user.save()
 
@@ -332,26 +332,23 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
             ("all_conversions", 1, 6, 6, 11)
         )
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = True
+        self.user.save()
         for metric, min1, max1, min2, max2 in test_filters:
-            with self.patch_user_settings(**user_settings):
-                response = self.client.get(
-                    "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
-                        base_url=self.url, metric=metric, min=min1, max=max1)
-                )
+            response = self.client.get(
+                "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                    base_url=self.url, metric=metric, min=min1, max=max1)
+            )
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.data["items"][-1]["name"], "Minimum")
             for item in response.data["items"]:
                 self.assertGreaterEqual(item[metric], min1)
                 self.assertLessEqual(item[metric], max1)
 
-            with self.patch_user_settings(**user_settings):
-                response = self.client.get(
-                    "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
-                        base_url=self.url, metric=metric, min=min2, max=max2)
-                )
+            response = self.client.get(
+                "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                    base_url=self.url, metric=metric, min=min2, max=max2)
+            )
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.data["items"][-1]["name"], "Maximum")
             for item in response.data["items"]:
@@ -614,6 +611,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertIsNotNone(accounts[account_creation.id]["is_managed"])
 
     def test_average_cpm_and_cpv(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = True
+        self.user.save()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
@@ -627,9 +626,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                                 cost=cost)
         average_cpv = cost / views
         average_cpm = cost / impressions * 1000
-        user_settings = {UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
@@ -639,6 +636,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertAlmostEqual(acc_data["average_cpm"], average_cpm)
 
     def test_average_cpm_and_cpv_is_reflect_to_user_settings(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS] = True
+        self.user.save()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
@@ -647,11 +646,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         account_creation.refresh_from_db()
         Campaign.objects.create(account=account)
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
@@ -661,11 +656,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertIn("average_cpm", acc_data)
 
         # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS] = False
+        self.user.save()
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
@@ -698,6 +691,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertAlmostEqual(acc_data["ctr_v"], ctr_v)
 
     def test_cost_aw_cost(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = True
+        self.user.save()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
@@ -708,11 +703,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         Campaign.objects.create(id=next(int_iterator), account=account, cost=costs[0])
         Campaign.objects.create(id=next(int_iterator), account=account, cost=costs[1])
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
         acc_data = accs.get(account_creation.id)
@@ -805,12 +796,12 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
         for aw_rates in test_cases:
             user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rates
             }
-            with self.subTest(**user_settings), \
-                 self.patch_user_settings(**user_settings):
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 response = self.client.get(self.url)
-
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 accs = dict((acc["id"], acc) for acc in response.data["items"])
                 acc_data = accs.get(account_creation.id)
@@ -841,11 +832,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                                 account=account, cost=1, video_views=1)
 
         # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
         acc_data = accs.get(account_creation.id)
@@ -857,11 +846,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertIn("average_cpv", acc_data)
 
         # hide
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS] = False
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
         acc_data = accs.get(account_creation.id)
@@ -932,8 +919,13 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         Bug: https://channelfactory.atlassian.net/browse/VIQ-223
         Summary: Analytics > The adjustment of OPs visibility affects Analytics data displaying
         """
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
+        })
         account = Account.objects.create(id=next(int_iterator))
-        AccountCreation.objects.filter(account=account).update(owner=self.user)
+        AccountCreation.objects.filter(account=account).update(owner=user)
         common_rates = dict(ordered_units=1, total_cost=1)
         opportunity = Opportunity.objects.create()
         placement_cpv = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
@@ -953,8 +945,6 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                                 **common_stats)
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: ["some_account_id"],
         }
         with self.patch_user_settings(**user_settings):
@@ -986,11 +976,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
     def test_demo_account_visibility_does_not_affect_result(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = False
+        self.user.save()
+
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
@@ -999,11 +988,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
     def test_demo_is_editable(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = False
+        self.user.save()
+        response = self.client.get(self.url)
 
         item = response.data["items"][0]
         self.assertEqual(item["is_editable"], True)
@@ -1013,11 +1000,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         AccountCreation.objects.create(account=account, owner=self.user)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
         items = response.data["items"]

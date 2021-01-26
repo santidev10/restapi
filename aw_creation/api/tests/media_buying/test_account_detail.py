@@ -25,6 +25,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -152,7 +153,10 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_aw_cost(self):
-        user = self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+        })
         account = Account.objects.create()
         costs = (123, 234)
         opportunity = Opportunity.objects.create()
@@ -174,12 +178,7 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
             date=date(2018, 1, 1), ad_group=ad_group_2,
             cost=costs[1], average_position=1)
         expected_cost = sum(costs)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+        response = self.client.get(self._get_url(account.account_creation.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data["cost"], expected_cost)
 

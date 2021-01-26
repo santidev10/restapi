@@ -54,8 +54,8 @@ class DashboardPerformanceChartItemsApiView(APIView):
         accounts = []
         if item.account:
             accounts.append(item.account.id)
-        show_conversions = user_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
-        show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_conversions = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
+        show_aw_costs = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,

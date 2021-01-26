@@ -391,11 +391,12 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     @generic_test([
         ("Hide dashboard costs = {}. Dimension = {}".format(hide_costs, dimension), (hide_costs, dimension), dict())
-        for hide_costs, dimension in product((True, False), ALL_DIMENSIONS)
+        for hide_costs, dimension in product((False, True), ALL_DIMENSIONS)
     ])
-    def test_all_dimensions_hide_costs_independent(self, hide_dashboard_costs, dimension):
+    def test_all_dimensions_hide_costs_independent(self, show_dashboard_costs, dimension):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: show_dashboard_costs
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -406,19 +407,15 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_costs
-        }
-        with self.patch_user_settings(**user_settings):
-            url = self._get_url(account_creation.id, dimension)
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertGreater(len(items), 0)
-            for item in items:
-                self.assertIsNotNone(item["cost"])
-                self.assertIsNotNone(item["average_cpm"])
-                self.assertIsNotNone(item["average_cpv"])
+        url = self._get_url(account_creation.id, dimension)
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertGreater(len(items), 0)
+        for item in items:
+            self.assertIsNotNone(item["cost"])
+            self.assertIsNotNone(item["average_cpm"])
+            self.assertIsNotNone(item["average_cpv"])
 
     def test_ads_cost(self):
         any_date_1 = date(2018, 1, 1)
