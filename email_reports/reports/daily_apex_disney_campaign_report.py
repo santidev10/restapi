@@ -234,8 +234,10 @@ class DisneyTagSheetMap:
 
     def __init__(self):
         self.s3 = DatoramaTagSheetS3Exporter()
-        self._init_empty_maps()
         self._init_file()
+        self._init_empty_maps()
+        if hasattr(self, "reader"):
+            self._init_maps()
 
     def _get_tag_sheet_file_name(self) -> Union[str, None]:
         """
@@ -271,9 +273,15 @@ class DisneyTagSheetMap:
             return
 
         lines = body.read().decode("utf-8").splitlines(True)
-        reader = csv.reader(lines)
-        header = next(reader)
-        for row in reader:
+        self.reader = csv.reader(lines)
+
+    def _init_maps(self):
+        """
+        initialize maps from the reader
+        :return:
+        """
+        header = next(self.reader)
+        for row in self.reader:
             self._map_id_to_name(self.campaign_map, row, TagSheetColumnEnum.CAMPAIGN_ID,
                                  TagSheetColumnEnum.CAMPAIGN_NAME)
             self._map_id_to_name(self.placement_map, row, TagSheetColumnEnum.PLACEMENT_ID,
@@ -297,6 +305,8 @@ class DisneyTagSheetMap:
         id = self._get_column_value(row=row, enum_obj=id_enum)
         advertiser_id = self._get_column_value(row, TagSheetColumnEnum.ADVERTISER_ID)
         advertiser_name = self._get_column_value(row, TagSheetColumnEnum.ADVERTISER_NAME)
+        if not id:
+            return
         map_item[id] = (advertiser_id, advertiser_name)
 
     def _map_id_to_name(self, map_item: dict, row: list, id_enum: TagSheetColumnEnum, name_enum: TagSheetColumnEnum):
@@ -310,6 +320,8 @@ class DisneyTagSheetMap:
         """
         id = self._get_column_value(row=row, enum_obj=id_enum)
         name = self._get_column_value(row=row, enum_obj=name_enum)
+        if not id:
+            return
         map_item[id] = name
 
     @staticmethod
