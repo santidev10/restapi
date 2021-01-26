@@ -17,7 +17,9 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
     try:
         executor_analyzer = ExecutorAnalyzer(iq_campaign)
     except PerformIQDataFetchError:
-        iq_campaign.results["error"] = "Unable to fetch data for analysis. Please re-OAuth."
+        all_results = {
+            "error": "Unable to fetch data for analysis. Please re-OAuth."
+        }
     else:
         if executor_analyzer.channel_analyses:
             executor_analyzer.analyze()
@@ -29,7 +31,7 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
             all_results["no_placement_analyzed"] = False
         else:
             all_results = {"no_placement_analyzed": True}
-            iq_campaign.results = all_results
+    iq_campaign.results = all_results
     iq_campaign.completed = now_in_default_tz()
     iq_campaign.save(update_fields=["started", "results", "completed"])
     _send_completion_email(email, iq_campaign, completion_link)
