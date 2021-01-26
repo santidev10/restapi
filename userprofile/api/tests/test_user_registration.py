@@ -11,7 +11,6 @@ from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import UserProfile
-from userprofile.models import PermissionItem
 from utils.unittests.generic_test import generic_test
 from utils.unittests.reverse import reverse
 
@@ -19,11 +18,6 @@ from utils.unittests.reverse import reverse
 class UserRegistrationTestCase(APITestCase):
     registration_url = reverse(UserprofilePathName.CREATE_USER, [Namespace.USER_PROFILE])
     auth_url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        PermissionItem.load_permissions()
 
     def _user_data(self, **kwargs):
         password = kwargs.get("password", "EmptyPassword1!")

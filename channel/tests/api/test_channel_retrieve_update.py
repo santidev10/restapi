@@ -16,7 +16,6 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
-from userprofile.permissions import Permissions
 from utils.unittests.celery import mock_send_task
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
@@ -28,11 +27,6 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, channel_id):
         return reverse(ChannelPathName.CHANNEL, [Namespace.CHANNEL], args=(channel_id,))
-
-    @classmethod
-    def setUpClass(cls):
-        super(ChannelRetrieveUpdateTestCase, cls).setUpClass()
-        Permissions.sync_groups()
 
     @mock_send_task()
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
