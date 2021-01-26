@@ -1,7 +1,7 @@
 from uuid import uuid4
 from collections import defaultdict
 
-from django.test.testcases import TestCase
+from django.test import TestCase
 
 from segment.models import CustomSegment
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
