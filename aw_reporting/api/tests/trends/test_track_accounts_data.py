@@ -29,7 +29,7 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
         self.user = self.create_test_user(perms={
             StaticPermissions.CHF_TRENDS: True,
         })
-        self.account = self.create_account(user)
+        self.account = self.create_account(self.user)
         self.campaign = Campaign.objects.create(
             id="1", name="", account=self.account)
         self.ad_group = AdGroup.objects.create(

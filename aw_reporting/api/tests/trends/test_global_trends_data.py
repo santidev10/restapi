@@ -341,14 +341,15 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             affects data on CHF Trends
         Ticket: https://channelfactory.atlassian.net/browse/SAAS-2779
         """
+        self.user = self.create_test_user({
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rates,
+        })
         account, campaign = self._create_ad_group_statistic("111")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
-
-        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
-        self.user.save()
 
         stats = AdGroupStatistic.objects.all() \
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))

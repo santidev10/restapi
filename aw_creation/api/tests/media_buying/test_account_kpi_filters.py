@@ -8,6 +8,7 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -20,6 +21,11 @@ class MediaBuyingAccountKpiFiltersTestCase(ExtendedAPITestCase):
             [RootNamespace.AW_CREATION, Namespace.MEDIA_BUYING],
             args=(account_creation_id,),
         )
+
+    def setUp(self) -> None:
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_no_permission_fail(self):
         self.create_test_user()
@@ -34,7 +40,6 @@ class MediaBuyingAccountKpiFiltersTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_not_visible_account(self):
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         query_prams = QueryDict("targeting=all").urlencode()
         url = f"{self._get_url(account.account_creation.id)}?{query_prams}"
@@ -46,7 +51,6 @@ class MediaBuyingAccountKpiFiltersTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_get_success(self):
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         query_prams = QueryDict("targeting=all").urlencode()
         url = f"{self._get_url(account.account_creation.id)}?{query_prams}"

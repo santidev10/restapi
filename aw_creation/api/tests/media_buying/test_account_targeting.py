@@ -8,6 +8,7 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -21,6 +22,11 @@ class MediaBuyingAccountTargetingTestCase(ExtendedAPITestCase):
             args=(account_creation_id,),
         )
 
+    def setUp(self) -> None:
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
+
     def test_no_permission_fail(self):
         self.create_test_user()
         account = Account.objects.create()
@@ -32,7 +38,6 @@ class MediaBuyingAccountTargetingTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_fail_non_visible_account(self):
-        self.create_admin_user()
         account = Account.objects.create()
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: []
@@ -42,11 +47,10 @@ class MediaBuyingAccountTargetingTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_get_success(self):
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
-            name="", is_managed=False, owner=user,
+            name="", is_managed=False, owner=self.user,
             account=account, is_approved=True)
         query_prams = QueryDict("targeting=all").urlencode()
         user_settings = {
@@ -61,10 +65,9 @@ class MediaBuyingAccountTargetingTestCase(ExtendedAPITestCase):
 
     def test_success_no_overall_summary(self):
         """ Overall summary should be None if targeting_status filter is applied """
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="", skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
-            name="", is_managed=False, owner=user,
+            name="", is_managed=False, owner=self.user,
             account=account, is_approved=True)
         query_prams = QueryDict("targeting=all&targeting_status=1").urlencode()
         user_settings = {
