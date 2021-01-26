@@ -645,3 +645,73 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             asc_items[-1]["general_data"]["primary_category"],
             primary_category
         )
+
+    def test_research_phrase_starts_with(self):
+        """
+        test that searching for videos will yield results of videos that has a title or description
+        with phrase that starts with what the user provided as input.
+        """
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+
+        video_id = str(next(int_iterator))
+        video_id_2 = str(next(int_iterator))
+        video_id_3 = str(next(int_iterator))
+        video_id_4 = str(next(int_iterator))
+
+        most_relevant_video = Video(**{
+            "meta": {"id": video_id},
+            "main": {"id": video_id},
+            "general_data": {
+                "title": "watchmojo",
+                "description": "the quick brown fox jumps over the lazy dog",
+            }
+        })
+        relevant_video2 = Video(**{
+            "meta": {"id": video_id_2},
+            "main": {"id": video_id_2},
+            "general_data": {
+                "title": "watchmojo.com",
+                "description": "woah did you see that? that quick brown fox jumped over a dog!",
+            }
+        })
+        relevant_video3 = Video(**{
+            "meta": {"id": video_id_3},
+            "main": {"id": video_id_3},
+            "general_data": {
+                "title": "some text",
+                "description": "woah did you see that? watchmojo brown fox jumped over a dog!",
+            }
+        })
+        relevant_video4 = Video(**{
+            "meta": {"id": video_id_4},
+            "main": {"id": video_id_4},
+            "general_data": {
+                "title": "some text",
+                "description": "woah did you see that? watchmojo.com brown fox jumped over a dog!",
+            }
+        })
+
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([most_relevant_video, relevant_video2,
+                                                               relevant_video3, relevant_video4])
+
+        # test sorting by _score:desc
+        desc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
+        self.assertEqual(len(desc_items), 4)
+
+        # test sort _score:asc
+        asc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
+        self.assertEqual(len(asc_items), 4)

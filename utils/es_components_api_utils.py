@@ -258,13 +258,23 @@ class QueryGenerator:
                 search_phrase = value
             fields.append(field)
         query = Q(
-            {
-                "multi_match": {
-                    "query": search_phrase,
-                    "type": "phrase",
-                    "fields": fields
-                }
-            }
+            "bool",
+            should=[
+                Q(
+                    "multi_match",
+                    query=search_phrase,
+                    type="phrase",
+                    fields=fields,
+                    boost=2
+                ),
+                Q(
+                    "multi_match",
+                    query=search_phrase,
+                    type="phrase_prefix",
+                    fields=fields,
+                    boost=1
+                )
+            ]
         )
         if search_phrase:
             filters.append(query)
