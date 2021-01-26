@@ -7,20 +7,22 @@ from django.conf import settings
 from django.utils import timezone
 
 from .utils import get_params
+from es_components.tests.utils import ESTestCase
+from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.executor_analyzer import ExecutorAnalyzer
 from performiq.analyzers import PerformanceAnalyzer
 from performiq.analyzers.constants import AnalysisResultSection
 from performiq.analyzers import ChannelAnalysis
 from performiq.models import IQCampaign
+from performiq.models import OAuthAccount
+from performiq.models.constants import OAuthType
+import performiq.tasks.start_analysis as start_analysis
 from utils.unittests.test_case import ExtendedAPITestCase
-from es_components.tests.utils import ESTestCase
-import performiq.tasks.start_analysis as start_analysis 
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
 class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
-
     @mock_s3
     def test_results_keys(self):
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -161,3 +163,24 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         self.assertTrue(iq_campaign.results and iq_campaign.completed is not None)
+
+    def test_performiq_data_error(self):
+        """ Test that error is saved if exception is thrown while fetching oauth data """
+        user = self.create_test_user()
+        with self.subTest("Catch DV360 oauth error"),\
+                mock.patch("performiq.analyzers.executor_analyzer.get_dv360_data", side_effect=PerformIQDataFetchError):
+            oauth = OAuthAccount.objects.create(oauth_type=OAuthType.DV360.value, user=user)
+            iq_campaign = IQCampaign.objects.create(user=user)
+            with mock.patch.object(ExecutorAnalyzer, "_get_oauth_account", return_value=oauth):
+                start_analysis.start_analysis_task(iq_campaign.id, "", "")
+            iq_campaign.refresh_from_db()
+            self.assertTrue(iq_campaign.results["error"])
+
+        with self.subTest("Catch Adwords oauth error"),\
+                mock.patch("performiq.analyzers.executor_analyzer.get_google_ads_data", side_effect=PerformIQDataFetchError):
+            oauth = OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
+            iq_campaign = IQCampaign.objects.create(user=user)
+            with mock.patch.object(ExecutorAnalyzer, "_get_oauth_account", return_value=oauth):
+                start_analysis.start_analysis_task(iq_campaign.id, "", "")
+            iq_campaign.refresh_from_db()
+            self.assertTrue(iq_campaign.results["error"])
