@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 DISNEY_CREATIVE_ID_KEY = "dc_trk_cid"
 
+MAKE_GOOD = "Make Good"
 
 class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
 
@@ -82,18 +83,20 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
             advertiser_id, advertiser_name = self.tag_sheet_map.get_advertiser_id_and_name(campaign_id=campaign_id,
                                                                                            placement_id=placement_id,
                                                                                            creative_id=creative_id)
+            placement_name = self.tag_sheet_map.get_placement_name(placement_id) if placement_id else None
+
             rows.append([
-                advertiser_id,  # Campaign Advertiser ID (blank for v1)
-                advertiser_name,  # Campaign Advertiser [name] (blank for v1)
+                advertiser_id,  # Campaign Advertiser ID
+                advertiser_name,  # Campaign Advertiser [name]
                 campaign_id,
-                self.tag_sheet_map.get_campaign_name(campaign_id) if campaign_id else None,  # Campaign Name (blank for v1)
+                self.tag_sheet_map.get_campaign_name(campaign_id) if campaign_id else None,  # Campaign Name
                 placement_id,
-                self.tag_sheet_map.get_placement_name(placement_id) if placement_id else None,  # Placement Name (blank for v1)
+                placement_name,  # Placement Name
                 creative_id,
-                self.tag_sheet_map.get_creative_name(creative_id) if creative_id else None,  #  Creative Name (blank for v1)
+                self.tag_sheet_map.get_creative_name(creative_id) if creative_id else None,  # Creative Name
                 stats.date.strftime(DATE_FORMAT),  # Date
                 "GBP",  # Currency
-                media_cost,
+                0 if isinstance(placement_name, str) and MAKE_GOOD in placement_name else media_cost,
                 stats.impressions,
                 stats.clicks,
                 stats.video_views,
