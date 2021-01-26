@@ -22,7 +22,7 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         recreate_test_demo_data()
 
     def setUp(self):
-        self.create_test_user(perms={
+        self.user = self.create_test_user(perms={
             StaticPermissions.CHF_TRENDS: True,
         })
 
@@ -62,11 +62,11 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account = response.data[0]

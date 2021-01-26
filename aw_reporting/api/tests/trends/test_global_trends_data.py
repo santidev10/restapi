@@ -346,15 +346,15 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+
         stats = AdGroupStatistic.objects.all() \
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))
         expected_cpv = stats["views"] / stats["cost"]
         self.assertGreater(expected_cpv, 0)
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
-             self.patch_user_settings(**user_settings):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)

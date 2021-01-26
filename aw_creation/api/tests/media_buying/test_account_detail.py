@@ -107,7 +107,9 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_fail_non_visible_account(self):
-        user = self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
         account = Account.objects.create()
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: []
@@ -154,6 +156,8 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
 
     def test_aw_cost(self):
         self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MEDIA_BUYING: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
             StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
         })
@@ -183,7 +187,13 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["cost"], expected_cost)
 
     def test_cost_client_cost(self):
-        user = self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
@@ -255,17 +265,12 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
                 start=c.start_date,
                 end=c.end_date)
                 for c in campaigns])
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+        response = self.client.get(self._get_url(account.account_creation.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data["cost"], expected_cost)
 
     def test_cost_method(self):
-        user = self.create_admin_user()
+        self.create_admin_user()
         opportunity = Opportunity.objects.create()
         placement1 = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
@@ -288,18 +293,21 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         CampaignCreation.objects.create(account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(account_creation=account_creation, campaign=None)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account_creation.id))
+
+        response = self.client.get(self._get_url(account_creation.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data["cost_method"]),
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_dynamic_placement_budget_rates_are_empty(self):
-        user = self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         opportunity = Opportunity.objects.create()
         placement_cpv = OpPlacement.objects.create(
             id=next(int_iterator),
@@ -325,15 +333,10 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         Campaign.objects.create(id=next(int_iterator),
                                 salesforce_placement=placement_cpv,
                                 account=account)
+
         account_creation_id = account.account_creation.id
         url = self._get_url(account_creation_id)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation_id)
         with self.subTest("CPM"):
@@ -347,7 +350,13 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement if several placements with the same type are present
         Root cause: stats aggregates multiple times on several Campaign-Placement relations
         """
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(chf_mcc_account)
@@ -380,12 +389,8 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         cpm_agg = get_agg(SalesForceGoalType.CPM)
         expected_cpm = cpm_agg["cost"] / cpm_agg["units"] * 1000
         expected_cpv = cpv_agg["cost"] / cpv_agg["units"]
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+
+        response = self.client.get(self._get_url(account.account_creation.id))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         item = response.data
@@ -395,7 +400,11 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
             self.assertAlmostEqual(item["average_cpv"], expected_cpv)
 
     def test_min_max_based_on_statistic(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(
             id=next(int_iterator),
         )
@@ -410,18 +419,18 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
                 cost=1,
                 date=dt,
             )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+        response = self.client.get(self._get_url(account.account_creation.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["statistic_min_date"], dates[0])
         self.assertEqual(data["statistic_max_date"], dates[-1])
 
     def test_no_overcalculate_statistic(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(
             id=next(int_iterator),
         )
@@ -437,17 +446,18 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
                 cost=1,
                 date=dt,
             )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+        response = self.client.get(self._get_url(account.account_creation.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["impressions"], campaign.impressions)
 
     def test_video_views_impressions_ad_group_type(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
@@ -467,12 +477,7 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id=3, campaign=campaign_3, type="In-stream")
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self._get_url(account.account_creation.id))
+        response = self.client.get(self._get_url(account.account_creation.id))
         impressions = campaign_1.impressions + campaign_3.impressions
         video_views = campaign_1.video_views + campaign_3.video_views
         self.assertEqual(response.data["impressions"], impressions)

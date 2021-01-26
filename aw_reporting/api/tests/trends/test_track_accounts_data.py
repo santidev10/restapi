@@ -26,7 +26,7 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.DATA)
 
     def setUp(self):
-        user = self.create_test_user(perms={
+        self.user = self.create_test_user(perms={
             StaticPermissions.CHF_TRENDS: True,
         })
         self.account = self.create_account(user)
@@ -162,12 +162,11 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
             breakdown=Breakdown.DAILY
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+
         self.assertGreater(expected_cpv, 0)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(any_date):
+        with patch_now(any_date):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)
