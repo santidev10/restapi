@@ -822,6 +822,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         channel_id_2 = str(next(int_iterator))
         channel_id_3 = str(next(int_iterator))
         channel_id_4 = str(next(int_iterator))
+        channel_id_5 = str(next(int_iterator))
 
         most_relevant_channel = Channel(**{
             "meta": {
@@ -846,7 +847,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 "id": channel_id_3,
             },
             "general_data": {
-                "title": "some text",
+                "title": "another relevant channel",
                 "description": "woah did you see that? watchmojo brown fox jumped over a dog!",
             }
         })
@@ -855,14 +856,23 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 "id": channel_id_4,
             },
             "general_data": {
-                "title": "some text",
+                "title": "fourth channel",
                 "description": "woah did you see that? watchmojo.com brown fox jumped over a dog!",
+            }
+        })
+        not_relevant_channel5 = Channel(**{
+            "meta": {
+                "id": channel_id_5,
+            },
+            "general_data": {
+                "title": "not related",
+                "description": "woah did you see that? brown fox jumped over a dog!",
             }
         })
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([most_relevant_channel, relevant_channel2,
-                                                  relevant_channel3, relevant_channel4])
+                                                  relevant_channel3, relevant_channel4, not_relevant_channel5])
 
         # test sorting by _score:desc
         desc_url = self.url + "?" + urllib.parse.urlencode({
@@ -871,8 +881,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         desc_response = self.client.get(desc_url)
         desc_items = desc_response.data["items"]
-        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
         self.assertEqual(len(desc_items), 4)
+        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
+        self.assertEqual(desc_items[1]["general_data"]["title"], "watchmojo.com")
+
 
         # test sort _score:asc
         asc_url = self.url + "?" + urllib.parse.urlencode({
@@ -881,5 +893,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data["items"]
-        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(len(asc_items), 4)
+        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
+        self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
+

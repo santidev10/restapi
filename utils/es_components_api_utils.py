@@ -253,29 +253,30 @@ class QueryGenerator:
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
-                if field == "general_data.title":
-                    field = "general_data.title^2"
                 search_phrase = value
             fields.append(field)
-        query = Q(
-            "bool",
-            should=[
-                Q(
-                    "multi_match",
-                    query=search_phrase,
-                    type="phrase",
-                    fields=fields,
-                    boost=2
-                ),
-                Q(
-                    "multi_match",
-                    query=search_phrase,
-                    type="phrase_prefix",
-                    fields=fields,
-                    boost=1
-                )
-            ]
-        )
+
+        should_array = []
+        for field in fields:
+            boost_value = 1
+            if field == "general_data.title":
+                boost_value = 3
+
+            should_array_item_match_phrase_prefix = Q("match_phrase_prefix",
+                                                      **{
+                                                          field: {"query": search_phrase, "boost": boost_value}
+                                                      })
+            should_array.append(should_array_item_match_phrase_prefix)
+
+            # add 1 to the boost_value for match field
+            boost_value = boost_value + 1
+            should_array_item_match_phrase = Q("match_phrase",
+                                   **{
+                                       field: {"query": search_phrase, "boost": boost_value}
+                                   })
+            should_array.append(should_array_item_match_phrase)
+
+        query = Q("bool", should=should_array)
         if search_phrase:
             filters.append(query)
         return filters

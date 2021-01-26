@@ -658,6 +658,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         video_id_2 = str(next(int_iterator))
         video_id_3 = str(next(int_iterator))
         video_id_4 = str(next(int_iterator))
+        video_id_5 = str(next(int_iterator))
 
         most_relevant_video = Video(**{
             "meta": {"id": video_id},
@@ -679,7 +680,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "meta": {"id": video_id_3},
             "main": {"id": video_id_3},
             "general_data": {
-                "title": "some text",
+                "title": "another relevant video",
                 "description": "woah did you see that? watchmojo brown fox jumped over a dog!",
             }
         })
@@ -687,14 +688,22 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             "meta": {"id": video_id_4},
             "main": {"id": video_id_4},
             "general_data": {
-                "title": "some text",
+                "title": "fourth video",
                 "description": "woah did you see that? watchmojo.com brown fox jumped over a dog!",
+            }
+        })
+        not_relevant_video5 = Video(**{
+            "meta": {"id": video_id_5},
+            "main": {"id": video_id_5},
+            "general_data": {
+                "title": "some text",
+                "description": "woah did you see that? brown fox jumped over a dog!",
             }
         })
 
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         VideoManager(sections=[Sections.GENERAL_DATA]).upsert([most_relevant_video, relevant_video2,
-                                                               relevant_video3, relevant_video4])
+                                                               relevant_video3, relevant_video4, not_relevant_video5])
 
         # test sorting by _score:desc
         desc_url = self.get_url() + urllib.parse.urlencode({
@@ -703,8 +712,9 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         })
         desc_response = self.client.get(desc_url)
         desc_items = desc_response.data["items"]
-        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
         self.assertEqual(len(desc_items), 4)
+        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
+        self.assertEqual(desc_items[1]["general_data"]["title"], "watchmojo.com")
 
         # test sort _score:asc
         asc_url = self.get_url() + urllib.parse.urlencode({
@@ -713,5 +723,6 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         })
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data["items"]
-        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(len(asc_items), 4)
+        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
+        self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
