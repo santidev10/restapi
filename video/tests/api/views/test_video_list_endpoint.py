@@ -303,7 +303,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
     def test_permissions(self):
         user = self.create_test_user(perms={
             StaticPermissions.RESEARCH: True,
-            StaticPermissions.RESEARCH__VIDEO_DETAIL: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
         })
         video_id = str(next(int_iterator))
         video = Video(**{

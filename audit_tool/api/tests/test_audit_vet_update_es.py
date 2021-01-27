@@ -2,6 +2,7 @@ import json
 from uuid import uuid4
 
 from mock import patch
+from rest_framework.status import HTTP_200_OK
 
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditChannel
@@ -20,6 +21,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.models import CustomSegment
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -29,6 +31,12 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA))
     video_manager = VideoManager(sections=(Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA))
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CTL__VET: True,
+        })
 
     def _create_audit_meta_vet(self, audit_type, item_id):
         BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
@@ -50,10 +58,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_update_channel_es(self, mock_generate_vetted):
         """ Test vetting updates brand safety and general data """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         bs_category_data = {
@@ -133,10 +140,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_update_video_es(self, mock_generate_vetted):
         """ Test vetting updates brand safety """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         bs_category_data = {
@@ -209,9 +215,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_send_empty_brand_safety_channel_success(self, mock_generate_vetted):
         """ Test sending empty vetted brand safety categories saves properly """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         BadWordCategory.objects.get_or_create(id=5, defaults=dict(name="test_category_5"))
         BadWordCategory.objects.get_or_create(id=6, defaults=dict(name="test_category_6"))
@@ -247,9 +252,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_send_empty_brand_safety_videos_success(self, mock_generate_vetted):
         """ Test sending empty vetted brand safety categories saves properly """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         BadWordCategory.objects.get_or_create(id=7, defaults=dict(name="test_category_5"))
         BadWordCategory.objects.get_or_create(id=8, defaults=dict(name="test_category_6"))
@@ -285,10 +289,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_update_channel_duplicate_categories(self, mock_generate_vetted):
         """ Test vetting updates brand safety and iab categories with no duplicates """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel = Channel(audit_item_yt_id)
@@ -328,10 +331,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_update_video_dupliate_categories(self, mock_generate_vetted):
         """ Test vetting updates brand safety and iab categories with no duplicates """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         video = Video(audit_item_yt_id)
@@ -367,7 +369,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_admin_channel(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
-        user = self.create_admin_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
         CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
@@ -407,14 +411,18 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch(
-                "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+                "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety"
+        ) as mock_update_brand_safety:
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated_channel.brand_safety.limbo_status, False)
 
     def test_patch_admin_video(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
-        user = self.create_admin_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=0 for videos
         CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
@@ -453,11 +461,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_channel_review_safe(self, mock_generate_vetted):
         """ Test vetting something as safe with a bad score marks for review and saves previous system score """
-        user = self.create_test_user()
-        user.add_custom_user_permission("vet_audit")
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel = Channel(audit_item_yt_id)
@@ -500,11 +506,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_video_review_unsafe(self, mock_generate_vetted):
         """ Test vetting something as safe with an unsafe score marks for review and saves previous system score """
-        user = self.create_test_user()
         audit = AuditProcessor.objects.create(audit_type=1)
-        user.add_custom_user_permission("vet_audit")
         # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         video = Video(
@@ -541,11 +545,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_channel_confirm_safe(self, mock_generate_vetted):
         """ Test vetting confirm as safe with safe score removes review status by saving limbo_status = False"""
-        user = self.create_test_user()
-        user.add_custom_user_permission("vet_audit")
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel = Channel(audit_item_yt_id)
@@ -587,11 +589,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_video_confirms_unsafe(self, mock_generate_vetted):
         """ Test vetting confirms as unsafe with unsafe score removes review status by saving limbo_status = False"""
-        user = self.create_test_user()
         audit = AuditProcessor.objects.create(audit_type=1)
-        user.add_custom_user_permission("vet_audit")
         # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         video = Video(
@@ -627,11 +627,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_video_unsafe_ignore(self, mock_generate_vetted):
         """ Test vetting something as unsafe with an safe score does not save limbo status """
-        user = self.create_test_user()
         audit = AuditProcessor.objects.create(audit_type=1)
-        user.add_custom_user_permission("vet_audit")
         # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         video = Video(
@@ -667,11 +665,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_channel_unsafe_ignore(self, mock_generate_vetted):
         """ Test vetting something as unsafe with an safe score does not save limbo status """
-        user = self.create_test_user()
-        user.add_custom_user_permission("vet_audit")
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel = Channel(audit_item_yt_id)
@@ -711,10 +707,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_ignore_unvettable(self, mock_generate_vetted):
         """ Test ignore saving non vettable brand safety categories """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
 
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
@@ -749,10 +744,9 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_patch_ignore_non_existant_category(self, mock_generate_vetted):
         """ Test ignore saving non existant brand safety categories (May have been removed) """
-        user = self.create_admin_user()
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+        CustomSegment.objects.create(owner=self.user, title="test", segment_type=1, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
 
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"

@@ -54,7 +54,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         override to modify response when account_id is passed
         """
         account_id = request.query_params.get('account_id', None)
-        if account_id and not request.user.is_staff:
+        if account_id and not request.user.has_permission(StaticPermissions.ADMIN):
             return HttpResponseForbidden()
         elif account_id:
             data = self._get_extra_data(account_id)

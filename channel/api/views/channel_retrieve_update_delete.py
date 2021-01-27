@@ -41,7 +41,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                                          AddFieldsMixin):
     permission_classes = (
         or_permission_classes(
-            StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_DETAIL),
+            StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA),
             OwnChannelPermissions,
         ),
     )

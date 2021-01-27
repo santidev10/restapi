@@ -17,8 +17,6 @@ from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.tasks import update_segment_statistics
 from userprofile.constants import StaticPermissions
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from utils.views import get_object
 from utils.views import validate_fields
 

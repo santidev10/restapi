@@ -4,7 +4,6 @@ from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group
 from django.test import override_settings
 from django.utils import timezone
 from elasticsearch_dsl import Q
@@ -18,7 +17,6 @@ from es_components.managers import ChannelManager
 from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
 from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.es_components_cache import flush_cache
@@ -40,10 +38,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_brand_safety(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
         channel_id = str(next(int_iterator))
         score = 92
         channel = Channel(**{

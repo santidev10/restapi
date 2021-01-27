@@ -10,8 +10,6 @@ from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -23,14 +21,13 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
                        args=(account_id,))
 
     def test_success_get_chf_account(self):
-        user = self.create_test_user(perms={
+        self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
         })
         account = Account.objects.create(id=1, name="")
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
-        user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
         campaign_id = 1
         ad_group_id = 1
         campaign = Campaign.objects.create(
@@ -48,7 +45,6 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
         })
-        user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
         recreate_test_demo_data()
         account = Account.objects.get(id=DEMO_ACCOUNT_ID)
         url = self._get_url(account.account_creation.id)
@@ -64,7 +60,6 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
         })
-        user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
         url = self._get_url("07c1856dc03f")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

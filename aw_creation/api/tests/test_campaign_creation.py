@@ -454,8 +454,6 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertIs(campaign_creation.is_deleted, True)
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
-        user = self.user
-        self.fill_all_groups(user)
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",

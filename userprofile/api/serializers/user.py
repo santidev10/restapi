@@ -35,7 +35,6 @@ class UserSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "access",
             "aw_settings",
             "can_access_media_buying",
             "company",

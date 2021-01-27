@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -12,7 +11,6 @@ from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import MANAGED_SERVICE_DELIVERY_DATA
 from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
 
 
 class DashboardPerformanceChartItemsApiView(APIView):
@@ -64,9 +62,8 @@ class DashboardPerformanceChartItemsApiView(APIView):
             **filters)
         data = chart.get_items()
         data["currency_code"] = get_currency_code(item, show_aw_costs)
-        managed_service_hide_delivery_data = request.user.has_custom_user_group(
-            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
-        )
+        managed_service_hide_delivery_data = not request.user.has_permission(
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS)
         if managed_service_hide_delivery_data:
             # These fields cannot be removed in base classes, because
             # the fields are used to calc extra params CPM, CTR, *rates, etc.

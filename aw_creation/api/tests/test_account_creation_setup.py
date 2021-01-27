@@ -714,10 +714,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_account_creation(self):
         user = self.user
-        user.remove_custom_user_permission("view_media_buying")
-
-        self.fill_all_groups(user)
-
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
         account_creation = AccountCreation.objects \

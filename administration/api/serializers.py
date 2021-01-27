@@ -108,7 +108,7 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "access",
+            "perms",
             "google_account_id",
             "can_access_media_buying",
             "annual_ad_spend",
@@ -123,7 +123,6 @@ class UserSerializer(ModelSerializer):
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
-    access = ListField(required=False)
     admin = BooleanField(required=False)
 
     def validate(self, attrs):
@@ -146,7 +145,7 @@ class UserUpdateSerializer(ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
-            "status", "access", "admin",
+            "status", "admin",
         )
 
     def save(self, **kwargs):

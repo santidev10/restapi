@@ -41,9 +41,10 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
         "completion_rate"
     ]
 
-    def setUp(self, user=None):
-        self.user = self.create_test_user() if not user else user
-        self.user.add_custom_user_permission("view_dashboard")
+    def setUp(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
@@ -51,9 +52,9 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
 
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = False
-        user.is_superuser = False
-        user.update_access([{"name": "Tools", "value": True}])
+        user.perms.update({
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
         user.save()
 

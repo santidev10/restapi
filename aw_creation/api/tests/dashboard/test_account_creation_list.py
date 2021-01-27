@@ -88,9 +88,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = False
-        user.is_superuser = False
-        user.update_access([{"name": "Tools", "value": True}])
+        user.perms.update({
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
         user.save()
 
