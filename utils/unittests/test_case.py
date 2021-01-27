@@ -3,7 +3,7 @@ from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APITransactionTestCase
 
 from userprofile.constants import StaticPermissions
 from userprofile.models import UserDeviceToken
@@ -83,5 +83,10 @@ class ExtendedAPITestCase(APITestCase, APITestUserMixin):
         return patch_user_settings(self.request_user, **kwargs)
 
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         PermissionItem.load_permissions()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()

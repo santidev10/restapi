@@ -320,10 +320,9 @@ class PermissionItem(models.Model):
     @staticmethod
     def load_permissions():
         for p in PermissionItem.STATIC_PERMISSIONS:
-            i, _ = PermissionItem.objects.get_or_create(permission=p[0])
-            i.default_value = p[1]
-            i.display = p[2]
-            i.save(update_fields=['default_value', 'display'])
+            defaults = dict(permission=p[0], default_value=p[1], display=p[2])
+            PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
+
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)

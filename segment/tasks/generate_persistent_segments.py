@@ -1,7 +1,7 @@
 import logging
 
 from saas import celery_app
-from segment.segment_list_generator import SegmentListGenerator
+import segment.segment_list_generator as ctl_generator
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
@@ -16,7 +16,7 @@ def generate_persistent_segments():
     is_acquired = REDIS_CLIENT.lock(LOCK_NAME, EXPIRE).acquire(blocking=False)
     if is_acquired:
         try:
-            SegmentListGenerator(0).run()
+            ctl_generator.SegmentListGenerator(0).run()
         # pylint: disable=broad-except
         except Exception:
             # pylint: enable=broad-except

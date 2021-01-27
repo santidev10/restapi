@@ -11,7 +11,7 @@ from segment.models import PersistentSegmentVideo
 from segment.segment_list_generator import SegmentListGenerator
 
 
-class PersistentSegmentCreationTestCase(TransactionTestCasee):
+class PersistentSegmentCreationTestCase(TransactionTestCase):
     def test_should_not_update_master_channel_whitelist(self):
         list_generator = SegmentListGenerator(0)
         created_date = timezone.now() - timedelta(days=SegmentListGenerator.UPDATE_THRESHOLD - 1)

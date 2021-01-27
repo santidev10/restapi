@@ -26,9 +26,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.user = self.create_test_user(perms={
             StaticPermissions.CTL: True,
         })
-    @classmethod
-    def tearDownClass(cls):
-        CustomSegment.objects.all().delete()
 
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST) + f"?segment_type={segment_type}"
