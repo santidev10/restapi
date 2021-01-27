@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 
@@ -12,3 +13,8 @@ class SavedEmail(models.Model):
                           editable=False)
     html = models.TextField()
     date = models.DateField(auto_now_add=True)
+
+
+class VideoCreativeData(models.Model):
+    id = models.CharField(primary_key=True, max_length=50, unique=True)
+    data = JSONField(default=dict)
