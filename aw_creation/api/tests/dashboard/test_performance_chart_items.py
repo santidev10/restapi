@@ -206,6 +206,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             StaticPermissions.MANAGED_SERVICE: True,
             StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))

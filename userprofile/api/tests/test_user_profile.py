@@ -36,7 +36,6 @@ class UserProfileTestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                "access",
                 "aw_settings",
                 "can_access_media_buying",
                 "company",
