@@ -85,4 +85,3 @@ class ExtendedAPITestCase(APITestCase, APITestUserMixin):
     @classmethod
     def setUpTestData(cls):
         PermissionItem.load_permissions()
-

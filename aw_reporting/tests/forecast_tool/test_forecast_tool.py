@@ -1,7 +1,7 @@
 from datetime import date
 from datetime import datetime
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -21,7 +21,7 @@ from utils.datetime import now_in_default_tz
 from utils.unittests.recalculate_de_norm_fields import recalculate_de_norm_fields
 
 
-class ForecastToolTestCase(TestCase):
+class ForecastToolTestCase(TransactionTestCase):
     def setUp(self):
         self.user = UserProfile.objects.create()
 

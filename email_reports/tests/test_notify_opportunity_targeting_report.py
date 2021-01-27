@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core import mail
 from django.db.models.signals import post_save
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from ads_analyzer.models import OpportunityTargetingReport
 from aw_reporting.models import Opportunity
@@ -14,7 +14,7 @@ from utils.unittests.s3_mock import mock_s3
 from utils.unittests.str_iterator import str_iterator
 
 
-class NotifyOpportunityTargetReportTestCase(TestCase):
+class NotifyOpportunityTargetReportTestCase(TransactionTestCase):
 
     @mock_s3
     def test_notify(self):

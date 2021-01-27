@@ -4,7 +4,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from pytz import utc
 
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
@@ -21,7 +21,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 
 
-class UpdateAwAccountsHourlyStatsTestCase(TestCase):
+class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,

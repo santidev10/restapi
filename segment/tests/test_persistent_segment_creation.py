@@ -2,7 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 from uuid import uuid4
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.utils import timezone
 
 import brand_safety.constants as constants
@@ -11,7 +11,7 @@ from segment.models import PersistentSegmentVideo
 from segment.segment_list_generator import SegmentListGenerator
 
 
-class PersistentSegmentCreationTestCase(TestCase):
+class PersistentSegmentCreationTestCase(TransactionTestCasee):
     def test_should_not_update_master_channel_whitelist(self):
         list_generator = SegmentListGenerator(0)
         created_date = timezone.now() - timedelta(days=SegmentListGenerator.UPDATE_THRESHOLD - 1)

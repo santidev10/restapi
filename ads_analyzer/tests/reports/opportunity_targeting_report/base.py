@@ -4,7 +4,7 @@ from io import BytesIO
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
-from django.test import TestCase
+from django.test import TransactionTestCase
 from openpyxl import load_workbook
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -19,7 +19,7 @@ from utils.unittests.s3_mock import S3TestCase
 from utils.unittests.str_iterator import str_iterator
 
 
-class CreateOpportunityTargetingReportBaseTestCase(TestCase, S3TestCase):
+class CreateOpportunityTargetingReportBaseTestCase(TransactionTestCase, S3TestCase):
     def act(self, opportunity_id, date_from, date_to):
         with patch.object(post_save, "send"):
             report, _ = OpportunityTargetingReport.objects.get_or_create(

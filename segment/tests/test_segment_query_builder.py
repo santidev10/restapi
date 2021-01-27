@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.utils import timezone
 
 from es_components.constants import Sections
@@ -11,7 +11,7 @@ from utils.unittests.int_iterator import int_iterator
 from segment.utils.query_builder import SegmentQueryBuilder
 
 
-class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
+class SegmentQueryBuilderTestCase(TransactionTestCase, ESTestCase):
     def setUp(self):
         sections = [Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS, Sections.GENERAL_DATA]
         self.channel_manager = ChannelManager(sections=sections, upsert_sections=sections)

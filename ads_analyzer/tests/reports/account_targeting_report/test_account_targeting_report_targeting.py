@@ -1,7 +1,7 @@
 from datetime import date
 from datetime import timedelta
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from ads_analyzer.reports.account_targeting_report import constants as names
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
@@ -37,7 +37,7 @@ AGGREGATIONS = (names.AVERAGE_CPV, names.AVERAGE_CPM, names.CONTRACTED_RATE, nam
                 names.SUM_CLICKS, names.SUM_COST)
 
 
-class CreateAccountTargetingReportTargetDataTestCase(TestCase):
+class CreateAccountTargetingReportTargetDataTestCase(TransactionTestCase):
     def _create_salesforce(self, pl_params=None):
         op = Opportunity.objects.create(id=f"OPTEST{next(int_iterator)}",
                                         name=f"test_op{next(int_iterator)}")

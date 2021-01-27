@@ -1,7 +1,7 @@
 from datetime import timedelta
 from mock import patch
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -13,7 +13,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.datetime import now_in_default_tz
 
 
-class TestUpdateAccountPerformance(TestCase):
+class TestUpdateAccountPerformance(TransactionTestCase):
     def _create_data(self):
         end = now_in_default_tz() + timedelta(days=100)
         account = Account.objects.create(name="first", id=next(int_iterator))

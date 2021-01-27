@@ -2,13 +2,13 @@ from uuid import uuid4
 from collections import defaultdict
 from unittest import skip
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from segment.models import CustomSegment
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 
 
-class GenerateSegmentUtilsTestCase(TestCase):
+class GenerateSegmentUtilsTestCase(TransactionTestCase):
     normalized_likes_key = "likes"
     normalized_dislikes_key = "dislikes"
     channel_likes_key = "observed_videos_likes"

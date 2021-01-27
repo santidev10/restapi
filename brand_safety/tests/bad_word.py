@@ -1,11 +1,11 @@
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 
 
-class BadWordTestCase(TestCase):
+class BadWordTestCase(TransactionTestCase):
     def setUp(self):
         self.category = BadWordCategory.objects.create(name="profanity")
         self.language = AuditLanguage.objects.create(name="test")

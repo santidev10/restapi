@@ -1,7 +1,7 @@
 import re
 from traceback import format_exception
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.test import override_settings
 
 from aw_reporting.demo.data import CAMPAIGN_NAME_REPLACEMENTS
@@ -20,7 +20,7 @@ from utils.unittests.generic_test import generic_test
 from utils.unittests.str_iterator import str_iterator
 
 
-class RecreateDemoDataTestCase(TestCase):
+class RecreateDemoDataTestCase(TransactionTestCase):
     def _create_source_root(self, opp_data=None, campaign_data=None):
         campaign_data = campaign_data or dict()
         opportunity = Opportunity.objects.create(id=next(str_iterator), **(opp_data or dict()))
