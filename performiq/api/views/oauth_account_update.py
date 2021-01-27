@@ -5,12 +5,11 @@ from rest_framework.generics import UpdateAPIView
 from performiq.api.serializers import OAuthAccountSerializer
 from performiq.models import OAuthAccount
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class PerformIQOAuthAccountUpdateAPIView(UpdateAPIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.PERFORMIQ),
+        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
     serializer_class = OAuthAccountSerializer
 

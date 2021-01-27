@@ -6,12 +6,11 @@ from rest_framework.views import APIView
 
 from channel.utils import track_channels
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class ChannelTrackApiView(APIView, PermissionRequiredMixin):
     permission_classes = (
-        has_static_permission(StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__VET),
+        StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__VET),
     )
 
     def post(self, request, *args, **kwargs):

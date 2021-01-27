@@ -341,20 +341,21 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             affects data on CHF Trends
         Ticket: https://channelfactory.atlassian.net/browse/SAAS-2779
         """
+        self.user = self.create_test_user({
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rates,
+        })
         account, campaign = self._create_ad_group_statistic("111")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
+
         stats = AdGroupStatistic.objects.all() \
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))
         expected_cpv = stats["views"] / stats["cost"]
         self.assertGreater(expected_cpv, 0)
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
-             self.patch_user_settings(**user_settings):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)

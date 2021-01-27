@@ -41,7 +41,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
     serializer_class = BlocklistSerializer
     filter_backends = [BlocklistESFilterBackend]
     pagination_class = BlocklistPaginator
-    permission_classes = (StaticPermissions()(StaticPermissions.BLOCKLIST_MANAGER),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BLOCKLIST_MANAGER),)
     DEFAULT_PAGE_SIZE = 25
 
     def get_queryset(self) -> ESQuerysetAdapter:

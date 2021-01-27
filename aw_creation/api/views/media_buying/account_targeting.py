@@ -30,7 +30,7 @@ class AccountTargetingAPIView(APIView):
 
     """
     CACHE_KEY_PREFIX = "restapi.aw_creation.views.media_buying.account_targeting"
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]

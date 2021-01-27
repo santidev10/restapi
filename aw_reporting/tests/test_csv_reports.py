@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import pytz
 from django.conf import settings
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.models import Account
@@ -21,7 +21,7 @@ from utils.unittests.s3_mock import mock_s3
 S3_BUCKET = settings.AMAZON_S3_REPORTS_BUCKET_NAME
 
 
-class PacingReportCSVExportTestCase(TestCase):
+class PacingReportCSVExportTestCase(TransactionTestCase):
     @mock_s3
     def test_success(self):
         report_name = "PacingReport-test"

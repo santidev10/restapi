@@ -14,7 +14,7 @@ from utils.views import get_object
 
 
 class PacingReportOpportunityWatchAPIView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *args, **kwargs):
         opportunity = get_object(Opportunity, id=kwargs["pk"])

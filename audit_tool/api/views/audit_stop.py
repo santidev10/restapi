@@ -9,7 +9,7 @@ from userprofile.constants import StaticPermissions
 
 class AuditStopApiView(APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.AUDIT_QUEUE),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE),
     )
 
     def post(self, request):

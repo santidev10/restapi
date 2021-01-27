@@ -36,21 +36,21 @@ logger = logging.getLogger(__name__)
 
 class DashboardAccountCreationDetailsAPIView(APIView):
     serializer_class = DashboardAccountCreationDetailsSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def post(self, request, pk):
         account_creation = self._get_account_creation(request, pk)
         if account_creation is None:
             return Response(status=HTTP_404_NOT_FOUND)
         data = self.serializer_class(account_creation, context={"request": request}).data
-        show_conversions = self.request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        show_conversions = self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
         data["details"] = self.get_details_data(account_creation, show_conversions)
         return Response(data=data)
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:

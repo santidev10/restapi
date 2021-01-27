@@ -9,11 +9,10 @@ from rest_framework.status import HTTP_200_OK
 from brand_safety.api.serializers.bad_word_history_serializer import BadWordHistorySerializer
 from brand_safety.models import BadWordHistory
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class BadWordHistoryApiView(ListAPIView):
-    permission_classes = (has_static_permission(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
     serializer_class = BadWordHistorySerializer
 
     NUM_ENTRIES = 500

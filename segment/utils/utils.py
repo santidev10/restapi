@@ -174,8 +174,8 @@ def set_user_perm_params(request, ctl_params):
     :return:
     """
     # If user is not admin / vetting admin, force create vetted safe only
-    if (request.user and request.user.is_staff is False) \
-            or not request.user.has_perm("userprofile.vet_audit_admin"):
+    if not (request.user and request.user.has_permission(StaticPermissions.ADMIN)) \
+            or not request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
         ctl_params["vetting_status"] = [1]
     return ctl_params
 

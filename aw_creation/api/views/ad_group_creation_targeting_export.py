@@ -10,7 +10,7 @@ from userprofile.constants import StaticPermissions
 
 
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def get_user(self):
         auth_token = self.request.query_params.get("auth_token")

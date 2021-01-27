@@ -12,7 +12,6 @@ from userprofile.models import WhiteLabel
 from utils.file_storage.s3_connector import upload_file
 from utils.permissions import ReadOnly
 from utils.permissions import or_permission_classes
-from utils.permissions import has_static_permission
 from utils.views import CustomAPIException
 from utils.views import get_object
 from utils.views import validate_fields
@@ -21,7 +20,12 @@ from utils.views import validate_fields
 class WhiteLabelApiView(APIView):
     READ_ONLY = ("GET",)
     permission_classes = (
-        or_permission_classes(has_static_permission(StaticPermissions.DOMAIN_MANAGER), ReadOnly),
+        or_permission_classes(
+            StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER,
+                                        StaticPermissions.DOMAIN_MANAGER__READ_ALL, method="get"),
+            StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER__CREATE, method="patch,post"),
+            ReadOnly,
+        ),
     )
     parser_classes = (JSONParser, ImageUploadParser)
     IMAGE_FIELDS = ("favicon", "logo")
@@ -30,7 +34,7 @@ class WhiteLabelApiView(APIView):
     def get(self, request):
         all_domains = request.query_params.get("all")
         if all_domains:
-            if not request.user or not request.user.has_permission(StaticPermissions.DOMAIN_MANAGER):
+            if not request.user or not request.user.has_permission(StaticPermissions.DOMAIN_MANAGER__READ_ALL):
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
             data = {
                 "domains": WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data,

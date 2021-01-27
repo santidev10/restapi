@@ -221,14 +221,12 @@ class CampaignCreationDuplicateAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data["name"], "FF 1 (666)")
 
     def test_success_post_demo(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         recreate_test_demo_data()
         campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
         url = self._get_url(campaign.campaign_creation.first().id)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_copy_properties(self):

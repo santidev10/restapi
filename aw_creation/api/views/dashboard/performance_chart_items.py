@@ -23,7 +23,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data
@@ -43,7 +43,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
         dimension = kwargs.get("dimension")
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:
@@ -54,8 +54,8 @@ class DashboardPerformanceChartItemsApiView(APIView):
         accounts = []
         if item.account:
             accounts.append(item.account.id)
-        show_conversions = user_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
-        show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_conversions = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
+        show_aw_costs = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,

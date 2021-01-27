@@ -9,7 +9,7 @@ from userprofile.constants import StaticPermissions
 
 
 class TargetingListBaseAPIClass(GenericAPIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
     serializer_class = AdGroupTargetingListSerializer
 
     def get_user(self):

@@ -13,7 +13,7 @@ from userprofile.constants import StaticPermissions
 
 class OpportunityTargetingReportRecipientsAPIView(ListAPIView):
     permission_classes = (
-         StaticPermissions()(StaticPermissions.ADS_ANALYZER__RECIPIENTS),
+         StaticPermissions.has_perms(StaticPermissions.ADS_ANALYZER__RECIPIENTS),
     )
     serializer_class = OpportunityTargetReportRecipientsSerializer
 

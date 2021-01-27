@@ -8,7 +8,7 @@ from userprofile.constants import StaticPermissions
 
 class ForecastToolEstimateApiView(APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.FORECAST_TOOL),
+        StaticPermissions.has_perms(StaticPermissions.FORECAST_TOOL),
     )
 
     def post(self, request):

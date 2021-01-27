@@ -12,12 +12,11 @@ from performiq.api.serializers.map_csv_fields_serializer import MapCSVFieldsSeri
 from performiq.utils.map_csv_fields import CSVColumnMapper
 from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
-from utils.permissions import has_static_permission
 
 
 class PerformIQMapCSVFieldsAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.PERFORMIQ),
+        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
     parser_classes = [MultiPartParser]
     serializer_class = MapCSVFieldsSerializer

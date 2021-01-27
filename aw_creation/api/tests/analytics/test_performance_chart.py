@@ -139,6 +139,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -148,13 +149,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
                                                           account=account,
                                                           is_approved=True)
         self.create_stats(account)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id,
+        response = self._request(account_creation.id,
                                      campaigns=["1"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -272,13 +267,12 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
             if not is_demo:
                 account_creation_id = AccountCreation.objects.create(name="", owner=user,
                                                                      is_paused=True).id
-            user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates,
-                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost,
-            }
+            user.perms.update({
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: dashboard_ad_words_rates,
+                StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: not hide_dashboard_cost
+            })
 
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg):
+            with self.subTest(msg):
                 response = self._request(account_creation_id,
                                          indicator=indicator,
                                          dimention=dimension)
@@ -327,13 +321,12 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotAlmostEqual(aw_cost, client_cost)
         test_cases = (False, True)
         for ad_words_rate in test_cases:
-            user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: ad_words_rate,
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-            }
-            with self.subTest(show_ad_words_rate=ad_words_rate), \
-                 self.patch_user_settings(**user_settings):
-
+            user.perms.update({
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: ad_words_rate,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            })
+            user.save()
+            with self.subTest(show_ad_words_rate=ad_words_rate):
                 response = self._request(account_creation.id,
                                          indicator=Indicator.COST)
                 self.assertEqual(response.status_code, HTTP_200_OK)
@@ -351,6 +344,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         any_dimension = Dimension.ADS
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
         })
         manager = self._create_manager_with_connection(user)
         account = Account.objects.create(id=next(int_iterator))
@@ -359,11 +354,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         account_creation = account.account_creation
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
-
         with self.patch_user_settings(**user_settings):
             response = self._request(
                 account_creation.id,

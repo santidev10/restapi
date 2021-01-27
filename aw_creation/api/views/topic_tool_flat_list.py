@@ -6,7 +6,7 @@ from userprofile.constants import StaticPermissions
 
 
 class TopicToolFlatListApiView(ListAPIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
     serializer_class = TopicHierarchySerializer
 
     def get_queryset(self):

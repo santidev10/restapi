@@ -149,31 +149,27 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_get_demo(self):
         recreate_test_demo_data()
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.ad_creation.first().id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
         recreate_test_demo_data()
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.ad_creation.first().id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.patch(
-                url, json.dumps({}), content_type="application/json",
-            )
+        response = self.client.patch(
+            url, json.dumps({}), content_type="application/json",
+        )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):

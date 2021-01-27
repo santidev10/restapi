@@ -391,11 +391,12 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     @generic_test([
         ("Hide dashboard costs = {}. Dimension = {}".format(hide_costs, dimension), (hide_costs, dimension), dict())
-        for hide_costs, dimension in product((True, False), ALL_DIMENSIONS)
+        for hide_costs, dimension in product((False, True), ALL_DIMENSIONS)
     ])
-    def test_all_dimensions_hide_costs_independent(self, hide_dashboard_costs, dimension):
+    def test_all_dimensions_hide_costs_independent(self, show_dashboard_costs, dimension):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: show_dashboard_costs
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -406,19 +407,15 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_costs
-        }
-        with self.patch_user_settings(**user_settings):
-            url = self._get_url(account_creation.id, dimension)
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertGreater(len(items), 0)
-            for item in items:
-                self.assertIsNotNone(item["cost"])
-                self.assertIsNotNone(item["average_cpm"])
-                self.assertIsNotNone(item["average_cpv"])
+        url = self._get_url(account_creation.id, dimension)
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertGreater(len(items), 0)
+        for item in items:
+            self.assertIsNotNone(item["cost"])
+            self.assertIsNotNone(item["average_cpm"])
+            self.assertIsNotNone(item["average_cpv"])
 
     def test_ads_cost(self):
         any_date_1 = date(2018, 1, 1)
@@ -428,6 +425,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -449,27 +448,23 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                                    date=any_date_2,
                                    video_views=views[1],
                                    cost=costs[1])
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
+
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
             ("filter by date", any_date_1, any_date_1, costs[0]),
         )
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with self.patch_user_settings(**user_settings):
-            for msg, start, end, expected_cost in test_cases:
-                with self.subTest(msg=msg):
-                    response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end,
-                                                          is_chf=1))
-                    self.assertEqual(response.status_code, HTTP_200_OK)
-                    items = response.data["items"]
-                    self.assertEqual(len(items), 1)
-                    item = items[0]
-                    self.assertAlmostEqual(item["cost"], expected_cost)
+        for msg, start, end, expected_cost in test_cases:
+            with self.subTest(msg=msg):
+                response = self.client.post(url, dict(start_date=start,
+                                                      end_date=end,
+                                                      is_chf=1))
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                items = response.data["items"]
+                self.assertEqual(len(items), 1)
+                item = items[0]
+                self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_ages_cost(self):
         any_date_1 = date(2018, 1, 1)
@@ -479,6 +474,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
 
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -497,31 +494,28 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                                          date=any_date_2,
                                          video_views=views[1],
                                          cost=costs[1])
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
             ("filter by date", any_date_1, any_date_1, costs[0]),
         )
 
         url = self._get_url(account_creation.id, Dimension.AGE)
-        with self.patch_user_settings(**user_settings):
-            for msg, start, end, expected_cost in test_cases:
-                with self.subTest(msg=msg):
-                    response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end,
-                                                          is_chf=1))
-                    self.assertEqual(response.status_code, HTTP_200_OK)
-                    items = response.data["items"]
-                    self.assertEqual(len(items), 1)
-                    item = items[0]
-                    self.assertAlmostEqual(item["cost"], expected_cost)
+        for msg, start, end, expected_cost in test_cases:
+            with self.subTest(msg=msg):
+                response = self.client.post(url, dict(start_date=start,
+                                                      end_date=end,
+                                                      is_chf=1))
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                items = response.data["items"]
+                self.assertEqual(len(items), 1)
+                item = items[0]
+                self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_device_cost(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -550,14 +544,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
                                         video_views=23,
                                         cost=expected_cost)
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
         url = self._get_url(account_creation.id, Dimension.DEVICE)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(today):
+        with patch_now(today):
             response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
@@ -568,6 +556,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
     def test_ads_average_rate(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -601,14 +591,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         average_cpv = cost / views
         self.assertNotAlmostEqual(average_cpm, average_cpv)
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(today):
+        with patch_now(today):
             response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
@@ -624,6 +608,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
     def test_convention_independent(self, show_conversions, dimension):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: show_conversions
         })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator),
@@ -631,17 +617,13 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.create_stats(account)
         account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account,
                                                           is_approved=True)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: show_conversions,
-        }
+
         url = self._get_url(account_creation.id, dimension)
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertGreater(len(items), 0)
-            for item in items:
-                self.assertIsNotNone(item["conversions"])
-                self.assertIsNotNone(item["all_conversions"])
-                self.assertIsNotNone(item["view_through"])
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertGreater(len(items), 0)
+        for item in items:
+            self.assertIsNotNone(item["conversions"])
+            self.assertIsNotNone(item["all_conversions"])
+            self.assertIsNotNone(item["view_through"])

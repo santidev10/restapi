@@ -9,7 +9,7 @@ from userprofile.constants import StaticPermissions
 
 
 class AdCreationAvailableAdFormatsApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Get Ad group creation",

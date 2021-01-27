@@ -7,7 +7,7 @@ from userprofile.constants import StaticPermissions
 
 
 class ItemsFromSegmentIdsApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def post(self, request, segment_type, **_):
         all_related_items = []

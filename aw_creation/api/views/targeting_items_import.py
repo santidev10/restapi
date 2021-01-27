@@ -15,7 +15,7 @@ from .document_import_base import DocumentImportBaseAPIView
 
 class TargetingItemsImportApiView(DocumentImportBaseAPIView):
     parser_classes = (MultiPartParser,)
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def post(self, request, list_type, **_):
 

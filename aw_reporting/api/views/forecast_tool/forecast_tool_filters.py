@@ -10,7 +10,7 @@ from userprofile.constants import StaticPermissions
 
 class ForecastToolFiltersApiView(RetrieveAPIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.FORECAST_TOOL),
+        StaticPermissions.has_perms(StaticPermissions.FORECAST_TOOL),
     )
 
     def get(self, request, *args, **kwargs):

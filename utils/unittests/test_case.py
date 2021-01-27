@@ -86,3 +86,7 @@ class ExtendedAPITestCase(APITestCase, APITestUserMixin):
     def setUpClass(cls):
         super().setUpClass()
         PermissionItem.load_permissions()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()

@@ -127,14 +127,13 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(date=another_date, ad_group=ad_group, cost=aw_cost_irrelevant,
                                         average_position=1)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account_creation.id, start_date=str(any_date), end_date=str(any_date))
-            self.assertEqual(overview["cost"], aw_cost)
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: False,
+        })
+        overview = self._request(account_creation.id, start_date=str(any_date), end_date=str(any_date))
+        self.assertEqual(overview["cost"], aw_cost)
 
     @generic_test([
         ("Show conversions", (True,), dict()),

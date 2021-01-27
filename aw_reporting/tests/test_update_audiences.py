@@ -3,7 +3,7 @@ from functools import partial
 from unittest.mock import patch
 
 import requests
-from django.test import TestCase
+from django.test import TransactionTestCase
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.google_ads.updaters.audiences import AudienceAWLink
@@ -13,7 +13,7 @@ from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
 
 
-class UpdateAudiencesTestCase(TestCase):
+class UpdateAudiencesTestCase(TransactionTestCase):
     @generic_test([
         ("Affinity", (Audience.AFFINITY_TYPE,), dict()),
         ("In-marketing", (Audience.IN_MARKET_TYPE,), dict()),
