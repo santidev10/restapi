@@ -3,7 +3,7 @@ from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from rest_framework.test import APITestCase, APITransactionTestCase
+from rest_framework.test import APITestCase
 
 from userprofile.constants import StaticPermissions
 from userprofile.models import UserDeviceToken
