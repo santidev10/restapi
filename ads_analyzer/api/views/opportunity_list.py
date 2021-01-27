@@ -10,7 +10,7 @@ from userprofile.constants import StaticPermissions
 
 class OpportunityListAPIView(ListAPIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.ADS_ANALYZER),
+        StaticPermissions.has_perms(StaticPermissions.ADS_ANALYZER),
     )
     queryset = Opportunity.objects.filter(start__gte=timezone.now() - timedelta(days=365),
                                           start__lte=timezone.now()).values("id", "name", "start")

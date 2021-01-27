@@ -638,11 +638,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
         expected_cpv = cost / views
         self.assertGreater(expected_cpv, 0)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
-             self.patch_user_settings(**user_settings):
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             trend = get_trend(response.data, TrendId.HISTORICAL)

@@ -39,7 +39,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 class AnalyticsAccountCreationListApiView(ListAPIView):
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),

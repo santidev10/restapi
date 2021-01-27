@@ -19,7 +19,7 @@ from userprofile.constants import StaticPermissions
 
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")

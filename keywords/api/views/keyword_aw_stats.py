@@ -5,12 +5,11 @@ from rest_framework.views import APIView
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class KeywordAWStatsApiView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.RESEARCH),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     def get(self, request, pk):

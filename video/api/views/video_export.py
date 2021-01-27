@@ -12,7 +12,7 @@ from video.tasks.export_data import export_videos_data
 
 class VideoListExportApiView(VettingAdminAggregationsMixin,ESDataS3ExportApiView, APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.RESEARCH__EXPORT),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH__EXPORT),
     )
     generate_export_task = export_videos_data
 

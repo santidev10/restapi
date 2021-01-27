@@ -19,6 +19,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -33,6 +34,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             args=(account_creation_id,),
         )
 
+    def setUp(self) -> None:
+        self.user = self.create_test_user(perms={StaticPermissions.MEDIA_BUYING: True,})
+
     def test_no_permission_fail(self):
         self.create_test_user()
         account = Account.objects.create(id=1, name="")
@@ -45,7 +49,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_not_visible_account(self):
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         query_prams = QueryDict("targeting=all").urlencode()
         url = f"{self._get_url(account.account_creation.id)}?{query_prams}"
@@ -58,7 +61,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_get_success(self):
         """ Test the get method returns the expected settings data """
-        user = self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         op = Opportunity.objects.create()
         pl_1 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}",
@@ -93,7 +95,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_fail_mixed_ad_group_types(self):
         """ Should not be able to create breakout with mixed AdGroup types """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1,
                                              type="video")
@@ -126,7 +127,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_fail_start_date_less_today(self):
         """ Start date should be >= todays date """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
         ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5,
@@ -157,7 +157,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_fail_start_date_greater_end_date(self):
         """ Start date should be less than end date """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
         ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5,
@@ -184,7 +183,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_success_non_skip(self):
         """ Success create non skip breakout with updating campaign budgets """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=7.2, type="video")
         ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=4,
@@ -239,7 +237,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_success_display(self):
         """ Success create non skip breakout with pausing source ad groups """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=8.6,
                                              type="display")
@@ -297,7 +294,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
     def test_create_success_bumper(self):
         """ Success create bumper breakout with updating campaign budgets and pausing source ad groups """
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=7.6, type="video")
         ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=2,
@@ -352,7 +348,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_2.budget, payload["updated_campaign_budget"])
 
     def test_create_success_discovery(self):
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.9, type="video")
         ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpv_bid=8,
@@ -402,7 +397,6 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(ag_creation_2.max_rate, payload["max_rate"])
 
     def test_create_success_instream(self):
-        self.create_admin_user()
         account = Account.objects.create(id=1, name="")
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=1.23,
                                              type="video")

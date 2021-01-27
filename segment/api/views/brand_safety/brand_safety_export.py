@@ -7,13 +7,12 @@ from segment.api.mixins import DynamicPersistentModelViewMixin
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 from utils.views import get_object
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL__EXPORT),
     )
 
     def get(self, request, pk, *_):

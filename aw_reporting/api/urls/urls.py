@@ -91,14 +91,6 @@ urlpatterns = [
         views.WebHookAWSaveSettingsApiView.as_view(),
         name="campaigns_setup_check_save_settings"),
 
-    # Health check tool
-    url(r"^setup_health_check_list/$",
-        views.HealthCheckApiView.as_view(),
-        name=Name.HealthCheck.LIST),
-    url(r"^setup_health_check_filters/$",
-        views.HealthCheckFiltersApiView.as_view(),
-        name=Name.HealthCheck.FILTERS),
-
     # Pricing tool
     url(r"^pricing_tool/campaigns/$",
         views.PricingToolCampaignsView.as_view(),

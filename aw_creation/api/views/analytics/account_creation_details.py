@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsAccountCreationDetailsAPIView(APIView):
     serializer_class = AnalyticsAccountCreationDetailsSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def post(self, request, pk, **_):
         account_creation = self._get_account_creation(request, pk)

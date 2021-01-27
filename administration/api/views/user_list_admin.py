@@ -31,7 +31,7 @@ class UserListAdminApiView(ListAPIView):
     """
     serializer_class = UserSerializer
     pagination_class = UserPaginator
-    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
     allowed_sorts = (
         "last_name",
         "first_name",

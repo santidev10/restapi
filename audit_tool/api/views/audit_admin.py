@@ -12,7 +12,7 @@ from utils.views import get_object
 
 class AuditAdminAPIView(APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.CTL__VET_ADMIN),
+        StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN),
     )
 
     def patch(self, request, *_, **__):

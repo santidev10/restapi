@@ -18,7 +18,6 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -78,34 +77,38 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
 
     def test_success(self):
         account = Account.objects.create()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
+        overview = self._request(account.account_creation.id)
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(DEMO_ACCOUNT_ID)
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
+        overview = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_hidden_costs(self):
         account = Account.objects.create()
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True
         }
 
         for rates_are_hidden in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = rates_are_hidden
-            with self.subTest(**user_settings), self.patch_user_settings(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = rates_are_hidden
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 overview = self._request(account.account_creation.id)
                 self.assertNotIn("delivered_cost", overview)
                 self.assertNotIn("plan_cost", overview)
@@ -113,32 +116,33 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
     def test_visible_costs(self):
         account = Account.objects.create()
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
-
         for rates_are_hidden in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = rates_are_hidden
-            with self.subTest(**user_settings), self.patch_user_settings(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = rates_are_hidden
+            with self.subTest(**user_settings):
+                self.create_test_user(perms=user_settings)
                 overview = self._request(account.account_creation.id)
                 self.assertIn("delivered_cost", overview)
                 self.assertIn("plan_cost", overview)
 
     def test_plan_cost(self):
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         total_cost = 123
         placement = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity, total_cost=total_cost)
         Campaign.objects.create(id=next(int_iterator), salesforce_placement=placement, account=account)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         for rates_are_hidden in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = rates_are_hidden
-            with self.patch_user_settings(**user_settings):
-                overview = self._request(account.account_creation.id)
-                self.assertEqual(overview["plan_cost"], total_cost)
+            user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = rates_are_hidden
+            user.save()
+            overview = self._request(account.account_creation.id)
+            self.assertEqual(overview["plan_cost"], total_cost)
 
     def test_delivered_cost_aw_cost(self):
         any_date = date(2018, 1, 1)
@@ -157,12 +161,14 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                                         average_position=1)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
-            self.assertEqual(overview["delivered_cost"], aw_cost)
+        self.user.perms.update(user_settings)
+        self.user.save()
+        overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
+        self.assertEqual(overview["delivered_cost"], aw_cost)
 
     def test_delivered_cost_client_cost_filtered_by_date(self):
         any_date = date(2018, 1, 1)
@@ -196,12 +202,14 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         )
         self.assertGreater(client_cost, 0)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
-            self.assertEqual(overview["delivered_cost"], client_cost)
+        self.user.perms.update(user_settings)
+        self.user.save()
+        overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
+        self.assertEqual(overview["delivered_cost"], client_cost)
 
     def test_delivered_impressions_cpm_filtered_by_date(self):
         any_date = date(2018, 1, 1)
@@ -220,12 +228,13 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(date=another_date, ad_group=ad_group, average_position=1,
                                         impressions=impressions[1])
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
         for dashboard_ad_words_rates in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = dashboard_ad_words_rates
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = dashboard_ad_words_rates
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
                 self.assertEqual(overview["delivered_impressions"], impressions[0])
 
@@ -241,12 +250,13 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1, impressions=impressions)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
         for dashboard_ad_words_rates in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = dashboard_ad_words_rates
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = dashboard_ad_words_rates
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 overview = self._request(account.account_creation.id)
                 self.assertEqual(overview["delivered_impressions"], 0)
 
@@ -267,12 +277,13 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(date=another_date, ad_group=ad_group, average_position=1,
                                         video_views=video_views[1])
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
         for dashboard_ad_words_rates in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = dashboard_ad_words_rates
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = dashboard_ad_words_rates
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 overview = self._request(account.account_creation.id, start_date=str(any_date), end_date=str(any_date))
                 self.assertEqual(overview["delivered_video_views"], video_views[0])
 
@@ -288,29 +299,34 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1, video_views=video_views)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
         for dashboard_ad_words_rates in (True, False):
-            user_settings[UserSettingsKey.DASHBOARD_AD_WORDS_RATES] = dashboard_ad_words_rates
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(**user_settings):
+            user_settings[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = dashboard_ad_words_rates
+            with self.subTest(**user_settings):
+                self.user.perms.update(user_settings)
+                self.user.save()
                 overview = self._request(account.account_creation.id)
                 self.assertEqual(overview["delivered_video_views"], 0)
 
     def test_delivered_cost_is_zero(self):
         account = Account.objects.create()
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
-            self.assertEqual(overview["delivered_cost"], 0)
-            self.assertEqual(overview["plan_cost"], 0)
+        self.user.perms.update(user_settings)
+        self.user.save()
+        overview = self._request(account.account_creation.id)
+        self.assertEqual(overview["delivered_cost"], 0)
+        self.assertEqual(overview["plan_cost"], 0)
 
     def test_aw_cost(self):
-        self.user.is_staff = True
-        self.user.save()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         account = Account.objects.create()
         costs = (123, 234)
         opportunity = Opportunity.objects.create()
@@ -332,16 +348,15 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             date=date(2018, 1, 1), ad_group=ad_group_2,
             cost=costs[1], average_position=1)
         expected_cost = sum(costs)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
+        overview = self._request(account.account_creation.id)
         self.assertAlmostEqual(overview["delivered_cost"], expected_cost)
 
     def test_cost_client_cost(self):
-        self.user.is_staff = True
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
@@ -415,16 +430,15 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                     end=c.end_date)
                 for c in campaigns
             ])
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
+
+        overview = self._request(account.account_creation.id)
         self.assertAlmostEqual(overview["delivered_cost"], expected_cost)
 
     def test_hide_costs_according_to_user_settings(self):
-        self.user.is_staff = True
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
             id=1, opportunity=opportunity,
@@ -442,33 +456,31 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             id=2, salesforce_placement=placement_cpv,
             account=account, cost=1, video_views=1)
         # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
+        overview = self._request(account.account_creation.id)
         self.assertIsNotNone(overview)
         self.assertIn("cost", overview)
         self.assertIn("average_cpm", overview)
         self.assertIn("average_cpv", overview)
         # hide
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
+        user.perms.update(user_settings)
+        user.save()
+        overview = self._request(account.account_creation.id)
         self.assertIsNotNone(overview)
         self.assertNotIn("cost", overview)
         self.assertNotIn("average_cpm", overview)
         self.assertNotIn("average_cpv", overview)
 
     def test_campaigns_filter_affect_performance_data(self):
-        user = self.user
+        self.create_test_user(perms={
+            StaticPermissions.ADMIN: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True
+        })
         any_date = date(2018, 1, 1)
-        user.is_staff = True
-        user.save()
         account = Account.objects.create(id=1)
         opportunity = Opportunity.objects.create(id=1)
         expected_plan_cost = 3
@@ -499,21 +511,18 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                                         impressions=expected_delivered_impressions)
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group_2, average_position=1, cost=1,
                                         video_views=1, impressions=1)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id, campaigns=[campaign_one_id])
+        overview = self._request(account.account_creation.id, campaigns=[campaign_one_id])
         self.assertEqual(overview["plan_cost"], expected_plan_cost)
         self.assertEqual(overview["plan_impressions"], expected_plan_impressions)
         self.assertEqual(overview["delivered_cost"], expected_delivered_cost)
         self.assertEqual(overview["delivered_impressions"], expected_delivered_impressions)
 
     def test_overview_reflects_to_date_range(self):
-        user = self.user
-        user.is_staff = True
-        user.save()
+        self.create_test_user(perms={
+            StaticPermissions.ADMIN: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+        })
         account = Account.objects.create(id=1)
         opportunity = Opportunity.objects.create(id=1)
         placement = OpPlacement.objects.create(
@@ -539,23 +548,16 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                                         average_position=1,
                                         cost=cost_2, impressions=impressions_2,
                                         video_views=views_2)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id,
-                                     start_date=str(date_1),
-                                     end_date=str(date_1))
+        overview = self._request(account.account_creation.id,
+                                 start_date=str(date_1),
+                                 end_date=str(date_1))
         self.assertEqual(overview["cost"], cost_1)
         self.assertEqual(overview["impressions"], impressions_1)
         self.assertEqual(overview["video_views"], views_1)
 
     def test_ad_groups_filter_affect_performance_data(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.ADMIN: True})
         any_date = date(2018, 1, 1)
-        user.is_staff = True
-        user.save()
         account = Account.objects.create(id=1)
         opportunity = Opportunity.objects.create(id=1)
         expected_plan_cost = 3
@@ -589,11 +591,12 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group_2, average_position=1,
                                         cost=1, video_views=1, impressions=1)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id,
+        user.perms.update(user_settings)
+        user.save()
+        overview = self._request(account.account_creation.id,
                                      ad_groups=[ad_group_one_id])
         self.assertEqual(overview["plan_cost"], expected_plan_cost)
         self.assertEqual(overview["plan_impressions"], expected_plan_impressions)
@@ -601,7 +604,10 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(overview["delivered_impressions"], expected_delivered_impressions)
 
     def test_conversions_are_hidden(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: False,
+        })
         any_date = date(2018, 1, 1)
         conversions = 2
         all_conversions = 3
@@ -614,18 +620,17 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                                         conversions=conversions,
                                         all_conversions=all_conversions,
                                         view_through=view_through)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
-            self.assertNotIn("conversions", overview)
-            self.assertNotIn("all_conversions", overview)
-            self.assertNotIn("view_through", overview)
+
+        overview = self._request(account.account_creation.id)
+        self.assertNotIn("conversions", overview)
+        self.assertNotIn("all_conversions", overview)
+        self.assertNotIn("view_through", overview)
 
     def test_conversions_are_visible(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+        })
         any_date = date(2018, 1, 1)
         conversions = 2
         all_conversions = 3
@@ -637,23 +642,22 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
                                         conversions=conversions,
                                         all_conversions=all_conversions,
                                         view_through=view_through)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(account.account_creation.id)
-            self.assertEqual(overview["conversions"], conversions)
-            self.assertEqual(overview["all_conversions"], all_conversions)
-            self.assertEqual(overview["view_through"], view_through)
+
+        overview = self._request(account.account_creation.id)
+        self.assertEqual(overview["conversions"], conversions)
+        self.assertEqual(overview["all_conversions"], all_conversions)
+        self.assertEqual(overview["view_through"], view_through)
 
     def test_demo_account_performance_charts(self):
         recreate_test_demo_data()
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         }
-        with self.patch_user_settings(**user_settings):
-            overview = self._request(DEMO_ACCOUNT_ID)
+        self.user.perms.update(user_settings)
+        self.user.save()
+        overview = self._request(DEMO_ACCOUNT_ID)
         keys = (
             "delivered_cost",
             "delivered_impressions",

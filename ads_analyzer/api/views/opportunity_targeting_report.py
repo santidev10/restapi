@@ -36,7 +36,7 @@ class FilterBackend(BaseFilterBackend):
 
 class OpportunityTargetingReportAPIView(ListCreateAPIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.ADS_ANALYZER),
+        StaticPermissions.has_perms(StaticPermissions.ADS_ANALYZER),
     )
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator

@@ -18,13 +18,12 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from userprofile.constants import StaticPermissions
 from utils.brand_safety import get_brand_safety_data
-from utils.permissions import has_static_permission
 
 REGEX_TO_REMOVE_TIMEMARKS = r"^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
 
 class BrandSafetyChannelAPIView(APIView):
-    permission_required = (has_static_permission(StaticPermissions.RESEARCH),)
+    permission_required = (StaticPermissions.has_perms(StaticPermissions.RESEARCH),)
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
     MAX_PAGE_SIZE = 24

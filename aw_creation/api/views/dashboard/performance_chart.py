@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -23,7 +22,7 @@ class DashboardPerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data
@@ -44,7 +43,7 @@ class DashboardPerformanceChartApiView(APIView):
         self.filter_hidden_sections()
         filters = {}
         user_settings = request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             filters["account__id__in"] = \
                 user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         try:
@@ -56,7 +55,7 @@ class DashboardPerformanceChartApiView(APIView):
         if item.account:
             account_ids.append(item.account.id)
 
-        show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_aw_costs = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         chart = DeliveryChart(accounts=account_ids, segmented_by="campaigns",
                               show_aw_costs=show_aw_costs, **filters)
         chart_data = chart.get_response()
@@ -67,8 +66,7 @@ class DashboardPerformanceChartApiView(APIView):
 
     def filter_hidden_sections(self):
         user = self.request.user
-        if not user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+        if not user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST):
             hidden_indicators = Indicator.CPV, Indicator.CPM
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404

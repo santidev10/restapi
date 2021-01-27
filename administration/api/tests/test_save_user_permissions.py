@@ -14,10 +14,10 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
 
         allowed_user = get_user_model().objects.create(
-            email="mr_bond_james_bond@mail.kz"
+            email="mr_bond_james_bond@mail.kz",
+            perms={StaticPermissions.MEDIA_BUYING: True,}
         )
 
-        allowed_user.add_custom_user_permission("view_media_buying")
         get_user_model().objects.create(
             email="an_ordinary_beggar@mail.ru"
         )

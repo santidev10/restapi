@@ -135,6 +135,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertFalse(is_empty_report(sheet))
 
     def test_success_demo(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         recreate_test_demo_data()
 
         today = datetime.now().date()
@@ -142,11 +144,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             start_date=str(today - timedelta(days=1)),
             end_date=str(today)
         )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(DEMO_ACCOUNT_ID, **filters)
+        response = self._request(DEMO_ACCOUNT_ID, **filters)
         self.assert_demo_data(response)
 
     def test_report_is_xlsx_formatted(self):
@@ -214,10 +212,14 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
                                         cost=aw_cost, impressions=impressions, video_views=views)
         average_cpm = aw_cost / impressions * 1000
         average_cpv = aw_cost / views
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+        })
+        self.user.save()
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
+
         with self.patch_user_settings(**user_settings):
             response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -253,8 +255,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
                                         cost=1, impressions=1, video_views=1)
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS] = False
+        self.user.save()
         with self.patch_user_settings(**user_settings):
             response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -278,11 +281,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         account.managers.add(manager)
         account.save()
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
 

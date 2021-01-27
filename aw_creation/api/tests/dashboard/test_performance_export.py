@@ -485,11 +485,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
         AdGroupStatistic.objects.create(date=test_date_1, impressions=impressions[0], **common)
         AdGroupStatistic.objects.create(date=test_date_2, impressions=impressions[1], **common)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))

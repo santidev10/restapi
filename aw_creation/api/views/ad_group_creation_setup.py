@@ -16,7 +16,7 @@ from userprofile.constants import StaticPermissions
 
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         manual_parameters=[

@@ -9,7 +9,7 @@ from .base_creation_duplicate import BaseCreationDuplicateApiView
 
 class AdCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
     is_demo = Q(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID)
 
     def get_queryset(self):

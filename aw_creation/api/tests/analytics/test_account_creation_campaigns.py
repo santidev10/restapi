@@ -49,9 +49,11 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         "status",
     }
 
-    def create_test_user(self, auth=True, connected=True):
+    def create_test_user(self, auth=True, connected=True, perms=None):
+        perms = perms or {}
         user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth, perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            **perms
         })
         if connected:
             AWConnectionToUserRelation.objects.create(
@@ -235,7 +237,9 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data[0]["id"], campaign.id)
 
     def test_ignores_visible_accounts_setting(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
         account = Account.objects.create()
         account_creation = account.account_creation
         account_creation.owner = user
@@ -246,8 +250,6 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-
         }
         url = self._get_url(account_creation.id)
         with self.patch_user_settings(**user_settings):

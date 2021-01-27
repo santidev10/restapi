@@ -5,11 +5,10 @@ from rest_framework.serializers import ValidationError
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (has_static_permission(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
 

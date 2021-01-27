@@ -7,12 +7,11 @@ from rest_framework.views import APIView
 from audit_tool.models import AuditMachine
 from audit_tool.models import AuditProcessor
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class DashboardAuditQueueAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.AUDIT_QUEUE),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE),
     )
 
     def get(self, request, *args, **kwargs):

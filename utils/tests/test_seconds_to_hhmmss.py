@@ -1,9 +1,9 @@
-from django.test.testcases import TestCase
+from django.test import TransactionTestCase
 
 from utils.datetime import seconds_to_hhmmss
 
 
-class TestSecondsToHHMMSSTestCase(TestCase):
+class TestSecondsToHHMMSSTestCase(TransactionTestCase):
     """
     tests that seconds are always converted to a HHH:MM:SS format
     """

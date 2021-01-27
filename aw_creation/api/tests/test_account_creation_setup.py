@@ -42,10 +42,6 @@ from utils.unittests.reverse import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(AccountCreationSetupAPITestCase, cls).setUpClass()
-
     def _get_url(self, account_id):
         return reverse(Name.CreationSetup.ACCOUNT,
                        [Namespace.AW_CREATION],
@@ -139,13 +135,11 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
 
     def test_success_get_demo(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_details_check(response.data)
 
@@ -624,15 +618,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_fail_update_demo(self):
         recreate_test_demo_data()
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.patch(
-                url, json.dumps(dict(is_paused=True)),
-                content_type="application/json",
-            )
+        response = self.client.patch(
+            url, json.dumps(dict(is_paused=True)),
+            content_type="application/json",
+        )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_name_validation(self):
@@ -672,11 +664,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     def test_fail_delete_demo(self):
         recreate_test_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.delete(url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_marked_is_disapproved_account(self):

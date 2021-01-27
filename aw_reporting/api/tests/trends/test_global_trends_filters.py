@@ -106,12 +106,10 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         recreate_test_demo_data()
         self.create_test_user(perms={
             StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         self.assertEqual(set(response.data.keys()), self.expected_keys)

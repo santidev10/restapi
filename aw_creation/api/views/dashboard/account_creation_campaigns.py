@@ -11,7 +11,7 @@ from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_queryset(self, account_id):
         types_hidden = self.request.user.get_aw_settings().get(
@@ -35,7 +35,7 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
             raise Http404
         filters = {"is_deleted": False}
         user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             filters["account_id__in"] = visible_accounts
         try:

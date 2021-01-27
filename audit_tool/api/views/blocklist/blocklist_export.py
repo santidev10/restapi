@@ -6,7 +6,7 @@ from userprofile.constants import StaticPermissions
 
 
 class BlocklistExportAPIView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.BLOCKLIST_MANAGER),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BLOCKLIST_MANAGER),)
 
     def get(self, request, *args, **kwargs):
         data_type = kwargs["data_type"]

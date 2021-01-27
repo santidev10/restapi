@@ -27,6 +27,8 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         expected_average_cpm = cost / impressions * 1000 + ForecastToolEstimate.CPM_BUFFER
         self.create_test_user(perms={
             StaticPermissions.FORECAST_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
         })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
@@ -36,8 +38,6 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=date(2017, 11, 21), ad_group=ad_group, cost=cost, average_position=1, impressions=impressions)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings):

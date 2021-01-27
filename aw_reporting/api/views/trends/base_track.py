@@ -8,7 +8,7 @@ from userprofile.constants import StaticPermissions
 
 
 class TrackApiBase(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.CHF_TRENDS),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.CHF_TRENDS),)
 
     def get_filters(self):
         data = self.request.query_params
