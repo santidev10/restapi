@@ -3,6 +3,7 @@ from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import DataSourceType
 from performiq.analyzers.executor_analyzer import ExecutorAnalyzer
 from performiq.models import IQCampaign
+from performiq.models import OAuthAccount
 from performiq.tasks.generate_exports import generate_exports
 from performiq.utils.send_export_email import send_export_email
 from saas import celery_app
@@ -17,6 +18,11 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
     try:
         executor_analyzer = ExecutorAnalyzer(iq_campaign)
     except PerformIQDataFetchError:
+        # PerformIQDataFetchError will only be raised by Google Ads and DV360 analysis, which
+        # always have a related campaign
+        OAuthAccount.objects\
+            .filter(oauth_type=iq_campaign.campaign.oauth_type, user=iq_campaign.user)\
+            .update(is_enabled=False)
         all_results = {
             "error": "Unable to fetch data for analysis. Please re-OAuth."
         }
@@ -34,7 +40,9 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
     iq_campaign.results = all_results
     iq_campaign.completed = now_in_default_tz()
     iq_campaign.save(update_fields=["started", "results", "completed"])
-    _send_completion_email(email, iq_campaign, completion_link)
+
+    if not iq_campaign.results.get("error"):
+        _send_completion_email(email, iq_campaign, completion_link)
 
 
 def _send_completion_email(email: str, iq_campaign: IQCampaign, completion_link: str):
