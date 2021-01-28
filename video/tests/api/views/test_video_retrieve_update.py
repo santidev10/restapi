@@ -9,7 +9,6 @@ from es_components.managers import VideoManager
 from es_components.models.video import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import Permissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -17,10 +16,6 @@ from video.api.urls.names import Name
 
 
 class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(VideoRetrieveUpdateTestSpec, cls).setUpClass()
-        Permissions.sync_groups()
 
     def _get_url(self, video_id):
         return reverse(

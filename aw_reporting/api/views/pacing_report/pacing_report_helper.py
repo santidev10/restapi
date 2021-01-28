@@ -6,7 +6,7 @@ from userprofile.constants import StaticPermissions
 
 
 class PacingReportHelper(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
     date_format = "%Y-%m-%d"
 
     def get_filters(self):

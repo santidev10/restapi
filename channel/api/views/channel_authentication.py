@@ -178,7 +178,8 @@ class ChannelAuthenticationApiView(APIView):
 
             # Authentication through Google OAuth should not grant Managed Service permissions
             disabled_managed_service_perms = {
-                perm_name: False for perm_name in StaticPermissions.perms() if StaticPermissions.MANAGED_SERVICE in perm_name
+                perm_name: False for perm_name in StaticPermissions.all_perms()
+                if StaticPermissions.MANAGED_SERVICE in perm_name
             }
             user_data.update(dict(
                 email=email,

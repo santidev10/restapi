@@ -1,4 +1,4 @@
-from django.test import testcases
+from django.test import TransactionTestCase
 from django.core.exceptions import ValidationError
 from performiq.utils.map_csv_fields import is_cpm_validator
 from performiq.utils.map_csv_fields import is_cpv_validator
@@ -7,7 +7,7 @@ from performiq.utils.map_csv_fields import is_integer_validator
 from performiq.utils.map_csv_fields import is_rate_validator
 
 
-class MapCSVFieldsValidatorTestCase(testcases.TestCase):
+class MapCSVFieldsValidatorTestCase(TransactionTestCase):
 
     def test_invalid_cpm(self):
         for invalid in [0.5, ".123", 1123, 10, [], "asdf", {}, "USD"]:

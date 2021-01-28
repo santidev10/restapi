@@ -5,10 +5,17 @@ from segment.api.serializers.custom_segment_update_serializers import CustomSegm
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentUpdateSerializer
 from segment.models import CustomSegment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
+from userprofile.constants import StaticPermissions
+from utils.permissions import or_permission_classes
 
 
 class CustomSegmentUpdateApiView(UpdateAPIView):
-    permission_classes = (AdminCustomSegmentOwnerPermission,)
+    permission_classes = (
+        or_permission_classes(
+            AdminCustomSegmentOwnerPermission,
+            StaticPermissions.has_perms(StaticPermissions.CTL__CREATE, StaticPermissions.CTL__FEATURE_LIST)
+        ),
+    )
 
     def get_object(self):
         pk = self.kwargs.get("pk", None)
@@ -29,7 +36,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         return an update serializer based on user's permissions
         """
-        if self.request.user.is_staff:
+        if self.request.user.is_staff or self.request.user.has_permission(StaticPermissions.CTL__FEATURE_LIST):
             return CustomSegmentAdminUpdateSerializer
         if self.request.user.id != instance.owner_id:
             raise PermissionDenied("You do not have sufficient privileges to modify this resource.")

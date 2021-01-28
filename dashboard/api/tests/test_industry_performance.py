@@ -11,7 +11,6 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames
-from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.reverse import reverse
 
@@ -21,6 +20,7 @@ class DashBoardIndustryPerformanceTestCase(ExtendedAPITestCase, ESTestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS,
                                                    Sections.ADS_STATS))
         video_manager = VideoManager(sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS))

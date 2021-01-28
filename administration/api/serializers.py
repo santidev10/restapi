@@ -14,6 +14,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
+from userprofile.constants import StaticPermissions
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
 from userprofile.models import get_default_accesses
@@ -119,8 +120,8 @@ class UserSerializer(ModelSerializer):
             "status"
         )
 
-    def get_can_access_media_buying(self, obj: PermissionsMixin):
-        return obj.has_perm("userprofile.view_media_buying")
+    def get_can_access_media_buying(self, obj):
+        return obj.has_permission(StaticPermissions.MEDIA_BUYING)
 
 
 class UserUpdateSerializer(ModelSerializer):

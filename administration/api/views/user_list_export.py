@@ -55,7 +55,7 @@ class UserListCSVRendered(CSVStreamingRenderer):
 
 
 class UserListExportApiView(FileListApiView):
-    permission_classes = (StaticPermissions()(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
     renderer_classes = (UserListCSVRendered,)
     queryset = UserProfile.objects.all().order_by("last_name")
 

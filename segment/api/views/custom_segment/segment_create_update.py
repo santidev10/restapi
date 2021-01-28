@@ -3,7 +3,6 @@ import json
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from rest_framework.generics import CreateAPIView
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_200_OK
@@ -16,13 +15,12 @@ from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
 from utils.views import get_object
-from utils.permissions import has_static_permission
 
 
 class SegmentCreateUpdateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
-        has_static_permission(StaticPermissions.CTL__CREATE),
+        StaticPermissions.has_perms(StaticPermissions.CTL__CREATE),
     )
     parser_classes = [MultiPartParser]
 

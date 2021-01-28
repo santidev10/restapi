@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
@@ -56,7 +57,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
         context = self._get_serializer_context(video.channel.id)
         if self.request and self.request.user and self.request.user.is_staff:
             result = VideoAdminSerializer(video, context=context).data
-        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+        elif self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             result = VideoWithVettedStatusSerializer(video, context=context).data
         else:
             result = VideoSerializer(video, context=context).data
@@ -68,8 +69,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
             pass
         # pylint: enable=broad-except
 
-        if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
-                or self.request.user.is_staff):
+        if not (video.channel.id in user_channels
+                or self.request.user.has_permission(StaticPermissions.RESEARCH__AUTH)):
             if Sections.ANALYTICS in result.keys():
                 del result[Sections.ANALYTICS]
 

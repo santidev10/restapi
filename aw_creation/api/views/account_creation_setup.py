@@ -26,7 +26,7 @@ def is_demo(*args, **kwargs):
 
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AccountCreationSetupSerializer
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Get account creation",

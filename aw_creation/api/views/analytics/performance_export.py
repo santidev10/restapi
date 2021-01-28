@@ -23,7 +23,7 @@ from utils.views import xlsx_response
 
 
 class AnalyticsPerformanceExportApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE__EXPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def post(self, request, pk, **_):
         user = request.user

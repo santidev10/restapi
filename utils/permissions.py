@@ -72,11 +72,7 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
     permission = None
 
     def has_permission(self, request, view):
-        return request.user.has_perm(self.permission)
-
-
-class UserHasDashboardPermission(UserHasPermissionBase):
-    permission = "userprofile.view_dashboard"
+        return request.user.has_permission(self.permission)
 
 
 def user_has_permission(perm):
@@ -108,14 +104,3 @@ class ReadOnly(permissions.BasePermission):
 class IsVettingAdmin(permissions.BasePermission):
     def has_permission(self, request, *_):
         return request.user and request.user.has_permission(StaticPermissions.CTL__VET_ADMIN)
-
-
-def has_static_permission(*permission_items):
-    class HasPermission(permissions.BasePermission):
-        def has_permission(self, request, *_):
-            if isinstance(request.user, get_user_model()):
-                for perm in permission_items:
-                    if request.user.has_permission(perm):
-                        return True
-            return False
-    return HasPermission

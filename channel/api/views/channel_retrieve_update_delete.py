@@ -25,7 +25,7 @@ from utils.es_components_api_utils import get_fields
 from utils.es_components_cache import flush_cache
 from utils.permissions import or_permission_classes
 from utils.utils import prune_iab_categories
-from utils.permissions import has_static_permission
+
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -41,7 +41,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                                          AddFieldsMixin):
     permission_classes = (
         or_permission_classes(
-            has_static_permission(StaticPermissions.RESEARCH__CHANNEL_DETAIL),
+            StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_DETAIL),
             OwnChannelPermissions,
         ),
     )

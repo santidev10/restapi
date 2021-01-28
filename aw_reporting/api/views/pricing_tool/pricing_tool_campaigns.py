@@ -7,7 +7,7 @@ from userprofile.constants import StaticPermissions
 
 
 class PricingToolCampaignsView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PRICING_TOOL),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PRICING_TOOL),)
 
     @staticmethod
     def post(request):

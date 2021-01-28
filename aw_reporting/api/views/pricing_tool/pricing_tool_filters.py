@@ -9,7 +9,7 @@ from userprofile.constants import StaticPermissions
 
 
 class PricingToolFiltersView(RetrieveAPIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.PRICING_TOOL),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PRICING_TOOL),)
 
     def get(self, request, *args, **kwargs):
         user = request.user

@@ -14,12 +14,11 @@ from dashboard.models import OpportunityWatch
 from dashboard.utils import get_cache_key
 from utils.datetime import now_in_default_tz
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class DashboardPacingAlertsAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.PACING_REPORT),
+        StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),
     )
     CACHE_TTL = 1800
     MAX_SIZE = PACING_REPORT_OPPORTUNITIES_MAX_WATCH

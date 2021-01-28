@@ -23,7 +23,7 @@ from utils.aws.s3_exporter import S3Exporter
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        StaticPermissions()(StaticPermissions.AUDIT_QUEUE, StaticPermissions.CTL__VET_ADMIN),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE, StaticPermissions.CTL__VET_ADMIN),
     )
     LANGUAGES_REVERSE = {}
 

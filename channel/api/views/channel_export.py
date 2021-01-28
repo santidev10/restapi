@@ -1,4 +1,3 @@
-from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
 from channel.tasks.export_data import export_channels_data
@@ -7,12 +6,11 @@ from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.datetime import now_in_default_tz
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import has_static_permission
 
 
 class ChannelListExportApiView(VettingAdminAggregationsMixin, ESDataS3ExportApiView, APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.RESEARCH__EXPORT),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH__EXPORT),
     )
     generate_export_task = export_channels_data
 

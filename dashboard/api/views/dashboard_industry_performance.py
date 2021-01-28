@@ -15,12 +15,10 @@ from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
 from utils.datetime import now_in_default_tz
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
-
 
 class DashboardIndustryPerformanceAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.RESEARCH),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     CACHE_TTL = 3600

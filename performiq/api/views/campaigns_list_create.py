@@ -10,12 +10,11 @@ from performiq.models import IQCampaign
 import performiq.tasks.start_analysis as start_analysis
 from userprofile.constants import StaticPermissions
 from utils.lang import get_request_prefix
-from utils.permissions import has_static_permission
 
 
 class PerformIQCampaignListCreateAPIView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.PERFORMIQ),
+        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
     pagination_class = PerformIQPaginatior
 

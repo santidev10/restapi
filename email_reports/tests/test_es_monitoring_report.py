@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from django.core import mail
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from email_reports.tasks import send_daily_email_reports
 from es_components.constants import Sections
@@ -14,7 +14,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 
 
-class ESMonitoringTestCase(TestCase, ESTestCase):
+class ESMonitoringTestCase(TransactionTestCase, ESTestCase):
 
     @patch("email_reports.reports.es_monitoring_report.settings.ES_MONITORING_EMAIL_ADDRESSES", ["test@test.test"])
     def test_send_email(self):

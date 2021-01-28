@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.models import AWAccountPermission, Flight, FlightStatistic
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -19,6 +19,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from dashboard.api.urls.names import DashboardPathName
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
@@ -70,11 +71,9 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
         VideoCreativeStatistic.objects.create(creative=creative2, date=action_date,
                                               ad_group=ad_group,
                                               impressions=12)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]), \
-             self.patch_user_settings(**user_settings):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -106,11 +105,10 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
         Account.objects.create(name="")
         Account.objects.create(name="")
         self.__set_non_admin_user_with_account(managed_account.id)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         aw_cids = {item["aw_cid"] for item in response.data["items"]}
         self.assertEqual(aw_cids, {expected_account_id})
@@ -149,11 +147,9 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
                 impressions=impressions,
                 clicks=clicks,
             )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         data = response.data
@@ -175,18 +171,13 @@ class DashboardManagedServiceListAPITestCase(AwReportingAPITestCase):
         """
         test for presence of extra data fields
         """
-        self.user.is_staff = True
-        self.user.save(update_fields=['is_staff',])
-
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url + f"?account_id={account.id}")
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url + f"?account_id={account.id}")
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(set(data.keys()), set(['pacing', 'margin', 'cpv']))

@@ -18,7 +18,7 @@ from utils.datetime import now_in_default_tz
 
 
 class PacingReportCollectView(ListAPIView, PacingReportHelper):
-    permission_classes = (StaticPermissions()(StaticPermissions.PACING_REPORT),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def get(self, request, *args, **kwargs):
         filters = request.GET

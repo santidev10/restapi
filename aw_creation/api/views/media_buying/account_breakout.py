@@ -19,7 +19,7 @@ class AccountBreakoutAPIView(APIView):
     GET: Retrieve campaign breakout details
     POST: Create breakout campaigns
     """
-    permission_classes = (StaticPermissions.MEDIA_BUYING,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get(self, request, *args, **kwargs):
         """

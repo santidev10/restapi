@@ -22,7 +22,7 @@ from .schemas import CREATION_OPTIONS_SCHEMA
 
 
 class CreationOptionsApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Allowed options for account creations",

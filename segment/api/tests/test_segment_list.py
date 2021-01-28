@@ -16,21 +16,16 @@ from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentRelated
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        Permissions.sync_groups()
-
-    @classmethod
-    def tearDownClass(cls):
-        CustomSegment.objects.all().delete()
+    def setUp(self) -> None:
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CTL: True,
+        })
 
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST) + f"?segment_type={segment_type}"
@@ -82,7 +77,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(set(ctlc.keys()), expected_fields)
 
     def test_owner_filter_list(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CTL: True,
+        })
         seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
         seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
         self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
@@ -105,9 +102,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_owner_filter_list_vetted(self):
         """ Users should be able to see and download their own lists, even if vetted """
-        user = self.create_test_user()
         audit = AuditProcessor.objects.create(source=0)
-        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
         seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
         segment, export = self._create_segment(segment_params=seg_1_params,
                                                export_params=dict(query={}, download_url="test"))
@@ -120,7 +116,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
 
     def test_list_type_filter_list(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CTL: True,
+        })
         seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
         seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
@@ -133,38 +131,37 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data["items"]), expected_segments_count)
 
     def test_sort_by_created_list_descending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
             "sort_by={}".format("created_at")).urlencode()
         response = self.client.get(
             "{}&{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
 
     def test_sort_by_created_ascending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
             "ascending=1&sort_by={}".format("created_at")).urlencode()
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_1.id)
         self.assertEqual(data["items"][1]["id"], seg_2.id)
 
     def test_sort_by_items_descending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1",
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1",
                                              statistics={"items_count": 2})
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2",
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="2",
                                              statistics={"items_count": 1})
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
@@ -172,15 +169,15 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             "sort_by={}".format("items")).urlencode()
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_1.id)
         self.assertEqual(data["items"][1]["id"], seg_2.id)
 
     def test_sort_by_items_ascending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1",
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1",
                                              statistics={"items_count": 2})
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2",
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="2",
                                              statistics={"items_count": 1})
         CustomSegmentRelated.objects.create(
             related_id="test",
@@ -192,43 +189,43 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             "ascending=1&sort_by={}".format("items")).urlencode()
         response = self.client.get(
             "{}&{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
 
     def test_sort_by_title_descending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="First")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="Second")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="Second")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
             "sort_by={}".format("title")).urlencode()
         response = self.client.get(
             "{}&{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
 
     def test_sort_by_title_ascending(self):
-        user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="First")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="Second")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=1, segment_type=0, title="Second")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
             "ascending=1&sort_by={}".format("title")).urlencode()
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_1.id)
         self.assertEqual(data["items"][1]["id"], seg_2.id)
 
     def test_channel_segment_statistics_fields(self):
-        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
-            list_type=0, title="channel", owner=user,
+            list_type=0, title="channel", owner=self.user,
             statistics={
                 "items_count": 0,
                 "audited_videos": 0,
@@ -248,14 +245,14 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("channel"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
 
     def test_video_segment_statistics_fields(self):
-        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=0,
-            list_type=0, title="video", owner=user,
+            list_type=0, title="video", owner=self.user,
             statistics={
                 "items_count": 0,
                 "dislikes": 0,
@@ -273,6 +270,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO))
 
@@ -280,14 +278,14 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         """
         test that certain channel fields are present
         """
-        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
-            list_type=0, title="channel", owner=user,
+            list_type=0, title="channel", owner=self.user,
             statistics={}
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("channel"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["items"][0]
         assert_equal_map = {
             'segment_type': CHANNEL,
@@ -300,14 +298,14 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         """
         test that certain video fields are present
         """
-        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=0,
-            list_type=0, title="video", owner=user,
+            list_type=0, title="video", owner=self.user,
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("video"))
         data = response.data["items"][0]
+        self.assertEqual(response.status_code, HTTP_200_OK)
         assert_equal_map = {
             'segment_type': VIDEO,
         }
@@ -316,7 +314,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
                 self.assertEqual(data[key], value)
 
     def test_content_category_filters(self):
-        user = self.create_test_user()
         params = {
             "params": {
                 "content_categories": [],
@@ -324,7 +321,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         }
         s1 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=0,
-            list_type=0, title="video", owner=user,
+            list_type=0, title="video", owner=self.user,
         )
         s1_params = params.copy()
         s1_params["params"]["content_categories"] = ["Travel", "Television"]
@@ -332,7 +329,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
         s2 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=0,
-            list_type=0, title="video", owner=user,
+            list_type=0, title="video", owner=self.user,
         )
         s2_params = params.copy()
         s2_params["params"]["content_categories"] = ["Movies"]
@@ -340,7 +337,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
         s3 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=0,
-            list_type=0, title="video", owner=user,
+            list_type=0, title="video", owner=self.user,
         )
         s3_params = params.copy()
         s3_params["params"]["content_categories"] = ["Comedy", "People & Blogs"]
@@ -348,10 +345,10 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
         query_params = QueryDict("general_data.iab_categories=Travel,Movies,Comedy").urlencode()
         response = self.client.get(f"{self._get_url('video')}?{query_params}")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual({s1.id, s2.id, s3.id}, {int(item["id"]) for item in response.data["items"]})
 
     def test_language_filters(self):
-        user = self.create_test_user()
         params = {
             "params": {
                 "languages": [],
@@ -359,7 +356,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         }
         s1 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
-            list_type=0, title="channel", owner=user,
+            list_type=0, title="channel", owner=self.user,
         )
         s1_params = params.copy()
         s1_params["params"]["languages"] = ["es", "en"]
@@ -367,7 +364,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
         s2 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
-            list_type=0, title="channel", owner=user,
+            list_type=0, title="channel", owner=self.user,
         )
         s2_params = params.copy()
         s2_params["params"]["languages"] = ["ru"]
@@ -375,7 +372,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
         s3 = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
-            list_type=0, title="channel", owner=user,
+            list_type=0, title="channel", owner=self.user,
         )
         s3_params = params.copy()
         s3_params["params"]["languages"] = ["ga"]
@@ -386,8 +383,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual({s2.id, s3.id}, {int(item["id"]) for item in response.data["items"]})
 
     def test_owner_list_no_vetting(self):
-        user = self.create_test_user()
-        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1")
         seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2", audit_id=0)
         seg_1, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
         self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
@@ -399,8 +395,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
-        admin_user = self.create_test_user()
-        admin_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+        self.create_test_user(perms={
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
 
         test_user_1 = self._create_user()
         test_user_2 = self._create_user()
@@ -416,9 +413,10 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_audit_vetter_list(self):
         """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
-        vetting_user = self.create_test_user()
-        vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
-
+        self.create_test_user(perms={
+            StaticPermissions.CTL: True,
+            StaticPermissions.CTL__VET: True,
+        })
         test_user_1 = self._create_user()
         test_user_2 = self._create_user()
         test_user_3 = self._create_user()
@@ -432,8 +430,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual({item["id"] for item in response.data["items"]}, {seg_1.id, seg_3.id})
 
     def test_vetting_complete(self):
-        vetting_user = self.create_test_user()
-        vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+        vetting_user = self.create_test_user(perms={
+            StaticPermissions.CTL__VET_ADMIN: True,
+        })
 
         test_user_1 = self._create_user()
         test_user_2 = self._create_user()
@@ -458,18 +457,20 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_create_perm_can_download(self):
         """ Test users with create ctl permission can view and download their own list """
-        user_1 = self.create_test_user()
-        user_2 = self._create_user()
-        user_2.add_custom_user_group(PermissionGroupNames.CUSTOM_TARGET_LIST_CREATION)
-        _, export = self._create_segment(dict(owner=user_1, segment_type=0, title="test_1", list_type=0),
+        user_1 = self._create_user()
+        user_2 = self.create_test_user(perms={
+            StaticPermissions.CTL: True,
+        })
+        self._create_segment(dict(owner=user_1, segment_type=0, title="test_2", list_type=0),
+                             export_params=dict(query={}, download_url="test_2_url"))
+        _, export = self._create_segment(dict(owner=user_2, segment_type=0, title="test_1", list_type=0),
                                          export_params=dict(
                                              query={},
                                              download_url="test_1_url"
                                          ))
-        self._create_segment(dict(owner=user_2, segment_type=0, title="test_2", list_type=0),
-                             export_params=dict(query={}, download_url="test_2_url"))
         # request uses last user created
         response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         owned = data["items"][0]
-        self.assertEqual(owned["owner_id"], str(user_1.id))
+        self.assertEqual(owned["owner_id"], str(user_2.id))

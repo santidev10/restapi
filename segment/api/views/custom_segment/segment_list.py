@@ -10,6 +10,7 @@ from segment.api.serializers import CTLSerializer
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentListType
 from segment.models.custom_segment import CustomSegment
+from userprofile.constants import StaticPermissions
 
 
 class SegmentListApiView(ListAPIView):
@@ -17,6 +18,10 @@ class SegmentListApiView(ListAPIView):
     serializer_class = CTLSerializer
     pagination_class = SegmentPaginator
     queryset = CustomSegment.objects.all().select_related("export").order_by("created_at")
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.CTL,
+                                    StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__SEE_ALL),
+    )
 
     def _do_filters(self, queryset):
         """
@@ -81,9 +86,9 @@ class SegmentListApiView(ListAPIView):
         """
         # Filter queryset depending on permission level
         user = self.request.user
-        if user.has_perm("userprofile.vet_audit_admin"):
+        if user.has_permission(StaticPermissions.CTL__VET_ADMIN) or user.has_permission(StaticPermissions.CTL__SEE_ALL):
             base_filters = {}
-        elif user.has_perm("userprofile.vet_audit"):
+        elif user.has_permission(StaticPermissions.CTL__VET):
             base_filters = {"audit_id__isnull": False}
         else:
             base_filters = {"owner": self.request.user}

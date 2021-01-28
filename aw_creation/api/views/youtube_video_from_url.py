@@ -16,7 +16,7 @@ from userprofile.constants import StaticPermissions
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MEDIA_BUYING),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
     url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
     @swagger_auto_schema(

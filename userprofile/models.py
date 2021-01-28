@@ -242,33 +242,29 @@ class PermissionItem(models.Model):
     STATIC_PERMISSIONS = [
     #   [FEATURE.PERMISSION_NAME,                       DEFAULT_VALUE, display]
         [StaticPermissions.ADMIN,                           False,  "Admin (the powers of Zeus)"],
-        [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer"],
+        [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer Read"],
         [StaticPermissions.ADS_ANALYZER__RECIPIENTS,        False,  "View all Ads Analyzer reports"],
 
-        [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue"],
-        [StaticPermissions.AUDIT_QUEUE__READ,               False,  "Audit Queue Read"],
+        [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue Read"],
         [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
         [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
 
-        [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager"],
-        [StaticPermissions.BLOCKLIST_MANAGER__READ,         False,  "Blocklist Manager Read"],
+        [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager Read"],
         [StaticPermissions.BLOCKLIST_MANAGER__CREATE,       False,  "Blocklist Manager Create"],
         [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
         [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
 
-        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL)"],
+        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL) Read"],
         [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
 
-        [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor"],
-        [StaticPermissions.BSTE__READ,                      False,  "Brand Safety Tags Editor Read"],
+        [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
         [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
         [StaticPermissions.BSTE__DELETE,                    False,  "Brand Safety Tags Editor Delete"],
         [StaticPermissions.BSTE__EXPORT,                    False,  "Brand Safety Tags Editor Export"],
 
-        [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends"],
+        [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
 
-        [StaticPermissions.CTL,                             False,  "Custom Target Lists"],
-        [StaticPermissions.CTL__READ,                       False,  "Read"],
+        [StaticPermissions.CTL,                             False,  "Custom Target Lists Read"],
         [StaticPermissions.CTL__CREATE,                     False,  "Create"],
         [StaticPermissions.CTL__DELETE,                     False,  "Delete"],
         [StaticPermissions.CTL__FEATURE_LIST,               False,  "Feature / Unfeature List"],
@@ -280,16 +276,14 @@ class PermissionItem(models.Model):
         [StaticPermissions.CTL__VET_ADMIN,                  False,  "Vet Admin"],
         [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
 
-        [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager"],
-        [StaticPermissions.DOMAIN_MANAGER__READ,            False, "Domain Manager Read"],
-        [StaticPermissions.DOMAIN_MANAGER__CREATE,          False, "Domain Manager Create"],
-        [StaticPermissions.DOMAIN_MANAGER__DELETE,          False, "Domain Manager Delete"],
+        [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
+        [StaticPermissions.DOMAIN_MANAGER__READ_ALL,        False,  "Domain Manager Read All"],
+        [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],
+        [StaticPermissions.DOMAIN_MANAGER__DELETE,          False,  "Domain Manager Delete"],
 
-        [StaticPermissions.DASHBOARD,                       False,  "Home Dashboard"],
         [StaticPermissions.FORECAST_TOOL,                   False,  "Forecasting Tool"],
-        [StaticPermissions.HEALTH_CHECK_TOOL,               False,  "Health Check Tool"],
 
-        [StaticPermissions.MANAGED_SERVICE,                             False,  "Managed Service"],
+        [StaticPermissions.MANAGED_SERVICE,                             False,  "Managed Service Read"],
         [StaticPermissions.MANAGED_SERVICE__EXPORT,                     False,  "Managed Service Export"],
         [StaticPermissions.MANAGED_SERVICE__PERFORMANCE_GRAPH,          False,  "Managed Service Performance"],
         [StaticPermissions.MANAGED_SERVICE__DELIVERY,                   False,  "Managed Service Delivery"],
@@ -307,29 +301,28 @@ class PermissionItem(models.Model):
         [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
 
-        [StaticPermissions.RESEARCH,                        True,   "Research"],
-        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos and audience data"],
-        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age and Gender data"],
-        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View Brand Suitability Badges"],
+        [StaticPermissions.RESEARCH,                        True,   "Research Read"],
+        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
+        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
         [StaticPermissions.RESEARCH__CHANNEL_DETAIL,        False,  "Channel detail page"],
-        [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization Data"],
+        [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization data"],
         [StaticPermissions.RESEARCH__EXPORT,                False,  "Export"],
-        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts Data"],
-        [StaticPermissions.RESEARCH__VETTING,               False,  "Able to Vet items"],
+        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts data"],
+        [StaticPermissions.RESEARCH__VETTING,               False,  "Able to vet items"],
         [StaticPermissions.RESEARCH__VETTING_DATA,          False,  "View vetting data & filters"],
         [StaticPermissions.RESEARCH__VIDEO_DETAIL,          False,  "Video detail page"],
 
-        [StaticPermissions.USER_ANALYTICS,                  False,  "User Analyics"],
-        [StaticPermissions.USER_MANAGEMENT,                 False,  "User Management"],
+        [StaticPermissions.USER_ANALYTICS,                  False,  "User analytics"],
+        [StaticPermissions.USER_MANAGEMENT,                 False,  "User management"],
     ]
 
     @staticmethod
     def load_permissions():
         for p in PermissionItem.STATIC_PERMISSIONS:
-            i, _ = PermissionItem.objects.get_or_create(permission=p[0])
-            i.default_value = p[1]
-            i.display = p[2]
-            i.save(update_fields=['default_value', 'display'])
+            defaults = dict(permission=p[0], default_value=p[1], display=p[2])
+            PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
+
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)

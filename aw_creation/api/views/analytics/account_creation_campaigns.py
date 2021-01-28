@@ -11,7 +11,7 @@ from userprofile.constants import StaticPermissions
 
 
 class AnalyticsAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (StaticPermissions()(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get(self, request, pk):
         account_creation = self._get_account_creation(pk)
