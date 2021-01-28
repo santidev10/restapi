@@ -20,7 +20,7 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
             segment = CustomSegment.objects.get(id=pk)
             related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                     f"segment_id: {segment.id} not found.", segment_id=segment.id)
-            if request.user.is_staff or request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+            if request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
                 if related_file_obj.admin_filename:
                     content_generator = segment.s3.get_export_file(segment.get_admin_s3_key())
                 else:

@@ -100,7 +100,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         return context
 
     def get(self, request, *args, **kwargs):
-        if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
+        if self.request.user.has_permission(StaticPermissions.ADMIN) \
+                and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
 
         channel_id = kwargs.get("pk")

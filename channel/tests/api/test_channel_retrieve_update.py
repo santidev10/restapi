@@ -212,10 +212,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertIn(field, response.data)
 
     def test_ignore_monetization_filter_no_permission(self):
-        user = self.create_test_user(perms={
+        self.create_test_user(perms={
             StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
         })
-        user.add_custom_user_permission("channel_details")
         channel = Channel(f"test_channel_id_{next(int_iterator)}")
         channel.populate_monetization(is_monetizable=True)
         ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert([channel])

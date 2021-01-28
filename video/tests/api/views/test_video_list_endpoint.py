@@ -157,7 +157,6 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         the initial search
         """
         user = self.create_test_user()
-        user.add_custom_user_permission("video_list")
 
         video_ids = [str(next(int_iterator)) for i in range(3)]
         video_one = Video(**{

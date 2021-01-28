@@ -38,7 +38,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_brand_safety(self):
-        user = self.create_test_user(perms={
+        self.create_test_user(perms={
             StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
         })
         channel_id = str(next(int_iterator))
@@ -255,8 +255,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(response.data.get("items")), len(default_similar_channels))
 
     def test_ignore_monetization_filter_no_permission(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         channels[0].populate_monetization(is_monetizable=True)
 
@@ -286,8 +287,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         note: multi_match phrase requires repetition of the phrase (which must also
         be in order) to get a diff in the score. Uses score of highest scoring field
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(2)]
         most_relevant_channel_title = "the quick brown fox the quick brown fox quick brown fox"
@@ -335,8 +337,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(asc_items[-1]["general_data"]["title"], most_relevant_channel_title)
 
     def test_content_quality_filter(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         manager = ChannelManager(sections=(Sections.TASK_US_DATA,))
         docs = [
             manager.model(
@@ -363,8 +366,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         the search term exists in a field that is specified in
         the initial search
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(3)]
         channel_one = Channel(**{
@@ -547,7 +551,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotIn("blacklist_data", item_fields)
 
         # admin
-        user.is_staff = True
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
         user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -763,8 +769,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         primary categories should appear first with a +10 scoring boost when
         relevancy sorting is descending.
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(2)]
         primary_category = "Music & Audio"

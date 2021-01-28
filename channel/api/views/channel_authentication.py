@@ -23,7 +23,6 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
-from userprofile.models import get_default_accesses
 from userprofile.models import WhiteLabel
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_channel_stats_priority

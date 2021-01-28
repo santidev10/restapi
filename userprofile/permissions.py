@@ -1,5 +1,4 @@
 from django.apps import apps
-from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -29,63 +28,6 @@ class GlobalPermission(Permission):
         self.content_type = ct
         super(GlobalPermission, self).save(*args)
     # pylint: enable=signature-differs
-
-
-class PermissionHandler:
-    def add_custom_user_permission(self, perm):
-        """
-        :param perm: str, permission name
-        :return:
-        """
-        permission = get_custom_permission(perm)
-        self.user_permissions.add(permission)
-
-    def remove_custom_user_permission(self, perm):
-        """
-        :param perm: str, permission name
-        :return:
-        """
-        permission = get_custom_permission(perm)
-        self.user_permissions.remove(permission)
-
-    def get_user_groups(self):
-        groups = self.groups.values_list("name", flat=True)
-        return groups
-
-    def add_custom_user_group(self, group_name):
-        try:
-            group = Group.objects.get(name=group_name)
-            self.groups.add(group)
-        except Group.DoesNotExist:
-            pass
-
-    def has_custom_user_group(self, group_name):
-        return self.groups.filter(name=group_name).exists()
-
-    def remove_custom_user_group(self, group_name):
-        try:
-            group = Group.objects.get(name=group_name)
-            self.groups.remove(group)
-        except Group.DoesNotExist:
-            pass
-
-    def update_access(self, access):
-        """
-        :param access: [{access: [{name: "group_name", value: true/false}]}, ...]
-        :return:
-        """
-        # get data from access
-        for access_item in access:
-            group_name = access_item.get("name", None)
-            is_group_for_add = access_item.get("value", None)
-
-            # set data from access
-            if group_name is not None and is_group_for_add is not None:
-
-                if is_group_for_add:
-                    self.add_custom_user_group(group_name)
-                else:
-                    self.remove_custom_user_group(group_name)
 
 
 class PermissionGroupNames:

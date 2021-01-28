@@ -148,7 +148,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         return context
 
     def get_serializer_class(self):
-        if self.request and self.request.user and self.request.user.is_staff:
+        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             return ChannelAdminSerializer
         if self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             return ChannelWithVettedStatusSerializer

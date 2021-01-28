@@ -1,4 +1,3 @@
-from rest_framework.permissions import IsAdminUser
 from rest_framework.serializers import ValidationError
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
