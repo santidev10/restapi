@@ -653,8 +653,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         test that searching for videos will yield results of videos that has a title or description
         with phrase that starts with what the user provided as input.
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
 
         video_id = str(next(int_iterator))
         video_id_2 = str(next(int_iterator))

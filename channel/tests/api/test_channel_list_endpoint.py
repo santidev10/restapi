@@ -819,8 +819,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         test that searching for channel will yield results of channels that has a title or description
         with phrase that starts with what the user provided as input.
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
 
         channel_id = str(next(int_iterator))
         channel_id_2 = str(next(int_iterator))
