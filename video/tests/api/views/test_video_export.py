@@ -157,7 +157,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         })
         self._request_collect_file()
 
-        user.remove_custom_user_permission("video_list")
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -310,7 +309,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         user = self.create_test_user(perms={
             StaticPermissions.RESEARCH__EXPORT: True,
         })
-        user.add_custom_user_permission("research_exports")
 
         videos = [Video(next(int_iterator)) for _ in range(2)]
 
@@ -332,8 +330,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_brand_safety_score_mapped(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        self.create_test_user()
 
         manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
         videos = [Video(next(int_iterator)) for _ in range(2)]

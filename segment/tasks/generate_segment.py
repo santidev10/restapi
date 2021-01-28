@@ -15,6 +15,7 @@ from segment.models.constants import VideoConfig
 from segment.models.constants import ChannelConfig
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from userprofile.constants import StaticPermissions
 from utils.exception import retry
 from utils.utils import chunks_generator
 
@@ -102,10 +103,10 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                     generate_utils.write_to_file(batch[:user_size - seen], filename, segment.user_export_serializer, \
                                                  {}, write_header=write_header is True)
                     # if segment is user generated, add aggregations for user version export
-                    if segment.owner.is_staff is False:
+                    if not segment.owner.has_permission(StaticPermissions.ADMIN):
                         generate_utils.add_aggregations(aggregations, batch[:user_size - seen])
                 # if segment is admin generated, add aggregations for admin version export
-                if segment.owner.is_staff:
+                if segment.owner.has_permission(StaticPermissions.ADMIN):
                     generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
@@ -113,7 +114,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                     raise MaxItemsException
         except MaxItemsException:
             pass
-        if (segment.owner.is_staff is False) and (seen > user_size):
+        if (not segment.owner.has_permission(StaticPermissions.ADMIN)) and (seen > user_size):
             seen = user_size
         generate_utils.finalize_aggregations(aggregations, seen)
         if add_uuid is True:

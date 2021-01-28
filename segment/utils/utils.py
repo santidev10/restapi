@@ -189,4 +189,4 @@ class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])
         except CustomSegment.DoesNotExist:
             raise ValidationError(f"Custom Segment with id {view.kwargs['pk']} does not exist.")
-        return request.user.is_staff or segment.owner == request.user
+        return request.user.has_permission(StaticPermissions.ADMIN) or segment.owner == request.user

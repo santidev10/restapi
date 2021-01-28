@@ -48,9 +48,11 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             cpv_buffer=2,
             name="Not allowed"
         )
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update),
-                                       content_type="application/json")
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
+        self.user.save()
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_non_integer_buffers(self):
@@ -67,17 +69,17 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         update3 = dict(
             cpv_buffer="!1",
         )
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update1),
-                                       content_type="application/json")
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
+        self.user.save()
+        response = self.client.put(url, json.dumps(update1), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update2),
-                                       content_type="application/json")
+        
+        response = self.client.put(url, json.dumps(update2), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update3),
-                                       content_type="application/json")
+
+        response = self.client.put(url, json.dumps(update3), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_update(self):

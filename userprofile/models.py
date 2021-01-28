@@ -23,7 +23,6 @@ from aw_reporting.models import Opportunity
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ class LowercaseEmailField(models.EmailField):
         return value.lower() if isinstance(value, str) else value
 
 
-class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
+class UserProfile(AbstractBaseUser, PermissionsMixin):
     """
     An abstract base class implementing a fully featured User model with
     admin-compliant permissions.
