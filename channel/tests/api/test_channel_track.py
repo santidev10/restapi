@@ -6,7 +6,6 @@ from es_components.managers import ChannelManager
 from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase

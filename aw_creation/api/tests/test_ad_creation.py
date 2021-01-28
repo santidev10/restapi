@@ -290,7 +290,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -321,7 +320,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         for field in ("headline", "description_1", "description_2")
     ])
     def test_discovery_fields_not_none(self, property_name):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -351,7 +349,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(property_name, response.data)
 
     def test_headline_limit(self):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,

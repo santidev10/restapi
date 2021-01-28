@@ -408,7 +408,6 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data),
             {
-                "access",
                 "aw_settings",
                 "can_access_media_buying",
                 "company",
@@ -454,7 +453,6 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data),
             {
-                "access",
                 "aw_settings",
                 "can_access_media_buying",
                 "company",

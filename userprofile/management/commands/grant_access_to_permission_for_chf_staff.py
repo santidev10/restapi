@@ -3,7 +3,7 @@ import logging
 from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
 
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +20,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger.info("Start")
-        Permissions.sync_groups()
         count = 0
         permission_type = options["permission"]
+        if not getattr(StaticPermissions, permission_type, None):
+            valid_perms = "\n".join(StaticPermissions.all_perms())
+            raise ValueError(f"Invalid permission: {permission_type}. Valid values: \n{valid_perms}")
         for user in get_user_model().objects.all():
             if user.email.lower().endswith("@channelfactory.com"):
                 logger.info("- %s", user.email)
                 count += 1
-                user.add_custom_user_group(permission_type)
+                user.perms.update({
+                    getattr(StaticPermissions, permission_type): True
+                })
+                user.save()
         logger.info("DONE %s users processed.", count)

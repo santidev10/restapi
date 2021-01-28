@@ -19,8 +19,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from .base import AwReportingAPITestCase
@@ -142,9 +141,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
 
     def test_grant_user_permissions(self):
         user = self.user
-        Permissions.sync_groups()
-        self.assertFalse(self.user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
-        self.assertFalse(self.user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
+        self.assertFalse(user.has_permission(StaticPermissions.MANAGED_SERVICE))
         url = "{}?{}".format(
             self._url,
             urlencode(dict(
@@ -173,8 +170,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
             response = self.client.post(url, dict(code="1111"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
-        self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
-        self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
+        self.assertTrue(user.has_permission(StaticPermissions.MANAGED_SERVICE))
 
     def test_handle_inactive_account(self):
         tz = "UTC"

@@ -15,7 +15,6 @@ from es_components.managers.video import VideoManager
 from userprofile.constants import StaticPermissions
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.utils import prune_iab_categories
 from video.api.serializers.video import VideoAdminSerializer
 from video.api.serializers.video import VideoSerializer
@@ -23,8 +22,7 @@ from video.api.serializers.video import VideoWithVettedStatusSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin):
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    permission_required = ("userprofile.video_details",)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA),)
 
     __video_manager = VideoManager
 

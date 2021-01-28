@@ -2,7 +2,6 @@ import logging
 from functools import wraps
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from rest_framework.test import APITestCase
 
 from userprofile.constants import StaticPermissions
@@ -41,11 +40,6 @@ class TestUserMixin:
     def create_admin_user(self, **kwargs):
         admin_perm = {StaticPermissions.ADMIN: True}
         return self.create_test_user(is_staff=True, is_superuser=True, perms=admin_perm, **kwargs)
-
-    def fill_all_groups(self, user):
-        all_perm_groups = Group.objects.values_list("name", flat=True)
-        for perm_group in all_perm_groups:
-            user.add_custom_user_group(perm_group)
 
 
 def with_authorized(create_user_fn):

@@ -194,12 +194,7 @@ class ChannelAuthenticationApiView(APIView):
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
 
-            # new default access implementation
-            for group_name in get_default_accesses(via_google=True):
-                user.add_custom_user_group(group_name)
-
             # Get or create auth token instance for user
-
             send_welcome_email(user, self.request)
         device_auth_token = UserAuthApiView.create_device_auth_token(user)
         return user, device_auth_token

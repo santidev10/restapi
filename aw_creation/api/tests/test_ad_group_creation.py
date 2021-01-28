@@ -297,8 +297,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad_group.is_deleted, True)
 
     def test_enterprise_user_can_edit_ad_group(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -329,8 +327,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_total_limit(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -368,8 +364,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_keyword_negative_limit(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -407,8 +401,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_keyword_negative_per_campaign(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
