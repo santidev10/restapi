@@ -1,5 +1,8 @@
+import logging
+
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELDS
 from aw_reporting.adwords_reports import placement_performance_report
+from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import ADWORDS_COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
 from performiq.models import OAuthAccount
@@ -25,6 +28,9 @@ ADWORDS_API_FIELD_MAPPING = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+
 def get_google_ads_data(iq_campaign: IQCampaign, **_):
     """
     Retrieve Placement Report for Campaign from Adwords API
@@ -48,7 +54,11 @@ def get_google_ads_data(iq_campaign: IQCampaign, **_):
     fields = ("AdGroupId", "Criteria", "DisplayName", "Ctr", "AverageCpm", "AverageCpv", "VideoViewRate",
               "ActiveViewMeasurableImpressions", "ActiveViewImpressions",
               "ActiveViewViewability") + MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
-    report = placement_performance_report(client, predicates=predicates, fields=fields)
+    try:
+        report = placement_performance_report(client, predicates=predicates, fields=fields)
+    except Exception:
+        logger.exception(f"PerformIQ: Error retrieving Adwords Placement report for IQCampaign id: {iq_campaign.id}")
+        raise PerformIQDataFetchError
     all_rows = []
     for row in report:
         if "channel" not in row.DisplayName:
