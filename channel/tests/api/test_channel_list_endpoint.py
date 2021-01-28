@@ -806,3 +806,91 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data["items"]
         self.assertEqual(asc_items[-1]["general_data"]["primary_category"], primary_category)
+
+    def test_research_phrase_starts_with(self):
+        """
+        test that searching for channel will yield results of channels that has a title or description
+        with phrase that starts with what the user provided as input.
+        """
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+
+        channel_id = str(next(int_iterator))
+        channel_id_2 = str(next(int_iterator))
+        channel_id_3 = str(next(int_iterator))
+        channel_id_4 = str(next(int_iterator))
+        channel_id_5 = str(next(int_iterator))
+
+        most_relevant_channel = Channel(**{
+            "meta": {
+                "id": channel_id,
+            },
+            "general_data": {
+                "title": "watchmojo",
+                "description": "the quick brown fox jumps over the lazy dog",
+            }
+        })
+        relevant_channel2 = Channel(**{
+            "meta": {
+                "id": channel_id_2,
+            },
+            "general_data": {
+                "title": "watchmojo.com",
+                "description": "woah did you see that? that quick brown fox jumped over a dog!",
+            }
+        })
+        relevant_channel3 = Channel(**{
+            "meta": {
+                "id": channel_id_3,
+            },
+            "general_data": {
+                "title": "another relevant channel",
+                "description": "woah did you see that? watchmojo brown fox jumped over a dog!",
+            }
+        })
+        relevant_channel4 = Channel(**{
+            "meta": {
+                "id": channel_id_4,
+            },
+            "general_data": {
+                "title": "fourth channel",
+                "description": "woah did you see that? watchmojo.com brown fox jumped over a dog!",
+            }
+        })
+        not_relevant_channel5 = Channel(**{
+            "meta": {
+                "id": channel_id_5,
+            },
+            "general_data": {
+                "title": "not related",
+                "description": "woah did you see that? brown fox jumped over a dog!",
+            }
+        })
+        sleep(1)
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([most_relevant_channel, relevant_channel2,
+                                                  relevant_channel3, relevant_channel4, not_relevant_channel5])
+
+        # test sorting by _score:desc
+        desc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(len(desc_items), 4)
+        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
+        self.assertEqual(desc_items[1]["general_data"]["title"], "watchmojo.com")
+
+
+        # test sort _score:asc
+        asc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(len(asc_items), 4)
+        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
+        self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
+
