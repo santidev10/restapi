@@ -1,4 +1,5 @@
 from django.test import TransactionTestCase
+
 from audit_tool.utils.regex_trie import Trie
 
 
