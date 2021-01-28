@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
 
 from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class Command(BaseCommand):
         count = 0
         permission_type = options["permission"]
         if not getattr(StaticPermissions, permission_type, None):
-            valid_perms = "\n".join(StaticPermissions.all_perms())
+            valid_perms = "\n".join(PermissionItem.all_perms())
             raise ValueError(f"Invalid permission: {permission_type}. Valid values: \n{valid_perms}")
         for user in get_user_model().objects.all():
             if user.email.lower().endswith("@channelfactory.com"):

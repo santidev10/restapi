@@ -71,7 +71,7 @@ class StaticPermissions:
     CTL__DELETE = "ctl.delete"
     CTL__FEATURE_LIST = "ctl.feature_list"
     CTL__EXPORT_BASIC = "ctl.export_basic"
-    CTL__EXPORT_ADMIN = "export_admin"
+    CTL__EXPORT_ADMIN = "ctl.export_admin"
     CTL__SEE_ALL = "ctl.see_all"
     CTL__VET_ENABLE = "ctl.vet_enable"
     CTL__VET = "ctl.vet"
@@ -171,12 +171,3 @@ class StaticPermissions:
                 # definition to handle
                 return False
         return HasPermission
-
-    @staticmethod
-    def all_perms():
-        perm_names = [
-            getattr(StaticPermissions, attr)
-            for attr in dir(StaticPermissions)
-            if attr[:2] != "__" and isinstance(getattr(StaticPermissions, attr), str)
-        ]
-        return perm_names

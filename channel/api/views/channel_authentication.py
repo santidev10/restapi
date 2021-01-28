@@ -22,6 +22,7 @@ from userprofile.api.views.user_auth import UserAuthApiView
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 from userprofile.models import UserChannel
 from userprofile.models import WhiteLabel
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
@@ -177,7 +178,7 @@ class ChannelAuthenticationApiView(APIView):
 
             # Authentication through Google OAuth should not grant Managed Service permissions
             disabled_managed_service_perms = {
-                perm_name: False for perm_name in StaticPermissions.all_perms()
+                perm_name: False for perm_name in PermissionItem.all_perms()
                 if StaticPermissions.MANAGED_SERVICE in perm_name
             }
             user_data.update(dict(

@@ -19,7 +19,10 @@ class UserPermissionsManagement(APIView):
     def get(self, request):
         user = self._validate_request(request)
         permissions = []
+        all_valid_perms = set(PermissionItem.all_perms())
         for p in PermissionItem.objects.all():
+            if p.permission not in all_valid_perms:
+                continue
             enabled = user.perms.get(p.permission)
             if enabled is None:
                 enabled = p.default_value
