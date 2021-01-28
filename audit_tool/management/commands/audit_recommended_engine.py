@@ -25,6 +25,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
+from audit_tool.utils.regex_trie import get_optimized_regex
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
@@ -538,10 +539,7 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("inclusion")
         if not input_list:
             return
-        regexp = "({})".format(
-            "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
-        )
-        self.inclusion_list = re.compile(regexp)
+        self.inclusion_list = get_optimized_regex(words_list=input_list, remove_tags_punctuation_from_words=True)
 
     def load_exclusion_list(self):
         if self.exclusion_list:
@@ -563,10 +561,7 @@ class Command(BaseCommand):
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
-            lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
-            )
-            exclusion_list[lang] = re.compile(lang_regexp)
+            exclusion_list[lang] = get_optimized_regex(words_list=keywords)
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
