@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 
 from aw_reporting.models import AdStatistic
 from email_reports.reports.daily_apex_visa_campaign_report import DailyApexVisaCampaignEmailReport
+from email_reports.reports.daily_apex_visa_campaign_report import AbstractDailyApexEmailReport
 from email_reports.reports.daily_apex_visa_campaign_report import DATE_FORMAT
 
 logger = logging.getLogger(__name__)
@@ -14,24 +15,43 @@ logger = logging.getLogger(__name__)
 DISNEY_CREATIVE_ID_KEY = "dc_trk_cid"
 
 
-class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
+class DailyApexDisneyCampaignEmailReport(AbstractDailyApexEmailReport):
 
     CSV_HEADER = ("Campaign Advertiser ID", "Campaign Advertiser", "Campaign ID", "Campaign Name", "Placement ID",
                   "Placement Name", "Creative ID", "Creative Name", "Date", "Currency", "Media Cost", "Impressions",
                   "Clicks", "Video Views", "Video Views (25%)", "Video Views (50%)", "Video Views (75%)",
                   "Video Completions",)
 
-    attachment_filename = "daily_campaign_report.csv"
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-    historical_filename = "apex_disney_historical.csv"
+    def get_user(self):
+        return get_user_model().objects.filter(email=settings.DAILY_APEX_DISNEY_CAMPAIGN_REPORT_CREATOR).first()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = get_user_model().objects.filter(email=settings.DAILY_APEX_DISNEY_CAMPAIGN_REPORT_CREATOR).first()
-        self.to = settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
+    def get_from_email(self):
+        return settings.EXPORTS_EMAIL_ADDRESS
+
+    def get_to_list(self):
+        # TODO remove
+        return ["andrew.wong@channelfactory.com",]
+        # return settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
+
+    def get_cc_list(self):
+        # TODO remove
+        return []
+        # return settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
+
+    def get_historical_filename(self) -> str:
+        return "apex_disney_historical.csv"
+
+    def get_attachment_filename(self) -> str:
+        return "daily_campaign_report.csv"
 
     def _get_subject(self):
         return f"Daily Disney Campaign Report for {self.yesterday}"
+
+    def _get_body(self):
+        return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
     def get_stats(self, campaign_ids: list, is_historical: bool = False):
         """
@@ -61,7 +81,7 @@ class DailyApexDisneyCampaignEmailReport(DailyApexVisaCampaignEmailReport):
                 "video_views_75_quartile",
                 named=True)
 
-    def get_rows_from_stats(self, creative_statistics):
+    def get_rows_from_stats(self, creative_statistics: list):
         rows = []
         creative_statistics = list(creative_statistics)
 
