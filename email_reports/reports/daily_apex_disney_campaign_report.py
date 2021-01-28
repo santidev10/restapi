@@ -9,8 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from aw_reporting.models import AdStatistic
-from email_reports.reports.daily_apex_visa_campaign_report import DailyApexVisaCampaignEmailReport
-from email_reports.reports.daily_apex_visa_campaign_report import AbstractDailyApexEmailReport
+from email_reports.reports.abstract_daily_apex_email_report import AbstractDailyApexEmailReport
 from email_reports.reports.daily_apex_visa_campaign_report import DATE_FORMAT
 from utils.aws.s3_exporter import S3Exporter
 
@@ -38,14 +37,10 @@ class DailyApexDisneyCampaignEmailReport(AbstractDailyApexEmailReport):
         return settings.EXPORTS_EMAIL_ADDRESS
 
     def get_to_list(self):
-        # TODO remove
-        return ["andrew.wong@channelfactory.com",]
-        # return settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
+        return settings.DAILY_APEX_DISNEY_REPORT_TO_EMAILS
 
     def get_cc_list(self):
-        # TODO remove
-        return []
-        # return settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
+        return settings.DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES
 
     def get_historical_filename(self) -> str:
         return "apex_disney_historical.csv"
