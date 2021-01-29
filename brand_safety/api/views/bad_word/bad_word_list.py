@@ -14,7 +14,10 @@ from utils.utils import remove_tags_punctuation
 
 
 class BadWordListApiView(ListCreateAPIView):
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.BSTE, method="get")
+        | StaticPermissions.has_perms(StaticPermissions.BSTE__CREATE, method="post"),
+    )
     serializer_class = BadWordSerializer
     pagination_class = BrandSafetyPaginator
     MIN_SEARCH_LENGTH = 3
