@@ -705,7 +705,7 @@ class APIViewMixin:
         gets the correct manager class based on user permissions.
         admin class currently adds brand_safety's 'Unsuitable' score range
         """
-        if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY):
+        if self.request.user.has_permission(StaticPermissions.ADMIN):
             return self.admin_manager_class
         return self.manager_class
 

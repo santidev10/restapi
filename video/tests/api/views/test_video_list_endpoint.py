@@ -474,7 +474,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 1)
 
-        # regular admin, all filters available
+        # only admin has all filters available
         user.perms.update({
             StaticPermissions.ADMIN: True,
         })
@@ -484,7 +484,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
-        # vetting data enabled, all filters available
+        # vetting data enabled, no high risk allowed
         user.perms.update({
             StaticPermissions.ADMIN: False,
             StaticPermissions.RESEARCH__VETTING_DATA: True,
@@ -493,7 +493,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
-        self.assertEqual(len(items), 2)
+        self.assertEqual(len(items), 1)
 
     def test_non_admin_brand_safety_exclusion(self):
         user = self.create_test_user(perms={
@@ -529,7 +529,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
 
-        # brand suitability perm should see HIGH_RISK agg
+        # brand suitability perm should not see HIGH_RISK agg, only admins
         user.perms.update({
             StaticPermissions.ADMIN: False,
             StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
@@ -540,9 +540,9 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         response_aggregations = response.data["aggregations"]
         self.assertIn(constants.BRAND_SAFETY, list(response_aggregations.keys()))
         buckets = response_aggregations[constants.BRAND_SAFETY]["buckets"]
-        self.assertEqual(len(buckets), 4)
+        self.assertEqual(len(buckets), 3)
         labels = [bucket['key'] for bucket in buckets]
-        self.assertIn(constants.HIGH_RISK, labels)
+        self.assertNotIn(constants.HIGH_RISK, labels)
 
     def test_cache(self):
         """ Test subsequent requests uses cache """

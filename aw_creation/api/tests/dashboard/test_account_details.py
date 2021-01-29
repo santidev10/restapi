@@ -692,8 +692,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(data["impressions"], campaign.impressions)
 
     def test_video_views_impressions_ad_group_type(self):
-        self.user.is_staff = True
-        self.user.save()
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
