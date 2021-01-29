@@ -288,7 +288,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.MANAGED_SERVICE__DELIVERY,                   False,  "Managed Service Delivery"],
         [StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED,        False,  "Managed Service Campaigns Segmented"],
         [StaticPermissions.MANAGED_SERVICE__CONVERSIONS,                False,  "Managed Service Conversions"],
-        [StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS,       False,  "Managed Service ALl Accounts Visible"],
+        [StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS,       False,  "Managed Service All Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST,             False,  "Managed Service Real Google Ads Cost"],
         [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  False,  "Managed Service Audiences Tab"],
@@ -320,6 +320,13 @@ class PermissionItem(models.Model):
         for p in PermissionItem.STATIC_PERMISSIONS:
             defaults = dict(permission=p[0], default_value=p[1], display=p[2])
             PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
+
+    @classmethod
+    def all_perms(cls):
+        perm_names = [
+            perm[0] for perm in cls.STATIC_PERMISSIONS
+        ]
+        return perm_names
 
 
 class UserChannel(Timestampable):

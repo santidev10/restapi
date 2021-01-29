@@ -12,6 +12,7 @@ from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
 from userprofile.models import WhiteLabel
@@ -266,7 +267,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
                    return_value=MockResponse(json=user_details)):
             response = self.client.post(self.url, dict(code="code"), )
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        disabled_managed_service_perms = [perm_name for perm_name in StaticPermissions.all_perms()
+        disabled_managed_service_perms = [perm_name for perm_name in PermissionItem.all_perms()
                                           if StaticPermissions.MANAGED_SERVICE in perm_name]
         user = UserProfile.objects.get(email=user_details["email"])
         expected_vals = {
