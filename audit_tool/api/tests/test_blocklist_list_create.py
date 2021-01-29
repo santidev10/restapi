@@ -222,7 +222,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual({v1["title"], v2["title"]}, {video_target.general_data.title})
         self.assertEqual({v1["blocked_count"], v2["blocked_count"]}, {blv.blocked_count})
         self.assertEqual({v1["unblocked_count"], v2["unblocked_count"]}, {blv.unblocked_count})
-        self.assertEqual({v1["added_by_user"], v2["added_by_user"]}, {user.email})
+        self.assertEqual({v1["added_by_user"], v2["added_by_user"]}, {f"{user.first_name} {user.last_name}"})
 
         resc1 = self.client.get(self._get_url("channel") + "?search=Focus")
         resc2 = self.client.get(self._get_url("channel") + "?search=" + channel_target.main.id)
@@ -235,7 +235,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual({c1["title"], c2["title"]}, {channel_target.general_data.title})
         self.assertEqual({c1["blocked_count"], c2["blocked_count"]}, {blc.blocked_count})
         self.assertEqual({c1["unblocked_count"], c2["unblocked_count"]}, {blc.unblocked_count})
-        self.assertEqual({c1["added_by_user"], c2["added_by_user"]}, {user.email})
+        self.assertEqual({c1["added_by_user"], c2["added_by_user"]}, {f"{user.first_name} {user.last_name}"})
 
     def test_does_not_update_same_blocklist_value(self):
         """ Should not update BlacklistItem object if blocklist value does not change """
