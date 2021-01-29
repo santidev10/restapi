@@ -286,6 +286,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  False,  "Managed Service Audiences Tab"],
         [StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS,              False,  "Managed Service Service Costs"],
+        [StaticPermissions.MANAGED_SERVICE__CHANNEL_VIDEO_TABS,         False,  "Managed Service Channel & Video Tabs"],
 
         [StaticPermissions.MEDIA_BUYING,                    False,  "Media Buying"],
         [StaticPermissions.PACING_REPORT,                   False,  "Pacing Report"],

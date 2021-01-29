@@ -102,6 +102,7 @@ class StaticPermissions:
     MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY = "managed_service.global_account_visibility"
     MANAGED_SERVICE__AUDIENCES = "managed_service.audiences"
     MANAGED_SERVICE__SERVICE_COSTS = "managed_service.service_costs"
+    MANAGED_SERVICE__CHANNEL_VIDEO_TABS = "managed_service.channel_video_tabs"
 
     MEDIA_BUYING = "media_buying"
 
