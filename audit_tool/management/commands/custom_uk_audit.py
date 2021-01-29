@@ -9,6 +9,8 @@ from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import convert_subscriber_count
 
+from audit_tool.utils.regex_trie import get_optimized_regex
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,10 +27,7 @@ class AuditUK():
             reader = csv.reader(blacklist)
             for row in reader:
                 self.keywords.append(row[0].lower())
-        regexp = "({})".format(
-            "|".join([r"\b{}\b".format(re.escape(w)) for w in self.keywords])
-        )
-        self._regexp = re.compile(regexp)
+        self._regexp = get_optimized_regex(words_list=self.keywords)
 
     def load_channels(self):
         with open("channels.csv", "r", encoding="latin-1") as channels_list:

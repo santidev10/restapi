@@ -5,6 +5,7 @@ from typing import Type
 from audit_tool.models import AuditIgnoreModel
 from audit_tool.models import ChannelAuditIgnore
 from audit_tool.models import VideoAuditIgnore
+from audit_tool.utils.regex_trie import get_optimized_regex
 from brand_safety.models import BadWord
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
@@ -28,13 +29,7 @@ class SegmentedAudit:
     AUDITED_VIDEOS_DATA_KEY = "__audited_videos"
 
     def __init__(self):
-        self.bad_words_regexp = re.compile(
-            "({})".format(
-                "|".join(
-                    [r"\b{}\b".format(re.escape(w)) for w in self.get_all_bad_words()]
-                )
-            )
-        )
+        self.bad_words_regexp = get_optimized_regex(words_list=self.get_all_bad_words())
 
     def run(self):
         last_channel = PersistentSegmentRelatedChannel.objects.order_by("-updated_at").first()
