@@ -7,15 +7,21 @@ DEFAULT_DOMAIN = "viewiq"
 
 
 class UserSettingsKey:
+    HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
+    VISIBLE_ACCOUNTS = "visible_accounts"
+
+    # Deprecated, now stored on UserProfile.perms
+    # Tech debt. Remove these fields after release/5.12 and 0049_migrate_permissions data migration
+    # has run in production
     DASHBOARD_CAMPAIGNS_SEGMENTED = "dashboard_campaigns_segmented"
     DASHBOARD_AD_WORDS_RATES = "dashboard_ad_words_rates"
     HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
     DASHBOARD_COSTS_ARE_HIDDEN = "dashboard_costs_are_hidden"
     SHOW_CONVERSIONS = "show_conversions"
-    VISIBLE_ACCOUNTS = "visible_accounts"
     VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
-    HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
+
+    ACTIVE_AW_SETTINGS_KEYS = {HIDDEN_CAMPAIGN_TYPES, VISIBLE_ACCOUNTS}
 
 
 class UserTypeRegular(ExtendedEnum):

@@ -30,15 +30,8 @@ logger = logging.getLogger(__name__)
 
 def get_default_settings():
     return {
-        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.HIDE_REMARKETING: False,
-        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-        UserSettingsKey.SHOW_CONVERSIONS: False,
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
-        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
 
 
