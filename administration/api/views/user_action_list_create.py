@@ -25,7 +25,7 @@ class UserActionPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         if request.method == "GET":
-            return request.user and request.user.has_permission(StaticPermissions.ADMIN)
+            return request.user and request.user.has_permission(StaticPermissions.USER_ANALYTICS)
         return IsAuthenticated.has_permission(self, request, view)
 
 
