@@ -24,7 +24,7 @@ from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import VettingAdminFiltersMixin
+from utils.api.mutate_query_params import VettingDataPermFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
@@ -34,7 +34,6 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import IsVettingAdmin
 
 
 class ChannelsNotFound(Exception):
@@ -77,7 +76,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+class ChannelListApiView(VettingDataPermFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
         StaticPermissions.has_perms(StaticPermissions.RESEARCH),
@@ -124,8 +123,6 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     manager_class = ChannelManager
     admin_manager_class = VettingAdminChannelManager
 
-    # can't import in es_components_api_utils app registry not ready
-    vetting_admin_permission_class = IsVettingAdmin
     cache_class = CacheItem
 
     allowed_percentiles = (
@@ -150,7 +147,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             return ChannelAdminSerializer
-        if self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             return ChannelWithVettedStatusSerializer
         return ChannelSerializer
 
@@ -181,9 +178,9 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
                 except KeyError:
                     pass
 
-        self.guard_vetting_admin_aggregations()
+        self.guard_vetting_data_perm_aggregations()
 
-        self.guard_vetting_admin_filters()
+        self.guard_vetting_data_perm_filters()
 
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 

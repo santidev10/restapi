@@ -146,7 +146,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         context = self._get_serializer_context()
         if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             serializer = ChannelAdminSerializer
-        elif self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             serializer = ChannelWithVettedStatusSerializer
         else:
             serializer = ChannelSerializer

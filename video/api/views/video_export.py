@@ -28,7 +28,7 @@ class VideoListExportApiView(VettingAdminAggregationsMixin,ESDataS3ExportApiView
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["transcripts"] = None
 
-        self.guard_vetting_admin_aggregations()
+        self.guard_vetting_data_perm_aggregations()
         request = self._add_mandatory_filters(request)
         return super(VideoListExportApiView, self)._get_query_params(request)
 

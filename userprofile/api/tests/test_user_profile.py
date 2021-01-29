@@ -74,16 +74,6 @@ class UserProfileTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["phone_number_verified"], True)
 
-    def test_aw_settings_read_only(self):
-        self.create_test_user()
-        response = self._update({
-            "aw_settings": {
-                "visible_all_accounts": True
-            }
-        })
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["aw_settings"]["visible_all_accounts"], False)
-
     def test_handle_invalid_phone_number(self):
         self.create_test_user()
         with patch("userprofile.api.serializers.user.boto3.client", side_effect=ClientError) as mock_client:

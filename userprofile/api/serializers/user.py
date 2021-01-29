@@ -10,6 +10,7 @@ from rest_framework.serializers import SerializerMethodField
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.constants import StaticPermissions
+from userprofile.constants import UserSettingsKey
 from userprofile.models import PermissionItem
 from userprofile.models import WhiteLabel
 
@@ -18,6 +19,7 @@ class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
+    aw_settings = SerializerMethodField()
     can_access_media_buying = SerializerMethodField()
     company = CharField(max_length=255, required=True)
     first_name = CharField(max_length=255, required=True)
@@ -115,3 +117,11 @@ class UserSerializer(ModelSerializer):
             if perm not in perms
         })
         return perms
+
+    def get_aw_settings(self, obj):
+        """ Remove deprecated fields """
+        aw_settings = {
+            key: value for key, value in obj.aw_settings.items()
+            if key in UserSettingsKey.ACTIVE_AW_SETTINGS_KEYS
+        }
+        return aw_settings
