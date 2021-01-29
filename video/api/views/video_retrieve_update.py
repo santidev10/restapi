@@ -55,7 +55,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
         context = self._get_serializer_context(video.channel.id)
         if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             result = VideoAdminSerializer(video, context=context).data
-        elif self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             result = VideoWithVettedStatusSerializer(video, context=context).data
         else:
             result = VideoSerializer(video, context=context).data

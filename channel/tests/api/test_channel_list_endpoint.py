@@ -183,7 +183,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         # vetting admin, all filters available
         user.perms.update({
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
         })
         user.save()
         response = self.client.get(url)
@@ -538,7 +538,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         # audit vet admin
         user.perms.update({
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
         })
         user.save()
         response = self.client.get(self.url)
@@ -564,10 +564,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
-    def test_vetting_admin_aggregations_guard(self):
+    def test_vetting_data_perm_aggregations_guard(self):
         user = self.create_test_user(perms={
             StaticPermissions.RESEARCH: True,
-            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: False,
         })
 
         channel_ids = []
@@ -628,7 +628,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         # vetting admin should see aggs
         user.perms.update({
             StaticPermissions.ADMIN: False,
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
         })
         user.save()
         response = self.client.get(url)
@@ -642,7 +642,6 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_non_admin_brand_safety_exclusion(self):
         user = self.create_test_user(perms={
             StaticPermissions.RESEARCH: True,
-            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
         })
 
         url = self.url + "?" + urlencode({
@@ -661,7 +660,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         # admin should see HIGH_RISK agg
         user.perms.update({
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.ADMIN: True,
         })
         user.save()
         response = self.client.get(url)
@@ -673,10 +672,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
 
-        # vetting admin should see HIGH_RISK agg
+        # brand suitability data perm should see HIGH_RISK agg
         user.perms.update({
             StaticPermissions.ADMIN: False,
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
         })
         user.save()
         response = self.client.get(url)

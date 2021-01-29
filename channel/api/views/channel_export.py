@@ -24,7 +24,7 @@ class ChannelListExportApiView(VettingAdminAggregationsMixin, ESDataS3ExportApiV
                 request.query_params._mutable = False
                 # pylint: enable=protected-access
 
-            self.guard_vetting_admin_aggregations()
+            self.guard_vetting_data_perm_aggregations()
         request = self._add_mandatory_filters(request)
         return super(ChannelListExportApiView, self)._get_query_params(request)
 
