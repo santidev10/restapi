@@ -10,6 +10,7 @@ from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -33,6 +34,17 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_success_permissions(self):
+        self.create_test_user(perms={
+            StaticPermissions.BSTE__CREATE: True,
+        })
+        test_category = BadWordCategory.objects.create(name="testing")
+        response = self._request(
+            name="test_success_permissions",
+            category=test_category.id,
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
 
     def test_name_required(self):
         self.create_admin_user()

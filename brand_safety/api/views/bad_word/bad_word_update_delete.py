@@ -10,7 +10,10 @@ from utils.utils import remove_tags_punctuation
 
 
 class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.BSTE__DELETE, method="delete")
+        | StaticPermissions.has_perms(StaticPermissions.BSTE__CREATE, method="patch,put"),
+    )
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
 
