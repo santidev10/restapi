@@ -21,7 +21,7 @@ from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import VettingDataPermFiltersMixin
+from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -40,7 +40,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(VettingDataPermFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
     permission_classes = (
         StaticPermissions.has_perms(StaticPermissions.RESEARCH),
@@ -156,7 +156,7 @@ class VideoListApiView(VettingDataPermFiltersMixin, VettingAdminAggregationsMixi
 
         self.guard_vetting_data_perm_aggregations()
 
-        self.guard_vetting_data_perm_filters()
+        self.guard_brand_suitability_high_risk_filters()
 
         self.ensure_exact_youtube_id_result(manager=VideoManager())
 

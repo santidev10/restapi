@@ -24,7 +24,7 @@ from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import VettingDataPermFiltersMixin
+from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
@@ -76,7 +76,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(VettingDataPermFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
         StaticPermissions.has_perms(StaticPermissions.RESEARCH),
@@ -180,7 +180,7 @@ class ChannelListApiView(VettingDataPermFiltersMixin, VettingAdminAggregationsMi
 
         self.guard_vetting_data_perm_aggregations()
 
-        self.guard_vetting_data_perm_filters()
+        self.guard_brand_suitability_high_risk_filters()
 
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 

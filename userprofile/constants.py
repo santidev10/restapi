@@ -117,6 +117,7 @@ class StaticPermissions:
     RESEARCH__AUTH = "research.auth"
     RESEARCH__AGE_GENDER = "research.age_gender"
     RESEARCH__BRAND_SUITABILITY = "research.brand_suitability"
+    RESEARCH__BRAND_SUITABILITY_HIGH_RISK = "research.brand_suitability_high_risk"
     RESEARCH__CHANNEL_VIDEO_DATA = "research.channel_video_view"
     RESEARCH__EXPORT = "research.export"
     RESEARCH__MONETIZATION = "research.monetization"

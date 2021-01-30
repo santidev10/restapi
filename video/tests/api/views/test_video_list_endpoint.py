@@ -474,7 +474,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 1)
 
-        # regular admin, all filters available
+        # only admin has all filters available
         user.perms.update({
             StaticPermissions.ADMIN: True,
         })
@@ -484,10 +484,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
-        # vetting data enabled, all filters available
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK should see HIGH_RISK agg
         user.perms.update({
             StaticPermissions.ADMIN: False,
-            StaticPermissions.RESEARCH__VETTING_DATA: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(url)
@@ -529,10 +529,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
 
-        # brand suitability perm should see HIGH_RISK agg
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK should see HIGH_RISK agg
         user.perms.update({
             StaticPermissions.ADMIN: False,
-            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(url)

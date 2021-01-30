@@ -134,7 +134,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_brand_safety_high_risk_permission(self):
         """
         test that a regular user can filter on RISKY or above scores, while
-        admin users can additionally filter on HIGH_RISK scores
+        RESEARCH__BRAND_SUITABILITY_HIGH_RISK users can additionally filter on HIGH_RISK scores
         """
         user = self.create_test_user(perms={
             StaticPermissions.RESEARCH: True,
@@ -181,16 +181,16 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
-        # vetting admin, all filters available
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK perm should see HIGH_RISK agg
         user.perms.update({
-            StaticPermissions.RESEARCH__VETTING_DATA: True,
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
-
 
     def test_extra_fields(self):
         self.create_admin_user()
@@ -672,10 +672,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
 
-        # brand suitability data perm should see HIGH_RISK agg
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK should see HIGH_RISK agg
         user.perms.update({
             StaticPermissions.ADMIN: False,
-            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(url)
