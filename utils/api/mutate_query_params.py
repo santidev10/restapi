@@ -108,13 +108,13 @@ class VettingAdminAggregationsMixin:
             self.request.query_params["aggregations"] = ",".join(less_vetting_admin_aggs)
 
 
-class BrandSuitabilityAdminFiltersMixin:
+class BrandSuitabilityFiltersMixin:
     """
     remove filtering on 'unsuitable' brand safety scores
     Only accessible to admins
     """
-    def guard_vetting_data_perm_filters(self):
-        if self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN)\
+    def guard_brand_suitability_high_risk_filters(self):
+        if self.request.user and self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK)\
                 or "brand_safety" not in self.request.query_params:
             return
 

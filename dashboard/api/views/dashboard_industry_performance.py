@@ -1,7 +1,6 @@
 from datetime import timedelta
 import json
 
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 

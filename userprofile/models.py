@@ -298,6 +298,8 @@ class PermissionItem(models.Model):
         [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
         [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
         [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK, False, "View brand suitability high risk filter"],
+
         [StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA,    False,  "Channel and Video detail data"],
         [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization data"],
         [StaticPermissions.RESEARCH__EXPORT,                False,  "Export"],
