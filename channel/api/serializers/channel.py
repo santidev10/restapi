@@ -28,6 +28,8 @@ class ChannelSerializer(VettedStatusSerializerMixin, BlackListSerializerMixin, E
         if self.fields and isinstance(user, get_user_model()):
             if not user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
                 self.fields.pop("vetted_status", None)
+            if not user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
+                self.fields.pop("blacklist_data", None)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

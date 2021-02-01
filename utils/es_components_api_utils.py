@@ -3,6 +3,7 @@ import json
 import logging
 from urllib.parse import unquote
 
+from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from elasticsearch_dsl import Q
@@ -419,15 +420,23 @@ class ESDictSerializer(Serializer):
         :param data:
         :return:
         """
-        if data.get("custom_properties", {}).get("blocklist") is None:
-            try:
-                channel_id = data["channel"]["id"]
-                channel_blocklisted = self.context["channel_blocklist"][channel_id]
-            except KeyError:
-                channel_blocklisted = False
+        if isinstance(self.context.get("user"), get_user_model()) \
+                and self.context["user"].has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
+            if data.get("custom_properties", {}).get("blocklist") is None:
+                try:
+                    channel_id = data["channel"]["id"]
+                    channel_blocklisted = self.context["channel_blocklist"][channel_id]
+                except KeyError:
+                    channel_blocklisted = False
+                custom_properties = data.get("custom_properties", {})
+                custom_properties.update({"blocklist": channel_blocklisted})
+                data["custom_properties"] = custom_properties
+        else:
             custom_properties = data.get("custom_properties", {})
-            custom_properties.update({"blocklist": channel_blocklisted})
-            data["custom_properties"] = custom_properties
+            try:
+                del custom_properties["blocklist"]
+            except KeyError:
+                pass
         return data
 # pylint: enable=abstract-method
 
