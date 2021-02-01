@@ -84,7 +84,6 @@ class StaticPermissions:
     CTL__VET_EXPORT = "ctl.vet_export"
 
     DOMAIN_MANAGER = "domain_manager"
-    DOMAIN_MANAGER__READ_ALL = "domain_manager.read_all"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"
     DOMAIN_MANAGER__DELETE = "domain_manager.delete"
 

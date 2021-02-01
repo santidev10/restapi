@@ -21,8 +21,7 @@ class WhiteLabelApiView(APIView):
     READ_ONLY = ("GET",)
     permission_classes = (
         or_permission_classes(
-            StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER,
-                                        StaticPermissions.DOMAIN_MANAGER__READ_ALL, method="get"),
+            StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER, method="get"),
             StaticPermissions.has_perms(StaticPermissions.DOMAIN_MANAGER__CREATE, method="patch,post"),
             ReadOnly,
         ),
@@ -34,7 +33,7 @@ class WhiteLabelApiView(APIView):
     def get(self, request):
         all_domains = request.query_params.get("all")
         if all_domains:
-            if not request.user or not request.user.has_permission(StaticPermissions.DOMAIN_MANAGER__READ_ALL):
+            if not request.user or not request.user.has_permission(StaticPermissions.DOMAIN_MANAGER):
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
             data = {
                 "domains": WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data,
