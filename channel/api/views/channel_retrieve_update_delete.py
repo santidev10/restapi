@@ -8,9 +8,7 @@ from rest_framework.views import APIView
 
 from audit_tool.models import IASHistory
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.serializers.channel import ChannelAdminSerializer
 from channel.api.serializers.channel import ChannelSerializer
-from channel.api.serializers.channel import ChannelWithVettedStatusSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -95,7 +93,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
     def _get_serializer_context(self):
         context = {
-            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
+            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp(),
+            "user": self.request.user,
         }
         return context
 
@@ -144,12 +143,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             )
 
         context = self._get_serializer_context()
-        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
-            serializer = ChannelAdminSerializer
-        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
-            serializer = ChannelWithVettedStatusSerializer
-        else:
-            serializer = ChannelSerializer
+        serializer = ChannelSerializer
         result = serializer(channel, context=context).data
         result.update({
             "performance": {

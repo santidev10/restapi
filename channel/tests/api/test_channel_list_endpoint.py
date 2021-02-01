@@ -901,4 +901,3 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(asc_items), 4)
         self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
-
