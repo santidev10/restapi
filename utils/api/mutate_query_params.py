@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 
-from utils.permissions import IsVettingAdmin
 from brand_safety.constants import HIGH_RISK
+from userprofile.constants import StaticPermissions
 
 
 @contextmanager
@@ -87,13 +87,14 @@ class ValidYoutubeIdMixin:
                     if self.request.query_params.get(field, None):
                         del self.request.query_params[field]
 
+
 class VettingAdminAggregationsMixin:
     """
     remove certain aggregations if the user is not an admin
     or vetting admin
     """
-    def guard_vetting_admin_aggregations(self):
-        if IsVettingAdmin().has_permission(self.request) \
+    def guard_vetting_data_perm_aggregations(self):
+        if self.request.user and self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA)\
                 or "aggregations" not in self.request.query_params:
             return
 
@@ -106,12 +107,14 @@ class VettingAdminAggregationsMixin:
         with mutate_query_params(self.request.query_params):
             self.request.query_params["aggregations"] = ",".join(less_vetting_admin_aggs)
 
-class VettingAdminFiltersMixin:
+
+class BrandSuitabilityFiltersMixin:
     """
     remove filtering on 'unsuitable' brand safety scores
+    Only accessible to admins
     """
-    def guard_vetting_admin_filters(self):
-        if IsVettingAdmin().has_permission(self.request) \
+    def guard_brand_suitability_high_risk_filters(self):
+        if self.request.user and self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK)\
                 or "brand_safety" not in self.request.query_params:
             return
 

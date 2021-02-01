@@ -8,6 +8,7 @@ from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -73,10 +74,10 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_has_permissions(self):
-        self.create_admin_user()
-
+        self.create_test_user(perms={
+            StaticPermissions.BSTE__DELETE: True,
+        })
         response = self._request()
-
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         self.assertFalse(BadWord.objects.filter(pk=self.bad_word.pk).exists())
 

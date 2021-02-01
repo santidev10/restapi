@@ -30,15 +30,8 @@ logger = logging.getLogger(__name__)
 
 def get_default_settings():
     return {
-        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.HIDE_REMARKETING: False,
-        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-        UserSettingsKey.SHOW_CONVERSIONS: False,
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
-        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
 
 
@@ -293,6 +286,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  False,  "Managed Service Audiences Tab"],
         [StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS,              False,  "Managed Service Service Costs"],
+        [StaticPermissions.MANAGED_SERVICE__CHANNEL_VIDEO_TABS,         False,  "Managed Service Channel & Video Tabs"],
 
         [StaticPermissions.MEDIA_BUYING,                    False,  "Media Buying"],
         [StaticPermissions.PACING_REPORT,                   False,  "Pacing Report"],
@@ -304,6 +298,8 @@ class PermissionItem(models.Model):
         [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
         [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
         [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK, False, "View brand suitability high risk filter"],
+
         [StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA,    False,  "Channel and Video detail data"],
         [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization data"],
         [StaticPermissions.RESEARCH__EXPORT,                False,  "Export"],

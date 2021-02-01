@@ -35,6 +35,7 @@ class ApexVisaCreativeDataAggregator:
         :param creative_ids:
         :return:
         """
+        # check PG for creative data
         unresolved_ids = list(set(self.creative_ids))
         video_creatives = VideoCreativeData.objects.filter(id__in=unresolved_ids)
         postgres_map = {}
@@ -42,15 +43,16 @@ class ApexVisaCreativeDataAggregator:
             for record in batch:
                 postgres_map[record.id] = record.data
         self.extant_postgres_creative_data = postgres_map
-
         unresolved_ids = list(set(unresolved_ids) - set(postgres_map.keys()))
 
+        # check ES for creative data
         manager = VideoManager(Sections.GENERAL_DATA)
         elasticsearch_map = {}
         for video in manager.get(ids=unresolved_ids, skip_none=True):
             elasticsearch_map[video.main.id] = video.to_dict()
-
         unresolved_ids = list(set(unresolved_ids) - set(elasticsearch_map.keys()))
+
+        # Check YouTube for creative data
         youtube_api_data = resolve_videos_info(unresolved_ids) if unresolved_ids else {}
 
         self.data = {**postgres_map, **elasticsearch_map, **youtube_api_data}

@@ -7,6 +7,7 @@ from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -34,7 +35,9 @@ class BadWordExportTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.BSTE__EXPORT: True,
+        })
 
         response = self._request()
 

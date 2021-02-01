@@ -40,7 +40,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             args=(account_creation_id,)
         )
         return self.client.post(url,
-                                json.dumps(dict(is_staff=False, **kwargs)),
+                                json.dumps(dict(**kwargs)),
                                 content_type="application/json")
 
     def _hide_demo_data(self, user):
@@ -108,7 +108,6 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
-            StaticPermissions.ADMIN: True,
         })
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
@@ -122,6 +121,8 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
                   "".format(indicator, dimension, account_id, is_staff)
             with self.subTest(msg=msg):
+                user.perms.update({StaticPermissions.ADMIN: is_staff})
+                user.save()
                 response = self._request(account_id,
                                          indicator=indicator,
                                          dimention=dimension)
@@ -130,7 +131,8 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
     def test_cpm_cpv_is_not_visible(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
-            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.ADMIN: False,
         })
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
@@ -138,15 +140,12 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         indicators = Indicator.CPM, Indicator.CPV
         dimensions = ALL_DIMENSIONS
         account_ids = account_creation.id, DEMO_ACCOUNT_ID
-        staffs = True, False
 
-        test_data = list(product(indicators, dimensions, account_ids, staffs))
-        for indicator, dimension, account_id, is_staff in test_data:
-            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
-                  "".format(indicator, dimension, account_id, is_staff)
+        test_data = list(product(indicators, dimensions, account_ids))
+        for indicator, dimension, account_id in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}" \
+                  "".format(indicator, dimension, account_id)
             with self.subTest(msg=msg):
-                user.is_staff = is_staff
-                user.save()
                 response = self._request(account_id,
                                          indicator=indicator,
                                          dimention=dimension)

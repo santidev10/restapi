@@ -78,7 +78,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user(perms={
-            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
         })
         self.mcc_account = Account.objects.create(can_manage_clients=True)
@@ -89,7 +89,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
         user.perms.update({
-            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE: True,
         })
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
         user.save()

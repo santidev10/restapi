@@ -99,8 +99,3 @@ class BrandSafetyDataVisible(permissions.BasePermission):
 class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in view.READ_ONLY
-
-
-class IsVettingAdmin(permissions.BasePermission):
-    def has_permission(self, request, *_):
-        return request.user and request.user.has_permission(StaticPermissions.CTL__VET_ADMIN)

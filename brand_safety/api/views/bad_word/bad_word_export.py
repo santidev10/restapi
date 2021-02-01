@@ -18,7 +18,7 @@ class BadWordCSVRendered(CSVStreamingRenderer):
 
 
 class BadWordExportApiView(FileListApiView):
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BSTE__EXPORT),)
     serializer_class = BadWordSerializer
     renderer_classes = (BadWordCSVRendered,)
     queryset = BadWord.objects.all().order_by("name")

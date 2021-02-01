@@ -21,7 +21,7 @@ from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import VettingAdminFiltersMixin
+from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -31,9 +31,6 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import IsVettingAdmin
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from video.api.serializers.video import VideoAdminSerializer
 from video.api.serializers.video import VideoSerializer
 from video.api.serializers.video import VideoWithVettedStatusSerializer
@@ -43,7 +40,7 @@ from video.constants import RANGE_FILTER
 from video.constants import TERMS_FILTER
 
 
-class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
     permission_classes = (
         StaticPermissions.has_perms(StaticPermissions.RESEARCH),
@@ -92,8 +89,6 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
     manager_class = VideoManager
     admin_manager_class = VettingAdminVideoManager
 
-    # can't import in es_components_api_utils app registry not ready
-    vetting_admin_permission_class = IsVettingAdmin
     cache_class = CacheItem
 
     allowed_percentiles = (
@@ -114,7 +109,7 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
     def get_serializer_class(self):
         if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             return VideoAdminSerializer
-        if self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             return VideoWithVettedStatusSerializer
         return VideoSerializer
 
@@ -146,7 +141,7 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["transcripts"] = None
 
-        if not self.request.user.has_permission(StaticPermissions.CTL__VET_ADMIN) \
+        if not self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA) \
                 and not self.request.user.has_permission(StaticPermissions.ADMIN):
             vetted_params = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
             with mutate_query_params(self.request.query_params):
@@ -159,9 +154,9 @@ class VideoListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, 
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
 
-        self.guard_vetting_admin_aggregations()
+        self.guard_vetting_data_perm_aggregations()
 
-        self.guard_vetting_admin_filters()
+        self.guard_brand_suitability_high_risk_filters()
 
         self.ensure_exact_youtube_id_result(manager=VideoManager())
 

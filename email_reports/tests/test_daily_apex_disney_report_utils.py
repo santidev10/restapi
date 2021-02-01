@@ -1,9 +1,15 @@
 from mock import patch
 
 from django.test.testcases import TestCase
+from es_components.constants import Sections
+from es_components.managers.video import VideoManager
+from es_components.models.video import Video
 
-from email_reports.reports.daily_apex_disney_campaign_report import DisneyTrackingUrlTemplateIdParser
+from email_reports.models import VideoCreativeData
 from email_reports.reports.daily_apex_disney_campaign_report import DisneyTagSheetMap
+from email_reports.reports.daily_apex_disney_campaign_report import DisneyTrackingUrlTemplateIdParser
+from email_reports.reports.daily_apex_visa_campaign_report import ApexVisaCreativeDataAggregator
+from email_reports.reports.daily_apex_visa_campaign_report import TITLE
 
 
 def init_file(self):
@@ -30,6 +36,89 @@ def init_file(self):
 
 def do_nothing(*args, **kwargs):
     pass
+
+
+def get_mock_es_videos_from_data(data: dict):
+    videos = []
+    for id, video_data in data.items():
+        video = Video(id=id)
+        general_data = video_data.get(Sections.GENERAL_DATA, {})
+        video.populate_general_data(**general_data)
+        d = video.to_dict()
+    videos.append(video)
+    return videos
+
+
+class ApexVisaCreativeDataAggregatorTestCase(TestCase):
+
+    mock_youtube_data = {
+        'afuMSgwprO4': {'general_data': {'title': 'Where You Shop Matters - Bear Market Coffee',
+                                         'duration': 10.0,
+                                         'thumbnail_image_url': 'https://i.ytimg.com/vi/afuMSgwprO4/default.jpg'}},
+        'vYpKowDmrdE': {'general_data': {'title': 'Alle Ausgaben im Blick. Ich zahle Visa',
+                                         'duration': 6.0,
+                                         'thumbnail_image_url': 'https://i.ytimg.com/vi/vYpKowDmrdE/default.jpg'}},
+        '754rLvM9Yfw': {'general_data': {'title': 'Pre Roll 10sec Final 02',
+                                         'duration': 10.0,
+                                         'thumbnail_image_url': 'https://i.ytimg.com/vi/754rLvM9Yfw/default.jpg'}},
+        'OLdQe4bcizk': {
+            'general_data': {'title': 'Mit gutem Gefühl online einkaufen. Ich zahle Visa',
+                             'duration': 6.0,
+                             'thumbnail_image_url': 'https://i.ytimg.com/vi/OLdQe4bcizk/default.jpg'}},
+        'MMzFjTln1Hg': {'general_data': {'title': 'Alle Ausgaben im Blick. Ich zahle Visa',
+                                         'duration': 20.0,
+                                         'thumbnail_image_url': 'https://i.ytimg.com/vi/MMzFjTln1Hg/default.jpg'}},
+    }
+
+    mock_es_data = {
+        'fTjuOpKziWs': {
+            'general_data': {'title': 'Entdecke alle Bezahlmöglichkeiten, die du mit Visa hast',
+                             'duration': 6.0,
+                             'thumbnail_image_url': 'https://i.ytimg.com/vi/fTjuOpKziWs/default.jpg'}},
+        '7kXDIx-V6GE': {
+            'general_data': {'title': 'Flexibel bleiben, was auch passiert. Ich zahle Visa',
+                             'duration': 20.0,
+                             'thumbnail_image_url': 'https://i.ytimg.com/vi/7kXDIx-V6GE/default.jpg'}},
+        '8jjZCjWo-rM': {'general_data': {'title': 'Pre Roll 15sec Final 02',
+                                         'duration': 15.0,
+                                         'thumbnail_image_url': 'https://i.ytimg.com/vi/8jjZCjWo-rM/default.jpg'}},
+        '8yRahHclzUw': {
+            'general_data': {'title': 'Mit gutem Gefühl online einkaufen. Ich zahle Visa',
+                             'duration': 20.0,
+                             'thumbnail_image_url': 'https://i.ytimg.com/vi/8yRahHclzUw/default.jpg'}},
+        '_JFJOPmDPvQ': {
+            'general_data': {'title': 'Flexibel bleiben, was auch passiert. Ich zahle Visa',
+                             'duration': 6.0,
+                             'thumbnail_image_url': 'https://i.ytimg.com/vi/_JFJOPmDPvQ/default.jpg'}}
+    }
+
+    def test_data_persisted_successfully(self):
+        """
+        make sure we're pulling and storing (mocked) data from es and youtube correctly
+        :return:
+        """
+        with patch("utils.youtube_api.resolve_videos_info", return_value=self.mock_youtube_data), \
+                patch.object(VideoManager, "get", return_value=get_mock_es_videos_from_data(self.mock_es_data)):
+            creatives_data = {**self.mock_youtube_data, **self.mock_es_data}
+            creative_ids = creatives_data.keys()
+            aggregator = ApexVisaCreativeDataAggregator(creative_ids=creative_ids)
+            query = VideoCreativeData.objects.filter(id__in=creative_ids)
+            stored_ids = list(query.values_list("id", flat=True))
+            self.assertEqual(set(creative_ids), set(stored_ids))
+            for id in creative_ids:
+                with self.subTest(id):
+                    agg_creative_data = aggregator.get(id, default={})
+                    mock_creative_data = creatives_data.get(id, {})
+                    self.assertEqual(agg_creative_data.get(Sections.GENERAL_DATA, {}).get(TITLE),
+                                     mock_creative_data.get(Sections.GENERAL_DATA, {}).get(TITLE))
+
+            for video_data in query:
+                with self.subTest(video_data.id):
+                    self.assertTrue(video_data.data.get(Sections.GENERAL_DATA, {}).get(TITLE))
+
+    def test_data_validation(self):
+        self.assertTrue(ApexVisaCreativeDataAggregator._data_is_valid({Sections.GENERAL_DATA: {TITLE: "title"}}))
+        self.assertFalse(ApexVisaCreativeDataAggregator._data_is_valid({Sections.IAS_DATA: {TITLE: "title"}}))
 
 
 class DisneyTagSheetMapTestCase(TestCase):
