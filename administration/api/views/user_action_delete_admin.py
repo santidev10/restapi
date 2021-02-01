@@ -8,5 +8,5 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
     """
     User action delete endpoint
     """
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.USER_MANAGEMENT),)
     queryset = UserAction.objects.all()
