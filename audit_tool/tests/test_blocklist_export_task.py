@@ -30,7 +30,8 @@ class BlocklistExportTaskTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test only blocklisted channels appear on export """
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
-        user = get_user_model().objects.create(id=next(int_iterator), email=f"test{next(int_iterator)}@test.com")
+        user = get_user_model().objects.create(id=next(int_iterator), email=f"test{next(int_iterator)}@test.com",
+            first_name=f"test", last_name=f"{next(int_iterator)}")
 
         blocklist_item = Channel(f"youtube_channel_id_{next(int_iterator)}")
         blocklist_item.populate_custom_properties(blocklist=True)
@@ -53,7 +54,7 @@ class BlocklistExportTaskTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(set(rows[0]), set(BlocklistSerializer.EXPORT_FIELDS))
         data = rows[1]
         expected = [blocklist_item.general_data.title,f"https://www.youtube.com/channel/{blocklist_item.main.id}",
-                    str(bl_data.updated_at.date()), user.email, str(bl_data.blocked_count), str(bl_data.unblocked_count)]
+                    str(bl_data.updated_at.date()), f"{user.first_name} {user.last_name}", str(bl_data.blocked_count), str(bl_data.unblocked_count)]
         self.assertEqual(data, expected)
 
     @mock_s3
@@ -61,7 +62,8 @@ class BlocklistExportTaskTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test only blocklisted videos appear on export """
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
-        user = get_user_model().objects.create(id=next(int_iterator), email=f"test{next(int_iterator)}@test.com")
+        user = get_user_model().objects.create(id=next(int_iterator), email=f"test{next(int_iterator)}@test.com",
+            first_name=f"test", last_name=f"{next(int_iterator)}")
 
         blocklist_item = Video(f"video{next(int_iterator)}")
         blocklist_item.populate_custom_properties(blocklist=True)
@@ -84,5 +86,5 @@ class BlocklistExportTaskTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(set(rows[0]), set(BlocklistSerializer.EXPORT_FIELDS))
         data = rows[1]
         expected = [blocklist_item.general_data.title,f"https://www.youtube.com/watch?v={blocklist_item.main.id}",
-                    str(bl_data.updated_at.date()), user.email, str(bl_data.blocked_count), str(bl_data.unblocked_count)]
+                    str(bl_data.updated_at.date()), f"{user.first_name} {user.last_name}", str(bl_data.blocked_count), str(bl_data.unblocked_count)]
         self.assertEqual(data, expected)
