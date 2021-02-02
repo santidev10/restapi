@@ -7,6 +7,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -17,7 +18,9 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Admin.VISIBLE_ACCOUNTS)
 
     def test_success(self):
-        user = self.create_admin_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.USER_MANAGEMENT: True,
+        })
         query_params = QueryDict(mutable=True)
         query_params.update(user_id=user.id)
         url = "?".join([self.url, query_params.urlencode()])

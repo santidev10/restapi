@@ -3,7 +3,6 @@ from django.db.models import BooleanField
 from django.db.models import Case
 from django.db.models import Value
 from django.db.models import When
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
 from rest_framework.status import HTTP_202_ACCEPTED
@@ -14,6 +13,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from userprofile.models import UserProfile
 
@@ -38,7 +38,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
     """
     Visible account list view/edit
     """
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.USER_MANAGEMENT),)
     queryset = Account.objects.filter(managers__isnull=False).order_by("name")
     serializer_class = AdWordsTopManagerSerializer
 
@@ -122,7 +122,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
     """
     Visible account list view/edit
     """
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.USER_MANAGEMENT),)
 
     def get(self, request):
         user_id = self.request.query_params.get("user_id")
