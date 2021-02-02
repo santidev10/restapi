@@ -41,7 +41,7 @@ class UserPermissionsManagement(APIView):
         """
         Update profile
         """
-        user = self._validate_request(request)
+        user = self._validate_request(request, updating=True)
         data = self.request.data
         all_permissions = {
             p.permission: p.default_value
@@ -61,7 +61,7 @@ class UserPermissionsManagement(APIView):
         user.save()
         return Response({"status": "success"})
 
-    def _validate_request(self, request):
+    def _validate_request(self, request, updating=False):
         target_user_id = request.query_params.get("user_id")
         if not target_user_id:
             raise ValidationError("Must provide a user_id to manage permissions for.")
@@ -71,7 +71,8 @@ class UserPermissionsManagement(APIView):
             raise ValidationError("Invalid user id")
 
         # Validate that only admin users can change admin permissions
-        if target_user.perms.get("admin", False) != request.data.get("admin", False) \
+        if updating is True and target_user.perms.get("admin", False) != request.data.get("admin", False) \
                 and not request.user.has_permission(StaticPermissions.ADMIN):
             raise PermissionDenied("You must be an admin to manage admin permissions.")
+
         return target_user
