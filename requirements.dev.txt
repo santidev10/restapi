@@ -10,6 +10,7 @@ pylint-django==2.4.2
 pylint-plugin-utils==0.6
 pylint-quotes==0.2.1
 pylint==2.6.0
+tblib==1.7.0
 teamcity-messages==1.28
 toml==0.10.2
 wrapt==1.12.1
