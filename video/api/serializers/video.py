@@ -28,7 +28,7 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        user = self.context.pop("user", None)
+        user = self.context.get("user")
 
         # Dynamically remove fields not allowed by user permissions
         if self.fields and isinstance(user, get_user_model()):
