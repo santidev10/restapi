@@ -23,6 +23,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -39,7 +40,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             args=(account_creation_id,)
         )
         return self.client.post(url,
-                                json.dumps(dict(is_staff=False, **kwargs)),
+                                json.dumps(dict(**kwargs)),
                                 content_type="application/json")
 
     def _hide_demo_data(self, user):
@@ -49,21 +50,23 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             user=user,
         )
 
-    def create_test_user(self, auth=True):
-        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth)
-        user.add_custom_user_permission("view_dashboard")
+    def create_test_user(self, auth=True, perms=None):
+        perms = perms or {}
+        user = super(DashboardPerformanceChartTestCase, self).create_test_user(auth=auth, perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            **perms,
+        })
         return user
 
     def test_success_on_no_global_account_visibility(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1)
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id,
@@ -73,8 +76,11 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
 
     def test_success_tabs(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.is_staff = True
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True
+        })
         self._hide_demo_data(user)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
@@ -87,17 +93,11 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
 
         test_cases = list(product(dimensions, indicators, account_ids))
 
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
         for dimension, indicator, account_id in test_cases:
             is_demo = account_id == DEMO_ACCOUNT_ID
             msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
                 is_demo, dimension, indicator)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
+            with self.subTest(msg=msg):
                 response = self._request(account_id,
                                          indicator=indicator,
                                          dimention=dimension)
@@ -105,15 +105,12 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
 
     def test_cpm_cpv_is_visible(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-
         indicators = Indicator.CPM, Indicator.CPV
         dimensions = ALL_DIMENSIONS
         account_ids = account_creation.id, DEMO_ACCOUNT_ID
@@ -123,9 +120,8 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         for indicator, dimension, account_id, is_staff in test_data:
             msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
                   "".format(indicator, dimension, account_id, is_staff)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
-                user.is_staff = is_staff
+            with self.subTest(msg=msg):
+                user.perms.update({StaticPermissions.ADMIN: is_staff})
                 user.save()
                 response = self._request(account_id,
                                          indicator=indicator,
@@ -133,35 +129,30 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cpm_cpv_is_not_visible(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.ADMIN: False,
+        })
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
 
         indicators = Indicator.CPM, Indicator.CPV
         dimensions = ALL_DIMENSIONS
         account_ids = account_creation.id, DEMO_ACCOUNT_ID
-        staffs = True, False
 
-        test_data = list(product(indicators, dimensions, account_ids, staffs))
-        for indicator, dimension, account_id, is_staff in test_data:
-            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
-                  "".format(indicator, dimension, account_id, is_staff)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
-                user.is_staff = is_staff
-                user.save()
+        test_data = list(product(indicators, dimensions, account_ids))
+        for indicator, dimension, account_id in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}" \
+                  "".format(indicator, dimension, account_id)
+            with self.subTest(msg=msg):
                 response = self._request(account_id,
                                          indicator=indicator,
                                          dimention=dimension)
                 self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_cost_reflects_to_aw_rates_setting(self):
-        self.create_test_user()
+        user = self.create_test_user()
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
@@ -200,12 +191,12 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         )
         for ad_words_rate, expected_cost in test_cases:
             user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: ad_words_rate,
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: ad_words_rate,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True
             }
-            with self.subTest(show_ad_words_rate=ad_words_rate), \
-                 self.patch_user_settings(**user_settings):
-
+            with self.subTest(show_ad_words_rate=ad_words_rate):
+                user.perms.update(user_settings)
+                user.save()
                 response = self._request(account.account_creation.id,
                                          indicator=Indicator.COST)
                 self.assertEqual(response.status_code, HTTP_200_OK)

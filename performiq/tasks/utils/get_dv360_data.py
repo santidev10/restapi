@@ -5,6 +5,7 @@ import tempfile
 
 from django.conf import settings
 
+from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from performiq.models import OAuthAccount
 from performiq.models import IQCampaign
@@ -68,6 +69,7 @@ def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
         return csv_generator
     except Exception:
         logger.exception(f"Error retrieving DV360 Metrics report for IQCampaign id: {iq_campaign.id}")
+        raise PerformIQDataFetchError
 
 
 def report_csv_generator(report_fp, report_result) -> iter:

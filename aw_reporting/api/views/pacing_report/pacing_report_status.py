@@ -6,13 +6,14 @@ from rest_framework.views import APIView
 
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHistory
+from userprofile.constants import StaticPermissions
 
 
 class PacingReportStatusApiView(APIView):
     """
     View for updating all Account and Campaign objects that have been synced with adwords
     """
-    permission_classes = tuple()
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *_, **__):
         """

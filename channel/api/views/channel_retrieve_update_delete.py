@@ -16,16 +16,16 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_delete_channels
 from utils.es_components_api_utils import get_fields
 from utils.es_components_cache import flush_cache
-from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from utils.utils import prune_iab_categories
+
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -41,9 +41,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                                          AddFieldsMixin):
     permission_classes = (
         or_permission_classes(
-            user_has_permission("userprofile.channel_details"),
+            StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA),
             OwnChannelPermissions,
-            OnlyAdminUserOrSubscriber),)
+        ),
+    )
 
     __channel_manager = None
     video_manager = VideoManager((Sections.GENERAL_DATA, Sections.STATS))
@@ -99,7 +100,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         return context
 
     def get(self, request, *args, **kwargs):
-        if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
+        if self.request.user.has_permission(StaticPermissions.ADMIN) \
+                and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
 
         channel_id = kwargs.get("pk")
@@ -109,11 +111,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             Sections.BRAND_SAFETY, Sections.IAS_DATA)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
-        if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
-            or self.request.user.is_staff:
+        if channel_id in user_channels or self.request.user.has_permission(StaticPermissions.RESEARCH__AUTH):
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        if self.request.user.has_perm("userprofile.monetization_filter"):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__MONETIZATION):
             allowed_sections_to_load += (Sections.MONETIZATION,)
 
         self.add_fields()
@@ -143,9 +144,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             )
 
         context = self._get_serializer_context()
-        if self.request and self.request.user and self.request.user.is_staff:
+        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             serializer = ChannelAdminSerializer
-        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             serializer = ChannelWithVettedStatusSerializer
         else:
             serializer = ChannelSerializer

@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
@@ -16,6 +17,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
+from audit_tool.utils.regex_trie import get_optimized_regex
 from utils.utils import remove_tags_punctuation
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,7 @@ class Command(BaseCommand):
     max_pages = 200
     MAX_EMPTY_PLAYLIST_PAGES = 3
     audit = None
+    NUM_THREADS = settings.AUDIT_CHANNEL_NUM_THREADS
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -134,9 +137,20 @@ class Command(BaseCommand):
         pending_channels = pending_channels.filter(channel__processed_time__isnull=False)
         start = self.thread_id * num
         counter = 0
+        threads = []
         for channel in pending_channels[start:start + num]:
             counter += 1
-            self.do_check_channel(channel)
+            t = Thread(target=self.do_check_channel, args=(channel,))
+            threads.append(t)
+            t.start()
+            if len(threads) >= self.NUM_THREADS:
+                for t in threads:
+                    t.join()
+                threads = []
+            # self.do_check_channel(channel)
+        if len(threads) > 0:
+            for t in threads:
+                t.join()
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=["updated"])
         print("Done one step, continuing audit {}.".format(self.audit.id))
@@ -318,10 +332,7 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("inclusion") if self.audit.params else None
         if not input_list:
             return
-        regexp = "({})".format(
-            "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
-        )
-        self.inclusion_list = re.compile(regexp)
+        self.inclusion_list = get_optimized_regex(words_list=input_list, remove_tags_punctuation_from_words=True)
 
     def load_exclusion_list(self):
         if self.exclusion_list:
@@ -343,10 +354,7 @@ class Command(BaseCommand):
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
-            lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
-            )
-            exclusion_list[lang] = re.compile(lang_regexp)
+            exclusion_list[lang] = get_optimized_regex(words_list=keywords)
         self.exclusion_list = exclusion_list
 
     def check_channel_is_blocklisted(self, channel_id, acp):

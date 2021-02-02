@@ -99,9 +99,6 @@ class UserCreateSerializer(ModelSerializer):
         user.domain = self.get_domain()
         user.save(update_fields=["password", "status", "is_active", "domain"])
 
-        # new default access implementation
-        for group_name in get_default_accesses():
-            user.add_custom_user_group(group_name)
         # update last login
         update_last_login(None, user)
         # set token

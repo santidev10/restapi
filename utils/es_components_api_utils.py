@@ -14,6 +14,7 @@ from es_components.query_builder import QueryBuilder
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.query_repository import get_ias_verified_exists_filter
 from es_components.query_repository import get_last_vetted_at_exists_filter
+from userprofile.constants import StaticPermissions
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
@@ -253,19 +254,30 @@ class QueryGenerator:
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
-                if field == "general_data.title":
-                    field = "general_data.title^2"
                 search_phrase = value
             fields.append(field)
-        query = Q(
-            {
-                "multi_match": {
-                    "query": search_phrase,
-                    "type": "phrase",
-                    "fields": fields
-                }
-            }
-        )
+
+        should_array = []
+        for field in fields:
+            boost_value = 1
+            if field == "general_data.title":
+                boost_value = 3
+
+            should_array_item_match_phrase_prefix = Q("match_phrase_prefix",
+                                                      **{
+                                                          field: {"query": search_phrase, "boost": boost_value}
+                                                      })
+            should_array.append(should_array_item_match_phrase_prefix)
+
+            # add 1 to the boost_value for match field
+            boost_value = boost_value + 1
+            should_array_item_match_phrase = Q("match_phrase",
+                                   **{
+                                       field: {"query": search_phrase, "boost": boost_value}
+                                   })
+            should_array.append(should_array_item_match_phrase)
+
+        query = Q("bool", should=should_array)
         if search_phrase:
             filters.append(query)
         return filters
@@ -662,10 +674,10 @@ class APIViewMixin:
     def get_cached_aggregations_key(self):
         """
         gets cached aggregations key depending on user type:
-        if vetting admin, return with 'Unsuitable' brand safety agg,
+        if has research brand suitability, return with 'Unsuitable' brand safety agg,
         if not, return without 'Unsuitable' agg
         """
-        if self.vetting_admin_permission_class().has_permission(self.request):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY):
             return self.admin_cached_aggregations_key
         return self.cached_aggregations_key
 
@@ -693,7 +705,7 @@ class APIViewMixin:
         gets the correct manager class based on user permissions.
         admin class currently adds brand_safety's 'Unsuitable' score range
         """
-        if self.vetting_admin_permission_class().has_permission(self.request):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
             return self.admin_manager_class
         return self.manager_class
 

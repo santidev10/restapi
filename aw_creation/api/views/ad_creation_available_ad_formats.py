@@ -5,11 +5,11 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AdCreation
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 
 
 class AdCreationAvailableAdFormatsApiView(APIView):
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     @swagger_auto_schema(
         operation_description="Get Ad group creation",

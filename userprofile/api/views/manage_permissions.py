@@ -1,12 +1,11 @@
-from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied
 
 from userprofile.models import PermissionItem
 from userprofile.models import UserProfile
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 
 class UserPermissionsManagement(APIView):
@@ -14,21 +13,28 @@ class UserPermissionsManagement(APIView):
     Get User Options & Permissions
     """
     permission_classes = (
-        has_static_permission(StaticPermissions.USER_MANAGEMENT),
+        StaticPermissions.has_perms(StaticPermissions.USER_MANAGEMENT),
     )
 
     def get(self, request):
         user = self._validate_request(request)
-        response_data = []
+        permissions = []
+        all_valid_perms = set(PermissionItem.all_perms())
         for p in PermissionItem.objects.all():
+            if p.permission not in all_valid_perms:
+                continue
             enabled = user.perms.get(p.permission)
             if enabled is None:
                 enabled = p.default_value
-            response_data.append({
+            permissions.append({
                 "perm": p.permission,
                 "enabled": enabled,
                 "text": p.display
             })
+        response_data = {
+            "email": user.email,
+            "permissions": permissions,
+        }
         return Response(response_data)
 
     def post(self, request):
@@ -56,11 +62,16 @@ class UserPermissionsManagement(APIView):
         return Response({"status": "success"})
 
     def _validate_request(self, request):
-        user_id = request.query_params.get("user_id")
-        if not user_id:
+        target_user_id = request.query_params.get("user_id")
+        if not target_user_id:
             raise ValidationError("Must provide a user_id to manage permissions for.")
         try:
-            user = UserProfile.objects.get(id=user_id)
+            target_user = UserProfile.objects.get(id=target_user_id)
         except UserProfile.DoesNotExist:
             raise ValidationError("Invalid user id")
-        return user
+
+        # Validate that only admin users can change admin permissions
+        if target_user.perms.get("admin", False) != request.data.get("admin", False) \
+                and not request.user.has_permission(StaticPermissions.ADMIN):
+            raise PermissionDenied("You must be an admin to manage admin permissions.")
+        return target_user

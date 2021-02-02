@@ -13,6 +13,7 @@ from aw_reporting.models import Category
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -21,7 +22,7 @@ class PricingToolTestCase(ExtendedAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.PricingTool.FILTERS)
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PRICING_TOOL: True})
 
     def test_pricing_tool_filters(self):
         url = reverse("aw_reporting_urls:pricing_tool_filters")
@@ -56,6 +57,10 @@ class PricingToolTestCase(ExtendedAPITestCase):
         )
 
     def test_filters_hides_data_from_not_visible_accounts(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.PRICING_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
         category_1 = Category.objects.create(id="category 1")
         category_2 = Category.objects.create(id="category 2")
         opportunity_visible = Opportunity.objects.create(
@@ -81,7 +86,6 @@ class PricingToolTestCase(ExtendedAPITestCase):
             id="2", campaign=campaign_hidden, type="type2")
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account_visible.id]
         }
         with self.patch_user_settings(**user_settings):

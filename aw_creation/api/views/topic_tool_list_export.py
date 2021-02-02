@@ -4,12 +4,12 @@ from io import StringIO
 
 from django.http import StreamingHttpResponse
 
-from utils.permissions import IsAuthQueryTokenPermission
+from userprofile.constants import StaticPermissions
 from .topic_tool_list import TopicToolListApiView
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
-    permission_classes = (IsAuthQueryTokenPermission,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
     export_fields = ("id", "name", "parent_id")
     file_name = "topic_list"
 

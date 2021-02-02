@@ -8,11 +8,11 @@ from aw_reporting.models import Topic
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 
 
 class TargetingItemsSearchApiView(APIView):
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get(self, request, list_type, query, **_):
         method = "search_{}_items".format(list_type)

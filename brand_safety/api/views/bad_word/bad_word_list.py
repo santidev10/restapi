@@ -1,7 +1,6 @@
 from distutils.util import strtobool
 
 from rest_framework.generics import ListCreateAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
@@ -10,11 +9,15 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
+from userprofile.constants import StaticPermissions
 from utils.utils import remove_tags_punctuation
 
 
 class BadWordListApiView(ListCreateAPIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.BSTE, method="get")
+        | StaticPermissions.has_perms(StaticPermissions.BSTE__CREATE, method="post"),
+    )
     serializer_class = BadWordSerializer
     pagination_class = BrandSafetyPaginator
     MIN_SEARCH_LENGTH = 3

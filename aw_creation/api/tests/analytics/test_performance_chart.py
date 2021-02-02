@@ -42,6 +42,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
@@ -111,7 +112,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
             CityStatistic.objects.create(city=city, **stats)
 
     def test_success_get_filter_dates(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -134,7 +137,10 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data[2]["title"], "#2")
 
     def test_success_get_filter_items(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -143,13 +149,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
                                                           account=account,
                                                           is_approved=True)
         self.create_stats(account)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id,
+        response = self._request(account_creation.id,
                                      campaigns=["1"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -164,7 +164,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
                           Dimension.LOCATION, Dimension.ADS)
     ])
     def test_all_dimensions(self, dimension):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
@@ -184,7 +186,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(response.data[0]["data"]), 1)
 
     def test_success_get_no_account(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
 
         account_creation = AccountCreation.objects.create(name="", owner=user,
@@ -203,7 +207,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
@@ -220,7 +226,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_demo_data(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
@@ -237,7 +245,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_cpm_cpv_is_visible(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
 
         account_creation_id = DEMO_ACCOUNT_ID
         test_cases = product(
@@ -257,20 +267,21 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
             if not is_demo:
                 account_creation_id = AccountCreation.objects.create(name="", owner=user,
                                                                      is_paused=True).id
-            user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates,
-                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost,
-            }
+            user.perms.update({
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: dashboard_ad_words_rates,
+                StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: not hide_dashboard_cost
+            })
 
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg):
+            with self.subTest(msg):
                 response = self._request(account_creation_id,
                                          indicator=indicator,
                                          dimention=dimension)
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cost_does_not_reflect_to_aw_rates_setting(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         self._hide_demo_data(user)
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
@@ -310,13 +321,12 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotAlmostEqual(aw_cost, client_cost)
         test_cases = (False, True)
         for ad_words_rate in test_cases:
-            user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: ad_words_rate,
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-            }
-            with self.subTest(show_ad_words_rate=ad_words_rate), \
-                 self.patch_user_settings(**user_settings):
-
+            user.perms.update({
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: ad_words_rate,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            })
+            user.save()
+            with self.subTest(show_ad_words_rate=ad_words_rate):
                 response = self._request(account_creation.id,
                                          indicator=Indicator.COST)
                 self.assertEqual(response.status_code, HTTP_200_OK)
@@ -332,7 +342,11 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
     def test_account_visibility_independent(self):
         any_indicator = Indicator.CPV
         any_dimension = Dimension.ADS
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
+        })
         manager = self._create_manager_with_connection(user)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)
@@ -340,11 +354,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase, ESTestCase):
         account_creation = account.account_creation
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
-
         with self.patch_user_settings(**user_settings):
             response = self._request(
                 account_creation.id,

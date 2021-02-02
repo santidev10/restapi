@@ -54,7 +54,6 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data),
             {
-                "access",
                 "aw_settings",
                 "can_access_media_buying",
                 "company",
@@ -71,6 +70,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "last_login",
                 "last_name",
                 "logo_url",
+                "perms",
                 "phone_number",
                 "phone_number_verified",
                 "token",

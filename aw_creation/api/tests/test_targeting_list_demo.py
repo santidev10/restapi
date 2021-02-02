@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -13,10 +14,13 @@ class DemoTargetingListTestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         recreate_test_demo_data()
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+        })
 
     def test_export_list(self):
         ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()

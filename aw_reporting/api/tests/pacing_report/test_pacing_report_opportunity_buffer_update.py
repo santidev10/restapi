@@ -16,13 +16,14 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportOpportunityBufferTestCase(APITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
         self.pacing_report = PacingReport()
 
     def test_fail_access_update(self):
@@ -47,9 +48,11 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             cpv_buffer=2,
             name="Not allowed"
         )
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update),
-                                       content_type="application/json")
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
+        self.user.save()
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_non_integer_buffers(self):
@@ -66,17 +69,17 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         update3 = dict(
             cpv_buffer="!1",
         )
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update1),
-                                       content_type="application/json")
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
+        self.user.save()
+        response = self.client.put(url, json.dumps(update1), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update2),
-                                       content_type="application/json")
+        
+        response = self.client.put(url, json.dumps(update2), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update3),
-                                       content_type="application/json")
+
+        response = self.client.put(url, json.dumps(update3), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_update(self):

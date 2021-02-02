@@ -6,7 +6,6 @@ from es_components.managers import ChannelManager
 from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -26,10 +25,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         self.manager.upsert([channel_1])
 
     def test_channel_track_simple(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET)
-        user.add_custom_user_permission("vet_audit")
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
+        self.create_admin_user()
         channel_id_2 = str(next(int_iterator))
         channel_id_3 = str(next(int_iterator))
         channel_id_4 = str(next(int_iterator))
@@ -41,10 +37,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(channel.custom_properties.is_tracked, True)
 
     def test_channel_track_duplicate(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET)
-        user.add_custom_user_permission("vet_audit")
-        user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
+        self.create_admin_user()
         new_channel_id = str(next(int_iterator))
         new_channel_id_2 = str(next(int_iterator))
         new_channel_ids = [new_channel_id, new_channel_id_2]

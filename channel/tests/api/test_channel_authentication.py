@@ -11,6 +11,8 @@ from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
+from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
 from userprofile.models import WhiteLabel
@@ -238,3 +240,40 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         created_user = UserProfile.objects.get(email=user_details["email"])
         self.assertNotEqual(created_user.domain.domain, DEFAULT_DOMAIN)
         self.assertEqual(created_user.domain.domain, host_domain.domain)
+
+    @mock_send_task()
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_new_user_permissions(self, mock_youtube, flow, *args):
+        """ Test that Managed Service Permissions are disabled by default through Google OAuth """
+        user_details = {
+            "email": "test_new_user_permissions@test.test",
+            "image": {"isDefault": False},
+        }
+        youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
+
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
+        with patch("channel.api.views.channel_authentication.requests.get",
+                   return_value=MockResponse(json=user_details)):
+            response = self.client.post(self.url, dict(code="code"), )
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        disabled_managed_service_perms = [perm_name for perm_name in PermissionItem.all_perms()
+                                          if StaticPermissions.MANAGED_SERVICE in perm_name]
+        user = UserProfile.objects.get(email=user_details["email"])
+        expected_vals = {
+            perm_name: False for perm_name in disabled_managed_service_perms
+        }
+        actual_vals = {
+            perm_name: user.perms[perm_name] for perm_name in disabled_managed_service_perms
+        }
+        self.assertEqual(expected_vals, actual_vals)

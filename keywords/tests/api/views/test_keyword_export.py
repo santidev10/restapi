@@ -11,6 +11,7 @@ from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
 from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.csv import get_data_from_csv_response
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
@@ -42,7 +43,7 @@ class KeywordListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_no_permissions(self):
-        self.create_test_user()
+        self.create_test_user(perms={StaticPermissions.RESEARCH__EXPORT: False})
 
         response = self._request()
 
@@ -58,9 +59,9 @@ class KeywordListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     def test_success_allowed_user(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
-
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -100,11 +101,11 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_success_allowed_user(self, *args):
-        user = self.create_test_user()
-        user.add_custom_user_permission("research_exports")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__EXPORT: True,
+        })
         self._request_collect_file()
 
-        user.remove_custom_user_permission("keyword_list")
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
 

@@ -339,10 +339,10 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
     "maria.konareva@sigma.software",
-    "oleksandr.demianyshyn@sigma.software",
+    "sergey.zhiltsov@sigma.software",
     "megumi.sato@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -352,9 +352,8 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
+    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
-    "oleksandr.demianyshyn@sigma.software",
     "sergey.zhiltsov@sigma.software",
 ]
 
@@ -366,7 +365,6 @@ UI_ERROR_REPORT_EMAIL_ADDRESSES = [
 GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "george.su@channelfactory.com",
     "servando.berna@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -435,6 +433,7 @@ AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/
 AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 AMAZON_S3_IAS_BUCKET_NAME = "cf-ias"
 AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME = "performiq-custom-campaign-uploads"
+AMAZON_S3_DATORAMA_TAG_SHEET_BUCKET_NAME = "datorama-tag-sheet"
 
 MAX_AVATAR_SIZE_MB = 10.
 
@@ -497,6 +496,10 @@ WATSON_NUM_VIDEOS = 100
 TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 AUDIT_SUBSCRIBER_SYNC_THRESHOLD = 4500
+AUDIT_FILL_CHANNEL_DATA_NUM_THREADS = 25
+AUDIT_VIDEO_NUM_THREADS = 20
+AUDIT_CHANNEL_NUM_THREADS = 20
+AUDIT_RECO_NUM_THREADS = 20
 TRANSCRIPTS_LANG_CODES = ["en"]
 TRANSCRIPTS_COUNTRY_CODES = ["US"]
 TRANSCRIPTS_CATEGORIES = []
@@ -518,9 +521,9 @@ PERFORMIQ_OAUTH_CLIENT_ID = "832846444492-s0tktc1j0klmt16pdemo9s8hf73t3cie.apps.
 PERFORMIQ_OAUTH_CLIENT_SECRET = "CuLTRo8NoeKZpakATPHbCkai"
 
 TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
-    "george.su@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",
-    "alex.peace@channelfactory.com"
+    "alex.peace@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")

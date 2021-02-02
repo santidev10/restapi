@@ -15,8 +15,7 @@ from audit_tool.models import AuditChannelVet
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 from utils.views import validate_fields
 
 
@@ -25,10 +24,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
     REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories", "language")
 
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.vet_audit"),
-            user_has_permission("userprofile.vet_audit_admin")
-        ),
+         StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__VET),
     )
 
     def get(self, request, *args, **kwargs):

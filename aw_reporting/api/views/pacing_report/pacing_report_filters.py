@@ -5,9 +5,11 @@ from rest_framework.views import APIView
 from aw_reporting.calculations.pacing_report_filters import get_pacing_report_filters
 from cache.constants import PACING_REPORT_FILTERS_KEY
 from cache.models import CacheItem
+from userprofile.constants import StaticPermissions
 
 
 class PacingReportFiltersApiView(APIView):
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def get(self, request):
         try:

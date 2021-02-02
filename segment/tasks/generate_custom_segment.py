@@ -8,6 +8,7 @@ from saas import celery_app
 from segment.models import CustomSegment
 from segment.tasks.generate_segment import generate_segment
 from segment.utils.send_export_email import send_export_email
+from userprofile.constants import StaticPermissions
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
         if with_audit is False:
             owner = segment.owner
             # email admin version export if user is staff
-            if owner.is_staff:
+            if owner.has_permission(StaticPermissions.ADMIN):
                 send_export_email(segment.owner.email, segment.title, export.download_url)
                 logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id,
                             segment.title)

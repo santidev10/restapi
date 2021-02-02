@@ -13,6 +13,7 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
 
@@ -22,8 +23,9 @@ class AdCreationDuplicateAPITestCase(AwReportingAPITestCase):
         return reverse(Name.CreationSetup.AD_DUPLICATE, [Namespace.AW_CREATION], args=(ad_id,))
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     @staticmethod
     def create_ad_creation(owner):
@@ -51,7 +53,10 @@ class AdCreationDuplicateAPITestCase(AwReportingAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         ad = self.create_ad_creation(owner=self.user)
         url = self._get_url(ad.id)

@@ -9,18 +9,12 @@ from aw_reporting.models import Opportunity
 from cache.models import CacheItem
 from dashboard.api.views import DashboardPacingAlertsAPIView
 from dashboard.models import OpportunityWatch
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class PacingReportOpportunityWatchAPIView(APIView):
-    permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_pricing_tool"),
-            user_has_permission("userprofile.view_chf_trends"),
-        ),
-    )
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *args, **kwargs):
         opportunity = get_object(Opportunity, id=kwargs["pk"])

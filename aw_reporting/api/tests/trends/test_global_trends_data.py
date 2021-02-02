@@ -22,6 +22,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.generic_test import generic_test
@@ -33,7 +34,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     url = reverse(Name.GlobalTrends.DATA, [Namespace.AW_REPORTING])
 
     def _create_test_data(self, uid=1, manager=None):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         account = self.create_account(user, "{}".format(uid), manager)
         campaign = Campaign.objects.create(
             id=uid, name="", account=account)
@@ -338,20 +341,21 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             affects data on CHF Trends
         Ticket: https://channelfactory.atlassian.net/browse/SAAS-2779
         """
+        self.user = self.create_test_user({
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rates,
+        })
         account, campaign = self._create_ad_group_statistic("111")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
+
         stats = AdGroupStatistic.objects.all() \
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))
         expected_cpv = stats["views"] / stats["cost"]
         self.assertGreater(expected_cpv, 0)
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
-             self.patch_user_settings(**user_settings):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)
@@ -371,8 +375,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
+
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+        })
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \
@@ -387,13 +395,16 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     ])
     def test_visible_all_accounts(self, visible_all_accounts, expected_count):
         account, campaign = self._create_ad_group_statistic("1")
+        self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
+        })
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \

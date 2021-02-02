@@ -11,7 +11,6 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import SegmentTypeEnum
 from userprofile.constants import StaticPermissions
-from userprofile.models import PermissionItem
 from utils.unittests.test_case import ExtendedAPITestCase
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
@@ -23,10 +22,6 @@ STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly
 
 class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
     THRESHOLD = MINIMUM_ITEMS_COUNT
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_LIST,
@@ -99,9 +94,9 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
 
-    def test_custom_segment_download_url_permission(self):
+    def test_bstl_download_url_permission(self):
         self.create_test_user(perms={
-            StaticPermissions.CTL__FEATURE_LIST: True
+            StaticPermissions.BSTL: True
         })
         segment = CustomSegment.objects.create(
             segment_type=SegmentTypeEnum.CHANNEL.value,

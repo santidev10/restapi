@@ -13,22 +13,18 @@ from keywords.constants import MATCH_PHRASE_FILTER
 from keywords.constants import RANGE_FILTER
 from keywords.constants import TERMS_FILTER
 from keywords.utils import KeywordViralParamAdapter
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class KeywordListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.keyword_list"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator

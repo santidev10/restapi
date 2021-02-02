@@ -25,6 +25,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -98,7 +99,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
 
     def setUp(self):
         super(AnalyticsAccountCreationDetailsAPITestCase, self).setUp()
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.MANAGED_SERVICE: True,})
 
     def test_success_get(self):
         account = Account.objects.create(id=1, name="",
@@ -205,12 +206,13 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
             video_views=views, cost=cost)
         average_cpm = cost / impressions * 1000
         average_cpv = cost / views
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True
+        })
+        self.user.save()
+
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
@@ -235,11 +237,12 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
             id=1, account=account, salesforce_placement=placement_cpv)
         Campaign.objects.create(
             id=2, account=account, salesforce_placement=placement_cpm)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["plan_cpm"], expected_cpm)
@@ -313,28 +316,26 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         for cost_hidden, aw_rate, msg_key in test_cases:
             msg, key = msg_key
             user_settings = {
-                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: cost_hidden,
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rate
+                StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: cost_hidden,
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rate
             }
+            self.user.perms.update(user_settings)
+            self.user.save()
 
-            with self.subTest(msg, **user_settings), \
-                 self.patch_user_settings(**user_settings):
+            with self.subTest(msg, **user_settings):
                 response = self._request(account_creation.id)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertEqual(response.data["id"], account_creation.id)
                 self.assertIsNone(response.data[key])
 
     def test_no_demo_data(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         account = Account.objects.create(id=next(int_iterator))
         AccountCreation.objects.filter(account=account).update(owner=self.user)
         Campaign.objects.create(id=next(int_iterator), account=account)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         item = response.data

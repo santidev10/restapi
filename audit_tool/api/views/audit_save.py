@@ -17,22 +17,18 @@ from audit_tool.models import AuditProcessor
 from audit_tool.tasks.generate_audit_items import generate_audit_items
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_audit"),
-            user_has_permission("userprofile.vet_audit_admin"),
-        ),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE, StaticPermissions.CTL__VET_ADMIN),
     )
     LANGUAGES_REVERSE = {}
 
     def post(self, request):
-        if not request.user.has_perm("userprofile.view_audit"):
+        if not request.user.has_permission(StaticPermissions.AUDIT_QUEUE):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         query_params = request.query_params
         user_id = request.user.id
@@ -315,7 +311,7 @@ class AuditSaveApiView(APIView):
         data = request.data
         audit_id = data.get("audit_id")
         segment_id = data.get("segment_id")
-        if not request.user.has_perm("userprofile.vet_audit_admin"):
+        if not request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         if not audit_id and not segment_id:
             raise ValidationError("You must provide a segment_id or audit_id.")

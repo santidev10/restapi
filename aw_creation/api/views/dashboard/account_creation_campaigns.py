@@ -1,5 +1,4 @@
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,11 +7,11 @@ from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSe
 from aw_reporting.models import Campaign
 from aw_reporting.models import campaign_type_str
 from userprofile.constants import UserSettingsKey
-from utils.permissions import UserHasDashboardPermission
+from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_queryset(self, account_id):
         types_hidden = self.request.user.get_aw_settings().get(
@@ -36,7 +35,7 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
             raise Http404
         filters = {"is_deleted": False}
         user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             filters["account_id__in"] = visible_accounts
         try:

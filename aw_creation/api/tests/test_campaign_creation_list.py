@@ -11,6 +11,7 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import Language
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -40,11 +41,15 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
     }
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
@@ -85,11 +90,9 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         recreate_test_demo_data()
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 

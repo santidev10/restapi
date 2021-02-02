@@ -9,20 +9,16 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from performiq.api.serializers.map_csv_fields_serializer import MapCSVFieldsSerializer
-from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.utils.map_csv_fields import CSVColumnMapper
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
 
 
 class PerformIQMapCSVFieldsAPIView(APIView):
-
     permission_classes = (
-        IsAuthenticated,
-        PerformIQPermission,
+        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
-
     parser_classes = [MultiPartParser]
-
     serializer_class = MapCSVFieldsSerializer
 
     def post(self, request, *args, **kwargs):

@@ -16,7 +16,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.utils import get_google_access_token_info
-from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 
 
 class ConnectAWAccountApiView(APIView):
@@ -164,8 +164,11 @@ class ConnectAWAccountApiView(APIView):
                         user=user,
                         connection=connection,
                     )
-                    user.add_custom_user_group(PermissionGroupNames.SELF_SERVICE)
-                    user.add_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS)
+
+                    user.perms.update({
+                        StaticPermissions.MANAGED_SERVICE: True
+                    })
+                    user.save()
 
                     for ac_data in mcc_accounts:
                         data = dict(

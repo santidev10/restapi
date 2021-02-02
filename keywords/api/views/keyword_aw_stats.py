@@ -1,21 +1,15 @@
 from django.http import Http404
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class KeywordAWStatsApiView(APIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.keyword_details"),
-            user_has_permission("userprofile.settings_my_yt_channels"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     def get(self, request, pk):

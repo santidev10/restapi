@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
@@ -20,11 +19,12 @@ from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.channel import VettingAdminChannelManager
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import VettingAdminFiltersMixin
+from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
@@ -34,9 +34,6 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import IsVettingAdmin
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class ChannelsNotFound(Exception):
@@ -79,14 +76,10 @@ class ChannelESFilterBackend(ESFilterBackend):
         return result
 
 
-class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
+class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.channel_list"),
-            user_has_permission("userprofile.settings_my_yt_channels"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
@@ -130,8 +123,6 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     manager_class = ChannelManager
     admin_manager_class = VettingAdminChannelManager
 
-    # can't import in es_components_api_utils app registry not ready
-    vetting_admin_permission_class = IsVettingAdmin
     cache_class = CacheItem
 
     allowed_percentiles = (
@@ -154,9 +145,9 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
         return context
 
     def get_serializer_class(self):
-        if self.request and self.request.user and self.request.user.is_staff:
+        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             return ChannelAdminSerializer
-        if self.request.user.has_perm("userprofile.vet_audit_admin"):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             return ChannelWithVettedStatusSerializer
         return ChannelSerializer
 
@@ -178,7 +169,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["brand_safety"] = None
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.monetization_filter"):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__MONETIZATION):
             sections += (Sections.MONETIZATION,)
         else:
             with mutate_query_params(self.request.query_params):
@@ -187,9 +178,9 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
                 except KeyError:
                     pass
 
-        self.guard_vetting_admin_aggregations()
+        self.guard_vetting_data_perm_aggregations()
 
-        self.guard_vetting_admin_filters()
+        self.guard_brand_suitability_high_risk_filters()
 
         self.ensure_exact_youtube_id_result(manager=ChannelManager())
 
@@ -202,7 +193,7 @@ class ChannelListApiView(VettingAdminFiltersMixin, VettingAdminAggregationsMixin
     @staticmethod
     def get_own_channel_ids(user, query_params):
         own_channels = int(query_params.get("own_channels", "0"))
-        user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
+        user_can_see_own_channels = user.has_permission(StaticPermissions.RESEARCH)
 
         if own_channels and not user_can_see_own_channels:
             raise UserChannelsNotAvailable

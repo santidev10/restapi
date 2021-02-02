@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.generics import ListCreateAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
@@ -14,6 +13,7 @@ from administration.api.serializers import UserActionCreateSerializer
 from administration.api.serializers import UserActionRetrieveSerializer
 from administration.models import UserAction
 from userprofile.api.views.user_finalize_response import UserFinalizeResponse
+from userprofile.constants import StaticPermissions
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -25,7 +25,7 @@ class UserActionPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         if request.method == "GET":
-            return IsAdminUser.has_permission(self, request, view)
+            return request.user and request.user.has_permission(StaticPermissions.USER_ANALYTICS)
         return IsAuthenticated.has_permission(self, request, view)
 
 

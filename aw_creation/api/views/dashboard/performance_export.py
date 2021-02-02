@@ -7,7 +7,6 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Sum
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
@@ -26,17 +25,16 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 from utils.api.exceptions import BadRequestError
 from utils.api.exceptions import PermissionsError
 from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
-from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
 
 
 class DashboardPerformanceExportApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def post(self, request, pk, **_):
         self._validate_request_payload()
@@ -51,7 +49,7 @@ class DashboardPerformanceExportApiView(APIView):
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
-        visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
+        visible_all_accounts = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS)
         if not visible_all_accounts:
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
             queryset = queryset.filter(account__id__in=visible_accounts)
@@ -80,13 +78,12 @@ class DashboardPerformanceExportApiView(APIView):
             "Date: {start_date} - {end_date}",
             "Group By: {metric}",
         ]
-        user_settings = self.request.user.get_aw_settings()
-        if user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+        user = self.request.user
+        if user.has_permission(StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED):
             header_rows += [
                 "Campaigns: {campaigns}",
                 "Ad Groups: {ad_groups}",
             ]
-
         return "\n".join(header_rows) \
             .format(**self._get_header_data(account))
 
@@ -122,7 +119,7 @@ class DashboardPerformanceExportApiView(APIView):
 
     def _get_columns_to_hide(self, user):
         columns_to_hide = []
-        hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
+        hide_costs = not user.has_permission(StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS)
         if hide_costs:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.COST,
                                                  DashboardPerformanceReportColumn.AVERAGE_CPM,
@@ -130,13 +127,11 @@ class DashboardPerformanceExportApiView(APIView):
         date_segment = self._get_date_segment()
         if not date_segment:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.DATE_SEGMENT]
-        show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        show_conversions = user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
         if not show_conversions:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.ALL_CONVERSIONS]
-        managed_service_hide_delivery_data = user.has_custom_user_group(
-            PermissionGroupNames.MANAGED_SERVICE_HIDE_DELIVERY_DATA
-        )
-        if managed_service_hide_delivery_data:
+        hide_delivery_data = not user.has_permission(StaticPermissions.MANAGED_SERVICE__DELIVERY)
+        if hide_delivery_data:
             columns_to_hide += [
                 DashboardPerformanceReportColumn.CLICKS,
                 DashboardPerformanceReportColumn.IMPRESSIONS,
@@ -171,8 +166,7 @@ class DashboardPerformanceExportApiView(APIView):
         for field in CLICKS_STATS:
             aggregation["sum_{}".format(field)] = Sum(field)
 
-        user_settings = user.get_aw_settings()
-        show_aw_rates = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_aw_rates = user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         if not show_aw_rates:
             aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = self._get_summary_queryset(account).aggregate(**aggregation)
@@ -225,10 +219,9 @@ class DashboardPerformanceExportApiView(APIView):
             return [metric]
 
         metrics = list(ALL_METRICS)
-        user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED):
             metrics.remove(Metric.CAMPAIGN)
-        if user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__AUDIENCES):
             metrics.remove(Metric.AUDIENCE)
         return metrics
 
@@ -241,10 +234,11 @@ class DashboardPerformanceExportApiView(APIView):
         if metric is None:
             return
         wrong_metric_error = PermissionsError("Wrong metric")
-        user_settings = self.request.user.get_aw_settings()
-        if metric == Metric.AUDIENCE and user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+        user = self.request.user
+
+        if metric == Metric.AUDIENCE and not user.has_permission(StaticPermissions.MANAGED_SERVICE__AUDIENCES):
             raise wrong_metric_error
-        if metric == Metric.CAMPAIGN and not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+        if metric == Metric.CAMPAIGN and not user.has_permission(StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED):
             raise wrong_metric_error
 
     def _validate_date_segment(self):

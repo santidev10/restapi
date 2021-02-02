@@ -25,9 +25,7 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_fail_404(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        user = self.create_admin_user()
 
         url = reverse("admin_api_urls:user_auth_admin",
                       args=(user.id + 1,))
@@ -35,9 +33,7 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_success(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        self.create_admin_user()
         test_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"
         )
@@ -48,9 +44,7 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_new_auth_token(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        user = self.create_admin_user()
         token = user.tokens.first()
         test_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"

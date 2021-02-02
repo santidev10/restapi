@@ -4,11 +4,12 @@ from rest_framework.generics import ListAPIView
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.csv_reports import PacingReportS3Exporter
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import ReportNotFoundException
 
 
 class PacingReportExportView(ListAPIView):
-    permission_classes = tuple()
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def get(self, request, report_name, *args, **kwargs):
         try:

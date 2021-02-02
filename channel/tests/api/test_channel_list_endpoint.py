@@ -4,7 +4,6 @@ from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group
 from django.test import override_settings
 from django.utils import timezone
 from elasticsearch_dsl import Q
@@ -18,7 +17,7 @@ from es_components.managers import ChannelManager
 from es_components.models import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.es_components_cache import flush_cache
 from utils.redis import get_redis_client
@@ -39,10 +38,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_brand_safety(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
         channel_id = str(next(int_iterator))
         score = 92
         channel = Channel(**{
@@ -63,10 +61,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         )
 
     def test_brand_safety_filter(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
         channel_id = str(next(int_iterator))
         channel_id_2 = str(next(int_iterator))
         channel_id_3 = str(next(int_iterator))
@@ -136,12 +134,12 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     def test_brand_safety_high_risk_permission(self):
         """
         test that a regular user can filter on RISKY or above scores, while
-        admin users can additionally filter on HIGH_RISK scores
+        RESEARCH__BRAND_SUITABILITY_HIGH_RISK users can additionally filter on HIGH_RISK scores
         """
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
+        })
 
         channel_id = str(next(int_iterator))
         channel_id_2 = str(next(int_iterator))
@@ -174,23 +172,25 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(items), 1)
 
         # regular admin, all filters available
-        user.is_staff = True
-        user.save(update_fields=['is_staff'])
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
 
-        # vetting admin, all filters available
-        user.is_staff = False
-        user.save(update_fields=['is_staff'])
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK perm should see HIGH_RISK agg
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
         self.assertEqual(len(items), 2)
-
 
     def test_extra_fields(self):
         self.create_admin_user()
@@ -255,8 +255,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(response.data.get("items")), len(default_similar_channels))
 
     def test_ignore_monetization_filter_no_permission(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         channels[0].populate_monetization(is_monetizable=True)
 
@@ -286,8 +287,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         note: multi_match phrase requires repetition of the phrase (which must also
         be in order) to get a diff in the score. Uses score of highest scoring field
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(2)]
         most_relevant_channel_title = "the quick brown fox the quick brown fox quick brown fox"
@@ -335,8 +337,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(asc_items[-1]["general_data"]["title"], most_relevant_channel_title)
 
     def test_content_quality_filter(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         manager = ChannelManager(sections=(Sections.TASK_US_DATA,))
         docs = [
             manager.model(
@@ -363,8 +366,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         the search term exists in a field that is specified in
         the initial search
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(3)]
         channel_one = Channel(**{
@@ -503,10 +507,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual([item['main']['id'] for item in vetted_items].sort(), vetted_channel_ids.sort())
 
     def test_permissions(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
-
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         channel_id = str(next(int_iterator))
         channel = Channel(**{
             "meta": {"id": channel_id},
@@ -534,8 +537,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotIn("blacklist_data", item_fields)
 
         # audit vet admin
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
+        })
+        user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data['items']
@@ -546,7 +551,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotIn("blacklist_data", item_fields)
 
         # admin
-        user.is_staff = True
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
         user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -557,10 +564,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
-    def test_vetting_admin_aggregations_guard(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
+    def test_vetting_data_perm_aggregations_guard(self):
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: False,
+        })
 
         channel_ids = []
         for i in range(2):
@@ -605,8 +613,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertNotIn(aggregation, response_aggregation_keys)
 
         # admin should see aggs
-        user.is_staff = True
-        user.save(update_fields=["is_staff"])
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data['aggregations']
@@ -616,10 +626,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertIn(aggregation, response_aggregation_keys)
 
         # vetting admin should see aggs
-        user.is_staff = False
-        user.save(update_fields=["is_staff"])
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data['aggregations']
@@ -629,9 +640,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertIn(aggregation, response_aggregation_keys)
 
     def test_non_admin_brand_safety_exclusion(self):
-        user = self.create_test_user()
-        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
+        user = self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         url = self.url + "?" + urlencode({
             "aggregations": ",".join(ALLOWED_CHANNEL_AGGREGATIONS),
@@ -648,8 +659,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotIn(constants.HIGH_RISK, labels)
 
         # admin should see HIGH_RISK agg
-        user.is_staff = True
-        user.save(update_fields=["is_staff"])
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data["aggregations"]
@@ -659,11 +672,12 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         labels = [bucket['key'] for bucket in buckets]
         self.assertIn(constants.HIGH_RISK, labels)
 
-        # vetting admin should see HIGH_RISK agg
-        user.is_staff = False
-        user.save(update_fields=["is_staff"])
-        Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET_ADMIN)
-        user.add_custom_user_permission("vet_audit_admin")
+        # RESEARCH__BRAND_SUITABILITY_HIGH_RISK should see HIGH_RISK agg
+        user.perms.update({
+            StaticPermissions.ADMIN: False,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
+        })
+        user.save()
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_aggregations = response.data["aggregations"]
@@ -754,8 +768,9 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         primary categories should appear first with a +10 scoring boost when
         relevancy sorting is descending.
         """
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
 
         channel_ids = [str(next(int_iterator)) for i in range(2)]
         primary_category = "Music & Audio"
@@ -797,3 +812,93 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data["items"]
         self.assertEqual(asc_items[-1]["general_data"]["primary_category"], primary_category)
+
+    def test_research_phrase_starts_with(self):
+        """
+        test that searching for channel will yield results of channels that has a title or description
+        with phrase that starts with what the user provided as input.
+        """
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
+
+        channel_id = str(next(int_iterator))
+        channel_id_2 = str(next(int_iterator))
+        channel_id_3 = str(next(int_iterator))
+        channel_id_4 = str(next(int_iterator))
+        channel_id_5 = str(next(int_iterator))
+
+        most_relevant_channel = Channel(**{
+            "meta": {
+                "id": channel_id,
+            },
+            "general_data": {
+                "title": "watchmojo",
+                "description": "the quick brown fox jumps over the lazy dog",
+            }
+        })
+        relevant_channel2 = Channel(**{
+            "meta": {
+                "id": channel_id_2,
+            },
+            "general_data": {
+                "title": "watchmojo.com",
+                "description": "woah did you see that? that quick brown fox jumped over a dog!",
+            }
+        })
+        relevant_channel3 = Channel(**{
+            "meta": {
+                "id": channel_id_3,
+            },
+            "general_data": {
+                "title": "another relevant channel",
+                "description": "woah did you see that? watchmojo brown fox jumped over a dog!",
+            }
+        })
+        relevant_channel4 = Channel(**{
+            "meta": {
+                "id": channel_id_4,
+            },
+            "general_data": {
+                "title": "fourth channel",
+                "description": "woah did you see that? watchmojo.com brown fox jumped over a dog!",
+            }
+        })
+        not_relevant_channel5 = Channel(**{
+            "meta": {
+                "id": channel_id_5,
+            },
+            "general_data": {
+                "title": "not related",
+                "description": "woah did you see that? brown fox jumped over a dog!",
+            }
+        })
+        sleep(1)
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([most_relevant_channel, relevant_channel2,
+                                                  relevant_channel3, relevant_channel4, not_relevant_channel5])
+
+        # test sorting by _score:desc
+        desc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data["items"]
+        self.assertEqual(len(desc_items), 4)
+        self.assertEqual(desc_items[0]["general_data"]["title"], "watchmojo")
+        self.assertEqual(desc_items[1]["general_data"]["title"], "watchmojo.com")
+
+
+        # test sort _score:asc
+        asc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": "watchmojo",
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data["items"]
+        self.assertEqual(len(asc_items), 4)
+        self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
+        self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
+

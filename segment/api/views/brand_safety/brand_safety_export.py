@@ -7,13 +7,12 @@ from segment.api.mixins import DynamicPersistentModelViewMixin
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 from utils.views import get_object
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL__EXPORT),
     )
 
     def get(self, request, pk, *_):
@@ -21,7 +20,7 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
             segment = CustomSegment.objects.get(id=pk)
             related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                     f"segment_id: {segment.id} not found.", segment_id=segment.id)
-            if request.user.is_staff or request.user.has_perm("userprofile.vet_audit_admin"):
+            if request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
                 if related_file_obj.admin_filename:
                     content_generator = segment.s3.get_export_file(segment.get_admin_s3_key())
                 else:

@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.charts.analytics_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
+from userprofile.constants import StaticPermissions
 
 
 class AnalyticsPerformanceChartApiView(APIView):
@@ -18,7 +19,7 @@ class AnalyticsPerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def get_filters(self):
         data = self.request.data

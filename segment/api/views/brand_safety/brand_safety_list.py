@@ -8,14 +8,13 @@ from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
 from userprofile.constants import StaticPermissions
-from utils.permissions import has_static_permission
 
 MINIMUM_ITEMS_COUNT = 100
 
 
 class CustomSegmentListApiView(APIView):
     permission_classes = (
-        has_static_permission(StaticPermissions.CTL__FEATURE_LIST),
+        StaticPermissions.has_perms(StaticPermissions.BSTL),
     )
 
     def __init__(self, *args, **kwargs):
@@ -62,7 +61,7 @@ class CustomSegmentListApiView(APIView):
         self.data['items'] = serialized
 
     def get_custom_segment_serializer_class(self):
-        if self.request.user.has_perm('userprofile.download_audit'):
+        if self.request.user.has_permission(StaticPermissions.CTL__EXPORT_BASIC):
             return CTLSerializer
         return CTLWithoutDownloadUrlSerializer
 

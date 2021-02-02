@@ -1,11 +1,11 @@
 from django.conf import settings
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from userprofile.api.serializers import UserSerializer as RegularUserSerializer
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
 
@@ -14,7 +14,9 @@ class AuthAsAUserAdminApiView(APIView):
     """
     Login as a user endpoint
     """
-    permission_classes = (IsAdminUser,)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.ADMIN),
+    )
 
     def get(self, request, pk):
         """

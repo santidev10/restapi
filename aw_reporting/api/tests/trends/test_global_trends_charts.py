@@ -25,6 +25,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import as_datetime
 from utils.lang import flatten
 from utils.unittests.generic_test import generic_test
@@ -36,7 +37,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
     url = reverse(Name.GlobalTrends.CHARTS, [Namespace.AW_REPORTING])
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
         self.account, self.campaign, self.ad_group = self.create_data(next(int_iterator))
 
     def create_data(self, uid):
@@ -635,11 +638,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
         expected_cpv = cost / views
         self.assertGreater(expected_cpv, 0)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
-             self.patch_user_settings(**user_settings):
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -653,6 +655,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         ("Global account visibility is OFF", (False, False), dict()),
     ])
     def test_global_account_visibility(self, global_account_visibility, is_none):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility
+        })
         account = self.account
         manager = account.managers.first()
         any_date = date(2018, 1, 1)
@@ -661,7 +667,6 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings), \

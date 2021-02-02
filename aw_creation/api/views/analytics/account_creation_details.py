@@ -1,20 +1,20 @@
 import logging
 
 from django.http import Http404
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers.analytics.account_creation_details_serializer import \
     AnalyticsAccountCreationDetailsSerializer
 from aw_creation.models import AccountCreation
+from userprofile.constants import StaticPermissions
 
 logger = logging.getLogger(__name__)
 
 
 class AnalyticsAccountCreationDetailsAPIView(APIView):
     serializer_class = AnalyticsAccountCreationDetailsSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
 
     def post(self, request, pk, **_):
         account_creation = self._get_account_creation(request, pk)

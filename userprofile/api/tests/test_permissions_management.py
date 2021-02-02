@@ -8,7 +8,6 @@ from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-from userprofile.models import PermissionItem
 from userprofile.constants import StaticPermissions
 
 
@@ -22,10 +21,6 @@ class UserPermissionsManagement(ExtendedAPITestCase):
             [Namespace.USER_PROFILE],
             query_params=params
         )
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def test_permissions_fail(self):
         self.create_test_user()
@@ -75,7 +70,8 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         response = self.client.get(self._get_url(user.id))
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        management_perm = [perm for perm in data if perm["perm"] == StaticPermissions.USER_MANAGEMENT][0]
+        management_perm = [perm for perm in data["permissions"] if perm["perm"] == StaticPermissions.USER_MANAGEMENT][0]
+        self.assertEqual(user.email, data["email"])
         self.assertEqual(management_perm["enabled"], True)
         self.assertTrue(len(data) > 0)
 
@@ -96,3 +92,29 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         # Should not be updated
         self.assertEqual(user.perms.get(StaticPermissions.BSTE), None)
 
+    def test_change_admin(self):
+        """ Test that user must be admin to manage admin permissions"""
+        target = self.create_test_user(email="test2@email.com", perms={
+            StaticPermissions.ADMIN: False,
+        })
+
+        user = self.create_test_user()
+        user.perms.update({StaticPermissions.USER_MANAGEMENT: True})
+        payload = json.dumps({
+            StaticPermissions.ADMIN: True,
+        })
+        # user is not admin user and is trying to change target user admin status
+        response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        target.refresh_from_db()
+        self.assertEqual(target.perms[StaticPermissions.ADMIN], False)
+
+        user.perms.update({
+            StaticPermissions.ADMIN: True,
+        })
+        user.save()
+        # Successful since user now has admin permission
+        response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        target.refresh_from_db()
+        self.assertEqual(target.perms[StaticPermissions.ADMIN], True)

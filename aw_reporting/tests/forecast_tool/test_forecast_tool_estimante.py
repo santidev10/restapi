@@ -12,6 +12,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -24,7 +25,11 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         cost = 60.0
         impressions = 30
         expected_average_cpm = cost / impressions * 1000 + ForecastToolEstimate.CPM_BUFFER
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.FORECAST_TOOL: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: False,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
         account = Account.objects.create()
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
@@ -33,8 +38,6 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=date(2017, 11, 21), ad_group=ad_group, cost=cost, average_position=1, impressions=impressions)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         }
         with self.patch_user_settings(**user_settings):

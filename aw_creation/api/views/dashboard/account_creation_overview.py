@@ -31,6 +31,7 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.constants import CONVERSIONS
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 
 
 class DashboardAccountCreationOverviewAPIView(APIView):
@@ -57,7 +58,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
     def _get_account_creation(self, pk):
         account_creation_queryset = AccountCreation.objects.all()
         user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
         try:
@@ -67,7 +68,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
 
     def _get_stats_aggregator(self, user):
         keys_to_exclude = ()
-        show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        show_conversions = user.has_permission(StaticPermissions.MANAGED_SERVICE__CONVERSIONS)
         if not show_conversions:
             keys_to_exclude += tuple("sum_{}".format(key) for key in CONVERSIONS)
         return {
@@ -117,8 +118,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         location = [dict(name=i["city__name"], value=i["v"]) for i in location]
         data.update(gender=gender, age=age, device=device, location=location)
         self._add_chf_performance_data(data, account_creation)
-        show_client_cost = not current_user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_client_cost = not current_user.has_permission(StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST)
         if show_client_cost:
             data["delivered_cost"] = self._get_client_cost(fs)
 
@@ -127,7 +127,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         return data
 
     def _filter_costs(self, data, current_user):
-        if current_user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if not current_user.has_permission(StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS):
             hidden_values = "cost", "delivered_cost", "plan_cost", "average_cpm", "average_cpv"
             for key in hidden_values:
                 data.pop(key, None)

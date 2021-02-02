@@ -5,12 +5,12 @@ from io import StringIO
 from django.http import StreamingHttpResponse
 
 from userprofile.models import UserDeviceToken
-from utils.permissions import IsAuthQueryTokenPermission
 from .targeting_list_base import TargetingListBaseAPIClass
+from userprofile.constants import StaticPermissions
 
 
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
-    permission_classes = (IsAuthQueryTokenPermission,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE__EXPORT),)
 
     def get_user(self):
         auth_token = self.request.query_params.get("auth_token")

@@ -23,7 +23,6 @@ from aw_reporting.models import Opportunity
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
-from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -31,15 +30,8 @@ logger = logging.getLogger(__name__)
 
 def get_default_settings():
     return {
-        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.HIDE_REMARKETING: False,
-        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-        UserSettingsKey.SHOW_CONVERSIONS: False,
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
-        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
 
 
@@ -69,7 +61,7 @@ class LowercaseEmailField(models.EmailField):
         return value.lower() if isinstance(value, str) else value
 
 
-class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
+class UserProfile(AbstractBaseUser, PermissionsMixin):
     """
     An abstract base class implementing a fully featured User model with
     admin-compliant permissions.
@@ -233,6 +225,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             domain_name = None
         return domain_name
 
+
 class PermissionItem(models.Model):
     permission = models.CharField(unique=True, max_length=128)
     default_value = models.BooleanField(db_index=True, default=False)
@@ -240,45 +233,97 @@ class PermissionItem(models.Model):
 
     STATIC_PERMISSIONS = [
     #   [FEATURE.PERMISSION_NAME,                       DEFAULT_VALUE, display]
-        [StaticPermissions.ADMIN,                           False, "Admin (the powers of Zeus)"],
-        [StaticPermissions.ADS_ANALYZER,                    False, "Ads Analyzer"],
-        [StaticPermissions.AUDIT_QUEUE,                     False, "Audit Queue"],
-        [StaticPermissions.BLOCKLIST_MANAGER,               False, "Blocklist Manager"],
-        [StaticPermissions.BSTE,                            False, "Brand Safety Tags Editor"],
+        [StaticPermissions.ADMIN,                           False,  "Admin (the powers of Zeus)"],
+        [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer Read"],
+        [StaticPermissions.ADS_ANALYZER__RECIPIENTS,        False,  "View all Ads Analyzer reports"],
 
-        [StaticPermissions.CTL,                             False, "Custom Target Lists"],
-        [StaticPermissions.CTL__READ,                       False, "Read"],
-        [StaticPermissions.CTL__CREATE,                     False, "Create"],
-        [StaticPermissions.CTL__DELETE,                     False, "Delete"],
-        [StaticPermissions.CTL__FEATURE_LIST,               False, "Feature / Unfeature List"],
-        [StaticPermissions.CTL__EXPORT_BASIC,               False, "Export (basic)"],
-        [StaticPermissions.CTL__EXPORT_ADMIN,               False, "Export (all data)"],
-        [StaticPermissions.CTL__SEE_ALL,                    False, "See all Lists"],
-        [StaticPermissions.CTL__VET_ENABLE,                 False, "Enable Vetting"],
-        [StaticPermissions.CTL__VET,                        False, "Vet Stuff"],
-        [StaticPermissions.CTL__VET_ADMIN,                  False, "Vet Admin"],
-        [StaticPermissions.CTL__VET_EXPORT,                 False, "Download Vetted only Export"],
+        [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue Read"],
+        [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
+        [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
 
-        [StaticPermissions.DOMAIN_MANAGER,                  False, "Domain Manager"],
-        [StaticPermissions.PACING_REPORT,                   False, "Pacing Report"],
-        [StaticPermissions.PERFORMIQ,                       False, "PerformIQ"],
-        [StaticPermissions.PERFORMIQ__EXPORT,               False, "Export"],
-        [StaticPermissions.PRICING_TOOL,                    False, "Pricing Tool"],
-        [StaticPermissions.RESEARCH,                        True,  "Research"],
-        [StaticPermissions.RESEARCH__EXPORT,                True,  "Export"],
-        [StaticPermissions.RESEARCH__VETTING,               False, "Able to Vet items"],
-        [StaticPermissions.RESEARCH__VETTING_DATA,          False, "View vetting data & filters"],
-        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False, "View Brand Suitability Badges"],
-        [StaticPermissions.USER_MANAGEMENT,                 False, "User Management"],
+        [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager Read"],
+        [StaticPermissions.BLOCKLIST_MANAGER__CREATE,       False,  "Blocklist Manager Create"],
+        [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
+        [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
+
+        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL) Read"],
+        [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
+
+        [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
+        [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
+        [StaticPermissions.BSTE__DELETE,                    False,  "Brand Safety Tags Editor Delete"],
+        [StaticPermissions.BSTE__EXPORT,                    False,  "Brand Safety Tags Editor Export"],
+
+        [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
+
+        [StaticPermissions.CTL,                             False,  "Custom Target Lists Read"],
+        [StaticPermissions.CTL__CREATE,                     False,  "Create"],
+        [StaticPermissions.CTL__DELETE,                     False,  "Delete"],
+        [StaticPermissions.CTL__FEATURE_LIST,               False,  "Feature / Unfeature List"],
+        [StaticPermissions.CTL__EXPORT_BASIC,               False,  "Export (basic)"],
+        [StaticPermissions.CTL__EXPORT_ADMIN,               False,  "Export (all data)"],
+        [StaticPermissions.CTL__SEE_ALL,                    False,  "See all Lists"],
+        [StaticPermissions.CTL__VET_ENABLE,                 False,  "Enable Vetting"],
+        [StaticPermissions.CTL__VET,                        False,  "Vet Stuff"],
+        [StaticPermissions.CTL__VET_ADMIN,                  False,  "Vet Admin"],
+        [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
+
+        [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
+        [StaticPermissions.DOMAIN_MANAGER__READ_ALL,        False,  "Domain Manager Read All"],
+        [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],
+        [StaticPermissions.DOMAIN_MANAGER__DELETE,          False,  "Domain Manager Delete"],
+
+        [StaticPermissions.FORECAST_TOOL,                   False,  "Forecasting Tool"],
+
+        [StaticPermissions.MANAGED_SERVICE,                             False,  "Managed Service Read"],
+        [StaticPermissions.MANAGED_SERVICE__EXPORT,                     False,  "Managed Service Export"],
+        [StaticPermissions.MANAGED_SERVICE__PERFORMANCE_GRAPH,          False,  "Managed Service Performance"],
+        [StaticPermissions.MANAGED_SERVICE__DELIVERY,                   False,  "Managed Service Delivery"],
+        [StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED,        False,  "Managed Service Campaigns Segmented"],
+        [StaticPermissions.MANAGED_SERVICE__CONVERSIONS,                False,  "Managed Service Conversions"],
+        [StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS,       False,  "Managed Service All Accounts Visible"],
+        [StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST,             False,  "Managed Service Real Google Ads Cost"],
+        [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
+        [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  False,  "Managed Service Audiences Tab"],
+        [StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS,              False,  "Managed Service Service Costs"],
+        [StaticPermissions.MANAGED_SERVICE__CHANNEL_VIDEO_TABS,         False,  "Managed Service Channel & Video Tabs"],
+
+        [StaticPermissions.MEDIA_BUYING,                    False,  "Media Buying"],
+        [StaticPermissions.PACING_REPORT,                   False,  "Pacing Report"],
+        [StaticPermissions.PERFORMIQ,                       False,  "PerformIQ"],
+        [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],
+        [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
+
+        [StaticPermissions.RESEARCH,                        True,   "Research Read"],
+        [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
+        [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
+        [StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK, False, "View brand suitability high risk filter"],
+
+        [StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA,    False,  "Channel and Video detail data"],
+        [StaticPermissions.RESEARCH__MONETIZATION,          False,  "Monetization data"],
+        [StaticPermissions.RESEARCH__EXPORT,                False,  "Export"],
+        [StaticPermissions.RESEARCH__TRANSCRIPTS,           False,  "Transcripts data"],
+        [StaticPermissions.RESEARCH__VETTING,               False,  "Able to vet items"],
+        [StaticPermissions.RESEARCH__VETTING_DATA,          False,  "View vetting data & filters"],
+
+        [StaticPermissions.USER_ANALYTICS,                  False,  "User analytics"],
+        [StaticPermissions.USER_MANAGEMENT,                 False,  "User management"],
     ]
 
     @staticmethod
     def load_permissions():
         for p in PermissionItem.STATIC_PERMISSIONS:
-            i, _ = PermissionItem.objects.get_or_create(permission=p[0])
-            i.default_value = p[1]
-            i.display = p[2]
-            i.save(update_fields=['default_value', 'display'])
+            defaults = dict(permission=p[0], default_value=p[1], display=p[2])
+            PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
+
+    @classmethod
+    def all_perms(cls):
+        perm_names = [
+            perm[0] for perm in cls.STATIC_PERMISSIONS
+        ]
+        return perm_names
+
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)

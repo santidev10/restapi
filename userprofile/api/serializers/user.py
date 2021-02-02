@@ -2,7 +2,6 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import PermissionsMixin
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
@@ -10,6 +9,9 @@ from rest_framework.serializers import SerializerMethodField
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.constants import StaticPermissions
+from userprofile.constants import UserSettingsKey
+from userprofile.models import PermissionItem
 from userprofile.models import WhiteLabel
 
 
@@ -17,12 +19,14 @@ class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
+    aw_settings = SerializerMethodField()
     can_access_media_buying = SerializerMethodField()
     company = CharField(max_length=255, required=True)
     first_name = CharField(max_length=255, required=True)
     has_aw_accounts = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
     last_name = CharField(max_length=255, required=True)
+    perms = SerializerMethodField()
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     user_type = CharField(max_length=255)
     domain = CharField(max_length=255)
@@ -33,7 +37,6 @@ class UserSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "access",
             "aw_settings",
             "can_access_media_buying",
             "company",
@@ -50,6 +53,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "last_name",
             "logo_url",
+            "perms",
             "phone_number",
             "phone_number_verified",
             "profile_image_url",
@@ -82,8 +86,8 @@ class UserSerializer(ModelSerializer):
                     ad_group__campaign__account__mcc_permissions__aw_connection__user_relations__user=obj) \
             .exists()
 
-    def get_can_access_media_buying(self, obj: PermissionsMixin):
-        return obj.has_perm("userprofile.view_media_buying")
+    def get_can_access_media_buying(self, obj: get_user_model()):
+        return obj.has_permission(StaticPermissions.MEDIA_BUYING)
 
     def validate_sub_domain(self, sub_domain):
         sub_domain_obj = WhiteLabel.get(sub_domain)
@@ -103,3 +107,21 @@ class UserSerializer(ModelSerializer):
             error = err.response["Error"]["Message"]
             raise ValidationError(error)
         return phone_number
+
+    def get_perms(self, obj):
+        """ Get permissions and update with default values if missing """
+        perms = obj.perms
+        perms.update({
+            perm: default
+            for perm, default, _ in PermissionItem.STATIC_PERMISSIONS
+            if perm not in perms
+        })
+        return perms
+
+    def get_aw_settings(self, obj):
+        """ Remove deprecated fields """
+        aw_settings = {
+            key: value for key, value in obj.aw_settings.items()
+            if key in UserSettingsKey.ACTIVE_AW_SETTINGS_KEYS
+        }
+        return aw_settings

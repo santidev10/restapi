@@ -34,6 +34,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.int_iterator import int_iterator
@@ -87,8 +88,10 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             RemarkStatistic.objects.create(remark=remark_list, **stats)
 
     def test_success_regardless_global_account_visibility(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
@@ -97,7 +100,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(account.account_creation.id, Dimension.TOPIC)
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
@@ -105,8 +107,10 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cta_fields_in_topic_dimension_response(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
@@ -115,7 +119,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(account.account_creation.id, Dimension.TOPIC)
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
@@ -125,8 +128,10 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.assertIn(field, response.data.get("items")[0].keys())
 
     def test_cta_fields_in_gender_dimension_response(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: False,
+        })
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
@@ -135,7 +140,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(account.account_creation.id, Dimension.GENDER)
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
@@ -149,75 +153,71 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
         for dimension in ALL_DIMENSIONS
     ])
     def test_conversions_are_hidden(self, dimension):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: False,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
                                all_conversions=3, view_through=4)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: False,
-        }
         url = self._get_url(account.account_creation.id, dimension)
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertGreater(len(items), 0)
-            for item in items:
-                self.assertNotIn("conversions", item)
-                self.assertNotIn("all_conversions", item)
-                self.assertNotIn("view_through", item)
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertGreater(len(items), 0)
+        for item in items:
+            self.assertNotIn("conversions", item)
+            self.assertNotIn("all_conversions", item)
+            self.assertNotIn("view_through", item)
 
     @generic_test([
         (dimension, (dimension,), dict())
         for dimension in ALL_DIMENSIONS
     ])
     def test_conversions_are_visible(self, dimension):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
                                all_conversions=3, view_through=4)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True,
-        }
+
         url = self._get_url(account.account_creation.id, dimension)
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertGreater(len(items), 0)
-            for item in items:
-                self.assertIsNotNone(item["conversions"])
-                self.assertIsNotNone(item["all_conversions"])
-                self.assertIsNotNone(item["view_through"])
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertGreater(len(items), 0)
+        for item in items:
+            self.assertIsNotNone(item["conversions"])
+            self.assertIsNotNone(item["all_conversions"])
+            self.assertIsNotNone(item["view_through"])
 
     def test_shows_real_aw_cost_gender(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-        }
         expected_cost = GenderStatistic.objects \
             .filter(ad_group__campaign__account=account) \
             .aggregate(cost=Sum("cost"))["cost"]
         url = self._get_url(account.account_creation.id, Dimension.GENDER)
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, dict())
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data["items"]
-            self.assertEqual(len(items), 1)
-            item = items[0]
-            self.assertEqual(item["cost"], expected_cost)
+        response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["cost"], expected_cost)

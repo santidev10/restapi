@@ -1,12 +1,12 @@
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit_tool.tasks.export_blocklist import export_blocklist_task
+from userprofile.constants import StaticPermissions
 
 
 class BlocklistExportAPIView(APIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BLOCKLIST_MANAGER),)
 
     def get(self, request, *args, **kwargs):
         data_type = kwargs["data_type"]

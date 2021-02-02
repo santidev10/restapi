@@ -50,6 +50,7 @@ from aw_reporting.models import YTVideoStatistic
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import get_quarter
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
@@ -102,8 +103,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             RemarkStatistic.objects.create(remark=remark, **stats)
 
     def test_success_for_chf_dashboard(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={StaticPermissions.MANAGED_SERVICE__EXPORT: True})
         account = Account.objects.create(id=1, name="")
         self._create_stats(account)
         user_settings = {
@@ -114,8 +114,10 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_no_demo_data(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=1, name="")
 
         campaign_name = "Test campaign"
@@ -130,8 +132,9 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(is_empty_report(sheet))
 
     def test_visible_accounts(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
@@ -141,9 +144,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_sf_data_in_summary_row(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
@@ -172,7 +179,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         average_cpv = client_cost / views
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -189,9 +195,12 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][cpv_index].value, average_cpv)
 
     def test_hide_costs(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: False,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
@@ -203,7 +212,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
                                         cost=1, impressions=1, video_views=1)
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -220,8 +228,12 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
 
     def test_all_conversions_column_is_present(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__CONVERSIONS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
@@ -233,7 +245,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             date=any_date, ad_group=ad_group, average_position=1, cost=1, impressions=1, video_views=1)
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
-            UserSettingsKey.SHOW_CONVERSIONS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -250,9 +261,14 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
 
     def test_show_real_costs(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
@@ -263,12 +279,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         aw_cost = 123
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
                                         cost=aw_cost, impressions=1, video_views=1)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -278,9 +289,14 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(sheet[single_data_row_index][cost_column_index].value, aw_cost)
 
     def test_hide_real_costs(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: False,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         any_date = date(2018, 1, 1)
-        user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
@@ -304,12 +320,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             end=any_date,
         )
         self.assertGreater(client_cost, 0)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -320,21 +331,17 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     @generic_test([
         (metric, (metric,), dict())
-        for metric in Metric
+        for metric in Metric if metric.value == "campaign"
     ])
     def test_metric(self, metric):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric=metric.value)
+        response = self._request(account.account_creation.id, metric=metric.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -343,44 +350,37 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][0].value, METRIC_REPRESENTATION[metric])
 
     def test_bad_request_on_wrong_metric(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: False,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric="invalid_metric")
+        response = self._request(account.account_creation.id, metric="invalid_metric")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_date_segment_invalid(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         test_segment = "invalid"
         self.assertFalse(DateSegment.has_value(test_segment))
         account = Account.objects.create(id=next(int_iterator), name="")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=test_segment)
+        response = self._request(account.account_creation.id, date_segment=test_segment)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_date_segment_day(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
         self._create_stats(account, test_date)
         expected_date_label = test_date.strftime("%m/%d/%Y")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -396,18 +396,16 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for dt in (date(2018, 4, 5) + timedelta(days=offset) for offset in range(7))
     ])
     def test_date_segment_week(self, test_date):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         fake_start_of_the_week = test_date - timedelta(days=test_date.isoweekday() % 7)
         self.assertEqual(fake_start_of_the_week.strftime("%A"), "Sunday")
         self._create_stats(account, test_date)
         expected_date_label = fake_start_of_the_week.strftime("%m/%d/%Y (W%U)")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.WEEK.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.WEEK.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -419,17 +417,15 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
     def test_date_segment_month(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
         self._create_stats(account, test_date)
         expected_date_label = test_date.strftime("%b-%y")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.MONTH.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.MONTH.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -445,8 +441,10 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for quarter_number in range(1, 5)
     ])
     def test_date_segment_quarter(self, quarter_number):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         test_date_1 = datetime(2018, quarter_number * 3 - 1, 5, 6, 7, 8, 9)
         expected_date_label = "{year} Q{quarter_number}".format(
@@ -454,12 +452,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             year=test_date_1.year,
         )
         self._create_stats(account, test_date_1)
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -471,8 +464,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
     def test_date_segment_grouped_by_quarter(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -489,11 +485,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
         AdGroupStatistic.objects.create(date=test_date_1, impressions=impressions[0], **common)
         AdGroupStatistic.objects.create(date=test_date_2, impressions=impressions[1], **common)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -505,17 +497,16 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[1][impressions_column].value, sum(impressions))
 
     def test_date_segment_year(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
         self._create_stats(account, test_date)
         expected_date_label = test_date.strftime("%Y")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.YEAR.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.YEAR.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -527,8 +518,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
     def test_date_segment_split_by_day(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -541,11 +535,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         )
         AdGroupStatistic.objects.create(date=test_date_1, impressions=impressions[0], **common)
         AdGroupStatistic.objects.create(date=test_date_2, impressions=impressions[1], **common)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -557,15 +547,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[1][impressions_column].value, impressions[1])
 
     def test_date_segment_empty_in_summary(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
@@ -574,24 +562,25 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIsNone(summary_row[date_column].value)
 
     def test_header_metric(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         test_metric = Metric.AD_GROUP
         test_metric_repr = METRIC_REPRESENTATION[test_metric]
         test_metric_value = test_metric.value
-        user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=next(int_iterator), name="")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric=test_metric_value)
+        response = self._request(account.account_creation.id, metric=test_metric_value)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertIn("Group By: {}".format(test_metric_repr), header)
 
     def test_header_date(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
         statistic_dates = CampaignStatistic.objects.all().values_list("date", flat=True)
@@ -599,19 +588,17 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         end = max(statistic_dates)
 
         expected_date = "Date: {start} - {end}".format(start=start, end=end)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         filters_header = get_custom_header(sheet)
         self.assertIn(expected_date, filters_header)
 
     def test_header_campaigns(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         campaigns = [
             Campaign.objects.create(id=next(int_iterator), name="test name 1", account=account),
@@ -624,19 +611,17 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for ad_group in ad_groups:
             AdGroupStatistic.objects.create(date="2018-01-01", ad_group=ad_group, average_position=1, impressions=1)
         campaign_names = [campaign.name for campaign in campaigns]
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertIn("Campaigns: {}".format(", ".join(campaign_names)), header)
 
     def test_header_ad_groups(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         ad_groups = [
@@ -646,19 +631,17 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         for ad_group in ad_groups:
             AdGroupStatistic.objects.create(date="2018-01-01", ad_group=ad_group, average_position=1, impressions=1)
         ad_group_names = [ad_group.name for ad_group in ad_groups]
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertIn("Ad Groups: {}".format(", ".join(ad_group_names)), header)
 
     def test_filters_no_filters(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         expected_header = "\n".join([
             "Date: None - None",
             "Group By: None",
@@ -666,28 +649,21 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             "Ad Groups: ",
         ])
         account = Account.objects.create(id=next(int_iterator), name="")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertEqual(header, expected_header)
 
     def test_too_much_data(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         test_data_limit = 1
         test_limit = SUMMARY_ROW_INDEX + test_data_limit
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             override_settings(DASHBOARD_PERFORMANCE_REPORT_LIMIT=test_limit):
+        with override_settings(DASHBOARD_PERFORMANCE_REPORT_LIMIT=test_limit):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
@@ -695,9 +671,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[test_data_limit][0].value, TOO_MUCH_DATA_MESSAGE)
 
     def test_filename(self):
-        user = self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         test_now = datetime(2018, 6, 24)
-        user.add_custom_user_permission("view_dashboard")
         test_account_name = "Test-Account"
         account = Account.objects.create(id=next(int_iterator), name=test_account_name)
         expected_filename = "Segmented report {account_name} {year}{month}{day}.xlsx".format(
@@ -706,58 +684,48 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             month=("0" + str(test_now.month))[-2:],
             day=("0" + str(test_now.day))[-2:],
         )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(test_now):
+        with patch_now(test_now):
             response = self._request(account.account_creation.id)
         self.assertEqual(response["content-disposition"], "attachment; filename=\"{}\"".format(expected_filename))
 
     def test_hide_campaigns_from_header_if_it_shown_for_user(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: False,
+        })
         expected_header = "\n".join([
             "Date: None - None",
             "Group By: None",
         ])
         account = Account.objects.create(id=next(int_iterator))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertEqual(header, expected_header)
 
     def test_hide_audience_based_on_settings(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__AUDIENCES: False,
+        })
         account = Account.objects.create(id=next(int_iterator))
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.HIDE_REMARKETING: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         metrics = {row[0].value for row in sheet}
         self.assertNotIn(METRIC_REPRESENTATION[Metric.AUDIENCE], metrics)
 
     def test_hide_campaigns_based_on_settings(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: False,
+        })
         account = Account.objects.create(id=next(int_iterator))
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         metrics = {row[0].value for row in sheet}
         self.assertNotIn(METRIC_REPRESENTATION[Metric.CAMPAIGN], metrics)
@@ -767,24 +735,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         (Metric.AUDIENCE, (Metric.AUDIENCE,), dict()),
     ])
     def test_forbidden_if_user_has_no_permissions_for_the_metric(self, metric):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: False,
+            StaticPermissions.MANAGED_SERVICE__AUDIENCES: False,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-            UserSettingsKey.HIDE_REMARKETING: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric=metric.value)
+        response = self._request(account.account_creation.id, metric=metric.value)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_campaign_no_valid_stats(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         account = Account.objects.create(id=next(int_iterator), name="")
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         impressions = 123
@@ -794,12 +762,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             for _ in range(5)
         ]
         ad_group_ids = [ad_group.id for ad_group in ad_groups]
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id,
+        response = self._request(account.account_creation.id,
                                      metric=Metric.CAMPAIGN.value,
                                      ad_groups=ad_group_ids)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -810,21 +773,21 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_for_demo_account(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(DEMO_ACCOUNT_ID)
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
+        response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_header(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
         campaigns = account.campaigns.all().order_by("name")
         statistic_dates = CampaignStatistic.objects.filter(campaign__in=campaigns).values_list("date", flat=True)
@@ -842,21 +805,18 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
             campaigns=", ".join([campaign.name for campaign in campaigns]),
             ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
         )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(DEMO_ACCOUNT_ID)
-
+        response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertEqual(header, expected_header)
 
     def test_metric_overview_grouped(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
 
         account = Account.objects.create(id=next(int_iterator), name="Test account")
         campaign_count = 3
@@ -875,12 +835,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
                                             average_position=1,
                                             impressions=impressions)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id,
-                                     metric=Metric.OVERVIEW.value)
+        response = self._request(account.account_creation.id, metric=Metric.OVERVIEW.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertEqual(sheet.max_row, SUMMARY_ROW_INDEX + 1)
@@ -892,16 +847,14 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, expected_impressions)
 
     def test_metric_overview_cta(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
 
         account = Account.objects.create(id=next(int_iterator), name="Test account")
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id,
+        response = self._request(account.account_creation.id,
                                      metric=Metric.OVERVIEW.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -911,16 +864,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIsNotNone(sheet[SUMMARY_ROW_INDEX + 1][cta_index].value)
 
     def test_view_rate(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
@@ -930,16 +880,14 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_demo_account_campaigns(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         campaigns = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID)
         expected_campaigns_names = {campaign.name for campaign in campaigns}
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
+        response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -949,17 +897,14 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(campaigns_names, expected_campaigns_names)
 
     def test_campaigns_cta(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric=Metric.CAMPAIGN.value)
+        response = self._request(account.account_creation.id, metric=Metric.CAMPAIGN.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
@@ -970,16 +915,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(any([cta > 0 for cta in cta_website]))
 
     def test_overview_is_always_visible(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         account = Account.objects.create(id=next(int_iterator))
         self._create_stats(account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
+        response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         section_name_index = 0
@@ -987,9 +929,12 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(METRIC_REPRESENTATION[Metric.OVERVIEW], section_names)
 
     def test_week_starts_on_sunday(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+            StaticPermissions.MANAGED_SERVICE__DELIVERY: True,
+        })
         test_date_sunday = date(2018, 10, 28)
         test_date_monday = test_date_sunday + timedelta(days=1)
         impressions = 1, 2
@@ -998,16 +943,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=test_date_sunday, impressions=impressions[0])
         CampaignStatistic.objects.create(campaign=campaign, date=test_date_monday, impressions=impressions[1])
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(
-                account.account_creation.id,
-                metric=Metric.CAMPAIGN.value,
-                date_segment=DateSegment.WEEK.value
-            )
+        response = self._request(
+            account.account_creation.id,
+            metric=Metric.CAMPAIGN.value,
+            date_segment=DateSegment.WEEK.value
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         headers = get_headers(sheet)
@@ -1019,13 +959,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_demo_cta(self):
         recreate_test_demo_data()
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self._request(DEMO_ACCOUNT_ID)
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
+        response = self._request(DEMO_ACCOUNT_ID)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)

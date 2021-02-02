@@ -11,6 +11,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -81,7 +82,9 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True
+        })
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
@@ -94,14 +97,18 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_success_demo(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True
+        })
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_placements_format(self):
         recreate_test_demo_data()
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True
+        })
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         sheet = get_sheet_from_response(response)
@@ -132,7 +139,9 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(cell.number_format, expected_format)
 
     def test_demo_data(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True
+        })
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,

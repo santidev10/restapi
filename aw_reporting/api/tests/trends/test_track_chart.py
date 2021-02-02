@@ -20,6 +20,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.unittests.generic_test import generic_test
 from utils.unittests.patch_now import patch_now
 
@@ -28,8 +29,10 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.CHART)
 
     def setUp(self):
-        user = self.create_test_user()
-        account = self.create_account(user)
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
+        account = self.create_account(self.user)
         self.campaign = Campaign.objects.create(
             id="1", name="", account=account)
         self.ad_group = AdGroup.objects.create(
@@ -231,11 +234,10 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
 
         expected_cpv = cost / views
         self.assertGreater(expected_cpv, 0)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
-        with patch_now(any_date), \
-             self.patch_user_settings(**user_settings):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+
+        with patch_now(any_date):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             trend = get_trend(response.data, TrendId.HISTORICAL)

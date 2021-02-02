@@ -2,7 +2,6 @@ from distutils.util import strtobool
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListCreateAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from .filter_backend import BlocklistESFilterBackend
@@ -14,6 +13,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from userprofile.constants import StaticPermissions
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.db.functions import safe_bulk_create
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -41,7 +41,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
     serializer_class = BlocklistSerializer
     filter_backends = [BlocklistESFilterBackend]
     pagination_class = BlocklistPaginator
-    permission_classes = (IsAdminUser,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.BLOCKLIST_MANAGER),)
     DEFAULT_PAGE_SIZE = 25
 
     def get_queryset(self) -> ESQuerysetAdapter:

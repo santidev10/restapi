@@ -26,6 +26,7 @@ from aw_reporting.reports.pacing_report import DefaultRate
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -41,7 +42,7 @@ class PacingReportPlacementsTestCase(APITestCase):
             args=args)
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     def test_forbidden_get(self):
         self.user.delete()
@@ -771,6 +772,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(pl_data["margin"], 0)
 
     def test_fix_distinct(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY] = True
+        self.user.save()
         opportunity = Opportunity.objects.create(id=1)
         placement_1 = OpPlacement.objects.create(id=1, opportunity=opportunity)
         placement_2 = OpPlacement.objects.create(id=2, opportunity=opportunity)
@@ -782,7 +785,6 @@ class PacingReportPlacementsTestCase(APITestCase):
                                 account=account_2)
 
         user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id, account_2.id]
         }
         url = self._get_url(opportunity.id)
@@ -819,6 +821,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.data[0]["margin"], expected_margin)
 
     def test_outgoing_fee(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
             probability=100,
@@ -843,12 +847,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
         expected_spent = flight.cost / total * left
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
         url = self._get_url(opportunity.id)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -875,12 +875,11 @@ class PacingReportPlacementsTestCase(APITestCase):
             end=today,
         )
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
         url = self._get_url(opportunity.id)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
+        with patch_now(now):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)

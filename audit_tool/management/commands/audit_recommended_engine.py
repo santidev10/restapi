@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from emoji import UNICODE_EMOJI
 from pid import PidFile
+from threading import Thread
 
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
@@ -24,6 +25,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
+from audit_tool.utils.regex_trie import get_optimized_regex
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
@@ -51,6 +53,7 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
+    NUM_THREADS = settings.AUDIT_RECO_NUM_THREADS
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
@@ -155,8 +158,19 @@ class Command(BaseCommand):
         pending_videos = self.check_complete()
         num = 50
         start = self.thread_id * num
+        threads = []
         for video in pending_videos[start:start + num]:
-            self.do_recommended_api_call(video)
+            t = Thread(target=self.do_recommended_api_call, args=(video,))
+            threads.append(t)
+            t.start()
+            if len(threads) >= self.NUM_THREADS:
+                for t in threads:
+                    t.join()
+                threads = []
+            # self.do_recommended_api_call(video)
+        if len(threads) > 0:
+            for t in threads:
+                t.join()
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=["updated"])
         self.check_complete()
@@ -221,7 +235,7 @@ class Command(BaseCommand):
         r = requests.get(url)
         data = r.json()
         if "error" in data:
-            if data["error"]["message"] in ["Invalid video.", "Not Found"]:
+            if (data["error"].get("code") and str(data["error"]["code"]) == "404") or data["error"]["message"] in ["Invalid video.", "Not Found", "Requested entity was not found."]:
                 avp.processed = timezone.now()
                 avp.clean = False
                 avp.save(update_fields=["clean", "processed"])
@@ -240,6 +254,8 @@ class Command(BaseCommand):
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
         for i in d:
+            if not i.get("snippet"):
+                continue
             db_video = AuditVideo.get_or_create(i["id"]["videoId"])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i["snippet"]["title"]
@@ -523,10 +539,7 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("inclusion")
         if not input_list:
             return
-        regexp = "({})".format(
-            "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
-        )
-        self.inclusion_list = re.compile(regexp)
+        self.inclusion_list = get_optimized_regex(words_list=input_list, remove_tags_punctuation_from_words=True)
 
     def load_exclusion_list(self):
         if self.exclusion_list:
@@ -548,10 +561,7 @@ class Command(BaseCommand):
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
-            lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
-            )
-            exclusion_list[lang] = re.compile(lang_regexp)
+            exclusion_list[lang] = get_optimized_regex(words_list=keywords)
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):

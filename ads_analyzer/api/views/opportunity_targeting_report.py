@@ -13,10 +13,9 @@ from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer i
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+from userprofile.constants import StaticPermissions
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 
 
 class Paginator(CustomPageNumberPaginator):
@@ -25,7 +24,7 @@ class Paginator(CustomPageNumberPaginator):
 
 class FilterBackend(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
-        if not request.user.has_perm("userprofile.view_opportunity_report_recipients_list"):
+        if not request.user.has_permission(StaticPermissions.ADS_ANALYZER__RECIPIENTS):
             return queryset.filter(recipients=request.user)
 
         recipients = request.query_params.dict().get("recipients")
@@ -37,11 +36,8 @@ class FilterBackend(BaseFilterBackend):
 
 class OpportunityTargetingReportAPIView(ListCreateAPIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.create_opportunity_report"),
-        ),
+        StaticPermissions.has_perms(StaticPermissions.ADS_ANALYZER),
     )
-
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
     filter_backends = (FilterBackend,)

@@ -10,17 +10,20 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 
 
 class AdCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        del self.user.perms[StaticPermissions.MEDIA_BUYING]
+        self.user.save()
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,

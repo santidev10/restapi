@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from brand_safety.api.serializers.bad_word_category_serializer import BadWordCategorySerializer
 from brand_safety.models import BadWordCategory
+from userprofile.constants import StaticPermissions
 
 
 class BadWordCategoryListApiView(ListCreateAPIView):
@@ -20,7 +21,7 @@ class BadWordCategoryListApiView(ListCreateAPIView):
         data = {}
         scoring_options = strtobool(request.query_params["scoring_options"]) \
             if "scoring_options" in request.query_params else False
-        if request.user.is_staff:
+        if request.user.has_permission(StaticPermissions.BSTE):
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
             if scoring_options:

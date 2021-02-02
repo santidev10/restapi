@@ -24,6 +24,7 @@ from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -35,8 +36,9 @@ class CampaignAPITestCase(ExtendedAPITestCase):
     _url_path = Namespace.AW_CREATION + ":" + Name.CreationSetup.CAMPAIGN
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
@@ -77,7 +79,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         return campaign_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False,
+        })
+        self.user.save()
 
         today = now_in_default_tz().date()
         defaults = dict(
@@ -155,11 +160,9 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
@@ -451,8 +454,6 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertIs(campaign_creation.is_deleted, True)
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
-        user = self.user
-        self.fill_all_groups(user)
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",

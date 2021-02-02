@@ -5,9 +5,11 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.serializers.pacing_report_opportunity_update_serializer import \
     PacingReportOpportunityUpdateSerializer
 from aw_reporting.models import Opportunity
+from userprofile.constants import StaticPermissions
 
 
 class PacingReportOpportunityUpdateApiView(UpdateAPIView):
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
     serializer_class = PacingReportOpportunityUpdateSerializer
 
     def get_queryset(self):

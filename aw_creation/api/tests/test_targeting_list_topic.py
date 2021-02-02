@@ -6,13 +6,16 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
 from aw_reporting.models import Topic
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class TopicTargetingListTestCase(ExtendedAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+        })
 
     def create_ad_group(self):
         account = AccountCreation.objects.create(

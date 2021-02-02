@@ -12,13 +12,14 @@ from aw_reporting.models import Category
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportTestCase(APITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={StaticPermissions.PACING_REPORT: True})
 
     def test_fail_access_update(self):
         self.user.delete()
@@ -61,15 +62,17 @@ class PacingReportTestCase(APITestCase):
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
-        with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update),
-                                       content_type="application/json")
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         update["thumbnail"] = "my_image.jpg"
         for k, v in response.data.items():
             self.assertEqual(update[k], v)
 
     def test_visibility_update(self):
+        self.create_test_user(perms={
+            StaticPermissions.PACING_REPORT: True,
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True
+        })
         opportunity = Opportunity.objects.create(id="1", name="")
         placement = OpPlacement.objects.create(
             id=1, name="", opportunity=opportunity
@@ -81,12 +84,10 @@ class PacingReportTestCase(APITestCase):
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
 
-        with self.patch_user_settings(global_account_visibility=True,
-                                      visible_accounts=[]):
+        with self.patch_user_settings(visible_accounts=[]):
             response = self.client.put(url, dict(region=1))
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
-        with self.patch_user_settings(global_account_visibility=True,
-                                      visible_accounts=[account.id]):
+        with self.patch_user_settings(visible_accounts=[account.id]):
             response = self.client.patch(url, dict(region=1))
         self.assertEqual(response.status_code, HTTP_200_OK)

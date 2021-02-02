@@ -14,8 +14,8 @@ from es_components.managers import ChannelManager
 from es_components.models.channel import Channel
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.models import UserChannel
-from userprofile.permissions import Permissions
 from utils.unittests.celery import mock_send_task
 from utils.unittests.es_components_patcher import SearchDSLPatcher
 from utils.unittests.int_iterator import int_iterator
@@ -28,17 +28,14 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, channel_id):
         return reverse(ChannelPathName.CHANNEL, [Namespace.CHANNEL], args=(channel_id,))
 
-    @classmethod
-    def setUpClass(cls):
-        super(ChannelRetrieveUpdateTestCase, cls).setUpClass()
-        Permissions.sync_groups()
-
     @mock_send_task()
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_user_can_update_own_channel(self, *args):
-        user = self.create_test_user(auth=True)
+        user = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         channel_id = "test_channel_id"
         UserChannel.objects.create(channel_id=channel_id, user=user)
 
@@ -56,9 +53,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_admin_user_can_update_any_channel(self, *args):
-        user = self.create_test_user(auth=True)
-        user.is_staff = True
-        user.save()
+        self.create_admin_user(auth=True)
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.get",
@@ -74,7 +69,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_user_can_not_update_not_own_channel(self, *args):
-        self.create_test_user(auth=True)
+        self.create_test_user(auth=True, perms={StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: False})
         channel_id = "test_channel_id"
 
         url = self._get_url(channel_id)
@@ -86,8 +81,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_enterprise_user_should_be_able_to_see_channel_details(self, *args):
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
+        self.create_admin_user(auth=True)
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.model.get",
@@ -101,8 +95,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_enterprise_user_should_be_able_to_see_chart_data(self, *args):
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
+        self.create_admin_user()
         channel_id = "test_channel_id"
         stats = {
             "subscribers_raw_history": {
@@ -142,9 +135,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         """
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
-        user = self.create_test_user(auth=True)
-        self.fill_all_groups(user)
-        user.refresh_from_db()
+        self.create_admin_user()
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.model.get",
@@ -161,7 +152,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     @patch.object(requests, "put", return_value=MockResponse())
     def test_delete_should_remove_channel_from_channel_list(self, *args):
-        user = self.create_test_user(auth=True)
+        user = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         channel_id = "test_channel_id"
         UserChannel.objects.create(user=user, channel_id=channel_id)
         url = self._get_url(channel_id)
@@ -175,7 +168,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_unauths_channel_for_last_user(self, *args):
-        user = self.create_test_user(auth=True)
+        user = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         channel_id = "test_channel_id"
         UserChannel.objects.create(user=user, channel_id=channel_id)
         url = self._get_url(channel_id)
@@ -189,7 +184,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_unauths_channel_for_not_last_user(self, *args):
-        user_1 = self.create_test_user(auth=True)
+        user_1 = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         user_2 = get_user_model().objects.create(email="test@email.com")
         channel_id = "test_channel_id"
         UserChannel.objects.create(user=user_1, channel_id=channel_id)
@@ -215,8 +212,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 self.assertIn(field, response.data)
 
     def test_ignore_monetization_filter_no_permission(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("channel_details")
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         channel = Channel(f"test_channel_id_{next(int_iterator)}")
         channel.populate_monetization(is_monetizable=True)
         ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert([channel])

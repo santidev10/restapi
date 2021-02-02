@@ -16,6 +16,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.unittests.generic_test import generic_test
 from utils.unittests.patch_now import patch_now
@@ -25,8 +26,10 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.DATA)
 
     def setUp(self):
-        user = self.create_test_user()
-        self.account = self.create_account(user)
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
+        self.account = self.create_account(self.user)
         self.campaign = Campaign.objects.create(
             id="1", name="", account=self.account)
         self.ad_group = AdGroup.objects.create(
@@ -159,12 +162,11 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
             breakdown=Breakdown.DAILY
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
-        }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST] = aw_rates
+        self.user.save()
+
         self.assertGreater(expected_cpv, 0)
-        with self.patch_user_settings(**user_settings), \
-             patch_now(any_date):
+        with patch_now(any_date):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 1)

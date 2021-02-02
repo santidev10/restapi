@@ -2,22 +2,20 @@ from django.contrib.auth import get_user_model
 from rest_framework import permissions
 
 from userprofile.models import UserDeviceToken
-from userprofile.permissions import PermissionGroupNames
+from userprofile.constants import StaticPermissions
 
 
 class MediaBuyingAddOnPermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
         is_authenticated = super(MediaBuyingAddOnPermission,
                                  self).has_permission(request, view)
-        return is_authenticated \
-               and (request.user.is_staff
-                    or request.user.has_perm("userprofile.view_media_buying"))
+        return is_authenticated and request.user.has_permission(StaticPermissions.MEDIA_BUYING)
 
 
 class OnlyAdminUserCanCreateUpdateDelete(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in ["POST", "PUT", "UPDATE", "DELETE"]:
-            return request.user.is_staff
+            return request.user and request.user.has_permission(StaticPermissions.ADMIN)
         return True
 
 
@@ -30,7 +28,7 @@ class OnlyAdminUserOrSubscriber(permissions.BasePermission):
         """
         Check permission
         """
-        return request.user.is_authenticated and request.user.is_staff
+        return request.user.is_authenticated and request.user.has_permission(StaticPermissions.ADMIN)
 
 
 class IsAuthQueryTokenPermission(permissions.BasePermission):
@@ -74,11 +72,7 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
     permission = None
 
     def has_permission(self, request, view):
-        return request.user.has_perm(self.permission)
-
-
-class UserHasDashboardPermission(UserHasPermissionBase):
-    permission = "userprofile.view_dashboard"
+        return request.user.has_permission(self.permission)
 
 
 def user_has_permission(perm):
@@ -99,28 +93,9 @@ class ExportDataAllowed(permissions.BasePermission):
 class BrandSafetyDataVisible(permissions.BasePermission):
 
     def has_permission(self, request, *_):
-        return request.user.is_staff or request.user.has_perm("userprofile.scoring_brand_safety") or \
-               request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        return request.user and request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY)
 
 
 class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in view.READ_ONLY
-
-
-class IsVettingAdmin(permissions.BasePermission):
-    def has_permission(self, request, *_):
-        return request.user.is_staff \
-            or request.user.has_perm("userprofile.vet_audit_admin") \
-            or request.user.has_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
-
-
-def has_static_permission(*permission_items):
-    class HasPermission(permissions.BasePermission):
-        def has_permission(self, request, *_):
-            if isinstance(request.user, get_user_model()):
-                for perm in permission_items:
-                    if request.user.has_permission(perm):
-                        return True
-            return False
-    return HasPermission

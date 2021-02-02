@@ -12,6 +12,7 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -22,8 +23,9 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
@@ -42,7 +44,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False
+        })
+        self.user.save()
 
         today = now_in_default_tz().date()
         defaults = dict(
@@ -98,11 +103,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
@@ -294,8 +297,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad_group.is_deleted, True)
 
     def test_enterprise_user_can_edit_ad_group(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -326,8 +327,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_total_limit(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -365,8 +364,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_keyword_negative_limit(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -404,8 +401,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_keyword_negative_per_campaign(self):
-        user = self.user
-        self.fill_all_groups(user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,

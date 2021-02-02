@@ -5,9 +5,11 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.tools.pricing_tool import PricingTool
 from cache.constants import PRICING_TOOL_FILTERS_KEY
 from cache.models import CacheItem
+from userprofile.constants import StaticPermissions
 
 
 class PricingToolFiltersView(RetrieveAPIView):
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PRICING_TOOL),)
 
     def get(self, request, *args, **kwargs):
         user = request.user

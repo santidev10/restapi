@@ -12,9 +12,9 @@ from rest_framework.views import APIView
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
+from userprofile.constants import StaticPermissions
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.utils import prune_iab_categories
 from video.api.serializers.video import VideoAdminSerializer
 from video.api.serializers.video import VideoSerializer
@@ -22,8 +22,7 @@ from video.api.serializers.video import VideoWithVettedStatusSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin):
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    permission_required = ("userprofile.video_details",)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA),)
 
     __video_manager = VideoManager
 
@@ -54,9 +53,9 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
         context = self._get_serializer_context(video.channel.id)
-        if self.request and self.request.user and self.request.user.is_staff:
+        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
             result = VideoAdminSerializer(video, context=context).data
-        elif self.request.user.has_perm("userprofile.vet_audit_admin"):
+        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
             result = VideoWithVettedStatusSerializer(video, context=context).data
         else:
             result = VideoSerializer(video, context=context).data
@@ -68,8 +67,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
             pass
         # pylint: enable=broad-except
 
-        if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
-                or self.request.user.is_staff):
+        if not (video.channel.id in user_channels
+                or self.request.user.has_permission(StaticPermissions.RESEARCH__AUTH)):
             if Sections.ANALYTICS in result.keys():
                 del result[Sections.ANALYTICS]
 

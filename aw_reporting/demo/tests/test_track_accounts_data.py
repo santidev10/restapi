@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -18,10 +19,13 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         recreate_test_demo_data()
 
     def setUp(self):
-        self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.CHF_TRENDS: True,
+        })
 
     def test_success_daily(self):
         today = datetime.now().date()
@@ -59,11 +63,11 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account = response.data[0]

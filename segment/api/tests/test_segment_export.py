@@ -14,7 +14,6 @@ from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentVettedFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
-from userprofile.models import PermissionItem
 from utils.aws.s3_exporter import S3Exporter
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -26,10 +25,6 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
     def _get_url(self, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_EXPORT, kwargs=dict(pk=pk))
-
-    @classmethod
-    def setUpTestData(cls):
-        PermissionItem.load_permissions()
 
     def _create_segment(self, segment_params=None, export_params=None):
         default_segment_params = dict(

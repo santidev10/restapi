@@ -9,7 +9,7 @@ from es_components.managers import VideoManager
 from es_components.models.video import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import Permissions
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -17,10 +17,6 @@ from video.api.urls.names import Name
 
 
 class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(VideoRetrieveUpdateTestSpec, cls).setUpClass()
-        Permissions.sync_groups()
 
     def _get_url(self, video_id):
         return reverse(
@@ -35,9 +31,10 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         mock_get_items.return_value = []
-        user = self.create_test_user(auth=True)
+        user = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
 
-        self.fill_all_groups(user)
         video_id = "video_id"
 
         with patch("es_components.managers.video.VideoManager.model.get",
@@ -51,9 +48,10 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
     @patch("brand_safety.auditors.utils.AuditUtils.get_items", return_value=[])
     def test_user_should_see_chart_data(self, mock_get_items):
         mock_get_items.return_value = []
-        user = self.create_test_user(auth=True)
+        user = self.create_test_user(auth=True, perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
 
-        self.fill_all_groups(user)
         video_id = "video_id"
 
         stats = {
@@ -101,7 +99,9 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.data.get("chart_data"), expected_data)
 
     def test_404_if_no_video(self):
-        self.create_test_user()
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
         missing_video_id = "some_id"
 
         with patch("es_components.managers.video.VideoManager.model.get",

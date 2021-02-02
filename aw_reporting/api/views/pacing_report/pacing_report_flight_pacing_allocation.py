@@ -9,8 +9,10 @@ from rest_framework.exceptions import ValidationError
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightPacingAllocation
 from aw_reporting.utils import get_dates_range
+from userprofile.constants import StaticPermissions
 from utils.views import get_object
 from utils.datetime import now_in_default_tz
+
 
 Range = namedtuple("Range", ["start", "end"])
 
@@ -18,6 +20,8 @@ Range = namedtuple("Range", ["start", "end"])
 class PacingReportFlightAllocationAPIView(APIView):
     MIN_ALLOCATION_SUM = 99
     MAX_ALLOCATION_SUM = 101
+
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.PACING_REPORT),)
 
     def patch(self, request, *args, **kwargs):
         pk = kwargs["pk"]

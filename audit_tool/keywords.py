@@ -2,6 +2,7 @@ import logging
 import re
 from collections import OrderedDict
 
+from audit_tool.utils.regex_trie import get_optimized_regex
 from brand_safety.models import BadWord
 
 logger = logging.getLogger(__name__)
@@ -45,11 +46,7 @@ class Keywords:
         if keywords is None:
             keywords = self._keywords
 
-        regexp = "({})".format(
-            "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
-        )
-
-        self._regexp = re.compile(regexp)
+        self._regexp = get_optimized_regex(words_list=keywords)
 
     def unique(self, keywords=None):
         if keywords is None:

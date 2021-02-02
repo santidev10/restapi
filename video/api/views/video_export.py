@@ -1,22 +1,18 @@
 from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
+from userprofile.constants import StaticPermissions
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.datetime import now_in_default_tz
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.permissions import BrandSafetyDataVisible
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
 from video.tasks.export_data import export_videos_data
 
 
 class VideoListExportApiView(VettingAdminAggregationsMixin,ESDataS3ExportApiView, APIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.research_exports"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH__EXPORT),
     )
     generate_export_task = export_videos_data
 
@@ -27,13 +23,12 @@ class VideoListExportApiView(VettingAdminAggregationsMixin,ESDataS3ExportApiView
                 with mutate_query_params(request.query_params):
                     request.query_params["brand_safety"] = None
 
-        if not self.request.user.has_perm("userprofile.transcripts_filter") and \
-            not self.request.user.is_staff:
+        if not self.request.user.has_permission(StaticPermissions.RESEARCH__TRANSCRIPTS):
             if "transcripts" in self.request.query_params:
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["transcripts"] = None
 
-        self.guard_vetting_admin_aggregations()
+        self.guard_vetting_data_perm_aggregations()
         request = self._add_mandatory_filters(request)
         return super(VideoListExportApiView, self)._get_query_params(request)
 

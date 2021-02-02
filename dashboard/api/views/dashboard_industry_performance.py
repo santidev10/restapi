@@ -1,7 +1,6 @@
 from datetime import timedelta
 import json
 
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -14,17 +13,11 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
 from utils.datetime import now_in_default_tz
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
-
+from userprofile.constants import StaticPermissions
 
 class DashboardIndustryPerformanceAPIView(APIView):
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.channel_list"),
-            user_has_permission("userprofile.settings_my_yt_channels"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
     )
 
     CACHE_TTL = 3600

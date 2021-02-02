@@ -10,12 +10,12 @@ from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
-from utils.permissions import MediaBuyingAddOnPermission
+from userprofile.constants import StaticPermissions
 
 
 class AdCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdCreationSetupSerializer
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MEDIA_BUYING),)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")

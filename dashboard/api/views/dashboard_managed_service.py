@@ -1,29 +1,22 @@
 from django.conf import settings
-from django.db.models import BooleanField
-from django.db.models import Case
 from django.db.models import Q
 from django.db.models import Sum
-from django.db.models import When
 from django.http import HttpResponseForbidden
 
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceSerializer
-from dashboard.api.views.constants import DASHBOARD_MANAGED_SERVICE_CACHE_PREFIX
-from dashboard.utils import get_cache_key
-from rest_framework.generics import ListAPIView
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
-from utils.permissions import or_permission_classes
-from utils.permissions import user_has_permission
+from userprofile.constants import StaticPermissions
 
 
 class DashboardManagedServicePaginator(CustomPageNumberPaginator):
@@ -34,10 +27,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
     serializer_class = DashboardManagedServiceSerializer
     pagination_class = DashboardManagedServicePaginator
     permission_classes = (
-        or_permission_classes(
-            user_has_permission("userprofile.view_dashboard"),
-            IsAdminUser
-        ),
+        StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),
     )
 
     def get_queryset(self, **filters):
@@ -47,7 +37,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         """
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
-            if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
+            if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         queryset = AccountCreation.objects \
             .filter(
@@ -64,7 +54,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         override to modify response when account_id is passed
         """
         account_id = request.query_params.get('account_id', None)
-        if account_id and not request.user.is_staff:
+        if account_id and not request.user.has_permission(StaticPermissions.ADMIN):
             return HttpResponseForbidden()
         elif account_id:
             data = self._get_extra_data(account_id)

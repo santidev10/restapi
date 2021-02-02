@@ -2,8 +2,6 @@
 Administration api serializers module
 """
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ListField
@@ -14,10 +12,9 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
+from userprofile.constants import StaticPermissions
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
-from userprofile.models import get_default_accesses
-from userprofile.permissions import PermissionGroupNames
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -111,7 +108,7 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "access",
+            "perms",
             "google_account_id",
             "can_access_media_buying",
             "annual_ad_spend",
@@ -119,14 +116,13 @@ class UserSerializer(ModelSerializer):
             "status"
         )
 
-    def get_can_access_media_buying(self, obj: PermissionsMixin):
-        return obj.has_perm("userprofile.view_media_buying")
+    def get_can_access_media_buying(self, obj):
+        return obj.has_permission(StaticPermissions.MEDIA_BUYING)
 
 
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
-    access = ListField(required=False)
     admin = BooleanField(required=False)
 
     def validate(self, attrs):
@@ -138,29 +134,18 @@ class UserUpdateSerializer(ModelSerializer):
         data = attrs
         user = self.context["request"].user
         target = self.instance
-        access = data.pop("access", [])
         status = data.get("status", None)
         # Reject if changing own status or target is admin
-        if (status and target.id == user.id) or target.is_superuser:
+        if (status and target.id == user.id) or target.has_permission(StaticPermissions.ADMIN):
             exception = ValidationError("You do not have permission to perform this action.")
             exception.status_code = HTTP_403_FORBIDDEN
             raise exception
-        try:
-            # Reject if changing admin access and auth user is not superuser
-            admin_access = [item for item in access if item["name"].lower() == "admin"][0]
-            if target.is_staff != admin_access["value"] and user.is_superuser is False:
-                exception = ValidationError("You do not have permission to perform this action.")
-                exception.status_code = HTTP_403_FORBIDDEN
-                raise exception
-            data["admin"] = admin_access["value"]
-        except (KeyError, IndexError):
-            pass
         return data
 
     class Meta:
         model = get_user_model()
         fields = (
-            "status", "access", "admin",
+            "status", "admin",
         )
 
     def save(self, **kwargs):
@@ -168,21 +153,6 @@ class UserUpdateSerializer(ModelSerializer):
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
         status = request.data.get("status", None)
-        access = request.data.get("access", [])
-
-        admin = self.validated_data.get("admin", None)
-        # If setting admin status, give all access
-        if admin and admin != user.is_staff:
-            user.groups.set(Group.objects.exclude(name=PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS))
-            user.is_staff = True
-        # If revoking admin status, set default access
-        elif not admin and admin != user.is_staff:
-            default_access = get_default_accesses()
-            user.groups.clear()
-            user.groups.set(Group.objects.filter(name__in=default_access))
-            user.is_staff = False
-        else:
-            user.update_access(access)
 
         if status:
             if user.status in (UserStatuses.PENDING.value, UserStatuses.REJECTED.value):

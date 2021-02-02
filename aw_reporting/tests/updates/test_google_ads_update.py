@@ -88,8 +88,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
                                              update_time=manager_update_time)
-        AWAccountPermission.objects.create(account=mcc_account,
-                                           aw_connection=AWConnection.objects.create(),
+        AWAccountPermission.objects.get_or_create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.get_or_create()[0],
                                            can_read=True)
 
         account_id = kwargs.pop("id", next(int_iterator))
@@ -1010,20 +1010,6 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertFalse(account.is_active)
 
-    @patch.object(CampaignUpdater, "update")
-    def test_success_on_account_update_error(self, mock_update):
-        account = self._create_account(is_active=True)
-
-        exception = ValueError("Test error")
-        # Set attributes for google_ads_updater.execute method
-        # Normal usage with updater methods will have these attributes set
-        mock_update.__self__ = SimpleNamespace(__class__=SimpleNamespace())
-        mock_update.side_effect = exception
-
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()), \
-             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
-            cid_campaign_update(account.id)
-
     def test_budget_daily(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
@@ -1172,9 +1158,9 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             can_manage_clients=True,
             update_time=None
         )
-        AWAccountPermission.objects.create(
+        AWAccountPermission.objects.get_or_create(
             account=mcc_account,
-            aw_connection=AWConnection.objects.create(),
+            aw_connection=AWConnection.objects.get_or_create()[0],
             can_read=True
         )
         test_account_id = next(int_iterator)

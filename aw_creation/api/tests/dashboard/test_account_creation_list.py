@@ -33,6 +33,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.reverse import reverse
@@ -76,8 +77,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     url = reverse(Name.Dashboard.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.DASHBOARD])
 
     def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_dashboard")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+        })
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
@@ -85,13 +88,18 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = False
-        user.is_superuser = False
-        user.update_access([{"name": "Tools", "value": True}])
+        user.perms.update({
+            StaticPermissions.MANAGED_SERVICE: True,
+        })
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
         user.save()
 
     def test_success_get(self):
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
         account = Account.objects.create(name="")
         account.managers.add(self.mcc_account)
         campaign = Campaign.objects.create(name="", account=account)
@@ -124,11 +132,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         CampaignCreation.objects.create(
             name="", account_creation=ac_creation, campaign=None,
         )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]), \
-             self.patch_user_settings(**user_settings):
+        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -150,11 +154,12 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_properties_demo(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(set(response.data["items"][0].keys()),
@@ -172,11 +177,10 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Account.objects.create(name="")
         Account.objects.create(name="")
         self.__set_non_admin_user_with_account(managed_account.id)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts_ids = {a["account"] for a in response.data["items"]}
         self.assertEqual(accounts_ids, {DEMO_ACCOUNT_ID, expected_account_id})
@@ -330,11 +334,13 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         )
         for aw_rates, expected_cost in test_cases:
             user_settings = {
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates,
-                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+                StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST: aw_rates,
+                StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+                StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
             }
-            with self.subTest(**user_settings), \
-                 self.patch_user_settings(**user_settings):
+            self.user.perms.update(user_settings)
+            self.user.save()
+            with self.subTest(**user_settings):
                 response = self.client.get(self.url)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 accs = dict((acc["id"], acc) for acc in response.data["items"])
@@ -344,11 +350,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_demo_brand(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
@@ -356,11 +360,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_demo_cost_type(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
@@ -368,11 +370,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def test_demo_agency(self):
         recreate_test_demo_data()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
@@ -385,29 +385,30 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         visible_account.managers.add(chf_mcc_account)
         hidden_account = Account.objects.create()
         hidden_account.managers.add(another_mcc_account)
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = response.data["items"]
         self.assertEqual(len(accounts), 1)
         self.assertEqual(accounts[0]["id"], visible_account.account_creation.id)
 
     def test_no_demo_data(self):
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
         Campaign.objects.create(account=account)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
@@ -441,17 +442,15 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         account.account_creation.save()
         Campaign.objects.create(account=account)
 
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
 
         url = "?".join([
             self.url,
             urlencode(dict(status="Paused")),
         ])
 
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
@@ -473,27 +472,23 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 cost=1,
                 date=dt,
             )
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         data = response.data
         self.assertEqual(data["items"][0]["impressions"], campaign.impressions)
 
     def test_demo_is_first(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         recreate_test_demo_data()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create()
         account.managers.add(chf_mcc_account)
         account.save()
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
         items = response.data["items"]

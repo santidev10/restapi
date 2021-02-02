@@ -16,6 +16,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
@@ -48,8 +49,12 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         "status",
     }
 
-    def create_test_user(self, auth=True, connected=True):
-        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth)
+    def create_test_user(self, auth=True, connected=True, perms=None):
+        perms = perms or {}
+        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth=auth, perms={
+            StaticPermissions.MANAGED_SERVICE: True,
+            **perms
+        })
         if connected:
             AWConnectionToUserRelation.objects.create(
                 # user must have a connected account not to see demo data
@@ -232,7 +237,9 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data[0]["id"], campaign.id)
 
     def test_ignores_visible_accounts_setting(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY: True,
+        })
         account = Account.objects.create()
         account_creation = account.account_creation
         account_creation.owner = user
@@ -243,8 +250,6 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-
         }
         url = self._get_url(account_creation.id)
         with self.patch_user_settings(**user_settings):

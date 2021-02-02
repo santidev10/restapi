@@ -15,6 +15,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Ad
 from es_components.tests.utils import ESTestCase
 from userprofile.constants import UserSettingsKey
+from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test
@@ -24,8 +25,9 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
         super(AdGroupAPITestCase, self).setUp()
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_media_buying")
+        self.user = self.create_test_user(perms={
+            StaticPermissions.MEDIA_BUYING: True,
+        })
 
     def create_ad(self, owner, start=None, end=None, account=None,
                   beacon_view_1=""):
@@ -50,7 +52,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
+        self.user.perms.update({
+            StaticPermissions.MEDIA_BUYING: False
+        })
+        self.user.save()
 
         today = now_in_default_tz().date()
         defaults = dict(
@@ -144,31 +149,27 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_success_get_demo(self):
         recreate_test_demo_data()
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.ad_creation.first().id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
         recreate_test_demo_data()
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.ad_creation.first().id,))
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.patch(
-                url, json.dumps({}), content_type="application/json",
-            )
+        response = self.client.patch(
+            url, json.dumps({}), content_type="application/json",
+        )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
@@ -289,7 +290,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -320,7 +320,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         for field in ("headline", "description_1", "description_2")
     ])
     def test_discovery_fields_not_none(self, property_name):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
@@ -350,7 +349,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn(property_name, response.data)
 
     def test_headline_limit(self):
-        self.fill_all_groups(self.user)
         today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,

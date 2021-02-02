@@ -1,16 +1,19 @@
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from audit_tool.models import AuditLanguage
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
+from userprofile.constants import StaticPermissions
 from utils.utils import remove_tags_punctuation
 
 
 class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (
+        StaticPermissions.has_perms(StaticPermissions.BSTE__DELETE, method="delete")
+        | StaticPermissions.has_perms(StaticPermissions.BSTE__CREATE, method="patch,put"),
+    )
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
 

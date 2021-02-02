@@ -38,3 +38,7 @@ class ChannelAnalysis:
 
     def add_result(self, key, result):
         self._results[key] = result
+
+
+class PerformIQDataFetchError(Exception):
+    pass
