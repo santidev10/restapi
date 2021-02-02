@@ -263,13 +263,11 @@ class PermissionItem(models.Model):
         [StaticPermissions.CTL__EXPORT_BASIC,               False,  "Export (basic)"],
         [StaticPermissions.CTL__EXPORT_ADMIN,               False,  "Export (all data)"],
         [StaticPermissions.CTL__SEE_ALL,                    False,  "See all Lists"],
-        [StaticPermissions.CTL__VET_ENABLE,                 False,  "Enable Vetting"],
         [StaticPermissions.CTL__VET,                        False,  "Vet Stuff"],
         [StaticPermissions.CTL__VET_ADMIN,                  False,  "Vet Admin"],
         [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
-        [StaticPermissions.DOMAIN_MANAGER__READ_ALL,        False,  "Domain Manager Read All"],
         [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],
         [StaticPermissions.DOMAIN_MANAGER__DELETE,          False,  "Domain Manager Delete"],
 

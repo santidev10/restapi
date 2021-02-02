@@ -4,11 +4,11 @@ from rest_framework.generics import ListAPIView
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 import brand_safety.constants as constants
-from channel.api.serializers.channel import ChannelWithBlackListSerializer
+from channel.api.serializers.channel import ChannelSerializer
 from es_components.constants import Sections
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import ESQuerysetAdapter
-from video.api.serializers.video import VideoWithBlackListSerializer
+from video.api.serializers.video import VideoSerializer
 
 
 class SegmentListAPIViewAdapter(ListAPIView):
@@ -23,9 +23,9 @@ class SegmentListAPIViewAdapter(ListAPIView):
     def get_serializer_class(self):
         segment_type = self.kwargs["segment_type"]
         if segment_type == constants.CHANNEL:
-            serializer = ChannelWithBlackListSerializer
+            serializer = ChannelSerializer
         else:
-            serializer = VideoWithBlackListSerializer
+            serializer = VideoSerializer
         return serializer
 
     def get_queryset(self):

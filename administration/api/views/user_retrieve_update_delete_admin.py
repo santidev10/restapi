@@ -14,7 +14,7 @@ class UserRetrieveUpdateDeleteAdminApiView(UserFinalizeResponse, RetrieveUpdateD
     """
     Admin user delete endpoint
     """
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.ADMIN),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.USER_MANAGEMENT),)
     serializer_class = UserSerializer
     update_serializer_class = UserUpdateSerializer
     queryset = get_user_model().objects.all()
