@@ -79,9 +79,9 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
             with self.subTest(sheet_name):
                 self.assertEqual(
                     f"Opportunity: {opportunity.name}",
-                    sheet.cell(None, 1, 1).value,
+                    sheet.cell(row=1, column=1).value,
                 )
                 self.assertEqual(
                     f"Date Range: {date_from} - {date_to}",
-                    sheet.cell(None, 2, 1).value,
+                    sheet.cell(row=2, column=1).value,
                 )
