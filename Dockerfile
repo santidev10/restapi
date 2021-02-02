@@ -1,5 +1,6 @@
-FROM python:3.7.4 as base
+FROM python:3.9.1 as base
 ENV PYTHONUNBUFFERED 1
+RUN pip install --upgrade pip==21.0.1
 ENV ELASTIC_SEARCH_URLS es
 RUN pip install uwsgi
 COPY ./requirements.txt /tmp/
