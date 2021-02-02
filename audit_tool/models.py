@@ -3,7 +3,6 @@ from datetime import datetime
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
@@ -107,7 +106,7 @@ class Comment(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
     like_count = models.IntegerField(default=0, db_index=True)
     reply_count = models.IntegerField(default=0)
-    found_items = JSONField(default=dict)
+    found_items = models.JSONField(default=dict)
 
 
 class AuditProcessor(models.Model):
@@ -129,8 +128,8 @@ class AuditProcessor(models.Model):
     max_recommended = models.IntegerField(default=100000)
     # this name field is LOWERCASED for searching, use params["name"] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
-    params = JSONField(default=dict)
-    cached_data = JSONField(default=dict)
+    params = models.JSONField(default=dict)
+    cached_data = models.JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
@@ -563,7 +562,7 @@ class AuditVideoProcessor(models.Model):
                                 on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
-    word_hits = JSONField(default=dict, null=True)
+    word_hits = models.JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "video")
@@ -580,7 +579,7 @@ class AuditChannelProcessor(models.Model):
                                        related_name="avp_channel_source", on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
-    word_hits = JSONField(default=dict, null=True)
+    word_hits = models.JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "channel")
@@ -660,7 +659,7 @@ class BlacklistItem(models.Model):
     item_type = models.IntegerField(db_index=True)
     item_id = models.CharField(db_index=True, max_length=64)
     item_id_hash = models.BigIntegerField(db_index=True)
-    blacklist_category = JSONField(default=dict)
+    blacklist_category = models.JSONField(default=dict)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
     blocked_count = models.IntegerField(default=0, db_index=True)
