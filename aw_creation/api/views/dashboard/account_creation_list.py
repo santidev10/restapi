@@ -32,7 +32,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 class DashboardAccountCreationListApiView(ListAPIView):
     serializer_class = DashboardAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE),)
+    permission_classes = (StaticPermissions.has_perms(StaticPermissions.MANAGED_SERVICE, StaticPermissions.MEDIA_BUYING),)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),

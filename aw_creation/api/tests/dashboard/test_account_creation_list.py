@@ -165,6 +165,19 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(set(response.data["items"][0].keys()),
                          self.details_keys)
 
+    def test_media_buying(self):
+        """ Test that media_buying permissions grants access as both features use this endpoint """
+        self.user.perms.update({
+            StaticPermissions.MANAGED_SERVICE: False,
+            StaticPermissions.MEDIA_BUYING: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
+        })
+        self.user.save()
+        Account.objects.create(name="")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_get_chf_account_creation_list_queryset(self):
         recreate_test_demo_data()
         chf_account = Account.objects.create(
