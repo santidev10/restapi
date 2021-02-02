@@ -4,11 +4,11 @@ BasePersistentSegment models module
 import logging
 
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import DateTimeField
 from django.db.models import IntegerField
+from django.db.models import JSONField
 from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import TextField
