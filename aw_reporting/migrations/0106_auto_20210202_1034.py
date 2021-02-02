@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0104_ad_creative_tracking_url_template'),
+        ('aw_reporting', '0105_auto_20210122_1812'),
     ]
 
     operations = [
