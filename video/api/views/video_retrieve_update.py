@@ -16,9 +16,7 @@ from userprofile.constants import StaticPermissions
 from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
 from utils.utils import prune_iab_categories
-from video.api.serializers.video import VideoAdminSerializer
 from video.api.serializers.video import VideoSerializer
-from video.api.serializers.video import VideoWithVettedStatusSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin):
@@ -53,12 +51,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
         context = self._get_serializer_context(video.channel.id)
-        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
-            result = VideoAdminSerializer(video, context=context).data
-        elif self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
-            result = VideoWithVettedStatusSerializer(video, context=context).data
-        else:
-            result = VideoSerializer(video, context=context).data
+        result = VideoSerializer(video, context=context).data
 
         try:
             result["general_data"]["iab_categories"] = prune_iab_categories(result["general_data"]["iab_categories"])
@@ -81,6 +74,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
         except (IndexError, RequestError):
             channel_blocklist = False
         context = {
+            "user": self.request.user,
             "channel_blocklist": {
                 channel_id: channel_blocklist
             }

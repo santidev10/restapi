@@ -344,10 +344,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertIn("vetted_status", item_fields)
         self.assertNotIn("blacklist_data", item_fields)
 
-        # admin
+        # blocklist data
         user.perms.update({
-            StaticPermissions.ADMIN: True,
-            StaticPermissions.RESEARCH__VETTING_DATA: False
+            StaticPermissions.RESEARCH__VETTING_DATA: False,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(self.get_url())
@@ -356,7 +356,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual(len(items), 1)
         item = items[0]
         item_fields = list(item.keys())
-        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
     def test_vetting_admin_aggregations_guard(self):
