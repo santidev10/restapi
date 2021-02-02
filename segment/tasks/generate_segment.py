@@ -47,6 +47,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
     generate_utils = GenerateSegmentUtils(segment)
     # file for admin or vetted only exports
     admin_filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    user_size = size
     # prevent user export from being overwritten by vetted export in case that segment is being vetted
     if segment.is_vetting is False:
         filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
