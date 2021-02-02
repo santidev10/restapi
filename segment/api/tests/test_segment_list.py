@@ -17,6 +17,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentRelated
 from userprofile.constants import StaticPermissions
+from userprofile.permissions import Permissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
