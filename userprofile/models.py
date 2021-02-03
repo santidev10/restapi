@@ -281,7 +281,6 @@ class PermissionItem(models.Model):
         [StaticPermissions.MANAGED_SERVICE__CONVERSIONS,                False,  "Managed Service Conversions"],
         [StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS,       False,  "Managed Service All Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__REAL_GADS_COST,             False,  "Managed Service Real Google Ads Cost"],
-        [StaticPermissions.MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,  False,  "Managed Service Global Accounts Visible"],
         [StaticPermissions.MANAGED_SERVICE__AUDIENCES,                  False,  "Managed Service Audiences Tab"],
         [StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS,              False,  "Managed Service Service Costs"],
         [StaticPermissions.MANAGED_SERVICE__CHANNEL_VIDEO_TABS,         False,  "Managed Service Channel & Video Tabs"],
