@@ -1,2 +1,3 @@
 from .pull_custom_transcripts import pull_custom_transcripts
-from .pull_tts_url_transcripts import pull_tts_url_transcripts
+from .update_tts_url_transcripts import update_tts_url_transcripts_task
+from .pull_tts_url_transcripts import pull_tts_url_transcripts_task
