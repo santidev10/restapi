@@ -30,6 +30,7 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
+from utils.permissions import AggregationFiltersPermission
 from video.api.serializers.video import VideoSerializer
 from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
@@ -39,9 +40,7 @@ from video.constants import TERMS_FILTER
 
 class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
-    permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
-    )
+    permission_classes = (AggregationFiltersPermission,)
 
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
