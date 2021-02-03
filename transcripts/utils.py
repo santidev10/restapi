@@ -1,12 +1,13 @@
 import re
+import requests
 from html import unescape
 from threading import Thread
 
 from bs4 import BeautifulSoup
+from celery.exceptions import Retry
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
-import requests
 from requests.exceptions import ConnectionError, Timeout
 
 from administration.notifications import send_email
@@ -141,7 +142,7 @@ class YTTranscriptsScraper(object):
         """ If all proxies have been blocked, this method locks scraper for an hour and sends an email notification. """
         try:
             lock(lock_name=self.EMAILER_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
-        except Exception as e:
+        except Retry:
             return
         subject = "ASR Transcripts Task Proxies Have Been Blocked by Youtube"
         body = f"All ASR Transcripts Proxies have been blocked by Youtube at {timezone.now()}." \
