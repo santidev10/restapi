@@ -105,10 +105,15 @@ class AggregationFiltersPermission(permissions.BasePermission):
     """
     Research Channel / Video aggregations are used throughout application as filters. Allow basic
         authenticated requests for GET aggregation requests
+    Also allow for authenticated GET requests for OAuthed own_channels query param
     """
+    ALLOWED_GET_AUTHENTICATED_QUERY_PARAMS = {"aggregations", "own_channels"}
     def has_permission(self, request, view):
+        has_perm = False
         if permissions.IsAuthenticated.has_permission(self, request, view):
-            if request.user.has_permission(StaticPermissions.RESEARCH) or request.method.lower() == "get" \
-                    and "aggregations" in request.query_params:
-                return True
-        return False
+            if request.user.has_permission(StaticPermissions.RESEARCH):
+                has_perm = True
+            elif request.method.lower() == "get"\
+                    and any(param in request.query_params for param in self.ALLOWED_GET_AUTHENTICATED_QUERY_PARAMS):
+                has_perm= True
+        return has_perm
