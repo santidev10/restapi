@@ -32,6 +32,7 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
+from utils.permissions import AggregationFiltersPermission
 
 
 class ChannelsNotFound(Exception):
@@ -77,7 +78,7 @@ class ChannelESFilterBackend(ESFilterBackend):
 class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
+        AggregationFiltersPermission,
     )
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator

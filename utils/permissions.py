@@ -99,3 +99,16 @@ class BrandSafetyDataVisible(permissions.BasePermission):
 class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in view.READ_ONLY
+
+
+class AggregationFiltersPermission(permissions.BasePermission):
+    """
+    Research Channel / Video aggregations are used throughout application as filters. Allow basic
+        authenticated requests for GET aggregation requests
+    """
+    def has_permission(self, request, view):
+        if permissions.IsAuthenticated.has_permission(self, request, view):
+            if request.user.has_permission(StaticPermissions.RESEARCH) or request.method.lower() == "get" \
+                    and "aggregations" in request.query_params:
+                return True
+        return False

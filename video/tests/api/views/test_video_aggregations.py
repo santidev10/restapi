@@ -1,12 +1,14 @@
 import mock
 
 from elasticsearch_dsl import Q
+from rest_framework.status import HTTP_200_OK
 
 from video.api.urls.names import Name
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.reverse import reverse
 
@@ -16,8 +18,21 @@ class VideoAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
         url = reverse(Name.VIDEO_LIST, [Namespace.VIDEO], query_params=args)
         return url
 
+    def test_success_authenticated(self):
+        """ Test allow authenticated get requests as many parts of the client rely on aggregations as filters """
+        self.create_test_user()
+        params = dict(
+            aggregations=""
+        )
+        url = self._get_url(params)
+        with mock.patch.object(VideoManager, "forced_filters", return_value=Q()):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_video_aggregations(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
         manager = VideoManager([Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS, Sections.CAPTIONS,
                                 Sections.CUSTOM_CAPTIONS])
         aggregations = ["ads_stats.average_cpm:max", "ads_stats.average_cpm:min", "ads_stats.average_cpv:max",
