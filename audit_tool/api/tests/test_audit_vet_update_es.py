@@ -12,6 +12,10 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
+from audit_tool.models import AuditAgeGroup
+from audit_tool.models import AuditGender
+from audit_tool.models import AuditContentQuality
+from audit_tool.models import AuditContentType
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -27,6 +31,34 @@ from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
+AGE_GROUP_CHOICES = [
+    # id, age_group, parent_id
+    (0, "0 - 3 Toddlers", None),
+    (1, "4 - 8 Young Kids", None),
+    (2, "9 - 12 Older Kids", None),
+    (3, "13 - 17 Teens", None),
+    (4, "18 - 35 Adults", None),
+    (5, "36 - 54 Older Adults", None),
+    (6, "55+ Seniors", None),
+    (7, "Group - Kids (not teens)", 2),  # parent=2
+    (8, "Group - Family Friendly", 3),  # parent=3
+]
+GENDER_CHOICES = [
+    (0, "Neutral"),
+    (1, "Female"),
+    (2, "Male"),
+]
+QUALITY_CHOICES = [
+    (0, "Poor"),
+    (1, "Average"),
+    (2, "Premium"),
+]
+CONTENT_TYPE_CHOICES = [
+    (0, "UGC"),
+    (1, "Broadcast"),
+    (2, "Brands"),
+]
+
 @patch("audit_tool.api.views.audit_vet_retrieve_update.generate_vetted_segment")
 class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA))
@@ -37,6 +69,19 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         self.user = self.create_test_user(perms={
             StaticPermissions.CTL__VET: True,
         })
+
+        # add items to database for patch unit tests to work
+        for id, age_group, parent_id in AGE_GROUP_CHOICES:
+            AuditAgeGroup.objects.create(id=id, age_group=age_group, parent_id=parent_id)
+
+        for id, gender in GENDER_CHOICES:
+            AuditGender.objects.create(id=id, gender=gender)
+
+        for id, quality in QUALITY_CHOICES:
+            AuditContentQuality.objects.create(id=id, quality=quality)
+
+        for id, content_type in CONTENT_TYPE_CHOICES:
+            AuditContentType.objects.create(id=id, content_type=content_type)
 
     def _create_audit_meta_vet(self, audit_type, item_id):
         BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
@@ -100,6 +145,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 1
             ],
             "content_type": 1,
+            "content_quality": 1,
             "gender": 2,
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries"
@@ -112,11 +158,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
         BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch(
-            "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-        # Vetted brand safety changes should trigger rescore
-        mock_update_brand_safety.assert_called_once()
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         channel_brand_safety = channel.brand_safety.categories
         updated_channel_brand_safety = updated_channel.brand_safety.categories
@@ -177,23 +220,21 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 4
             ],
             "content_type": 1,
+            "content_quality": 1,
             "gender": 2,
             "iab_categories": [
-                "Scooters", "Auto Rentals", "Industries"
+                "Automotive", "Scooters", "Auto Rentals", "Industries"
             ],
             "primary_category": "Automotive",
             "is_monetizable": False,
             "language": "ko",
             "suitable": True
         }
-        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_1"))
-        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_2"))
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_3"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_4"))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch(
-            "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            res = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-        # Vetted brand safety changes should trigger rescore
-        mock_update_brand_safety.assert_called_once()
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_video = self.video_manager.get([video.main.id])[0]
         video_brand_safety = video.brand_safety.categories
         updated_video_brand_safety = updated_video.brand_safety.categories
@@ -229,26 +270,28 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "age_group": 1,
             "brand_safety": [],  # Should update with empty list
             "content_type": 1,
+            "content_quality": 1,
             "primary_category": "Automotive",
             "gender": 2,
-            "iab_categories": [],
+            "iab_categories": ["Automotive"],
             "is_monetizable": False,
             "language": "en",
             "suitable": True
         }
         url = self._get_url(kwargs=dict(pk=audit.id))
-        self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
-        self.assertEqual(payload["brand_safety"],
-                         [val for val in updated_channel.task_us_data["brand_safety"] if val is not None])
+        self.assertEqual(payload["iab_categories"] + [payload["primary_category"]],
+                         [val for val in updated_channel.task_us_data["iab_categories"] if val is not None])
         self.assertEqual(payload["age_group"], int(updated_channel.task_us_data["age_group"]))
         self.assertEqual(payload["content_type"], int(updated_channel.task_us_data["content_type"]))
         self.assertEqual(payload["gender"], int(updated_channel.task_us_data["gender"]))
         self.assertEqual(payload["language"], updated_channel.task_us_data["lang_code"])
 
         # Remove None values
-        updated_bs_categories = [val for val in updated_channel.task_us_data["iab_categories"] if val is not None]
-        self.assertEqual(payload["brand_safety"], updated_bs_categories)
+        updated_task_us_brand_safety= [val for val in updated_channel.task_us_data["brand_safety"] if val is not None]
+        self.assertEqual(payload["brand_safety"], updated_task_us_brand_safety)
 
     def test_send_empty_brand_safety_videos_success(self, mock_generate_vetted):
         """ Test sending empty vetted brand safety categories saves properly """
@@ -266,17 +309,19 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "age_group": 1,
             "brand_safety": [],  # Should update with empty list
             "content_type": 1,
+            "content_quality": 1,
             "gender": 1,
             "primary_category": "Automotive",
-            "iab_categories": [],
+            "iab_categories": ["Automotive"],
             "is_monetizable": False,
             "language": "en",
             "suitable": True
         }
         url = self._get_url(kwargs=dict(pk=audit.id))
-        self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_video = self.video_manager.get([video.main.id])[0]
-        self.assertEqual(payload["iab_categories"],
+        self.assertEqual(payload["iab_categories"] + [payload["primary_category"]],
                          [val for val in updated_video.task_us_data["iab_categories"] if val is not None])
         self.assertEqual(payload["age_group"], int(updated_video.task_us_data["age_group"]))
         self.assertEqual(payload["content_type"], int(updated_video.task_us_data["content_type"]))
@@ -311,9 +356,10 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             ],
             "primary_category": "Automotive",
             "content_type": 1,
+            "content_quality": 1,
             "gender": 2,
             "iab_categories": [
-                "Auto Rentals", "Scooters", "Auto Rentals",
+                "Automotive", "Auto Rentals", "Scooters", "Auto Rentals",
             ],
             "is_monetizable": False,
             "language": "ja",
@@ -324,10 +370,11 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch(
             "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual({"1"}, set(updated_channel.task_us_data.brand_safety))
-        self.assertEqual({"Auto Rentals", "Scooters"}, set(updated_channel.task_us_data.iab_categories))
+        self.assertEqual({"Automotive", "Auto Rentals", "Scooters"}, set(updated_channel.task_us_data.iab_categories))
 
     def test_update_video_dupliate_categories(self, mock_generate_vetted):
         """ Test vetting updates brand safety and iab categories with no duplicates """
@@ -346,6 +393,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                 4, 4
             ],
             "content_type": 1,
+            "content_quality": 1,
             "gender": 2,
             "iab_categories": [
                 "Scooters", "Auto Rentals", "Industries", "Industries"
@@ -355,17 +403,14 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "language": "ko",
             "suitable": True
         }
-        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_1"))
-        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_2"))
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_A"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_B"))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch(
-            "audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-        # Vetted brand safety changes should trigger rescore
-        mock_update_brand_safety.assert_called_once()
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_video = self.video_manager.get([video.main.id])[0]
         self.assertEqual({"4"}, set(updated_video.task_us_data.brand_safety))
-        self.assertEqual({"Scooters", "Auto Rentals", "Industries"}, set(updated_video.task_us_data.iab_categories))
+        self.assertEqual({"Automotive", "Scooters", "Auto Rentals", "Industries"}, set(updated_video.task_us_data.iab_categories))
 
     def test_patch_admin_channel(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
@@ -400,7 +445,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             "content_quality": 1,
             "gender": 1,
             "iab_categories": [
-                "Auto Rentals", "Scooters", "Auto Rentals",
+                "Automotive", "Auto Rentals", "Scooters", "Auto Rentals",
             ],
             "primary_category": "Automotive",
             "is_monetizable": False,
