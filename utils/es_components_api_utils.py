@@ -3,12 +3,14 @@ import json
 import logging
 from urllib.parse import unquote
 
+from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from elasticsearch_dsl import Q
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
 
+import brand_safety.constants as brand_safety_constants
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
@@ -22,7 +24,6 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
 from utils.utils import slice_generator
-import brand_safety.constants as brand_safety_constants
 import video.constants as video_constants
 
 DEFAULT_PAGE_SIZE = 50
@@ -419,15 +420,23 @@ class ESDictSerializer(Serializer):
         :param data:
         :return:
         """
-        if data.get("custom_properties", {}).get("blocklist") is None:
-            try:
-                channel_id = data["channel"]["id"]
-                channel_blocklisted = self.context["channel_blocklist"][channel_id]
-            except KeyError:
-                channel_blocklisted = False
+        if isinstance(self.context.get("user"), get_user_model()) \
+                and self.context["user"].has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
+            if data.get("custom_properties", {}).get("blocklist") is None:
+                try:
+                    channel_id = data["channel"]["id"]
+                    channel_blocklisted = self.context["channel_blocklist"][channel_id]
+                except KeyError:
+                    channel_blocklisted = False
+                custom_properties = data.get("custom_properties", {})
+                custom_properties.update({"blocklist": channel_blocklisted})
+                data["custom_properties"] = custom_properties
+        else:
             custom_properties = data.get("custom_properties", {})
-            custom_properties.update({"blocklist": channel_blocklisted})
-            data["custom_properties"] = custom_properties
+            try:
+                del custom_properties["blocklist"]
+            except KeyError:
+                pass
         return data
 # pylint: enable=abstract-method
 
@@ -455,6 +464,29 @@ class VettedStatusSerializerMixin:
                 or not len([cat_id for cat_id in brand_safety if cat_id]):
             return self.VETTED_SAFE
         return self.VETTED_RISKY
+
+
+class BlackListSerializerMixin:
+
+    def __init__(self, instance, *args, **kwargs):
+        super().__init__(instance, *args, **kwargs)
+        self.blacklist_data = {}
+        if instance:
+            channels = instance if isinstance(instance, list) else [instance]
+            self.blacklist_data = self.fetch_blacklist_items(channels)
+
+    def fetch_blacklist_items(self, channels):
+        from audit_tool.models import BlacklistItem
+
+        doc_ids = [doc.meta.id for doc in channels]
+        blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.CHANNEL_ITEM)
+        blacklist_items_by_id = {
+            item.item_id: {
+                "blacklist_data": item.to_dict()
+            } for item in blacklist_items
+        }
+        return blacklist_items_by_id
+
 
 
 class ESQuerysetAdapter:
@@ -674,10 +706,10 @@ class APIViewMixin:
     def get_cached_aggregations_key(self):
         """
         gets cached aggregations key depending on user type:
-        if has research brand suitability, return with 'Unsuitable' brand safety agg,
+        if has research brand suitability high risk, return with 'Unsuitable' brand safety agg,
         if not, return without 'Unsuitable' agg
         """
-        if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY):
+        if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
             return self.admin_cached_aggregations_key
         return self.cached_aggregations_key
 

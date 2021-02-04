@@ -6,9 +6,7 @@ from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
-from channel.api.serializers.channel import ChannelAdminSerializer
 from channel.api.serializers.channel import ChannelSerializer
-from channel.api.serializers.channel import ChannelWithVettedStatusSerializer
 from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
@@ -34,6 +32,7 @@ from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import BrandSafetyDataVisible
+from utils.permissions import AggregationFiltersPermission
 
 
 class ChannelsNotFound(Exception):
@@ -79,7 +78,7 @@ class ChannelESFilterBackend(ESFilterBackend):
 class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                          APIViewMixin, ListAPIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
+        AggregationFiltersPermission,
     )
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
@@ -122,6 +121,7 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
     admin_cached_aggregations_key = ADMIN_CHANNEL_AGGREGATIONS_KEY
     manager_class = ChannelManager
     admin_manager_class = VettingAdminChannelManager
+    serializer_class = ChannelSerializer
 
     cache_class = CacheItem
 
@@ -140,16 +140,10 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
 
     def get_serializer_context(self):
         context = {
+            "user": self.request.user,
             "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
         }
         return context
-
-    def get_serializer_class(self):
-        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
-            return ChannelAdminSerializer
-        if self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
-            return ChannelWithVettedStatusSerializer
-        return ChannelSerializer
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,

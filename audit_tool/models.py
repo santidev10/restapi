@@ -653,6 +653,7 @@ class AuditProcessorCache(models.Model):
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     count = models.BigIntegerField(default=0, db_index=True)
 
+
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0
     CHANNEL_ITEM = 1

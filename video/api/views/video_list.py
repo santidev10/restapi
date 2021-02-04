@@ -4,7 +4,6 @@ Video api views module
 from copy import deepcopy
 
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import BlacklistItem
 from cache.constants import ADMIN_VIDEO_AGGREGATIONS_KEY
@@ -31,9 +30,8 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import BrandSafetyDataVisible
-from video.api.serializers.video import VideoAdminSerializer
+from utils.permissions import AggregationFiltersPermission
 from video.api.serializers.video import VideoSerializer
-from video.api.serializers.video import VideoWithVettedStatusSerializer
 from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
@@ -42,9 +40,7 @@ from video.constants import TERMS_FILTER
 
 class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
                        APIViewMixin, ListAPIView):
-    permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.RESEARCH),
-    )
+    permission_classes = (AggregationFiltersPermission,)
 
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
@@ -88,6 +84,7 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
     admin_cached_aggregations_key = ADMIN_VIDEO_AGGREGATIONS_KEY
     manager_class = VideoManager
     admin_manager_class = VettingAdminVideoManager
+    serializer_class = VideoSerializer
 
     cache_class = CacheItem
 
@@ -106,17 +103,11 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
-    def get_serializer_class(self):
-        if self.request and self.request.user and self.request.user.has_permission(StaticPermissions.ADMIN):
-            return VideoAdminSerializer
-        if self.request.user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
-            return VideoWithVettedStatusSerializer
-        return VideoSerializer
-
     def get_serializer_context(self):
         channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
         channel_ids = [video.channel.id for video in self.paginator.page.object_list if video.channel.id is not None]
         context = {
+            "user": self.request.user,
             "channel_blocklist": {
                 channel.main.id: channel.custom_properties.blocklist
                 for channel in channel_manager.get(channel_ids, skip_none=True)

@@ -37,6 +37,15 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             response = self.client.get(self.url)
             self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_own_channels(self):
+        """ Test that authenticated OAuthed users should be get own youtube channels """
+        self.create_test_user()
+        with patch("es_components.managers.channel.ChannelManager.search",
+                   return_value=SearchDSLPatcher()):
+            url = self.url + "?own_channels=1"
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_brand_safety(self):
         self.create_test_user(perms={
             StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,
@@ -550,9 +559,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIn("vetted_status", item_fields)
         self.assertNotIn("blacklist_data", item_fields)
 
-        # admin
+        # blocklist
         user.perms.update({
-            StaticPermissions.ADMIN: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: False,
+            StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK: True,
         })
         user.save()
         response = self.client.get(self.url)
@@ -561,7 +571,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(items), 1)
         item = items[0]
         item_fields = list(item.keys())
-        self.assertIn("vetted_status", item_fields)
+        self.assertNotIn("vetted_status", item_fields)
         self.assertIn("blacklist_data", item_fields)
 
     def test_vetting_data_perm_aggregations_guard(self):
@@ -901,4 +911,3 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(asc_items), 4)
         self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
-

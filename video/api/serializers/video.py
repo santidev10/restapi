@@ -1,24 +1,41 @@
 import re
 
+from django.contrib.auth import get_user_model
 from rest_framework.fields import SerializerMethodField
 
-from audit_tool.models import BlacklistItem
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
+from userprofile.constants import StaticPermissions
 from utils.brand_safety import get_brand_safety_data
 from utils.datetime import date_to_chart_data_str
 from utils.es_components_api_utils import ESDictSerializer
 from utils.es_components_api_utils import VettedStatusSerializerMixin
+from utils.es_components_api_utils import BlackListSerializerMixin
 from utils.serializers.fields import ParentDictValueField
 
 
 REGEX_TO_REMOVE_TIMEMARKS = r"^\s*$|((\r\n|\n|\r|\,|)(\d+(\:\d+\:\d+[.,]\d+|))(\s+-->\s+\d+\:\d+\:\d+[.,]\d+|))"
 
 
-class VideoSerializer(ESDictSerializer):
+class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSerializerMixin):
     chart_data = SerializerMethodField()
     transcript = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
+
+    # Controlled by permissions
+    blacklist_data = ParentDictValueField("blacklist_data", source="main.id")
+    vetted_status = SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        user = self.context.get("user")
+
+        # Dynamically remove fields not allowed by user permissions
+        if self.fields and isinstance(user, get_user_model()):
+            if not user.has_permission(StaticPermissions.RESEARCH__VETTING_DATA):
+                self.fields.pop("vetted_status", None)
+            if not user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
+                self.fields.pop("blacklist_data", None)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -95,39 +112,3 @@ class VideoSerializer(ESDictSerializer):
 
     def create(self, validated_data):
         raise NotImplementedError
-
-
-# todo: duplicates ChannelWithBlackListSerializer
-class VideoWithBlackListSerializer(VideoSerializer):
-    blacklist_data = ParentDictValueField("blacklist_data", source="main.id")
-
-    def __init__(self, instance, *args, **kwargs):
-        super(VideoWithBlackListSerializer, self).__init__(instance, *args, **kwargs)
-        self.blacklist_data = {}
-        if instance:
-            videos = instance if isinstance(instance, list) else [instance]
-            self.blacklist_data = self.fetch_blacklist_items(videos)
-
-    def update(self, instance, validated_data):
-        raise NotImplementedError
-
-    def create(self, validated_data):
-        raise NotImplementedError
-
-    def fetch_blacklist_items(self, videos):
-        doc_ids = [doc.meta.id for doc in videos]
-        blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.VIDEO_ITEM)
-        blacklist_items_by_id = {
-            item.item_id: {
-                "blacklist_data": item.to_dict()
-            } for item in blacklist_items
-        }
-        return blacklist_items_by_id
-
-
-class VideoWithVettedStatusSerializer(VettedStatusSerializerMixin, VideoSerializer):
-    vetted_status = SerializerMethodField()
-
-
-class VideoAdminSerializer(VettedStatusSerializerMixin, VideoWithBlackListSerializer):
-    vetted_status = SerializerMethodField()

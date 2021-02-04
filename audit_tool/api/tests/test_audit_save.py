@@ -150,3 +150,8 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         }
         response = self.client.patch(self.url, json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_reject_vetting_enable_permissions(self):
+        self.create_test_user()
+        response = self.client.patch(self.url, json.dumps({}), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

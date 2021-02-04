@@ -79,13 +79,11 @@ class StaticPermissions:
     CTL__EXPORT_BASIC = "ctl.export_basic"
     CTL__EXPORT_ADMIN = "ctl.export_admin"
     CTL__SEE_ALL = "ctl.see_all"
-    CTL__VET_ENABLE = "ctl.vet_enable"
     CTL__VET = "ctl.vet"
     CTL__VET_ADMIN = "ctl.vet_admin"
     CTL__VET_EXPORT = "ctl.vet_export"
 
     DOMAIN_MANAGER = "domain_manager"
-    DOMAIN_MANAGER__READ_ALL = "domain_manager.read_all"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"
     DOMAIN_MANAGER__DELETE = "domain_manager.delete"
 
@@ -128,6 +126,10 @@ class StaticPermissions:
     USER_ANALYTICS = "user_analytics"
     USER_MANAGEMENT = "user_management"
     CHF_TRENDS = "chf_trends"
+
+    DEPRECATED = {
+        MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,
+    }
 
     @staticmethod
     def has_perms(*permission_items, method=None):
