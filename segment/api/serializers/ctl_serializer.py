@@ -179,6 +179,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             segment.statistics["error"] = str(err.detail[0])
             segment.save(update_fields=["statistics"])
             raise err
+        except CTLEmptySourceUrlException:
+            segment_type_repr = SegmentTypeEnum(segment.segment_type).name
+            segment.delete()
+            raise ValidationError(f"Mismatching file format. {segment_type_repr.capitalize()} lists "
+                                  f"need {segment_type_repr.lower()} urls. Please adjust and try again")
         except Exception as error:
             # pylint: enable=broad-except
             # Delete CTL if unexpected exception occurs
@@ -376,8 +381,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
-                    raise ValidationError(f"Error: No valid source urls. Please check that urls in column A are valid"
-                                          "YouTube urls.")
+                    raise CTLEmptySourceUrlException
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
@@ -391,7 +395,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     name=getattr(source_file, "name", None)
                 )
             )
-        except ValidationError:
+        except CTLEmptySourceUrlException:
             raise
         except Exception as err:
             logger.exception("Error creating CTL source file")
@@ -566,3 +570,7 @@ class CTLWithoutDownloadUrlSerializer(CTLSerializer):
         data = super().to_representation(instance)
         data.pop("download_url", None)
         return data
+
+
+class CTLEmptySourceUrlException(Exception):
+    pass

@@ -1155,3 +1155,45 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         export = segment.export
         self.assertEqual(export.query["params"]["vetting_status"], [1])
+
+    def test_empty_channel_source_urls_deletes(self, mock_generate):
+        """ Test that channel CTL being created during validation without valid source urls is deleted """
+        self.create_admin_user()
+        payload = {
+            "title": "test_empty_channel_source_urls_deletes",
+            "segment_type": 1,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"),\
+                patch.object(CustomSegment, "remove_all_from_segment"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())
+
+    def test_empty_video_source_urls_deletes(self, mock_generate):
+        """ Test that video CTL being created during validation without valid source urls is deleted """
+        self.create_admin_user()
+        payload = {
+            "title": "test_empty_video_source_urls_deletes",
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"),\
+                patch.object(CustomSegment, "remove_all_from_segment"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())
