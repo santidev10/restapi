@@ -33,7 +33,7 @@ def pickled_data(fp, expires):
             should_save = False
             try:
                 created_at = os.path.getctime(fp)
-                if created_at - time.time() <= expires:
+                if time.time() - created_at <= expires:
                     data = pickle.load(open(fp, mode="rb"))
                 else:
                     data = func(*_, **__)
