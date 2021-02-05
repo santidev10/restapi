@@ -1,6 +1,7 @@
 import mock
 
 from elasticsearch_dsl import Q
+from rest_framework.status import HTTP_200_OK
 
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
@@ -15,6 +16,17 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, args):
         url = reverse(ChannelPathName.CHANNEL_LIST, [Namespace.CHANNEL], query_params=args)
         return url
+
+    def test_success_authenticated(self):
+        """ Test allow authenticated get requests as many parts of the client rely on aggregations as filters """
+        self.create_test_user()
+        params = dict(
+            aggregations=""
+        )
+        url = self._get_url(params)
+        with mock.patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_channel_aggregations(self):
         self.create_admin_user()

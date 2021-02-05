@@ -318,7 +318,7 @@ class PermissionItem(models.Model):
     @classmethod
     def all_perms(cls):
         perm_names = [
-            perm[0] for perm in cls.STATIC_PERMISSIONS
+            perm[0] for perm in cls.STATIC_PERMISSIONS if perm[0] not in StaticPermissions.DEPRECATED
         ]
         return perm_names
 
