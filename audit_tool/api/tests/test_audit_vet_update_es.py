@@ -163,12 +163,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         channel_brand_safety = channel.brand_safety.categories
         updated_channel_brand_safety = updated_channel.brand_safety.categories
-        self.assertNotEqual(channel_brand_safety["1"]["category_score"],
-                            updated_channel_brand_safety["1"]["category_score"])
-        self.assertNotEqual(channel_brand_safety["2"]["category_score"],
-                            updated_channel_brand_safety["2"]["category_score"])
-        self.assertEqual(updated_channel_brand_safety["1"]["category_score"], 0)
-        self.assertEqual(updated_channel_brand_safety["2"]["category_score"], 100)
+
         self.assertEqual(channel_brand_safety["1"]["severity_counts"],
                          updated_channel_brand_safety["1"]["severity_counts"])
         self.assertEqual(channel_brand_safety["1"]["keywords"], updated_channel_brand_safety["1"]["keywords"])
@@ -178,8 +173,10 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertNotEqual(channel.general_data["iab_categories"], updated_channel.general_data["iab_categories"])
         self.assertNotEqual(channel.task_us_data["iab_categories"], updated_channel.general_data["iab_categories"])
-        self.assertEqual(payload["iab_categories"], updated_channel.general_data["iab_categories"])
-        self.assertEqual(payload["iab_categories"], updated_channel.task_us_data["iab_categories"])
+        self.assertEqual(sorted(payload["iab_categories"] + [payload["primary_category"]]),
+                         sorted(updated_channel.general_data["iab_categories"]))
+        self.assertEqual(sorted(payload["iab_categories"] + [payload["primary_category"]]),
+                         sorted(updated_channel.task_us_data["iab_categories"]))
 
     def test_update_video_es(self, mock_generate_vetted):
         """ Test vetting updates brand safety """
@@ -238,12 +235,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         updated_video = self.video_manager.get([video.main.id])[0]
         video_brand_safety = video.brand_safety.categories
         updated_video_brand_safety = updated_video.brand_safety.categories
-        self.assertNotEqual(video_brand_safety["3"]["category_score"],
-                            updated_video_brand_safety["3"]["category_score"])
-        self.assertNotEqual(video_brand_safety["4"]["category_score"],
-                            updated_video_brand_safety["4"]["category_score"])
-        self.assertEqual(updated_video_brand_safety["3"]["category_score"], 100)
-        self.assertEqual(updated_video_brand_safety["4"]["category_score"], 0)
+
         self.assertEqual(video_brand_safety["3"]["severity_counts"],
                          updated_video_brand_safety["3"]["severity_counts"])
         self.assertEqual(video_brand_safety["3"]["keywords"], updated_video_brand_safety["3"]["keywords"])
@@ -252,7 +244,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(video_brand_safety["4"]["keywords"], updated_video_brand_safety["4"]["keywords"])
 
         self.assertNotEqual(video.general_data["iab_categories"], updated_video.general_data["iab_categories"])
-        self.assertEqual(payload["iab_categories"], updated_video.general_data["iab_categories"])
+        self.assertEqual(sorted(payload["iab_categories"] + [payload["primary_category"]]),
+                         sorted(updated_video.general_data["iab_categories"]))
 
     def test_send_empty_brand_safety_channel_success(self, mock_generate_vetted):
         """ Test sending empty vetted brand safety categories saves properly """
@@ -517,17 +510,14 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_brand_safety(
             videos_scored=1,
             language="en",
-            overall_score=90,
+            overall_score=78,
         )
         self.channel_manager.upsert([channel])
         audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
         payload = {
             "vetting_id": vetting_item.id,
             "age_group": 1,
-            # Saving with brand safety marks as unsafe
-            "brand_safety": [
-                1,
-            ],
+            "brand_safety": [],
             "content_type": 1,
             "content_quality": 1,
             "gender": 1,
@@ -544,7 +534,8 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch(
                 "audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
-            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+            response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated_channel.brand_safety.limbo_status, True)
         self.assertEqual(updated_channel.brand_safety.pre_limbo_score, updated_channel.brand_safety.overall_score)
