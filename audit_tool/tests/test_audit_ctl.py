@@ -20,7 +20,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class TestAuditCTL(ExtendedAPITestCase):
-    multi_db = True
+    databases = '__all__'
 
     @mock_s3
     def test_update_video_ctl_success(self):

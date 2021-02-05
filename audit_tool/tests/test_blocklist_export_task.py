@@ -20,7 +20,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BlocklistExportTaskTestCase(ExtendedAPITestCase, ESTestCase):
-    multi_db = True
+    databases = '__all__'
     SECTIONS = (Sections.CUSTOM_PROPERTIES, Sections.BRAND_SAFETY, Sections.GENERAL_DATA)
     channel_manager = ChannelManager(SECTIONS)
     video_manager = VideoManager(SECTIONS)

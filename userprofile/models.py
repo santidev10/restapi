@@ -10,7 +10,6 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import UserManager
-from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.db import models
 from django.utils import timezone
@@ -107,7 +106,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(max_length=255, null=True, blank=True)
-    perms = JSONField(default=dict)
+    perms = models.JSONField(default=dict)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -123,7 +122,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default=get_default_settings)
+    aw_settings = models.JSONField(default=get_default_settings)
 
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
@@ -131,7 +130,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     domain = models.ForeignKey("WhiteLabel", on_delete=models.SET_NULL, null=True)
 
     # GDPR Cookie Compliance
-    has_accepted_GDPR = models.NullBooleanField(default=None)
+    has_accepted_GDPR = models.BooleanField(default=None, null=True)
 
     objects = UserProfileManager()
 
@@ -359,7 +358,7 @@ class UserDeviceToken(models.Model):
 
 class WhiteLabel(models.Model):
     domain = models.CharField(max_length=255, unique=True)
-    config = JSONField(default=dict)
+    config = models.JSONField(default=dict)
 
     def __str__(self):
         return self.domain

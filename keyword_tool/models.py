@@ -1,7 +1,6 @@
 import json
 import logging
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from aw_reporting.models.base import BaseModel
@@ -95,9 +94,9 @@ class KeywordsList(BaseModel):
     average_cpv = models.FloatField(default=0)
     average_view_rate = models.FloatField(default=0)
     average_ctrv = models.FloatField(default=0)
-    top_keywords = JSONField(null=True, blank=True)
-    cum_average_volume = JSONField(null=True, blank=True)
-    cum_average_volume_per_kw = JSONField(null=True, blank=True)
+    top_keywords = models.JSONField(null=True, blank=True)
+    cum_average_volume = models.JSONField(null=True, blank=True)
+    cum_average_volume_per_kw = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["-updated_at"]

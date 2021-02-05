@@ -71,7 +71,7 @@ class APITestUserMixin(TestUserMixin):
 
 
 class ExtendedAPITestCase(APITestCase, APITestUserMixin):
-    multi_db = True
+    databases = '__all__'
 
     def patch_user_settings(self, **kwargs):
         return patch_user_settings(self.request_user, **kwargs)

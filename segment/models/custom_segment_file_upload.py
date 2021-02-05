@@ -1,9 +1,9 @@
 from urllib.parse import unquote
 
-from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
 from django.db.models import IntegerField
+from django.db.models import JSONField
 from django.db.models import Model
 from django.db.models import OneToOneField
 from django.db.models import TextField

@@ -16,7 +16,7 @@ from utils.youtube_api import YoutubeAPIConnectorException
 
 
 class GenerateAuditItemsTestCase(TransactionTestCase):
-    multi_db = True
+    databases = '__all__'
 
     def _bulk_create(self, model, objs, *argss, **kwargs):
         model.objects.bulk_create(objs)

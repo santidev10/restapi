@@ -44,7 +44,7 @@ services:
       start_period: 2m
 
   celery_worker:
-    image: viewiq-restapi
+    image: viewiq/restapi-dev:${BUILD_TAG:-latest}
     command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q",
               "celery,reports,delivery_statistic,email_reports,export,transcripts,hourly_statistic,cache_research,segments,
               schedulers,brand_safety_channel_light,brand_safety_channel_priority,brand_safety_video_priority,ias,performiq"
@@ -63,7 +63,7 @@ services:
       ELASTIC_SEARCH_USE_SSL: 0
 
   celery_beat:
-    image: viewiq-restapi
+    image: viewiq/restapi-dev:${BUILD_TAG:-latest}
     command: ["celery", "-A", "saas", "beat", "-l", "info"]
     depends_on:
       - rabbitmq
