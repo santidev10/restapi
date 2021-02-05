@@ -37,6 +37,15 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             response = self.client.get(self.url)
             self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_own_channels(self):
+        """ Test that authenticated OAuthed users should be get own youtube channels """
+        self.create_test_user()
+        with patch("es_components.managers.channel.ChannelManager.search",
+                   return_value=SearchDSLPatcher()):
+            url = self.url + "?own_channels=1"
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_brand_safety(self):
         self.create_test_user(perms={
             StaticPermissions.RESEARCH__BRAND_SUITABILITY: True,

@@ -179,7 +179,8 @@ class GenerateSegmentUtils:
         """
         channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
         if data_type == 0:
-            channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None])
+            channels = channel_manager.get([video.channel.id for video in items if video.channel.id is not None],
+                                           skip_none=True)
             blocklist = {
                 channel.main.id: channel.custom_properties.blocklist
                 for channel in channels

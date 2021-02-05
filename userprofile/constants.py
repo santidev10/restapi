@@ -127,6 +127,10 @@ class StaticPermissions:
     USER_MANAGEMENT = "user_management"
     CHF_TRENDS = "chf_trends"
 
+    DEPRECATED = {
+        MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY,
+    }
+
     @staticmethod
     def has_perms(*permission_items, method=None):
         """

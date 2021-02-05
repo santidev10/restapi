@@ -43,7 +43,7 @@ class TtsUrlTranscriptsUpdater:
 
     CURSOR_FILE = "update_tts_url_transcripts_cursor"
     EMAIL_LOCK_NAME = "update_tts_url_transcripts_emailer_lock"
-    EMAIL_LOCK_TIME_MINUTES = 60  # minimum time between emails
+    EMAIL_LOCK_TIME_MINUTES = 24 * 60  # minimum time between emails
 
     def __init__(self):
         self.cursor = self._get_cursor()
