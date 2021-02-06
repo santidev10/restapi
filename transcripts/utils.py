@@ -236,7 +236,6 @@ class YTVideo(object):
         """
         try:
             vid_response, self.vid_url_status = self.get_response_through_proxy(self.scraper, self.vid_url)
-            print(self.vid_url_status)
             raw_captions_url = self.get_raw_captions_url(vid_response)
             self.captions_url = self.clean_url(raw_captions_url)
             self.captions_url_response, self.captions_url_status = \
