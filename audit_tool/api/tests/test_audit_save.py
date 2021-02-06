@@ -1,9 +1,13 @@
 import csv
 import json
+import boto3
+
 from tempfile import mkstemp
 from uuid import uuid4
-
 from mock import patch
+from moto import mock_s3
+
+from django.conf import settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -22,6 +26,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     url = reverse(AuditPathName.AUDIT_SAVE, [Namespace.AUDIT_TOOL])
     custom_segment_model = None
     custom_segment_export_model = None
+    mock_s3 = mock_s3()
 
     @classmethod
     def tearDownClass(cls):
@@ -34,7 +39,9 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.custom_segment_model = CustomSegment
         self.custom_segment_export_model = CustomSegmentFileUpload
         self.create_admin_user()
-        self.s3 = AuditFileS3Exporter._s3()
+        self.mock_s3.start()
+        self.s3 = boto3.resource("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
         self.tmp_file = mkstemp(suffix=".csv")
         self.tmp_name = self.tmp_file[1]
         self.body = {}
@@ -46,24 +53,13 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.key = self.audit.params['seed_file']
 
     def tearDown(self):
-        try:
-            self.s3.delete_object(
-                Bucket=AuditFileS3Exporter.bucket_name,
-                Key=self.key
-            )
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            raise KeyError("Failed to delete object. Object with key {} not found in bucket.".format(self.key))
-        self.audit.delete()
+        super().tearDownClass()
+        self.mock_s3.stop()
 
     def test_audit_save_success(self):
         self.assertEqual(self.response.status_code, HTTP_200_OK)
         try:
-            s3_object = self.s3.get_object(
-                Bucket=AuditFileS3Exporter.bucket_name,
-                Key=self.key
-            )
+            s3_object = self.s3.Object(AuditFileS3Exporter.bucket_name, self.key).get()
         # pylint: disable=broad-except
         except Exception:
         # pylint: enable=broad-except

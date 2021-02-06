@@ -1,3 +1,8 @@
+import boto3
+
+from moto import mock_s3
+
+from django.conf import settings
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
@@ -21,10 +26,13 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class AuditExportAPITestCase(ExtendedAPITestCase):
     url = reverse(AuditPathName.AUDIT_EXPORT, [Namespace.AUDIT_TOOL])
+    mock_s3 = mock_s3()
 
     def setUp(self):
         self.create_admin_user()
-        self.s3 = AuditS3Exporter._s3()
+        self.mock_s3.start()
+        self.s3 = boto3.resource("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_EXPORTS_BUCKET_NAME)
         video_params = {
             'name': 'test_video',
             'language': 'en'
@@ -64,30 +72,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                                              })
 
     def tearDown(self):
-        video_audit_key = 'export_{}_{}_false.csv'.format(self.video_audit.id, self.video_audit.params['name'])
-        try:
-            self.s3.delete_object(
-                Bucket=AuditS3Exporter.bucket_name,
-                Key=video_audit_key
-            )
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            raise KeyError("Failed to delete object. Object with key {} not found in bucket."
-                           .format(video_audit_key))
-
-        channel_audit_key = 'export_{}_{}_true.csv'.format(self.channel_audit.id, self.channel_audit.params['name'])
-        try:
-            self.s3.delete_object(
-                Bucket=AuditS3Exporter.bucket_name,
-                Key=channel_audit_key
-            )
-        # pylint: disable=broad-except
-        except Exception:
-        # pylint: enable=broad-except
-            raise KeyError(
-                "Failed to delete object. Object with key {} not found in bucket."
-                    .format(channel_audit_key))
+        self.mock_s3.stop()
 
     def test_video_export(self):
         try:
