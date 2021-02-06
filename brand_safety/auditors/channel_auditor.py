@@ -82,7 +82,7 @@ class ChannelAuditor(BaseAuditor):
         channel.video_audits = self.video_auditor.process_for_channel(channel, channel.videos, index=index)
         channel_audit = BrandSafetyChannelAudit(channel, self.audit_utils)
         channel_audit.run()
-        return channel_audit.instantiate_es()
+        return channel_audit.add_brand_safety_data()
 
     def _set_channel_data(self, channel: BrandSafetyChannel):
         """
