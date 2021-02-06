@@ -1,6 +1,5 @@
 from uuid import uuid4
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 
@@ -17,4 +16,4 @@ class SavedEmail(models.Model):
 
 class VideoCreativeData(models.Model):
     id = models.CharField(primary_key=True, max_length=50, unique=True)
-    data = JSONField(default=dict)
+    data = models.JSONField(default=dict)

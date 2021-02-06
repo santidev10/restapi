@@ -3,7 +3,6 @@ from datetime import datetime
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
@@ -107,7 +106,7 @@ class Comment(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
     like_count = models.IntegerField(default=0, db_index=True)
     reply_count = models.IntegerField(default=0)
-    found_items = JSONField(default=dict)
+    found_items = models.JSONField(default=dict)
 
 
 class AuditProcessor(models.Model):
@@ -129,8 +128,8 @@ class AuditProcessor(models.Model):
     max_recommended = models.IntegerField(default=100000)
     # this name field is LOWERCASED for searching, use params["name"] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
-    params = JSONField(default=dict)
-    cached_data = JSONField(default=dict)
+    params = models.JSONField(default=dict)
+    cached_data = models.JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
@@ -475,12 +474,12 @@ class AuditChannelMeta(models.Model):
     view_count = models.BigIntegerField(default=0, db_index=True)
     video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
-    monetised = models.NullBooleanField(default=None)
+    monetised = models.BooleanField(default=None, null=True)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
-    synced_with_viewiq = models.NullBooleanField(db_index=True)
+    synced_with_viewiq = models.BooleanField(db_index=True, null=True)
     hidden_subscriber_count = models.BooleanField(default=False)
     primary_video_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True,
                                 related_name="ac_video_language", on_delete=models.CASCADE)
@@ -548,10 +547,10 @@ class AuditVideoMeta(models.Model):
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
-    age_restricted = models.NullBooleanField(default=None, db_index=True)
-    made_for_kids = models.NullBooleanField(default=None, db_index=True)
+    age_restricted = models.BooleanField(default=None, db_index=True, null=True)
+    made_for_kids = models.BooleanField(default=None, db_index=True, null=True)
     aspect_ratio = models.FloatField(null=True, default=None)
-    live_broadcast = models.NullBooleanField(default=None)
+    live_broadcast = models.BooleanField(default=None, null=True)
 
 class AuditVideoProcessor(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -563,7 +562,7 @@ class AuditVideoProcessor(models.Model):
                                 on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
-    word_hits = JSONField(default=dict, null=True)
+    word_hits = models.JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "video")
@@ -580,7 +579,7 @@ class AuditChannelProcessor(models.Model):
                                        related_name="avp_channel_source", on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
-    word_hits = JSONField(default=dict, null=True)
+    word_hits = models.JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "channel")
@@ -592,7 +591,7 @@ class AuditChannelProcessor(models.Model):
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
-    clean = models.NullBooleanField(default=None, db_index=True)
+    clean = models.BooleanField(default=None, db_index=True, null=True)
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
@@ -660,7 +659,7 @@ class BlacklistItem(models.Model):
     item_type = models.IntegerField(db_index=True)
     item_id = models.CharField(db_index=True, max_length=64)
     item_id_hash = models.BigIntegerField(db_index=True)
-    blacklist_category = JSONField(default=dict)
+    blacklist_category = models.JSONField(default=dict)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
     blocked_count = models.IntegerField(default=0, db_index=True)
@@ -707,13 +706,14 @@ class BlacklistItem(models.Model):
 
 class AuditVet(models.Model):
     audit = models.ForeignKey(AuditProcessor, null=True, db_index=True, on_delete=models.CASCADE)
-    clean = models.NullBooleanField(default=None, db_index=True)  # determined if suitable by user
+    clean = models.BooleanField(default=None, db_index=True, null=True)  # determined if suitable by user
     created_at = models.DateTimeField(auto_now_add=True)
     checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)  # vetted at by user
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
-    skipped = models.NullBooleanField(default=None,
-                                      db_index=True)  # skipped if user unable to view in region, or item was deleted
+    skipped = models.BooleanField(default=None,
+                                  db_index=True,
+                                  null=True)  # skipped if user unable to view in region, or item was deleted
 
     class Meta:
         abstract = True

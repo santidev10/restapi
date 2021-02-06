@@ -5,7 +5,6 @@ import logging
 from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from audit_tool.models import AuditProcessor
@@ -58,7 +57,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
-    statistics = JSONField(default=dict)
+    statistics = models.JSONField(default=dict)
     list_type = models.IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE)
     segment_type = models.IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
@@ -68,7 +67,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
-    params = JSONField(default=dict)
+    params = models.JSONField(default=dict)
 
     def remove_meta_audit_params(self):
         remove_keys = {"meta_audit_id", "inclusion_file", "exclusion_file"}

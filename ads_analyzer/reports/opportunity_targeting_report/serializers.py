@@ -235,7 +235,6 @@ class TargetTableSerializer(ModelSerializer):
             )
         ))).values("sum")
         return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
-            .order_by("-sum_video_views") \
             .annotate(sum_impressions=Sum("impressions"),
                       sum_video_views=Sum("video_views"),
                       sum_clicks=Sum("clicks"),
@@ -246,7 +245,8 @@ class TargetTableSerializer(ModelSerializer):
                       ))),
                       sum_video_views_100_quartile=Sum("video_views_100_quartile"),
                       sum_type_cost=Subquery(subquery_cost, output_field=DBFloatField()),
-                      sum_type_delivery=Subquery(subquery_delivery, output_field=DBFloatField()), )
+                      sum_type_delivery=Subquery(subquery_delivery, output_field=DBFloatField()), ) \
+            .order_by("-sum_video_views")
 
     class Meta:
         model = None

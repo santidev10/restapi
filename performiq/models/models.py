@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from utils.models import Timestampable
@@ -95,9 +94,9 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
 class IQCampaign(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     created = models.DateTimeField(db_index=True, auto_now_add=True)
-    params = JSONField(default=dict)
+    params = models.JSONField(default=dict)
     name = models.CharField(max_length=255, db_index=True, null=True)
-    results = JSONField(default=dict)
+    results = models.JSONField(default=dict)
     started = models.DateTimeField(default=None, null=True, db_index=True)
 
     # campaign is the campaign object above, google ads or dv360, null if its a csv
@@ -119,7 +118,7 @@ class IQCampaign(models.Model):
 
 class IQCampaignChannel(models.Model):
     iq_campaign = models.ForeignKey(IQCampaign, on_delete=models.CASCADE, related_name="channels")
-    clean = models.NullBooleanField(default=None, db_index=True)
-    meta_data = JSONField(default=dict) # the performance data from csv or API
-    results = JSONField(default=dict)
+    clean = models.BooleanField(default=None, db_index=True, null=True)
+    meta_data = models.JSONField(default=dict)  # the performance data from csv or API
+    results = models.JSONField(default=dict)
     channel_id = models.CharField(max_length=128, db_index=True)
