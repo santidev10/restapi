@@ -116,8 +116,8 @@ class YTTranscriptsScraper(object):
         parameter when making requests with the requests module.
         """
         return {
-            "http": f"{self.host}:{self.port}",
-            "https": f"{self.host}:{self.port}"
+            "http": f"http://{self.host}:{self.port}",
+            "https": f"http://{self.host}:{self.port}"
         }
 
     def get_user_agent(self):
