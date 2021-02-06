@@ -133,10 +133,16 @@ class Command(BaseCommand):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
                 AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    channel=channel,
-                )
+                try:
+                    acp = AuditChannelProcessor.objects.get(
+                        audit=self.audit,
+                        channel=channel,
+                    )
+                except Exception as e:
+                    acp = AuditChannelProcessor.objects.create(
+                        audit=self.audit,
+                        channel=channel,
+                    )
                 vids.append(acp)
                 counter += 1
         if counter == 0 and resume_val == 0:
