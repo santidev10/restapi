@@ -1,10 +1,10 @@
 from collections import Counter
 
-from celery import task
+from saas import celery_app
 from django.db.models import Avg
 
 
-@task
+@celery_app.task
 def update_keywords_stats(data):
     # pylint: disable=import-outside-toplevel
     from .models import KeyWord
@@ -56,7 +56,7 @@ def update_keywords_stats(data):
                 interest_relation.objects.bulk_create(interest_relations)
 
 
-@task
+@celery_app.task
 def update_kw_list_stats(obj, _kw_class):
     cum_counter = Counter()
     kw_query = obj.keywords.through.objects.filter(keywordslist_id=obj.id)
