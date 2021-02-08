@@ -7,6 +7,7 @@ import os
 from uuid import uuid4
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import UserManager
@@ -379,3 +380,13 @@ class WhiteLabel(models.Model):
         except (IndexError, AttributeError):
             sub_domain = DEFAULT_DOMAIN
         return sub_domain
+
+
+class Role(models.Model):
+    name = models.CharField(max_length=20, unique=True)
+    permissions = models.ManyToManyField(PermissionItem, related_name="roles", db_index=True)
+
+
+class UserRole(models.Model):
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
+    role = models.OneToOneField(Role, on_delete=models.SET_NULL, null=True)
