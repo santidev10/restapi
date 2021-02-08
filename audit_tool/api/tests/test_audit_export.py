@@ -72,6 +72,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                                              })
 
     def tearDown(self):
+        super().tearDown()
         self.mock_s3.stop()
 
     def test_video_export(self):

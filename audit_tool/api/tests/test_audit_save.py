@@ -53,7 +53,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.key = self.audit.params['seed_file']
 
     def tearDown(self):
-        super().tearDownClass()
+        super().tearDown()
         self.mock_s3.stop()
 
     def test_audit_save_success(self):
