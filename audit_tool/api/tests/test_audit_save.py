@@ -79,7 +79,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
 
     def test_reject_audit_view_permission(self):
         """ Users must have userprofile.view_audit permission """
-        self.user = self.create_test_user(perms={StaticPermissions.CTL__VET_ADMIN: False})
+        self.user = self.create_test_user(perms={StaticPermissions.AUDIT_QUEUE: False})
         response = self.client.post(self.url, data={})
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
