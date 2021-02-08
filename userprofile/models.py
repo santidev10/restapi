@@ -383,10 +383,10 @@ class WhiteLabel(models.Model):
 
 
 class Role(models.Model):
-    name = models.CharField(max_length=100, db_index=True)
+    name = models.CharField(max_length=20, unique=True)
     permissions = models.ManyToManyField(PermissionItem, related_name="roles", db_index=True)
 
 
 class UserRole(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
+    role = models.OneToOneField(Role, on_delete=models.SET_NULL, null=True)
