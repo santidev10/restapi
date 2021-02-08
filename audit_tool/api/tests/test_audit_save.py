@@ -28,10 +28,6 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     custom_segment_export_model = None
     mock_s3 = mock_s3()
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
     def setUp(self):
         # Import and set models to avoid recursive ImportError
         from segment.models import CustomSegment
