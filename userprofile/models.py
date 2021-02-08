@@ -388,5 +388,5 @@ class Role(models.Model):
 
 
 class UserRole(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name="role")
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
