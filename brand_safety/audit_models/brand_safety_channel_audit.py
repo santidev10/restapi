@@ -129,11 +129,11 @@ class BrandSafetyChannelAudit(object):
 
         return channel_brand_safety_score
 
-    def instantiate_es(self):
+    def add_brand_safety_data(self):
         """
-        Instantiate Elasticsearch channel model with brand safety data
+        Add brand safety data to es channel document
         """
-        channel = Channel(self.doc.main.id)
+        channel = self.doc
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_data = {
             "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,

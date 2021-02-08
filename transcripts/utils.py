@@ -116,8 +116,8 @@ class YTTranscriptsScraper(object):
         parameter when making requests with the requests module.
         """
         return {
-            "http": f"{self.host}:{self.port}",
-            "https": f"{self.host}:{self.port}"
+            "http": f"http://{self.host}:{self.port}",
+            "https": f"http://{self.host}:{self.port}"
         }
 
     def get_user_agent(self):
@@ -189,6 +189,42 @@ class YTVideo(object):
         url = url.replace("u0026", "&")
         return url
 
+    @staticmethod
+    def get_raw_captions_url(vid_response: str) -> str:
+        """
+        Gets the raw, uncleaned captions url from a given video response string
+        verbose for ez debugging
+        NOTE: If Youtube ever changes the internal API URL it uses for retrieving ASR captions, this method will need
+        to be updated.
+        :param vid_response:
+        :return captions_url: str
+        """
+        split = vid_response.split("\"captions\"")
+        captions_url = split[1]
+        split = captions_url.split("\"playerCaptionsTracklistRenderer\"")
+        captions_url = split[1]
+        split = captions_url.split("\"baseUrl\"")
+        captions_url = split[1]
+        split = captions_url.split("\"")
+        captions_url = split[1]
+        return captions_url
+
+    @staticmethod
+    def get_captions_language(captions_url: str) -> str:
+        """
+        get the captions language from the given captions url
+        verbose for easy debugging
+        :param captions_url:
+        :return language:
+        """
+        split = captions_url.split("&lang=")
+        language = split[1]
+        split = language.split("&")
+        language = split[0]
+        split = language.split("-")
+        language = split[0]
+        return language
+
     def get_captions(self):
         """
         Parses the response from a YT Video's URL to find the internal API URL Youtube is using to generate ASR captions,
@@ -200,15 +236,14 @@ class YTVideo(object):
         """
         try:
             vid_response, self.vid_url_status = self.get_response_through_proxy(self.scraper, self.vid_url)
-            captions_url = vid_response.split("playerCaptionsTracklistRenderer")[1]
-            captions_url = captions_url.split("baseUrl\\\":\\\"")[1].split("\\\",\\\"name")[0]
-            self.captions_url = self.clean_url(captions_url)
+            raw_captions_url = self.get_raw_captions_url(vid_response)
+            self.captions_url = self.clean_url(raw_captions_url)
             self.captions_url_response, self.captions_url_status = \
                 self.get_response_through_proxy(self.scraper, self.captions_url)
             soup = BeautifulSoup(self.captions_url_response, 'xml')
             captions = get_formatted_captions_from_soup(soup)
             self.captions = captions
-            self.captions_language = self.captions_url.split("&lang=")[1].split("&")[0].split("-")[0]
+            self.captions_language = self.get_captions_language(self.captions_url)
         # pylint: disable=broad-except
         except Exception as e:
             # pylint: enable=broad-except

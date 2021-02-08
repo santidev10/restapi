@@ -1,3 +1,4 @@
+import time
 import mock
 import pickle
 
@@ -134,3 +135,15 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         channel_auditor.process([channel.main.id])
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(updated.brand_safety.overall_score, 0)
+
+    def test_audit_timestamp(self, *_):
+        """
+        Tests that main.created_at field is not changed after audit
+        """
+        channel_auditor = ChannelAuditor()
+        channel = Channel(f"channel_{next(int_iterator)}")
+        self.channel_manager.upsert([channel])
+        time.sleep(1)
+        channel_auditor.process([channel.main.id])
+        audited = self.channel_manager.get([channel.main.id])[0]
+        self.assertLess(audited.main.created_at, audited.brand_safety.updated_at)

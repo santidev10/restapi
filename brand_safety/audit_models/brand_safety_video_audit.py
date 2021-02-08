@@ -130,13 +130,11 @@ class BrandSafetyVideoAudit(object):
 
         return brand_safety_score
 
-    def instantiate_es(self) -> Video:
-        video = Video(self.doc.main.id)
+    def add_brand_safety_data(self) -> Video:
         """
-        Instantiate Elasticsearch video model with brand safety data
-        The categories section is first defined with empty data and is filled in with all keyword hits discovered
-        during the audit
+        Add brand safety data to ES video document
         """
+        video = self.doc
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_data = {
             "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
