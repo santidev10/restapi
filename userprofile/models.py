@@ -316,11 +316,13 @@ class PermissionItem(models.Model):
             PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
 
     @classmethod
-    def all_perms(cls):
-        perm_names = [
+    def all_perms(cls, as_obj=False):
+        result = [
             perm[0] for perm in cls.STATIC_PERMISSIONS if perm[0] not in StaticPermissions.DEPRECATED
         ]
-        return perm_names
+        if as_obj is True:
+            result = PermissionItem.objects.filter(permission__in=result)
+        return result
 
 
 class UserChannel(Timestampable):
@@ -389,4 +391,9 @@ class Role(models.Model):
 
 class UserRole(models.Model):
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
-    role = models.OneToOneField(Role, on_delete=models.SET_NULL, null=True)
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "role"], name="unique_user_role")
+        ]
