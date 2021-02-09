@@ -21,6 +21,14 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         url = reverse(Namespace.USER_PROFILE + ":" + UserprofilePathName.ROLE_RETRIEVE_UPDATE, kwargs=kwargs)
         return url
 
+    def _get_payload(self, name, permissions, users):
+        payload = dict(
+            name=name,
+            permissions=permissions,
+            users=users,
+        )
+        return payload
+
     def setUp(self):
         super().setUp()
         self.user = self.create_test_user(perms={StaticPermissions.USER_MANAGEMENT: True})
@@ -36,11 +44,11 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         UserRole.objects.create(user=user1, role=role)
 
         response = self.client.get(self._get_url(role.id))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
         data = response.data
         role_permissions = role.permissions.all()
         enabled_permissions = [perm for perm in data["permissions"] if perm["enabled"] is True]
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual([p.id for p in role_permissions], [p["id"] for p in enabled_permissions])
         self.assertEqual([u["id"] for u in data["users"]], [self.user.id, user1.id])
 
@@ -53,15 +61,11 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
     def test_role_name_update(self):
         """ Test updating role name """
         role = Role.objects.create(name="test")
-        payload = dict(
-            name="update",
-            permissions={
-                StaticPermissions.USER_MANAGEMENT: True
-            }
-        )
+        payload = self._get_payload("update", {StaticPermissions.USER_MANAGEMENT: True}, [self.user.id])
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
-        role.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+        role.refresh_from_db()
         self.assertEqual(role.name, payload["name"])
 
     def test_remove_role_permission(self):
@@ -69,27 +73,26 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         # Create role with permission and remove with request
         role = Role.objects.create(name="test")
         role.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.USER_MANAGEMENT))
-        payload = dict(
-            name=role.name,
-            permissions={
-                StaticPermissions.USER_MANAGEMENT: False
-            }
-        )
+        payload = self._get_payload(role.name, {StaticPermissions.USER_MANAGEMENT: False}, [self.user.id])
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
-        role.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+        role.refresh_from_db()
         self.assertFalse(role.permissions.filter(permission=StaticPermissions.USER_MANAGEMENT).exists())
 
     def test_add_role_permission(self):
         """ Test adding new permission to role """
         # Create role without adding permissions
         role = Role.objects.create(name="test")
-        payload = dict(
-            name=role.name,
-            permissions={
-                StaticPermissions.USER_MANAGEMENT: True,
-            }
-        )
+        payload = self._get_payload(role.name, {StaticPermissions.USER_MANAGEMENT: True}, [self.user.id])
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(role.permissions.filter(permission=StaticPermissions.USER_MANAGEMENT).exists())
+
+    def test_add_role_user(self):
+        """ Test adding user to role """
+        role = Role.objects.create(name="test")
+        payload = self._get_payload(role.name, {StaticPermissions.USER_MANAGEMENT: True}, [self.user.id])
+        response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(UserRole.objects.filter(user=self.user, role=role).exists())

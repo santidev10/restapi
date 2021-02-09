@@ -2,16 +2,14 @@ import json
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from userprofile.constants import StaticPermissions
 from userprofile.models import PermissionItem
-from utils.unittests.int_iterator import int_iterator
 from userprofile.models import Role
-from userprofile.models import UserRole
+from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -51,9 +49,10 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
             }
         )
         response = self.client.post(self.url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
         role = Role.objects.get(name=payload["name"])
         permissions = set(role.permissions.all().values_list("permission", flat=True))
 
-        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue({StaticPermissions.RESEARCH, StaticPermissions.USER_MANAGEMENT}.issubset(permissions))
         self.assertFalse(StaticPermissions.MANAGED_SERVICE in permissions)
