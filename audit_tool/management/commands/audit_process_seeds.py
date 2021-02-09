@@ -65,7 +65,7 @@ class Command(BaseCommand):
                         thread=None,
                     )
             try:
-                self.audit = AuditProcessor.objects.filter(seed_status=0, completed__isnull=True, machine=None, thread=None).order_by("pause","id")[0]
+                self.audit = AuditProcessor.objects.filter(seed_status=0, completed__isnull=True, machine=None, thread=None, temp_stop=False).order_by("pause","id")[0]
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
