@@ -29,7 +29,6 @@ class UserRoleListCreateAPIView(APIView):
         return Response(data)
 
     def post(self, request, *args, **kwargs):
-        # Create new role
         serializer = RoleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()

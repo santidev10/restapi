@@ -8,6 +8,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from administration.api.serializers import UserSerializer
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
+from userprofile.models import Role
+from userprofile.models import UserRole
 from userprofile.constants import UserStatuses
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -91,3 +93,16 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data.get("items")), 1)
+
+    def test_filter_by_role(self):
+        self.create_admin_user()
+        role = Role.objects.create(name="test_role")
+        user1 = get_user_model().objects.create(email="test_list1@example.com", status=UserStatuses.ACTIVE.value)
+        get_user_model().objects.create(email="test_list2@example.com", status=UserStatuses.REJECTED.value)
+
+        UserRole.objects.create(user=user1, role=role)
+        url = "{}{}".format(self.url, f"?role={role.id}")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data.get("items")), 1)
+        self.assertEqual(response.data["items"][0]["id"], user1.id)

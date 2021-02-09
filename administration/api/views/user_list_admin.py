@@ -23,6 +23,7 @@ class UserListAdminQueryParamsNames:
     ASCENDING = "ascending"
     SEARCH = "search"
     STATUS = "status"
+    ROLE = "role"
 
 
 class UserListAdminApiView(ListAPIView):
@@ -82,6 +83,9 @@ class UserListAdminApiView(ListAPIView):
         status = self.request.query_params.get(UserListAdminQueryParamsNames.STATUS)
         if status:
             queryset = queryset.filter(status=status)
+        role = self.request.query_params.get(UserListAdminQueryParamsNames.ROLE)
+        if role and role.isnumeric():
+            queryset = queryset.filter(user_role__role_id=int(role))
         queryset = queryset.exclude(is_superuser=True)
         return queryset
 
