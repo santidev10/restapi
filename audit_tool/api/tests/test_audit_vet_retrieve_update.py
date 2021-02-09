@@ -126,7 +126,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             age_group="1",
             gender="2",
             brand_safety=["3", "4"],
-            iab_categories=["Video Games"],
+            iab_categories=["Action Video Games"],
             content_type="1",
             content_quality="0",
         )
@@ -382,7 +382,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertEqual(data["task_us_data"]["age_group"], str(payload["age_group"]))
-        self.assertEqual(data["task_us_data"]["brand_safety"], [str(_id) for _id in payload["brand_safety"]])
+        self.assertEqual(data["task_us_data"]["brand_safety"], [_id for _id in payload["brand_safety"]])
         self.assertEqual(data["task_us_data"]["content_type"], str(payload["content_type"]))
         self.assertEqual(data["task_us_data"]["content_quality"], str(payload["content_quality"]))
         self.assertEqual(data["task_us_data"]["gender"], str(payload["gender"]))
@@ -416,7 +416,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
             "vetting_id": vetting_item.id,
             "age_group": 2,
             "brand_safety": [
-                4, 11
+                11, 4
             ],
             "content_type": 1,
             "content_quality": 2,
@@ -440,12 +440,13 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.processed_by_user_id, user.id)
         self.assertEqual(data["task_us_data"]["age_group"], str(payload["age_group"]))
-        self.assertEqual(data["task_us_data"]["brand_safety"], [str(_id) for _id in payload["brand_safety"]])
+        self.assertEqual(data["task_us_data"]["brand_safety"], [_id for _id in payload["brand_safety"]])
         self.assertEqual(data["task_us_data"]["content_type"], str(payload["content_type"]))
         self.assertEqual(data["task_us_data"]["content_quality"], str(payload["content_quality"]))
         self.assertEqual(data["task_us_data"]["gender"], str(payload["gender"]))
         self.assertEqual(data["task_us_data"]["language"], payload["language"])
-        self.assertEqual(data["task_us_data"]["iab_categories"], [str(_id) for _id in payload["iab_categories"]])
+        self.assertEqual(sorted(data["task_us_data"]["iab_categories"]),
+                         sorted([_id for _id in payload["iab_categories"]]))
         self.assertEqual(payload["suitable"], vetting_item.clean)
         self.assertEqual(data["monetization"]["is_monetizable"], payload["is_monetizable"])
         self.assertTrue(vetting_item.processed > before)
