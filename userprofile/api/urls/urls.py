@@ -12,6 +12,9 @@ from userprofile.api.views import UserPasswordSetApiView
 from userprofile.api.views import UserPermissionsManagement
 from userprofile.api.views import UserProfileApiView
 from userprofile.api.views import WhiteLabelApiView
+from userprofile.api.views import UserRoleListCreateAPIView
+from userprofile.api.views import UserRoleRetrieveUpdateAPIView
+
 
 urlpatterns = [
     url(r"^users/$", UserCreateApiView.as_view(), name=UserprofilePathName.CREATE_USER),
@@ -25,4 +28,6 @@ urlpatterns = [
     url(r"^error_report/$", ErrorReportApiView.as_view(), name="error_report"),
     url(r"^config/$", WhiteLabelApiView.as_view(), name="white_label"),
     url(r"^users/manage_permissions/$", UserPermissionsManagement.as_view(), name="manage_permissions"),
+    url(r"^user_roles/$", UserRoleListCreateAPIView.as_view(), name=UserprofilePathName.ROLE_LIST_CREATE),
+    url(r"^user_roles/(?P<pk>\d+)/$", UserRoleRetrieveUpdateAPIView.as_view(), name=UserprofilePathName.ROLE_RETRIEVE_UPDATE),
 ]
