@@ -87,6 +87,7 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test Video discovery scheduler task runs when queue is below threshold """
         no_score = Video(next(int_iterator))
         no_score.populate_general_data(title="no_score_vid")
+        no_score.populate_stats(views=1)
         self.video_manager.upsert([no_score])
         threshold = Schedulers.VideoDiscovery.get_minimum_threshold() - 1
         with patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=threshold),\
