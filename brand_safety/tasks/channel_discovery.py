@@ -13,7 +13,15 @@ from utils.celery.utils import get_queue_size
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.ChannelDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_CHANNEL_DISCOVERY, max_retries=0)
 def channel_discovery_scheduler():
-    """ Queue channels with rescore = True or have no brand safety overall score """
+    """
+    Celery task to discover Channels with no brand safety data and add tasks to queue to be scored
+    Queue channels with rescore = True or have no brand safety overall score
+
+    In order to keep queue from getting too large or from channels being scored repeatedly, the queue size is
+        checked to be below a certain size before adding items to the queue.
+        Since the scheduler runs frequently, it may add items to the queue before the workers consuming from this
+        queue have processed them, leading to inefficient, multiple processing of the same items.
+    """
     if get_queue_size(Queue.BRAND_SAFETY_CHANNEL_PRIORITY) <= Schedulers.ChannelDiscovery.get_minimum_threshold():
         channel_manager = ChannelManager()
         base_query = channel_manager.forced_filters()

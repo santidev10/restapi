@@ -20,7 +20,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
-    video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+    video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS))
 
     def test_video_discovery_channel_rescore(self):
         """
@@ -87,12 +87,14 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test Video discovery scheduler task runs when queue is below threshold """
         no_score = Video(next(int_iterator))
         no_score.populate_general_data(title="no_score_vid")
+        no_score.populate_stats(views=1)
         self.video_manager.upsert([no_score])
         threshold = Schedulers.VideoDiscovery.get_minimum_threshold() - 1
         with patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=threshold),\
-            patch("brand_safety.tasks.video_discovery.group") as group_mock:
+                patch("brand_safety.tasks.video_discovery.group.apply_async") as group_apply_async,\
+                patch.object(VideoManager, "forced_filters", return_value=Q()):
             video_discovery_scheduler()
-            group_mock.assert_called_once()
+            group_apply_async.assert_called_once()
 
     def test_scheduler_not_runs(self):
         """ Test Video discovery scheduler task does not run when queue is above threshold """

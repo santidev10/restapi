@@ -1,5 +1,7 @@
 from celery import group
 
+from elasticsearch_dsl import Q
+
 from brand_safety.tasks.channel_update import channel_update
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -8,7 +10,16 @@ from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
-def channel_update_helper(scheduler, query, queue, sort=("-stats.subscribers",), rescore=False):
+def channel_update_helper(scheduler, query: Q, queue: str, sort=("-stats.subscribers",), rescore=False):
+    """
+    Helper function to accept parameters and add items to the target celery queue
+    :param scheduler: Schedulers class configuration
+    :param query: Elasticsearch query used to retrieve items to add to queue
+    :param queue: Name of target queue to add
+    :param sort:
+    :param rescore: Boolean to determine if current query is retrieving rescore=True items. If True,
+        then this will update items processed to be rescore=False
+    """
     channel_manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(queue)
     limit = scheduler.get_items_limit(queue_size)
