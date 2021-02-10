@@ -77,7 +77,8 @@ class TranscriptsFromCacheUpdater:
         """
         video_ids = [video.video.video_id for video in chunk]
         es_videos = self.manager.get(video_ids)
-        self.videos_map = {video.main.id: video for video in es_videos}
+        self.videos_map = {video.main.id: video for video in es_videos
+                           if hasattr(video, "main") and hasattr(video.main, "id")}
 
     def _handle_video(self, video: AuditVideoTranscript):
         """
