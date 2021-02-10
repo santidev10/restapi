@@ -7,6 +7,7 @@ import os
 import pickle
 import time
 
+from billiard.process import current_process
 from django.conf import settings
 from emoji import UNICODE_EMOJI
 
@@ -30,6 +31,7 @@ def pickled_data(fp, expires):
     def decorator_get_pickled(func):
         @functools.wraps(func)
         def wrapper(*_, **__):
+            print(fp)
             should_save = False
             try:
                 created_at = os.path.getctime(fp)
@@ -115,7 +117,7 @@ class AuditUtils(object):
         ]
         return hits
 
-    @pickled_data(f"{settings.TEMPDIR}/pickled_language_processors", 1800)
+    @pickled_data(f"{settings.TEMPDIR}/pickled_language_processors_{current_process().pid}", 1800)
     def get_language_processors(self) -> dict:
         """
         Get language processors with pickling
@@ -124,7 +126,7 @@ class AuditUtils(object):
         language_processors = get_bad_word_processors_by_language()
         return language_processors
     
-    @pickled_data(f"{settings.TEMPDIR}/pickled_severity_counts", 1800)
+    @pickled_data(f"{settings.TEMPDIR}/pickled_severity_counts_{current_process().pid}", 1800)
     def _get_default_severity_counts(self) -> dict:
         """
         Get severity counts with pickling
