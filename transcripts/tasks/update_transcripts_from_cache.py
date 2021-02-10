@@ -11,30 +11,7 @@ from transcripts.tasks.update_tts_url_transcripts import TRANSCRIPTS_UPDATE_ID_C
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.exception import backoff
 from utils.transform import populate_video_custom_captions
-
-
-def chunked_queryset(queryset, chunk_size):
-    """ Slice a queryset into chunks. """
-    start_pk = 0
-    queryset = queryset.order_by('pk')
-
-    while True:
-        # No entry left
-        if not queryset.filter(pk__gt=start_pk).exists():
-            break
-
-        try:
-            # Fetch chunk_size entries if possible
-            end_pk = queryset.filter(pk__gt=start_pk).values_list(
-                'pk', flat=True)[chunk_size - 1]
-
-            # Fetch rest entries if less than chunk_size left
-        except IndexError:
-            end_pk = queryset.values_list('pk', flat=True).last()
-
-        yield queryset.filter(pk__gt=start_pk).filter(pk__lte=end_pk)
-
-        start_pk = end_pk
+from utils.utils import chunked_queryset
 
 
 class TranscriptsFromCacheUpdater:
@@ -47,11 +24,13 @@ class TranscriptsFromCacheUpdater:
         self.not_xml_count = 0
         self.no_es_record_count = 0
         self.no_es_transcript_count = 0
+        self.no_cached_transcript_count = 0
         self.manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                                     upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
 
     def run(self):
-        query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__lte=TRANSCRIPTS_UPDATE_ID_CEILING)
+        query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__lte=TRANSCRIPTS_UPDATE_ID_CEILING) \
+            .order_by("id")
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
             self._handle_videos_chunk(chunk)
 
@@ -86,6 +65,9 @@ class TranscriptsFromCacheUpdater:
         print(f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%)")
         no_es_transcript_percentage = round((self.no_es_transcript_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
         print(f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%)")
+        no_cached_transcript_percentage = round((self.no_cached_transcript_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100,
+                                                2)
+        print(f"----- no es transcript: {self.no_es_transcript_count} ({no_cached_transcript_percentage}%)")
 
     def _map_es_videos(self, chunk: Iterable):
         """
@@ -104,6 +86,11 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_id = video.video.video_id
+
+        if video.transcript is None:
+            self.skipped_count += 1
+            self.no_cached_transcript_count += 1
+            return
 
         if "xml" not in video.transcript:
             self.skipped_count += 1
