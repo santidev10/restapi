@@ -24,7 +24,7 @@ def update_items(apps, *_, **__):
                     white_label.config['disable'].remove('Research > Videos')
             if ('Media Planning > Brand Suitable Target Lists' in white_label.config['disable'] or
                 'Media Planning > Custom Target Lists' in white_label.config['disable']):
-                white_label.config['disable'].append('Media Planning > List Builder')
+                white_label.config['disable'].append('List Builder')
                 updated = True
                 if 'Media Planning > Brand Suitable Target Lists' in white_label.config['disable']:
                     white_label.config['disable'].remove('Media Planning > Brand Suitable Target Lists')
