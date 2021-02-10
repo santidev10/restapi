@@ -24,4 +24,5 @@ class UserRoleRetrieveUpdateAPIView(APIView):
         serializer = RoleSerializer(role, data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response()
+        data = serializer.validated_data
+        return Response(data)
