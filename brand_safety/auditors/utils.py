@@ -31,7 +31,6 @@ def pickled_data(fp, expires):
     def decorator_get_pickled(func):
         @functools.wraps(func)
         def wrapper(*_, **__):
-            print(fp)
             should_save = False
             try:
                 created_at = os.path.getctime(fp)
