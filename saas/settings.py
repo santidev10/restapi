@@ -564,7 +564,19 @@ APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
 CUSTOM_SEGMENT_REGENERATION_DAYS_THRESHOLD = 7
 DEMO_SOURCE_ACCOUNT_ID = 8277883480
 
-DOMAIN_MANAGEMENT_PERMISSIONS = ()
+DOMAIN_MANAGEMENT_PERMISSIONS = (
+    "Google OAuth",
+    "Research",
+    "Media Buying > Accounts",
+    "List Builder",
+    "Analytics > Managed Service",
+    "Analytics > Forecasting",
+    "Tools > Pacing Report",
+    "Tools > Pricing Tool",
+    "Tools > CHF Trends",
+    "Tools > Audit Queue",
+    "Tools > Ads Analyzer"
+)
 
 try:
     from .local_settings import *
