@@ -25,10 +25,7 @@ def chunked_queryset(queryset: QuerySet, chunk_size=100):
 
     while True:
         end = start + chunk_size
-        print("start:", start)
-        print("end:", end)
         chunk = queryset[start:end]
-        print("chunk:", chunk)
         yield chunk
         if len(chunk) < chunk_size:
             break
