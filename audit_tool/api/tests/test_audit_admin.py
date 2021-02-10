@@ -30,12 +30,18 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         url = reverse(AuditPathName.AUDIT_ADMIN, [Namespace.AUDIT_TOOL])
         return url
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
         # Import and set models to avoid recursive ImportError
         from segment.models import CustomSegment
         from segment.models import CustomSegmentFileUpload
-        self.custom_segment_model = CustomSegment
-        self.custom_segment_export_model = CustomSegmentFileUpload
+        cls.custom_segment_model = CustomSegment
+        cls.custom_segment_export_model = CustomSegmentFileUpload
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def _create_segment_audit(self, user, audit_params=None, segment_params=None):
         default_audit_params = dict(source=1, audit_type=2, params=dict(instructions="test instructions"))

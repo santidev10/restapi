@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from .utils import create_test_audit_objects
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import AuditChannelVet
@@ -22,56 +23,24 @@ from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-AGE_GROUP_CHOICES = [
-    # id, age_group, parent_id
-    (0, "0 - 3 Toddlers", None),
-    (1, "4 - 8 Young Kids", None),
-    (2, "9 - 12 Older Kids", None),
-    (3, "13 - 17 Teens", None),
-    (4, "18 - 35 Adults", None),
-    (5, "36 - 54 Older Adults", None),
-    (6, "55+ Seniors", None),
-    (7, "Group - Kids (not teens)", 2),  # parent=2
-    (8, "Group - Family Friendly", 3),  # parent=3
-]
-GENDER_CHOICES = [
-    (0, "Neutral"),
-    (1, "Female"),
-    (2, "Male"),
-]
-QUALITY_CHOICES = [
-    (0, "Poor"),
-    (1, "Average"),
-    (2, "Premium"),
-]
-CONTENT_TYPE_CHOICES = [
-    (0, "UGC"),
-    (1, "Broadcast"),
-    (2, "Brands"),
-]
-
 class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, doc_id):
         url = reverse(AuditPathName.AUDIT_ITEM, [Namespace.AUDIT_TOOL], kwargs=dict(pk=doc_id))
         return url
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
         sections = [Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA]
-        self.channel_manager = ChannelManager(sections=sections)
-        self.video_manager = VideoManager(sections=sections)
+        cls.channel_manager = ChannelManager(sections=sections)
+        cls.video_manager = VideoManager(sections=sections)
 
         # add items to database for patch unit tests to work
-        for id, age_group, parent_id in AGE_GROUP_CHOICES:
-            AuditAgeGroup.objects.create(id=id, age_group=age_group, parent_id=parent_id)
+        create_test_audit_objects()
 
-        for id, gender in GENDER_CHOICES:
-            AuditGender.objects.create(id=id, gender=gender)
-
-        for id, quality in QUALITY_CHOICES:
-            AuditContentQuality.objects.create(id=id, quality=quality)
-
-        for id, content_type in CONTENT_TYPE_CHOICES:
-            AuditContentType.objects.create(id=id, content_type=content_type)
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def test_unauthorized_get(self):
         self.create_test_user()
