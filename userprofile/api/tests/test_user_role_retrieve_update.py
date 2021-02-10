@@ -96,3 +96,13 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(UserRole.objects.filter(user=self.user, role=role).exists())
+
+    def test_remove_role_user(self):
+        """ Test removing user from role """
+        role = Role.objects.create(name="test")
+        user_role = UserRole.objects.create(role=role, user=self.user)
+        payload = self._get_payload(role.name, {}, [])
+        response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user_role.refresh_from_db()
+        self.assertIsNone(user_role.role)
