@@ -20,6 +20,15 @@ from utils.utils import chunks_generator
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
 def video_discovery_scheduler():
+    """
+    Discovers Videos that have either rescore=True or have never been scored before
+    rescore field is used when videos need to be updated immediately and are prioritized first when scheduler runs.
+
+    In order to keep queue from getting too large or from videos being scored repeatedly, the queue size is
+        checked to be below a certain size before adding items to the queue.
+        Since the scheduler runs frequently, it may add items to the queue before the workers consuming from this
+        queue have processed them, leading to inefficient, multiple processing of the same items.
+    """
     video_manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(Queue.BRAND_SAFETY_VIDEO_PRIORITY)
 
@@ -32,7 +41,7 @@ def video_discovery_scheduler():
         batch_count = 0
         with_no_score = base_query & QueryBuilder().build().must_not().exists().field(f"{Sections.BRAND_SAFETY}.overall_score").get()
         sort = [{VIEWS_FIELD: {"order": SortDirections.DESCENDING}}]
-        for batch in bulk_search(Video, with_no_score, sort, VIEWS_FIELD, include_cursor_exclusions=True):
+        for batch in bulk_search(Video, with_no_score, sort, VIEWS_FIELD):
             task_signatures = []
             for chunk in chunks_generator(batch, size=Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
                 ids = [video.main.id for video in chunk]
