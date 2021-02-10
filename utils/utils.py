@@ -1,5 +1,6 @@
 import string
 from collections import Counter
+from django.db.models.query import QuerySet
 from itertools import count
 from itertools import groupby
 
@@ -12,6 +13,24 @@ def chunks_generator(iterable, size=10):
     for _, g in groupby(iterable, lambda _: next(c) // size):
         yield g
 
+
+def chunked_queryset(queryset: QuerySet, chunk_size=100):
+    """
+    Slice a queryset into chunks
+    :param queryset:
+    :param chunk_size:
+    :return:
+    """
+    start = 0
+
+    while True:
+        end = start + chunk_size
+        chunk = queryset[start:end]
+        yield chunk
+        if len(chunk) < chunk_size:
+            break
+
+        start += chunk_size
 
 def safe_exception(logger):
     def decorator(func):
