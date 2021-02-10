@@ -30,7 +30,7 @@ def chunked_queryset(queryset: QuerySet, chunk_size=100):
         if len(chunk) < chunk_size:
             break
 
-        start += end
+        start += chunk_size
 
 def safe_exception(logger):
     def decorator(func):
