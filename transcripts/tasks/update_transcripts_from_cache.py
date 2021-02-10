@@ -67,7 +67,7 @@ class TranscriptsFromCacheUpdater:
         print(f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%)")
         no_cached_transcript_percentage = round((self.no_cached_transcript_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100,
                                                 2)
-        print(f"----- no es transcript: {self.no_es_transcript_count} ({no_cached_transcript_percentage}%)")
+        print(f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%)")
 
     def _map_es_videos(self, chunk: Iterable):
         """
