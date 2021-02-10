@@ -9,10 +9,6 @@ from .utils import create_test_audit_objects
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import AuditChannelVet
-from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditGender
-from audit_tool.models import AuditContentQuality
-from audit_tool.models import AuditContentType
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
