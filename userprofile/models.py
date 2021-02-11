@@ -22,7 +22,6 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Opportunity
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -33,19 +32,6 @@ def get_default_settings():
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     }
-
-
-def get_default_accesses(via_google=False):
-    default_accesses_group_names = [
-        PermissionGroupNames.RESEARCH,
-        PermissionGroupNames.MEDIA_PLANNING,
-        PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
-        PermissionGroupNames.FORECASTING,
-        PermissionGroupNames.BRAND_SAFETY_SCORING,
-    ]
-    if not via_google:
-        default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
-    return default_accesses_group_names
 
 
 class UserProfileManager(UserManager):
