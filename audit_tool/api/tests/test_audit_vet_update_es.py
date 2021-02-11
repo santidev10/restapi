@@ -4,6 +4,7 @@ from uuid import uuid4
 from mock import patch
 from rest_framework.status import HTTP_200_OK
 
+from .utils import create_test_audit_objects
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -12,10 +13,6 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
-from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditGender
-from audit_tool.models import AuditContentQuality
-from audit_tool.models import AuditContentType
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -31,34 +28,6 @@ from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
-AGE_GROUP_CHOICES = [
-    # id, age_group, parent_id
-    (0, "0 - 3 Toddlers", None),
-    (1, "4 - 8 Young Kids", None),
-    (2, "9 - 12 Older Kids", None),
-    (3, "13 - 17 Teens", None),
-    (4, "18 - 35 Adults", None),
-    (5, "36 - 54 Older Adults", None),
-    (6, "55+ Seniors", None),
-    (7, "Group - Kids (not teens)", 2),  # parent=2
-    (8, "Group - Family Friendly", 3),  # parent=3
-]
-GENDER_CHOICES = [
-    (0, "Neutral"),
-    (1, "Female"),
-    (2, "Male"),
-]
-QUALITY_CHOICES = [
-    (0, "Poor"),
-    (1, "Average"),
-    (2, "Premium"),
-]
-CONTENT_TYPE_CHOICES = [
-    (0, "UGC"),
-    (1, "Broadcast"),
-    (2, "Brands"),
-]
-
 @patch("audit_tool.api.views.audit_vet_retrieve_update.generate_vetted_segment")
 class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA))
@@ -70,18 +39,14 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
             StaticPermissions.CTL__VET: True,
         })
 
-        # add items to database for patch unit tests to work
-        for id, age_group, parent_id in AGE_GROUP_CHOICES:
-            AuditAgeGroup.objects.create(id=id, age_group=age_group, parent_id=parent_id)
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        create_test_audit_objects()
 
-        for id, gender in GENDER_CHOICES:
-            AuditGender.objects.create(id=id, gender=gender)
-
-        for id, quality in QUALITY_CHOICES:
-            AuditContentQuality.objects.create(id=id, quality=quality)
-
-        for id, content_type in CONTENT_TYPE_CHOICES:
-            AuditContentType.objects.create(id=id, content_type=content_type)
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def _create_audit_meta_vet(self, audit_type, item_id):
         BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))

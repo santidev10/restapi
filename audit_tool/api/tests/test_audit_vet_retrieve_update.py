@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from .utils import create_test_audit_objects
 from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
 from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.api.urls.names import AuditPathName
@@ -22,7 +23,6 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
-from audit_tool.tests.utils import create_model_objs
 from brand_safety.models import BadWordCategory
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -43,7 +43,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        create_model_objs()
+        create_test_audit_objects()
 
     @classmethod
     def tearDownClass(cls):

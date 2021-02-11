@@ -8,7 +8,6 @@ from rest_framework.status import HTTP_200_OK
 
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.api.views.audit_export import AuditExportApiView
-from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta

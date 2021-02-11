@@ -14,6 +14,7 @@ from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -24,6 +25,14 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.BRAND_SAFETY, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES)
     channel_manager = ChannelManager(SECTIONS)
     video_manager = VideoManager(SECTIONS + (Sections.CHANNEL,))
+
+    def setUp(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.BLOCKLIST_MANAGER: True,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE: True,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE: True,
+            StaticPermissions.BLOCKLIST_MANAGER__EXPORT: True,
+        })
 
     def _get_url(self, data_type):
         url = reverse(AuditPathName.BLOCKLIST_LIST_CREATE, [Namespace.AUDIT_TOOL], kwargs=dict(data_type=data_type))
@@ -59,7 +68,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_add_increments(self):
         """ Test that new and existing items to blacklist increments blocked count """
-        user = self.create_admin_user()
+        user = self.user
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
 
@@ -110,7 +119,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_remove_increments(self):
         """ Test that removing only existing items from blocklist increments unblocked count """
-        user = self.create_admin_user()
+        user = self.user
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
         bl_v_exists = BlacklistItem.objects.create(item_id=videos[0].main.id, item_type=0, unblocked_count=11,
@@ -145,8 +154,6 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_unblock_rescore(self):
         """ Test that unblocking items sets brand safety rescore field to true """
-        self.create_admin_user()
-
         video = self._create_doc("video")
         channel = self._create_doc("channel")
 
@@ -168,7 +175,6 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_block_zero_score(self):
         """ Test that blocking items sets brand safety overall score to 0 """
-        self.create_admin_user()
         video = self._create_doc("video")
         channel = self._create_doc("channel")
         video.populate_brand_safety(overall_score=100)
@@ -194,7 +200,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_list_search(self):
         """ Test search by id and title """
-        user = self.create_admin_user()
+        user = self.user
         video_target = self._create_doc("video")
         video_target.populate_general_data(title="Main video")
         video_target.populate_custom_properties(blocklist=True)
@@ -243,7 +249,6 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_does_not_update_same_blocklist_value(self):
         """ Should not update BlacklistItem object if blocklist value does not change """
-        self.create_admin_user()
         video = self._create_doc("video")
         channel = self._create_doc("channel")
         video.populate_custom_properties(blocklist=True)
@@ -286,7 +291,6 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         from channel blocklist value
         https://channelfactory.atlassian.net/browse/VIQ2-488
         """
-        self.create_admin_user()
         channel1 = self._create_doc("channel")
         channel2 = self._create_doc("channel")
 
@@ -314,7 +318,6 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_channel_unblock(self):
         """ Test blocklisting channels does not unblock already blocked videos"""
-        self.create_admin_user()
         channel1 = self._create_doc("channel")
         channel2 = self._create_doc("channel")
         channel3 = self._create_doc("channel")
