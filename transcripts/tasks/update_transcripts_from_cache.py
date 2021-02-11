@@ -22,15 +22,25 @@ class TranscriptsFromCacheUpdater:
         self.upsert_queue = []
         self.skipped_count = 0
         self.not_xml_count = 0
+        self.processed_count = 0
         self.no_es_record_count = 0
         self.no_es_transcript_count = 0
+        self.total_to_process_count = 0
         self.no_cached_transcript_count = 0
         self.manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
                                     upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
 
-    def run(self):
-        query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__lte=TRANSCRIPTS_UPDATE_ID_CEILING) \
+    def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
+        """
+        main interface for running update script. optionally specify an inclusive floor from which to start, and an
+        inclusive ceiling at which to end
+        :param floor:
+        :param ceiling:
+        :return:
+        """
+        query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__gte=floor, id__lte=ceiling) \
             .order_by("id")
+        self.total_to_process_count = query.count()
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
             self._handle_videos_chunk(chunk)
 
@@ -41,31 +51,29 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_transcript_ids = [item.id for item in chunk]
-        first_id = video_transcript_ids[0]
-        self._report(int(first_id))
         self._map_es_videos(chunk)
         for video in chunk:
             self._handle_video(video)
         self._upsert_chunk()
         self.upsert_queue = []
+        self._report()
 
-    def _report(self, current_id: int):
+    def _report(self):
         """
         reports current progress
-        :param current_id:
         :return:
         """
-        percentage = round((int(current_id) / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
-        print(f"processing {current_id} of {TRANSCRIPTS_UPDATE_ID_CEILING} ({percentage}%)")
-        skipped_percentage = round((self.skipped_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
+        percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
+        print(f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%)")
+        skipped_percentage = round((self.skipped_count / self.total_to_process_count) * 100, 2)
         print(f"total skipped: {self.skipped_count} ({skipped_percentage}%)")
-        not_xml_percentage = round((self.not_xml_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
+        not_xml_percentage = round((self.not_xml_count / self.total_to_process_count) * 100, 2)
         print(f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%)")
-        no_es_record_percentage = round((self.no_es_record_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
+        no_es_record_percentage = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
         print(f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%)")
-        no_es_transcript_percentage = round((self.no_es_transcript_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100, 2)
+        no_es_transcript_percentage = round((self.no_es_transcript_count / self.total_to_process_count) * 100, 2)
         print(f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%)")
-        no_cached_transcript_percentage = round((self.no_cached_transcript_count / TRANSCRIPTS_UPDATE_ID_CEILING) * 100,
+        no_cached_transcript_percentage = round((self.no_cached_transcript_count / self.total_to_process_count) * 100,
                                                 2)
         print(f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%)")
 
@@ -114,6 +122,7 @@ class TranscriptsFromCacheUpdater:
         populate_video_custom_captions(es_video, transcript_texts=[captions], transcript_languages=[language],
                                        source="tts_url", asr_lang=language)
         self.upsert_queue.append(es_video)
+        self.processed_count += 1
 
     # exp. backoff w/ noise, intended to catch ES query queue limit exceeded exception
     @backoff(max_backoff=120, exceptions=(BulkIndexError,))
