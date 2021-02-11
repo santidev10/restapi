@@ -240,7 +240,8 @@ class ContextualAnalyzer(BaseAnalyzer):
                 "category": category,
                 # Whether or not a category was seen at least once
                 "matched": content_categories_counts[category] > 0,
-                "targeted": category in self.params[AnalysisFields.CONTENT_CATEGORIES]
+                "targeted": category in self.params[AnalysisFields.CONTENT_CATEGORIES],
+                "percent_occurrence": self.get_score(content_categories_counts[category], self._total_count or 1),
             }
             for category in category_sorted_keys
         ]

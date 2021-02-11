@@ -112,8 +112,17 @@ class ContexualAnalyzerTestCase(ExtendedAPITestCase):
         for analysis in analyses:
             analyzer.analyze(analysis)
         results = analyzer.get_results()
+        content_category_results = results["content_categories"]["category_occurrence"]
         self.assertEqual(results["content_categories"]["total_matched_percent"], round(2 / 3 * 100, 4))
-        self.assertEqual(results["content_categories"]["category_occurrence"][0]["category"], "Music")
+        self.assertEqual(content_category_results[0]["category"], "Music")
+        # Music matched twice out of three items
+        self.assertAlmostEqual(results["content_categories"]["category_occurrence"][0]["percent_occurrence"],
+                               2 / 3 * 100, places=4)
+
+        # Remaining categories only occur once
+        for category_data in content_category_results[1:]:
+            with self.subTest(f"Test occurrence: {category_data['category']}"):
+                self.assertAlmostEqual(category_data["percent_occurrence"], 1 / 3 * 100, places=4)
 
         all_categories = set()
         for d in data:
