@@ -46,13 +46,13 @@ class UpdateTranscriptsFromCacheTestCase(TestCase):
 
     def test_update_success(self):
         self._set_up_data()
-        second_to_last = AuditVideoTranscript.objects.order_by("id").last().id - 1
-        with patch("transcripts.tasks.update_transcripts_from_cache.TRANSCRIPTS_UPDATE_ID_CEILING", second_to_last), \
-            patch.object(TranscriptsFromCacheUpdater, "CHUNK_SIZE", 5):
+        with patch.object(TranscriptsFromCacheUpdater, "CHUNK_SIZE", 5):
+            second_item = AuditVideoTranscript.objects.order_by("id").first().id + 1
+            second_to_last_item = AuditVideoTranscript.objects.order_by("id").last().id - 1
             updater = TranscriptsFromCacheUpdater()
-            updater.run()
-            es_videos = self.manager.get(self.video_ids[:9])
-            for video in es_videos:
+            updater.run(floor=second_item, ceiling=second_to_last_item)
+            processed_videos = self.manager.get(self.video_ids[1:9])
+            for video in processed_videos:
                 with self.subTest(video.main.id):
                     latest_transcript = video.custom_captions.items[-1]
                     self.assertNotIn("asdf", latest_transcript.text)
@@ -60,8 +60,8 @@ class UpdateTranscriptsFromCacheTestCase(TestCase):
                     self.assertIn(self.fox_sentence, latest_transcript.text)
                     self.assertIn(self.sphinx_sentence, latest_transcript.text)
 
-            unprocessed = self.manager.get(self.video_ids[-1:])
-            for video in unprocessed:
+            unprocessed_videos = self.manager.get(self.video_ids[:0] + self.video_ids[-1:])
+            for video in unprocessed_videos:
                 latest_transcript = video.custom_captions.items[-1]
                 self.assertIn("asdf", latest_transcript.text)
                 self.assertNotIn(self.fox_sentence, latest_transcript.text)
