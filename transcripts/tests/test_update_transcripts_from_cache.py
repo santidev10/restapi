@@ -46,9 +46,9 @@ class UpdateTranscriptsFromCacheTestCase(TestCase):
 
     def test_update_success(self):
         self._set_up_data()
-        second_to_last_item = AuditVideoTranscript.objects.order_by("id").last().id - 1
         with patch.object(TranscriptsFromCacheUpdater, "CHUNK_SIZE", 5):
             second_item = AuditVideoTranscript.objects.order_by("id").first().id + 1
+            second_to_last_item = AuditVideoTranscript.objects.order_by("id").last().id - 1
             updater = TranscriptsFromCacheUpdater()
             updater.run(floor=second_item, ceiling=second_to_last_item)
             processed_videos = self.manager.get(self.video_ids[1:9])
