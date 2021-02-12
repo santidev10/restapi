@@ -3,7 +3,6 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest.mock import ANY
 from unittest.mock import MagicMock
 from unittest.mock import PropertyMock
@@ -11,7 +10,7 @@ from unittest.mock import patch
 
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
-from django.test import TestCase
+from django.test import TransactionTestCase
 from google.auth.exceptions import RefreshError
 from googleads.errors import AdWordsReportBadRequestError
 from pytz import timezone
@@ -30,12 +29,10 @@ from aw_reporting.adwords_reports import GEO_LOCATION_REPORT_FIELDS
 from aw_reporting.adwords_reports import date_formatted
 from aw_reporting.google_ads.constants import MIN_FETCH_DATE
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
 from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
-from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
 from aw_reporting.google_ads.updaters.interests import AudienceAWType
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
@@ -82,7 +79,7 @@ from utils.unittests.redis_mock import MockRedis
 from utils.unittests.str_iterator import str_iterator
 
 
-class UpdateAwAccountsTestCase(TestCase):
+class UpdateAwAccountsTestCase(TransactionTestCase):
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
