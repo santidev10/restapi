@@ -1,7 +1,7 @@
 from datetime import timedelta
 from mock import patch
 
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
@@ -12,7 +12,7 @@ from utils.unittests.int_iterator import int_iterator
 from utils.datetime import now_in_default_tz
 
 
-class TestUpdateOpportunityPerformance(TransactionTestCase):
+class TestUpdateOpportunityPerformance(TestCase):
     def _create_data(self):
         end = now_in_default_tz() + timedelta(days=10)
         op = Opportunity.objects.create(name="first", id=f"id_{next(int_iterator)}", probability=100, end=end)

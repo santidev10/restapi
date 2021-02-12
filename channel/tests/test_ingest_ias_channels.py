@@ -1,21 +1,16 @@
-import boto3
+from datetime import timedelta
 import random
 from mock import patch
-from moto import mock_s3
-from django.conf import settings
-# from django.test.testcases import TransactionTestCase
+
 from django.utils import timezone
-from datetime import timedelta
-from channel.tasks.ingest_ias_channels_v2 import IASChannelIngestor
+
 from audit_tool.models import IASChannel
 from audit_tool.models import IASHistory
 from audit_tool.models import AuditChannel
 from audit_tool.models import get_hash_name
-from unittest import skip
-from utils.unittests.test_case import ExtendedAPITestCase
+from channel.tasks.ingest_ias_channels_v2 import IASChannelIngestor
 from es_components.tests.utils import ESTestCase
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 FILE_NAME = "file.csv"

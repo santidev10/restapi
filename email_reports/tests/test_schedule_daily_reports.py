@@ -1,12 +1,12 @@
 from unittest.mock import patch
 
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from aw_reporting.models import Account
 from email_reports.tasks import schedule_daily_reports
 
 
-class ScheduleDailyReportsCase(TransactionTestCase):
+class ScheduleDailyReportsCase(TestCase):
 
     @patch("email_reports.tasks.send_daily_email_reports.apply_async")
     def test_send_schedule_daily_reports(self, send_daily_email_reports):

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
-from django.test import TransactionTestCase
+from django.test import TestCase
 from google.auth.exceptions import RefreshError
 from googleads.errors import AdWordsReportBadRequestError
 from pytz import timezone
@@ -82,7 +82,7 @@ from utils.unittests.redis_mock import MockRedis
 from utils.unittests.str_iterator import str_iterator
 
 
-class UpdateAwAccountsTestCase(TransactionTestCase):
+class UpdateAwAccountsTestCase(TestCase):
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,

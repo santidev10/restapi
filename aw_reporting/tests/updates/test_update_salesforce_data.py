@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core import mail
-from django.test import TransactionTestCase
+from django.test import TestCase
 from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
@@ -35,7 +35,7 @@ from utils.unittests.patch_now import patch_now
 from utils.unittests.str_iterator import str_iterator
 
 
-class UpdateSalesforceDataTestCase(TransactionTestCase):
+class UpdateSalesforceDataTestCase(TestCase):
     def test_update_dynamic_placement_service_fee(self):
         opportunity = Opportunity.objects.create(id=1)
         today = start = end = date(2017, 1, 1)

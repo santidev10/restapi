@@ -1,10 +1,10 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from email_reports.models import SavedEmail
 
 
-class SavedEmailCase(TransactionTestCase):
+class SavedEmailCase(TestCase):
 
     def test_get_not_found(self):
         url = reverse("email_reports_api_urls:email_report_web_view",
