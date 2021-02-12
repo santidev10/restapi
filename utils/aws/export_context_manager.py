@@ -57,7 +57,8 @@ class ExportContextManager:
         channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
         channel_blocklist = {
             channel.main.id: channel.custom_properties.blocklist
-            for channel in channel_manager.get([video["channel_id"] for video in chunk if video["channel_id"] is not None])
+            for channel in channel_manager.get([video["channel_id"]
+                                                for video in chunk if video["channel_id"] is not None], skip_none=True)
         }
         data = [
             item for item in chunk if channel_blocklist.get(item["channel_id"]) is not True
