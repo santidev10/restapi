@@ -65,11 +65,17 @@ def sync_dv_partners(oauth_account_ids: list = False, force_all=False, sync_adve
             partners_response = request_partners(resource)
         except (HttpAccessTokenRefreshError, HttpError) as err:
             # OAuth revoked access also includes HttpError 403
-            if isinstance(err, HttpError) and getattr(err, "args", [{"status": None}])[0]["status"] != "403":
-                raise
-            account.revoked_access = True
-            account.save(update_fields=["revoked_access"])
-            continue
+            if isinstance(err, HttpError):
+                status = getattr(err, "args", [{"status": None}])[0]["status"]
+                # service unavailable
+                if status == "503":
+                    continue
+                elif status == "403":
+                    account.revoked_access = True
+                    account.save(update_fields=["revoked_access"])
+                    continue
+                else:
+                    raise
         partner_serializers = serialize_dv360_list_response_items(
             response=partners_response,
             items_key="partners",
