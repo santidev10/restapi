@@ -12,7 +12,6 @@ from utils.es_components_api_utils import ESDictSerializer
 from utils.es_components_api_utils import VettedStatusSerializerMixin
 from utils.es_components_api_utils import BlackListSerializerMixin
 from utils.serializers.fields import ParentDictValueField
-from es_components.managers import ChannelManager
 
 
 REGEX_TO_REMOVE_TIMEMARKS = r"^\s*$|((\r\n|\n|\r|\,|)(\d+(\:\d+\:\d+[.,]\d+|))(\s+-->\s+\d+\:\d+\:\d+[.,]\d+|))"
@@ -22,7 +21,6 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
     chart_data = SerializerMethodField()
     transcript = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
-    channel_thumbnail = SerializerMethodField()
 
     # Controlled by permissions
     blacklist_data = ParentDictValueField("blacklist_data", source="main.id")
@@ -41,7 +39,10 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["channel"]["thumbnail_image_url"] = self.context["thumbnail_image_url"].get(instance.channel.id)
+        try:
+            data["channel"]["thumbnail_image_url"] = self.context["thumbnail_image_url"].get(instance.channel.id)
+        except KeyError:
+            pass
         data.pop(Sections.TASK_US_DATA, None)
         return data
 
@@ -98,10 +99,6 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
                 text = item.text
                 break
         return text
-
-    def get_channel_thumbnail(self, video):
-        thumbnail_image_url = self.context["thumbnail_image_url"]
-        return
 
     @staticmethod
     def get_best_available_language(lang_code_priorities, captions_items):
