@@ -69,7 +69,7 @@ class StaticPermissions:
     BSTE__DELETE = "bste.delete"
     BSTE__EXPORT = "bste.export"
 
-    # Custom Target Lists and Brand Suitable Target Lists
+    # Custom Target Lists and Brand Suitable Featured Lists
     BUILD = "build"
     BUILD__BSTL = "build.bstl"
     BUILD__BSTL_EXPORT = "build.bstl_export"
