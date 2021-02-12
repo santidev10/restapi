@@ -104,13 +104,18 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
     def get_serializer_context(self):
-        channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES])
+        channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES,Sections.GENERAL_DATA])
         channel_ids = [video.channel.id for video in self.paginator.page.object_list if video.channel.id is not None]
+        channels = channel_manager.get(channel_ids, skip_none=True)
         context = {
             "user": self.request.user,
             "channel_blocklist": {
                 channel.main.id: channel.custom_properties.blocklist
-                for channel in channel_manager.get(channel_ids, skip_none=True)
+                for channel in channels
+            },
+            "thumbnail_image_url": {
+                channel.main.id: channel.general_data.thumbnail_image_url
+                for channel in channels
             }
         }
         return context
