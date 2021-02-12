@@ -1,23 +1,37 @@
+import logging
 from typing import Iterable
 
 from bs4 import BeautifulSoup
+from celery.exceptions import Retry
+from datetime import timedelta
+from django.conf import settings
+from django.utils import timezone
 from elasticsearch.helpers.errors import BulkIndexError
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 
+from administration.notifications import send_email
 from audit_tool.models import AuditVideoTranscript
 from transcripts.tasks.update_tts_url_transcripts import TRANSCRIPTS_UPDATE_ID_CEILING
 from transcripts.utils import get_formatted_captions_from_soup
+from utils.celery.tasks import lock
 from utils.exception import backoff
 from utils.transform import populate_video_custom_captions
 from utils.utils import chunked_queryset
 
 
+logger = logging.getLogger(__name__)
+
+
 class TranscriptsFromCacheUpdater:
+
     CHUNK_SIZE = 5000
+    LOCK_NAME = "update_transcripts_from_cache"
+    EMAIL_LIST = ["andrew.wong@channelfactory.com"],
 
     def __init__(self):
+        self.cursor = 0
         self.videos_map = {}
         self.upsert_queue = []
         self.skipped_count = 0
@@ -50,7 +64,6 @@ class TranscriptsFromCacheUpdater:
         :param chunk:
         :return:
         """
-        video_transcript_ids = [item.id for item in chunk]
         self._map_es_videos(chunk)
         for video in chunk:
             self._handle_video(video)
@@ -64,18 +77,36 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
-        print(f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%)")
         skipped_percentage = round((self.skipped_count / self.total_to_process_count) * 100, 2)
-        print(f"total skipped: {self.skipped_count} ({skipped_percentage}%)")
         not_xml_percentage = round((self.not_xml_count / self.total_to_process_count) * 100, 2)
-        print(f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%)")
         no_es_record_percentage = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
-        print(f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%)")
         no_es_transcript_percentage = round((self.no_es_transcript_count / self.total_to_process_count) * 100, 2)
-        print(f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%)")
         no_cached_transcript_percentage = round((self.no_cached_transcript_count / self.total_to_process_count) * 100,
                                                 2)
-        print(f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%)")
+
+        report_body = (
+            f"cursor: {self.cursor} \n"
+            f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%) \n"
+            f"total skipped: {self.skipped_count} ({skipped_percentage}%) \n"
+            f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%) \n"
+            f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%) \n"
+            f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
+            f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%) \n"
+        )
+        logger.info(report_body)
+
+        try:
+            lock(lock_name=self.LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
+        except Retry:
+            return
+
+        subject = f"Update transcripts from cache progress: ({percentage}%)"
+        send_email(
+            subject=subject,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
+            recipient_list=self.EMAIL_LIST,
+            html_message=report_body
+        )
 
     def _map_es_videos(self, chunk: Iterable):
         """
@@ -94,6 +125,7 @@ class TranscriptsFromCacheUpdater:
         :param video:
         :return:
         """
+        self.cursor = video.id
         video_id = video.video.video_id
 
         if video.transcript is None:
