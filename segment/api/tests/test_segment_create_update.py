@@ -456,7 +456,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
-        self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         data = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -1099,7 +1099,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_create_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
-        self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -1116,7 +1116,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
-        user = self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=1, owner=user,

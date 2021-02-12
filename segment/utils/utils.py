@@ -174,8 +174,8 @@ def set_user_perm_params(request, ctl_params):
     :return:
     """
     # If user is not admin / vetting admin, force create vetted safe only
-    if not (request.user and request.user.has_permission(StaticPermissions.CTL__EXPORT_ADMIN)) \
-            or not request.user.has_permission(StaticPermissions.CTL__VET_ADMIN):
+    if not (request.user and request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN)) \
+            or not request.user.has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
         ctl_params["vetting_status"] = [1]
     return ctl_params
 
@@ -183,10 +183,10 @@ def set_user_perm_params(request, ctl_params):
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
     """ Check if user is admin or is CTL creator """
     def has_permission(self, request, view):
-        if isinstance(request.user, get_user_model()) and request.user.has_permission(StaticPermissions.CTL__EXPORT_ADMIN):
+        if isinstance(request.user, get_user_model()) and request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
             return True
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])
         except CustomSegment.DoesNotExist:
             raise ValidationError(f"Custom Segment with id {view.kwargs['pk']} does not exist.")
-        return request.user.has_permission(StaticPermissions.CTL__EXPORT_ADMIN) or segment.owner == request.user
+        return request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN) or segment.owner == request.user

@@ -315,7 +315,7 @@ class AuditVetBaseSerializer(Serializer):
         limbo_data = {}
         try:
             # If vetting admin, accept vetting result as final
-            if self.context["user"].has_permission(StaticPermissions.CTL__VET_ADMIN):
+            if self.context["user"].has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
                 limbo_data["limbo_status"] = False
                 return limbo_data
         except (KeyError, AttributeError):

@@ -24,7 +24,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def setUp(self) -> None:
         self.user = self.create_test_user(perms={
-            StaticPermissions.CTL: True,
+            StaticPermissions.BUILD__CTL: True,
         })
 
     def _get_url(self, segment_type):
@@ -78,7 +78,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_owner_filter_list(self):
         user = self.create_test_user(perms={
-            StaticPermissions.CTL: True,
+            StaticPermissions.BUILD__CTL: True,
         })
         seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
         seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
@@ -117,7 +117,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_list_type_filter_list(self):
         user = self.create_test_user(perms={
-            StaticPermissions.CTL: True,
+            StaticPermissions.BUILD__CTL: True,
         })
         seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
         seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
@@ -396,7 +396,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
         self.create_test_user(perms={
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
         })
 
         test_user_1 = self._create_user()
@@ -414,8 +414,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def test_audit_vetter_list(self):
         """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
         self.create_test_user(perms={
-            StaticPermissions.CTL: True,
-            StaticPermissions.CTL__VET: True,
+            StaticPermissions.BUILD__CTL: True,
+            StaticPermissions.BUILD__CTL_VET: True,
         })
         test_user_1 = self._create_user()
         test_user_2 = self._create_user()
@@ -431,7 +431,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_vetting_complete(self):
         vetting_user = self.create_test_user(perms={
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
         })
 
         test_user_1 = self._create_user()
@@ -459,7 +459,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         """ Test users with create ctl permission can view and download their own list """
         user_1 = self._create_user()
         user_2 = self.create_test_user(perms={
-            StaticPermissions.CTL: True,
+            StaticPermissions.BUILD__CTL: True,
         })
         self._create_segment(dict(owner=user_1, segment_type=0, title="test_2", list_type=0),
                              export_params=dict(query={}, download_url="test_2_url"))

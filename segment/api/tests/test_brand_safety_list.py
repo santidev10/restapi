@@ -96,7 +96,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
 
     def test_bstl_download_url_permission(self):
         self.create_test_user(perms={
-            StaticPermissions.BSTL: True
+            StaticPermissions.BUILD__BSTL: True
         })
         segment = CustomSegment.objects.create(
             segment_type=SegmentTypeEnum.CHANNEL.value,
