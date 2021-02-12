@@ -3,7 +3,6 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest.mock import ANY
 from unittest.mock import MagicMock
 from unittest.mock import PropertyMock
@@ -30,12 +29,10 @@ from aw_reporting.adwords_reports import GEO_LOCATION_REPORT_FIELDS
 from aw_reporting.adwords_reports import date_formatted
 from aw_reporting.google_ads.constants import MIN_FETCH_DATE
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
 from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
-from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
 from aw_reporting.google_ads.updaters.interests import AudienceAWType
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater

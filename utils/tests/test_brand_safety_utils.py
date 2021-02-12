@@ -1,11 +1,11 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 import brand_safety.constants as constants
 from utils.brand_safety import get_brand_safety_data
 from utils.brand_safety import get_brand_safety_label
 
 
-class BrandSafetyDecoratorTestCase(TransactionTestCase):
+class BrandSafetyDecoratorTestCase(TestCase):
     def test_get_brand_safety_label(self):
         test_1 = {
             "score": 90,

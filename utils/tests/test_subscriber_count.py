@@ -1,8 +1,8 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 from utils.utils import convert_subscriber_count
 
 
-class SubscriberCountTestCase(TransactionTestCase):
+class SubscriberCountTestCase(TestCase):
     def test_subscriber_count_converter(self):
         subs_string_1 = "13.45k"
         subs_string_2 = "839"

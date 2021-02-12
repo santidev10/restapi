@@ -1,12 +1,12 @@
 from time import sleep
 
 from django.db import IntegrityError
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from cache.models import CacheItem
 
 
-class CacheTestCase(TransactionTestCase):
+class CacheTestCase(TestCase):
     def setUp(self):
         self.item_1 = CacheItem.objects.create(key="test1", value=dict(val="testval1"))
         self.item_2 = CacheItem.objects.create(key="test2", value=dict(val="testval2"))
