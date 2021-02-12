@@ -87,7 +87,7 @@ class VideoAuditor(BaseAuditor):
             video_audits = [self.audit_video(video) for video in with_data]
             all_audits.extend(video_audits)
             if index:
-                to_index = [audit.instantiate_es() for audit in video_audits]
+                to_index = [audit.add_brand_safety_data() for audit in video_audits]
                 self.index_audit_results(self.video_manager, to_index)
         return all_audits
 
@@ -111,7 +111,7 @@ class VideoAuditor(BaseAuditor):
             self._check_rescore_channels(check_rescore_channels)
             scored.extend(video_audits)
             if index is True:
-                to_index = [audit.instantiate_es() for audit in video_audits]
+                to_index = [audit.add_brand_safety_data() for audit in video_audits]
                 self.index_audit_results(self.video_manager, to_index)
         return scored
 

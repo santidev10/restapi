@@ -14,6 +14,7 @@ from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -25,6 +26,14 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(SECTIONS)
     video_manager = VideoManager(SECTIONS + (Sections.CHANNEL,))
 
+    def setUp(self):
+        self.user = self.create_test_user(perms={
+            StaticPermissions.BLOCKLIST_MANAGER: True,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE: True,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE: True,
+            StaticPermissions.BLOCKLIST_MANAGER__EXPORT: True,
+        })
+
     def _get_url(self, data_type):
         url = reverse(AuditPathName.BLOCKLIST_LIST_CREATE, [Namespace.AUDIT_TOOL], kwargs=dict(data_type=data_type))
         return url
@@ -33,16 +42,19 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         resource = "/watch?v=" if data_type == "video" else "/channel/"
         return f"https://www.youtube.com{resource}{item_id}"
 
-    def _create_doc(self, data_type="video"):
+    def _create_doc(self, data_type="video", blocklist=True):
         if data_type == "video":
+            id_length = 11
             model = Video
-            prefix = "video_"
+            suffix = "_video"
         else:
+            id_length = 24
             model = Channel
-            prefix = "long_youtube_channel_"
-        doc = model(prefix + str(next(int_iterator)))
+            suffix = "_channel"
+        doc_id = (str(next(int_iterator)) + suffix).zfill(id_length)
+        doc = model(doc_id)
         doc.populate_general_data(title=f"Title for {doc.main.id}")
-        doc.populate_custom_properties(blocklist=True)
+        doc.populate_custom_properties(blocklist=blocklist)
         return doc
 
     def test_admin_permission(self):
@@ -56,7 +68,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_add_increments(self):
         """ Test that new and existing items to blacklist increments blocked count """
-        user = self.create_admin_user()
+        user = self.user
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
 
@@ -107,7 +119,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_remove_increments(self):
         """ Test that removing only existing items from blocklist increments unblocked count """
-        user = self.create_admin_user()
+        user = self.user
         videos = [self._create_doc("video") for _ in range(2)]
         channels = [self._create_doc("channel") for _ in range(2)]
         bl_v_exists = BlacklistItem.objects.create(item_id=videos[0].main.id, item_type=0, unblocked_count=11,
@@ -142,9 +154,8 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_unblock_rescore(self):
         """ Test that unblocking items sets brand safety rescore field to true """
-        self.create_admin_user()
-        video = Video(f"video_{next(int_iterator)}")
-        channel = Channel(f"yt_channel_{next(int_iterator)}")
+        video = self._create_doc("video")
+        channel = self._create_doc("channel")
 
         self.video_manager.upsert([video])
         self.channel_manager.upsert([channel])
@@ -164,9 +175,8 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_block_zero_score(self):
         """ Test that blocking items sets brand safety overall score to 0 """
-        self.create_admin_user()
-        video = Video(f"video_{next(int_iterator)}")
-        channel = Channel(f"yt_channel_{next(int_iterator)}")
+        video = self._create_doc("video")
+        channel = self._create_doc("channel")
         video.populate_brand_safety(overall_score=100)
         channel.populate_brand_safety(overall_score=100)
 
@@ -190,11 +200,11 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_list_search(self):
         """ Test search by id and title """
-        user = self.create_admin_user()
-        video_target = Video(f"video_{next(int_iterator)}")
+        user = self.user
+        video_target = self._create_doc("video")
         video_target.populate_general_data(title="Main video")
         video_target.populate_custom_properties(blocklist=True)
-        channel_target = Channel(f"yt_channel_{next(int_iterator)}")
+        channel_target = self._create_doc("channel")
         channel_target.populate_general_data(title="Focus channel")
         channel_target.populate_custom_properties(blocklist=True)
         other_videos = [self._create_doc("video") for _ in range(10)]
@@ -239,9 +249,8 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_does_not_update_same_blocklist_value(self):
         """ Should not update BlacklistItem object if blocklist value does not change """
-        self.create_admin_user()
-        video = Video(f"video_id{next(int_iterator)}")
-        channel = Channel(f"youtube__channel__id__{next(int_iterator)}")
+        video = self._create_doc("video")
+        channel = self._create_doc("channel")
         video.populate_custom_properties(blocklist=True)
         video.populate_custom_properties(blocklist=True)
 
@@ -282,13 +291,16 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         from channel blocklist value
         https://channelfactory.atlassian.net/browse/VIQ2-488
         """
-        self.create_admin_user()
-        channel1 = Channel(f"yt_channel_{next(int_iterator)}")
-        channel2 = Channel(f"yt_channel_{next(int_iterator)}")
-        videos1 = [Video(**{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel1.main.id}})
-                   for _ in range(2)]
-        videos2 = [Video(**{"main": {"id": f"video_{next(int_iterator)}"}, "channel": {"id": channel2.main.id}})
-                   for _ in range(2)]
+        channel1 = self._create_doc("channel")
+        channel2 = self._create_doc("channel")
+
+        videos1 = [self._create_doc("video", blocklist=False) for _ in range(2)]
+        for v in videos1:
+            v.populate_channel(id=channel1.main.id)
+        videos2 = [self._create_doc("video", blocklist=False) for _ in range(2)]
+        for v in videos2:
+            v.populate_channel(id=channel2.main.id)
+
         channels = [channel1, channel2]
         self.video_manager.upsert(videos1 + videos2)
         self.channel_manager.upsert(channels)
@@ -306,10 +318,9 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_channel_unblock(self):
         """ Test blocklisting channels does not unblock already blocked videos"""
-        self.create_admin_user()
-        channel1 = Channel(f"yt_channel_{next(int_iterator)}")
-        channel2 = Channel(f"yt_channel_{next(int_iterator)}")
-        channel3 = Channel(f"yt_channel_{next(int_iterator)}")
+        channel1 = self._create_doc("channel")
+        channel2 = self._create_doc("channel")
+        channel3 = self._create_doc("channel")
         blocklist = {"custom_properties": {"blocklist": True}}
         videos1 = [
             Video(

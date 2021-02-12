@@ -169,15 +169,26 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param validated_data: dict
         :return: CustomSegment
         """
+        title_hash = get_hash_name(validated_data["title"].lower().strip())
+        segment = CustomSegment.objects.create(owner_id=self.context["request"].user.id, title_hash=title_hash,
+                                               **validated_data)
         try:
-            title_hash = get_hash_name(validated_data["title"].lower().strip())
-            segment = CustomSegment.objects.create(owner_id=self.context["request"].user.id, title_hash=title_hash,
-                                                   **validated_data)
             self._create_export(segment)
             # pylint: disable=broad-except
+        except ValidationError as err:
+            segment.statistics["error"] = str(err.detail[0])
+            segment.save(update_fields=["statistics"])
+            raise err
+        except CTLEmptySourceUrlException:
+            segment_type_repr = SegmentTypeEnum(segment.segment_type).name
+            segment.delete()
+            raise ValidationError(f"Mismatching file format. {segment_type_repr.capitalize()} lists "
+                                  f"need {segment_type_repr.lower()} urls. Please adjust and try again")
         except Exception as error:
             # pylint: enable=broad-except
-            raise ValidationError(f"Exception trying to create segment: {error}.")
+            # Delete CTL if unexpected exception occurs
+            segment.delete()
+            raise ValidationError(f"Exception trying to create segment: {error}. Please try again.")
         return segment
 
     def update(self, instance, validated_data: dict) -> CustomSegment:
@@ -370,8 +381,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
-                    raise ValidationError("Error: No valid source urls. Please check that urls in column A are valid"
-                                          "YouTube urls.")
+                    raise CTLEmptySourceUrlException
                 writer = csv.writer(dest)
                 writer.writerows(rows)
 
@@ -385,7 +395,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     name=getattr(source_file, "name", None)
                 )
             )
-        except ValidationError:
+        except CTLEmptySourceUrlException:
             raise
         except Exception as err:
             logger.exception("Error creating CTL source file")
@@ -498,7 +508,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if (not old_audit_params and file is not None) or (old_audit_params.get(keyword_type) and file):
             filename = file.name
             file_data = keyword_extractor(file)
-            if not file_data[0]:
+            if len(file_data) <= 0 or len(file_data[0]) <= 0:
                 raise ValidationError(f"Error: empty {keyword_type} keywords file")
         # Creating brand new audit with no file or removing the file sets empty data
         elif (not file and not old_audit_params) or (old_audit_params.get(keyword_type) and hit_threshold is None):
@@ -560,3 +570,7 @@ class CTLWithoutDownloadUrlSerializer(CTLSerializer):
         data = super().to_representation(instance)
         data.pop("download_url", None)
         return data
+
+
+class CTLEmptySourceUrlException(Exception):
+    pass

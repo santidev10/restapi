@@ -10,7 +10,7 @@ from userprofile.constants import StaticPermissions
 
 class ChannelTrackApiView(APIView, PermissionRequiredMixin):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__VET),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET_ADMIN, StaticPermissions.BUILD__CTL_VET),
     )
 
     def post(self, request, *args, **kwargs):

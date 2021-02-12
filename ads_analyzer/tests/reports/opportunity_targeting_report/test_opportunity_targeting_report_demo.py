@@ -418,10 +418,6 @@ class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetin
         columns = self.columns
         self.assertAlmostEqual(stats.clicks / stats.impressions, item[columns.ctr])
 
-    @skip("Not implemented")
-    def test_ordering(self):
-        raise NotImplementedError
-
     def test_general_stats_aggregates(self):
         any_date = date(2019, 1, 1)
         impressions = (1000, 2100)

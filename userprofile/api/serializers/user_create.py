@@ -17,7 +17,6 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import UserDeviceToken
 from userprofile.models import WhiteLabel
-from userprofile.models import get_default_accesses
 from userprofile.validators import password_validators
 from utils.lang import get_request_prefix
 

@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from .utils import create_test_audit_objects
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import AuditChannelVet
@@ -23,10 +24,19 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         url = reverse(AuditPathName.AUDIT_ITEM, [Namespace.AUDIT_TOOL], kwargs=dict(pk=doc_id))
         return url
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
         sections = [Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA]
-        self.channel_manager = ChannelManager(sections=sections)
-        self.video_manager = VideoManager(sections=sections)
+        cls.channel_manager = ChannelManager(sections=sections)
+        cls.video_manager = VideoManager(sections=sections)
+
+        # add items to database for patch unit tests to work
+        create_test_audit_objects()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
     def test_unauthorized_get(self):
         self.create_test_user()
@@ -115,7 +125,8 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.channel_manager.upsert([channel])
         payload = dict(
-            iab_categories=["Business & Finance"],
+            primary_category="Business & Finance",
+            iab_categories=["Business"],
             language="ru",
             age_group="1",
             content_type="1",
@@ -128,7 +139,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
                                      content_type="application/json")
         updated = self.channel_manager.get([channel.main.id])[0]
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"])
+        self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"] + [payload["primary_category"]])
         self.assertEqual(updated.task_us_data.lang_code, payload["language"])
         self.assertEqual(updated.task_us_data.age_group, payload["age_group"])
         self.assertEqual(updated.task_us_data.content_type, payload["content_type"])
@@ -155,7 +166,8 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.video_manager.upsert([video])
         payload = dict(
-            iab_categories=["Events & Attractions"],
+            primary_category="Events & Attractions",
+            iab_categories=["Amusement & Theme Parks"],
             language="af",
             age_group="1",
             content_type="1",
@@ -168,7 +180,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
                                      content_type="application/json")
         updated = self.video_manager.get([video.main.id])[0]
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"])
+        self.assertEqual(updated.task_us_data.iab_categories, payload["iab_categories"] + [payload["primary_category"]])
         self.assertEqual(updated.task_us_data.lang_code, payload["language"])
         self.assertEqual(updated.task_us_data.age_group, payload["age_group"])
         self.assertEqual(updated.task_us_data.content_type, payload["content_type"])

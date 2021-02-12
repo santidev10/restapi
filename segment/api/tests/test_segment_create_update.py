@@ -356,24 +356,6 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_create_fail_empty_source(self, mock_generate):
-        self.create_admin_user()
-        payload = {
-            "title": "test_create_fail_empty_source",
-            "segment_type": 0,
-        }
-        payload = self.get_params(**payload)
-        file = BytesIO()
-        file.name = "empty_source"
-        file.seek(0)
-        form = dict(
-            source_file=file,
-            data=json.dumps(payload)
-        )
-        with patch("segment.models.custom_segment.SegmentExporter"):
-            response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
     def test_fail_exclusion_empty(self, mock_generate):
         self.create_admin_user()
         payload = {
@@ -382,7 +364,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             "exclusion_hit_threshold": 1,
         }
         exclusion_file = BytesIO()
-        exclusion_file.name = "test_exclusion.csv"
+        exclusion_file.name = "test_exclusion_fail.csv"
         payload = self.get_params(**payload)
         form = dict(
             exclusion_file=exclusion_file,
@@ -390,6 +372,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         )
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        self.assertTrue("empty exclusion" in ctl.statistics["error"])
 
     def test_fail_inclusion_empty(self, mock_generate):
         self.create_admin_user()
@@ -407,6 +391,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         )
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        self.assertTrue("empty inclusion" in ctl.statistics["error"])
 
     def test_create_with_source_success(self, mock_generate):
         """ Test creates source with success with at least one valid url"""
@@ -470,7 +456,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
-        self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         data = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -1113,7 +1099,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_create_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
-        self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -1130,7 +1116,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
-        user = self.create_test_user(perms={StaticPermissions.CTL__CREATE: True})
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=1, owner=user,
@@ -1149,3 +1135,45 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         export = segment.export
         self.assertEqual(export.query["params"]["vetting_status"], [1])
+
+    def test_empty_channel_source_urls_deletes(self, mock_generate):
+        """ Test that channel CTL being created during validation without valid source urls is deleted """
+        self.create_admin_user()
+        payload = {
+            "title": "test_empty_channel_source_urls_deletes",
+            "segment_type": 1,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"),\
+                patch.object(CustomSegment, "remove_all_from_segment"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())
+
+    def test_empty_video_source_urls_deletes(self, mock_generate):
+        """ Test that video CTL being created during validation without valid source urls is deleted """
+        self.create_admin_user()
+        payload = {
+            "title": "test_empty_video_source_urls_deletes",
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"),\
+                patch.object(CustomSegment, "remove_all_from_segment"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())

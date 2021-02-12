@@ -279,7 +279,7 @@ class SegmentListGenerator:
         if query is None:
             query = segment.get_segment_items_query()
         if size is None:
-            if segment.owner.has_permission(StaticPermissions.CTL__VET_ADMIN):
+            if segment.owner.has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
                 size = segment.config.ADMIN_LIST_SIZE
             else:
                 size = segment.config.USER_LIST_SIZE

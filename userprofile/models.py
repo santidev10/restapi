@@ -7,10 +7,10 @@ import os
 from uuid import uuid4
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import UserManager
-from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.db import models
 from django.utils import timezone
@@ -22,7 +22,6 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Opportunity
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionGroupNames
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -33,19 +32,6 @@ def get_default_settings():
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     }
-
-
-def get_default_accesses(via_google=False):
-    default_accesses_group_names = [
-        PermissionGroupNames.RESEARCH,
-        PermissionGroupNames.MEDIA_PLANNING,
-        PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
-        PermissionGroupNames.FORECASTING,
-        PermissionGroupNames.BRAND_SAFETY_SCORING,
-    ]
-    if not via_google:
-        default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
-    return default_accesses_group_names
 
 
 class UserProfileManager(UserManager):
@@ -107,7 +93,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(max_length=255, null=True, blank=True)
-    perms = JSONField(default=dict)
+    perms = models.JSONField(default=dict)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -123,7 +109,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default=get_default_settings)
+    aw_settings = models.JSONField(default=get_default_settings)
 
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
@@ -131,7 +117,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     domain = models.ForeignKey("WhiteLabel", on_delete=models.SET_NULL, null=True)
 
     # GDPR Cookie Compliance
-    has_accepted_GDPR = models.NullBooleanField(default=None)
+    has_accepted_GDPR = models.BooleanField(default=None, null=True)
 
     objects = UserProfileManager()
 
@@ -246,8 +232,8 @@ class PermissionItem(models.Model):
         [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
         [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
 
-        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL) Read"],
-        [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
+        [StaticPermissions.BUILD__BSTL,                     False,  "Brand Safety Target List (BSTL) Read"],
+        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "BSTL Export"],
 
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
         [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
@@ -256,16 +242,16 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
 
-        [StaticPermissions.CTL,                             False,  "Custom Target Lists Read"],
-        [StaticPermissions.CTL__CREATE,                     False,  "Create"],
-        [StaticPermissions.CTL__DELETE,                     False,  "Delete"],
-        [StaticPermissions.CTL__FEATURE_LIST,               False,  "Feature / Unfeature List"],
-        [StaticPermissions.CTL__EXPORT_BASIC,               False,  "Export (basic)"],
-        [StaticPermissions.CTL__EXPORT_ADMIN,               False,  "Export (all data)"],
-        [StaticPermissions.CTL__SEE_ALL,                    False,  "See all Lists"],
-        [StaticPermissions.CTL__VET,                        False,  "Vet Stuff"],
-        [StaticPermissions.CTL__VET_ADMIN,                  False,  "Vet Admin"],
-        [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
+        [StaticPermissions.BUILD__CTL,                      False,  "Custom Target Lists Read"],
+        [StaticPermissions.BUILD__CTL_CREATE,               False,  "Create"],
+        [StaticPermissions.BUILD__CTL_DELETE,               False,  "Delete"],
+        [StaticPermissions.BUILD__CTL_FEATURE_LIST,         False,  "Feature / Unfeature List"],
+        [StaticPermissions.BUILD__CTL_EXPORT_BASIC,         False,  "Export (basic)"],
+        [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],
+        [StaticPermissions.BUILD__CTL_SEE_ALL,              False,  "See all Lists"],
+        [StaticPermissions.BUILD__CTL_VET,                  False,  "Vet Stuff"],
+        [StaticPermissions.BUILD__CTL_VET_ADMIN,            False,  "Vet Admin"],
+        [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
         [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],
@@ -316,11 +302,13 @@ class PermissionItem(models.Model):
             PermissionItem.objects.update_or_create(permission=p[0], defaults=defaults)
 
     @classmethod
-    def all_perms(cls):
-        perm_names = [
+    def all_perms(cls, as_obj=False):
+        result = [
             perm[0] for perm in cls.STATIC_PERMISSIONS if perm[0] not in StaticPermissions.DEPRECATED
         ]
-        return perm_names
+        if as_obj is True:
+            result = PermissionItem.objects.filter(permission__in=result)
+        return result
 
 
 class UserChannel(Timestampable):
@@ -359,7 +347,7 @@ class UserDeviceToken(models.Model):
 
 class WhiteLabel(models.Model):
     domain = models.CharField(max_length=255, unique=True)
-    config = JSONField(default=dict)
+    config = models.JSONField(default=dict)
 
     def __str__(self):
         return self.domain
@@ -380,3 +368,18 @@ class WhiteLabel(models.Model):
         except (IndexError, AttributeError):
             sub_domain = DEFAULT_DOMAIN
         return sub_domain
+
+
+class Role(models.Model):
+    name = models.CharField(max_length=20, unique=True)
+    permissions = models.ManyToManyField(PermissionItem, related_name="roles", db_index=True)
+
+
+class UserRole(models.Model):
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name="user_role")
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "role"], name="unique_user_role")
+        ]

@@ -1,4 +1,3 @@
-from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 
 from dashboard.api.urls.names import DashboardPathName

@@ -12,6 +12,15 @@ from utils.celery.utils import get_queue_size
 @celery_app.task(bind=True)
 @celery_lock(Schedulers.ChannelOutdated.NAME, expire=TaskExpiration.BRAND_SAFETY_CHANNEL_OUTDATED, max_retries=0)
 def channel_outdated_scheduler():
+    """
+    Celery task to discover Channels with outdated brand safety data and add to queue
+
+    In order to keep queue from getting too large or from channels being scored repeatedly, the queue size is
+        checked to be below a certain size before adding items to the queue.
+        Since the scheduler runs frequently, it may add items to the queue before the workers consuming from this
+        queue have processed them, leading to inefficient, multiple processing of the same items.
+    :return:
+    """
     if get_queue_size(Queue.BRAND_SAFETY_CHANNEL_LIGHT) <= Schedulers.ChannelOutdated.get_minimum_threshold():
         channel_manager = ChannelManager()
         query = channel_manager.forced_filters() \

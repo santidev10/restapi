@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from django.test import TransactionTestCase
+from django.test import TestCase
 from mock import patch
 
 from audit_tool.models import AuditChannel
@@ -15,8 +15,8 @@ from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 
 
-class GenerateAuditItemsTestCase(TransactionTestCase):
-    multi_db = True
+class GenerateAuditItemsTestCase(TestCase):
+    databases = '__all__'
 
     def _bulk_create(self, model, objs, *argss, **kwargs):
         model.objects.bulk_create(objs)

@@ -144,11 +144,15 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
                     vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
                     updated_videos.append(vid_obj)
                     continue
-            vid_transcript = transcripts_scraper.successful_vids[vid_id].captions
-            vid_lang_code = transcripts_scraper.successful_vids[vid_id].captions_language
-            AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code, transcript=vid_transcript)
-            populate_video_custom_captions(vid_obj, [vid_transcript], [vid_lang_code], source="tts_url",
-                                           asr_lang=vid_lang_code)
+            # we want to save the raw response to PG so that if we ever need to re-process
+            # a transcript from the response, then we'll have it on hand
+            raw_response = transcripts_scraper.successful_vids[vid_id].captions_url_response
+            language = transcripts_scraper.successful_vids[vid_id].captions_language
+            AuditVideoTranscript.get_or_create(video_id=vid_id, language=language, transcript=raw_response)
+            # we'll store the processed transcript in ES for display
+            processed_transcript = transcripts_scraper.successful_vids[vid_id].captions
+            populate_video_custom_captions(vid_obj, [processed_transcript], [language], source="tts_url",
+                                           asr_lang=language)
             updated_videos.append(vid_obj)
             if "task_us_data" not in vid_obj:
                 vid_ids_to_rescore.append(vid_id)

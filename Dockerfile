@@ -1,7 +1,7 @@
-FROM python:3.7.4 as base
+FROM python:3.9.1 as base
 ENV PYTHONUNBUFFERED 1
+RUN pip install --upgrade pip==21.0.1
 ENV ELASTIC_SEARCH_URLS es
-RUN pip install uwsgi
 COPY ./requirements.txt /tmp/
 COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
 RUN pip install -r /tmp/requirements.txt
@@ -15,6 +15,7 @@ COPY --chown=www-data:www-data ./ /app
 RUN python ./manage.py collectstatic --no-input
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
+RUN pip install uwsgi==2.0.19.1
 USER www-data
 CMD ["uwsgi", "--ini", "/app/uwsgi-restapi.ini"]
 
