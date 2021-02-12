@@ -28,7 +28,7 @@ class TranscriptsFromCacheUpdater:
 
     CHUNK_SIZE = 5000
     LOCK_NAME = "update_transcripts_from_cache"
-    EMAIL_LIST = ["andrew.wong@channelfactory.com"],
+    EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
     def __init__(self):
         self.cursor = 0
