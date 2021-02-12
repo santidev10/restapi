@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoTranscript
+from email_reports.tests.test_daily_apex_disney_report_utils import do_nothing
 from transcripts.tasks.update_transcripts_from_cache import TranscriptsFromCacheUpdater
 from utils.transform import populate_video_custom_captions
 
@@ -44,6 +45,7 @@ class UpdateTranscriptsFromCacheTestCase(TestCase):
             es_videos.append(video)
         self.manager.upsert(es_videos)
 
+    @patch("transcripts.tasks.update_transcripts_from_cache.send_email", do_nothing)
     def test_update_success(self):
         self._set_up_data()
         with patch.object(TranscriptsFromCacheUpdater, "CHUNK_SIZE", 5):

@@ -8,7 +8,8 @@ from celery.exceptions import Retry
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
-from requests.exceptions import ConnectionError, Timeout
+from requests.exceptions import ConnectionError
+from requests.exceptions import Timeout
 
 from administration.notifications import send_email
 from utils.celery.tasks import lock
