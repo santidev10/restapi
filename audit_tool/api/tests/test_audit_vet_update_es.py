@@ -36,7 +36,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
         super().setUp()
         self.user = self.create_test_user(perms={
-            StaticPermissions.CTL__VET: True,
+            StaticPermissions.BUILD__CTL_VET: True,
         })
 
     @classmethod
@@ -373,7 +373,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def test_patch_admin_channel(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
         user = self.create_test_user(perms={
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
         })
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=1 for channels
@@ -424,7 +424,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def test_patch_admin_video(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
         user = self.create_test_user(perms={
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
         })
         audit = AuditProcessor.objects.create(audit_type=1)
         # CustomSegment segment_type=0 for videos

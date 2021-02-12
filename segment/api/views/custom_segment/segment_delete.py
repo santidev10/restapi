@@ -15,7 +15,7 @@ class SegmentDeleteApiView(DestroyAPIView):
     permission_classes = (
          or_permission_classes(
              AdminCustomSegmentOwnerPermission,
-             StaticPermissions.has_perms(StaticPermissions.CTL__DELETE),
+             StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_DELETE),
          ),
     )
 

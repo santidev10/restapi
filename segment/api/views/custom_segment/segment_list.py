@@ -19,8 +19,8 @@ class SegmentListApiView(ListAPIView):
     pagination_class = SegmentPaginator
     queryset = CustomSegment.objects.all().select_related("export").order_by("created_at")
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL,
-                                    StaticPermissions.CTL__VET_ADMIN, StaticPermissions.CTL__SEE_ALL),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL,
+                                    StaticPermissions.BUILD__CTL_VET_ADMIN, StaticPermissions.BUILD__CTL_SEE_ALL),
     )
 
     def _do_filters(self, queryset):
@@ -86,9 +86,9 @@ class SegmentListApiView(ListAPIView):
         """
         # Filter queryset depending on permission level
         user = self.request.user
-        if user.has_permission(StaticPermissions.CTL__VET_ADMIN) or user.has_permission(StaticPermissions.CTL__SEE_ALL):
+        if user.has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN) or user.has_permission(StaticPermissions.BUILD__CTL_SEE_ALL):
             base_filters = {}
-        elif user.has_permission(StaticPermissions.CTL__VET):
+        elif user.has_permission(StaticPermissions.BUILD__CTL_VET):
             base_filters = {"audit_id__isnull": False}
         else:
             base_filters = {"owner": self.request.user}

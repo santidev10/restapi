@@ -20,7 +20,7 @@ from utils.views import get_object
 class SegmentCreateUpdateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.CTL__CREATE),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE),
     )
     parser_classes = [MultiPartParser]
 

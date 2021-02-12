@@ -104,10 +104,10 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                     generate_utils.write_to_file(batch[:user_size - seen], filename, segment.user_export_serializer, \
                                                  {}, write_header=write_header is True)
                     # if segment is user generated, add aggregations for user version export
-                    if not segment.owner.has_permission(StaticPermissions.CTL__EXPORT_ADMIN):
+                    if not segment.owner.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
                         generate_utils.add_aggregations(aggregations, batch[:user_size - seen])
                 # if segment is admin generated, add aggregations for admin version export
-                if segment.owner.has_permission(StaticPermissions.CTL__EXPORT_ADMIN):
+                if segment.owner.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
                     generate_utils.add_aggregations(aggregations, batch)
                 seen += len(batch_item_ids)
                 write_header = False
@@ -115,7 +115,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                     raise MaxItemsException
         except MaxItemsException:
             pass
-        if (not segment.owner.has_permission(StaticPermissions.CTL__EXPORT_ADMIN)) and (seen > user_size):
+        if (not segment.owner.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN)) and (seen > user_size):
             seen = user_size
         generate_utils.finalize_aggregations(aggregations, seen)
         if add_uuid is True:

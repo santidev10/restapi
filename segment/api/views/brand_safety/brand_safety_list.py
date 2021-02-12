@@ -14,7 +14,7 @@ MINIMUM_ITEMS_COUNT = 100
 
 class CustomSegmentListApiView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.BSTL),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__BSTL),
     )
 
     def __init__(self, *args, **kwargs):
@@ -61,7 +61,7 @@ class CustomSegmentListApiView(APIView):
         self.data['items'] = serialized
 
     def get_custom_segment_serializer_class(self):
-        if self.request.user.has_permission(StaticPermissions.CTL__EXPORT_BASIC):
+        if self.request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_BASIC):
             return CTLSerializer
         return CTLWithoutDownloadUrlSerializer
 
