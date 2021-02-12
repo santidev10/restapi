@@ -93,7 +93,6 @@ class TranscriptsFromCacheUpdater:
             f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
             f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%) \n"
         )
-        print(report_body)
         logger.info(report_body)
 
         try:
