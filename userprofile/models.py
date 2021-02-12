@@ -241,7 +241,7 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.BUILD,                           False,  "Build Lists"],
         [StaticPermissions.BUILD__BSTL,                     False,  "Featured Lists"],
-        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "Featured Lists Export”"],
+        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "Featured Lists Export"],
         [StaticPermissions.BUILD__CTL,                      False,  "Custom Target Lists Read"],
         [StaticPermissions.BUILD__CTL_CREATE,               False,  "Create"],
         [StaticPermissions.BUILD__CTL_DELETE,               False,  "Delete"],
