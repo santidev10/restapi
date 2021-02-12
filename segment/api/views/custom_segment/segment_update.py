@@ -13,7 +13,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
     permission_classes = (
         or_permission_classes(
             AdminCustomSegmentOwnerPermission,
-            StaticPermissions.has_perms(StaticPermissions.CTL__CREATE, StaticPermissions.CTL__FEATURE_LIST)
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE, StaticPermissions.BUILD__CTL_FEATURE_LIST)
         ),
     )
 
@@ -36,7 +36,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         return an update serializer based on user's permissions
         """
-        if self.request.user.has_permission(StaticPermissions.CTL__FEATURE_LIST):
+        if self.request.user.has_permission(StaticPermissions.BUILD__CTL_FEATURE_LIST):
             return CustomSegmentAdminUpdateSerializer
         if self.request.user.id != instance.owner_id:
             raise PermissionDenied("You do not have sufficient privileges to modify this resource.")

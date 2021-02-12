@@ -33,7 +33,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
         if with_audit is False:
             owner = segment.owner
             # email admin version export if user is staff
-            if owner.has_permission(StaticPermissions.CTL__EXPORT_ADMIN):
+            if owner.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
                 send_export_email(segment.owner.email, segment.title, export.download_url)
                 logger.info("Successfully generated export for custom list: id: %s, title: %s", segment.id,
                             segment.title)

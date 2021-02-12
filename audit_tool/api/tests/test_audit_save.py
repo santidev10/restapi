@@ -82,7 +82,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
 
     def test_reject_permission(self):
         """ Users must have userprofile.audit_vet_admin permission """
-        user = self.create_test_user(perms={StaticPermissions.CTL__VET_ADMIN: False})
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_VET_ADMIN: False})
         segment = self.custom_segment_model.objects.create(uuid=uuid4(), owner=user, title="test", segment_type=0,
                                                            list_type=0)
         params = {"segment_id": segment.id, }
@@ -92,7 +92,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
     def test_enable_vetting_creates_audit(self):
         """ Saving audit instructions for the first time should create audit and vetting items """
         user = self.create_test_user(perms={
-            StaticPermissions.CTL__VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
         })
         segment = self.custom_segment_model.objects.create(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4(),
@@ -145,6 +145,6 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_reject_vetting_enable_permissions(self):
-        self.user = self.create_test_user(perms={StaticPermissions.CTL__VET_ADMIN: False})
+        self.user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_VET_ADMIN: False})
         response = self.client.patch(self.url, json.dumps({}), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

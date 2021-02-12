@@ -232,8 +232,8 @@ class PermissionItem(models.Model):
         [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
         [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
 
-        [StaticPermissions.BSTL,                            False,  "Brand Safety Target List (BSTL) Read"],
-        [StaticPermissions.BSTL__EXPORT,                    False,  "BSTL Export"],
+        [StaticPermissions.BUILD__BSTL,                     False,  "Brand Safety Target List (BSTL) Read"],
+        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "BSTL Export"],
 
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
         [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
@@ -242,16 +242,16 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
 
-        [StaticPermissions.CTL,                             False,  "Custom Target Lists Read"],
-        [StaticPermissions.CTL__CREATE,                     False,  "Create"],
-        [StaticPermissions.CTL__DELETE,                     False,  "Delete"],
-        [StaticPermissions.CTL__FEATURE_LIST,               False,  "Feature / Unfeature List"],
-        [StaticPermissions.CTL__EXPORT_BASIC,               False,  "Export (basic)"],
-        [StaticPermissions.CTL__EXPORT_ADMIN,               False,  "Export (all data)"],
-        [StaticPermissions.CTL__SEE_ALL,                    False,  "See all Lists"],
-        [StaticPermissions.CTL__VET,                        False,  "Vet Stuff"],
-        [StaticPermissions.CTL__VET_ADMIN,                  False,  "Vet Admin"],
-        [StaticPermissions.CTL__VET_EXPORT,                 False,  "Download Vetted only Export"],
+        [StaticPermissions.BUILD__CTL,                      False,  "Custom Target Lists Read"],
+        [StaticPermissions.BUILD__CTL_CREATE,               False,  "Create"],
+        [StaticPermissions.BUILD__CTL_DELETE,               False,  "Delete"],
+        [StaticPermissions.BUILD__CTL_FEATURE_LIST,         False,  "Feature / Unfeature List"],
+        [StaticPermissions.BUILD__CTL_EXPORT_BASIC,         False,  "Export (basic)"],
+        [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],
+        [StaticPermissions.BUILD__CTL_SEE_ALL,              False,  "See all Lists"],
+        [StaticPermissions.BUILD__CTL_VET,                  False,  "Vet Stuff"],
+        [StaticPermissions.BUILD__CTL_VET_ADMIN,            False,  "Vet Admin"],
+        [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
         [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],

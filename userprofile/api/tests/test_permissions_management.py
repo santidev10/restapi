@@ -80,14 +80,14 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         user.perms.update({StaticPermissions.USER_MANAGEMENT: True})
         user.save()
         payload = json.dumps({
-            StaticPermissions.CTL: True,
+            StaticPermissions.BUILD__CTL: True,
             StaticPermissions.RESEARCH: True,
         })
         response = self.client.post(self._get_url(user.id), data=payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         user.refresh_from_db()
-        self.assertEqual(user.perms[StaticPermissions.CTL], True)
+        self.assertEqual(user.perms[StaticPermissions.BUILD__CTL], True)
         self.assertEqual(user.perms[StaticPermissions.RESEARCH], True)
         # Should not be updated
         self.assertEqual(user.perms.get(StaticPermissions.BSTE), None)
