@@ -232,9 +232,6 @@ class PermissionItem(models.Model):
         [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
         [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
 
-        [StaticPermissions.BUILD__BSTL,                     False,  "Brand Safety Target List (BSTL) Read"],
-        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "BSTL Export"],
-
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
         [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
         [StaticPermissions.BSTE__DELETE,                    False,  "Brand Safety Tags Editor Delete"],
@@ -242,6 +239,9 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
 
+        [StaticPermissions.BUILD,                           False,  "Build Lists"],
+        [StaticPermissions.BUILD__BSTL,                     False,  "Featured Lists"],
+        [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "Featured Lists Export"],
         [StaticPermissions.BUILD__CTL,                      False,  "Custom Target Lists Read"],
         [StaticPermissions.BUILD__CTL_CREATE,               False,  "Create"],
         [StaticPermissions.BUILD__CTL_DELETE,               False,  "Delete"],
