@@ -84,7 +84,7 @@ class TranscriptsFromCacheUpdater:
         no_cached_transcript_percentage = round((self.no_cached_transcript_count / self.total_to_process_count) * 100,
                                                 2)
 
-        report_body = (
+        message = (
             f"cursor: {self.cursor} \n"
             f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%) \n"
             f"total skipped: {self.skipped_count} ({skipped_percentage}%) \n"
@@ -93,7 +93,7 @@ class TranscriptsFromCacheUpdater:
             f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
             f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%) \n"
         )
-        logger.info(report_body)
+        logger.info(message)
 
         try:
             lock(lock_name=self.LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
@@ -105,7 +105,7 @@ class TranscriptsFromCacheUpdater:
             subject=subject,
             from_email=settings.SENDER_EMAIL_ADDRESS,
             recipient_list=self.EMAIL_LIST,
-            html_message=report_body
+            message=message
         )
 
     def _map_es_videos(self, chunk: Iterable):
