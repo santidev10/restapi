@@ -39,6 +39,10 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        try:
+            data["channel"]["thumbnail_image_url"] = self.context["thumbnail_image_url"].get(instance.channel.id)
+        except KeyError:
+            pass
         data.pop(Sections.TASK_US_DATA, None)
         return data
 
