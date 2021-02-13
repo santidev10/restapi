@@ -1,9 +1,9 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from audit_tool.utils.regex_trie import Trie
 
 
-class GenerateAuditUtilsTestCase(TransactionTestCase):
+class GenerateAuditUtilsTestCase(TestCase):
     multi_db = True
 
     def test_regex_optimization_with_trie(self):

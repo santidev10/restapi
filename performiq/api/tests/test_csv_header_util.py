@@ -1,11 +1,11 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 from performiq.utils.map_csv_fields import CSVHeaderUtil
 from performiq.utils.map_csv_fields import CSVWithHeader
 from performiq.utils.map_csv_fields import CSVWithOnlyData
 from performiq.utils.map_csv_fields import ManagedPlacementsReport
 
 
-class MapCSVFieldsValidatorTestCase(TransactionTestCase):
+class MapCSVFieldsValidatorTestCase(TestCase):
 
     def test_managed_placements_report_failure(self):
         reports = {

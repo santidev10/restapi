@@ -1,11 +1,11 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from rest_framework.exceptions import ValidationError
 
 from segment.api.serializers.ctl_params_serializer import AdsPerformanceRangeField
 
 
-class TestAdsPerformanceRangeField(TransactionTestCase):
+class TestAdsPerformanceRangeField(TestCase):
 
     @staticmethod
     def get_field_instance(**kwargs):

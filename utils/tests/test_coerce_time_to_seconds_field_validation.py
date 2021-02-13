@@ -1,11 +1,11 @@
-from django.test import TransactionTestCase
+from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import empty
 
 from utils.serializers.fields.coerce_time_to_seconds_field import CoerceTimeToSecondsField
 
 
-class CoerceTimeToSecondsFieldValidationTestCase(TransactionTestCase):
+class CoerceTimeToSecondsFieldValidationTestCase(TestCase):
 
     @staticmethod
     def get_field_instance(**kwargs):
