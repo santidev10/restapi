@@ -239,7 +239,7 @@ class PermissionItem(models.Model):
 
         [StaticPermissions.CHF_TRENDS,                      False,  "View CHF Trends Read"],
 
-        [StaticPermissions.BUILD,                           False,  "Build Lists"],
+        [StaticPermissions.BUILD,                           False,  "Build"],
         [StaticPermissions.BUILD__BSTL,                     False,  "Featured Lists"],
         [StaticPermissions.BUILD__BSTL_EXPORT,              False,  "Featured Lists Export"],
         [StaticPermissions.BUILD__CTL,                      False,  "Custom Target Lists Read"],

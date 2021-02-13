@@ -12,7 +12,6 @@ from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
-from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
