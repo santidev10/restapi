@@ -227,10 +227,16 @@ class AuditUtils(object):
         if v_id and len(v_id) < 51:
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=audit,
-                video=video,
-            )
+            try:
+                avp = AuditVideoProcessor.objects.create(
+                    audit=audit,
+                    video=video,
+                )
+            except Exception as e:
+                avp = AuditVideoProcessor.objects.get(
+                    audit=audit,
+                    video=video,
+                )
             return avp
 
     @staticmethod
