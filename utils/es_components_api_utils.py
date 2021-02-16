@@ -393,6 +393,15 @@ class ESDictSerializer(Serializer):
         data = instance.to_dict()
         data = self._add_blocklist(data)
         data = self._check_ias_verified(data)
+        # add mapped data directly from a field's value
+        for section, source_field, context_key, dest_field in [
+            # channel
+            (Sections.GENERAL_DATA, "country_code", "countries_map", "country"),
+            (Sections.GENERAL_DATA, "top_lang_code", "languages_map", "top_language"),
+            # video
+            (Sections.GENERAL_DATA, "lang_code", "languages_map", "language"),
+        ]:
+            data = self._add_context_mapped_field(data, section, source_field, context_key, dest_field)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -401,6 +410,32 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+
+    def _add_context_mapped_field(self, data: dict, section: str, source_field: str, context_key: str,
+                                  dest_field: str) -> dict:
+        """
+        add a mapped field in a given section, from a field's value already extant in within the section
+        :param data:
+        :param section:
+        :param source_field:
+        :param context_key:
+        :param dest_field:
+        :return: dict
+        """
+        section_data = data.get(Sections.GENERAL_DATA)
+        if not section_data:
+            return data
+
+        source_data = section_data.get(source_field)
+        if not source_data:
+            return data
+
+        dest_data = self.context.get(context_key, {}).get(source_data)
+        if not dest_data:
+            return data
+
+        data[section][dest_field] = dest_data
+        return data
 
     def _check_ias_verified(self, data: dict):
         """

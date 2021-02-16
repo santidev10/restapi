@@ -730,3 +730,29 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         self.assertEqual(len(asc_items), 4)
         self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
+
+    def test_mapped_fields(self):
+        """
+        ensure that fields mapped from other fields' values exist and are correct
+        :return:
+        """
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
+
+        video_id = str(next(int_iterator))
+        video = Video(**{
+            "meta": {"id": video_id},
+            "main": {'id': video_id},
+            "general_data": {
+                "lang_code": "en",
+            },
+        })
+        VideoManager([Sections.GENERAL_DATA, Sections.MAIN, Sections.TASK_US_DATA]).upsert([video])
+
+        response = self.client.get(self.get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].get(Sections.GENERAL_DATA, {}).get("language"), "English")

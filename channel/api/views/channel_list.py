@@ -1,5 +1,10 @@
 from copy import deepcopy
 
+from es_components.constants import Sections
+from es_components.countries import COUNTRIES
+from es_components.languages import LANGUAGES
+from es_components.managers.channel import ChannelManager
+from es_components.managers.channel import VettingAdminChannelManager
 from rest_framework.generics import ListAPIView
 
 from audit_tool.models import IASHistory
@@ -14,16 +19,13 @@ from channel.constants import TERMS_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
-from es_components.constants import Sections
-from es_components.managers.channel import ChannelManager
-from es_components.managers.channel import VettingAdminChannelManager
 from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
-from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
+from utils.api.mutate_query_params import VettingAdminAggregationsMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
@@ -31,8 +33,8 @@ from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import AggregationFiltersPermission
+from utils.permissions import BrandSafetyDataVisible
 
 
 class ChannelsNotFound(Exception):
@@ -141,7 +143,9 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
     def get_serializer_context(self):
         context = {
             "user": self.request.user,
-            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp()
+            "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp(),
+            "countries_map": {code.upper(): name[0] for code, name in COUNTRIES.items()},
+            "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
         }
         return context
 
