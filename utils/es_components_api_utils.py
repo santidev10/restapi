@@ -394,14 +394,14 @@ class ESDictSerializer(Serializer):
         data = self._add_blocklist(data)
         data = self._check_ias_verified(data)
         # add mapped data directly from a field's value
-        for section, source_field, context_key, dest_field in [
+        for section_name, source_name, mapping, dest_name in [
             # channel
-            (Sections.GENERAL_DATA, "country_code", "countries_map", "country"),
-            (Sections.GENERAL_DATA, "top_lang_code", "languages_map", "top_language"),
+            (Sections.GENERAL_DATA, "country_code", self.context.get("countries_map"), "country"),
+            (Sections.GENERAL_DATA, "top_lang_code", self.context.get("languages_map"), "top_language"),
             # video
-            (Sections.GENERAL_DATA, "lang_code", "languages_map", "language"),
+            (Sections.GENERAL_DATA, "lang_code", self.context.get("languages_map"), "language"),
         ]:
-            data = self._add_context_mapped_field(data, section, source_field, context_key, dest_field)
+            data = self._add_context_mapped_field(data, section_name, source_name, mapping, dest_name)
         stats = data.get("stats", {})
         for name, value in stats.items():
             if name.endswith("_history") and isinstance(value, list):
@@ -411,30 +411,31 @@ class ESDictSerializer(Serializer):
             **extra_data,
         }
 
-    def _add_context_mapped_field(self, data: dict, section: str, source_field: str, context_key: str,
-                                  dest_field: str) -> dict:
+    @staticmethod
+    def _add_context_mapped_field(data: dict, section_name: str, source_name: str, mapping: dict,
+                                  dest_name: str) -> dict:
         """
-        add a mapped field in a given section, from a field's value already extant in within the section
+        add a mapped field in a given section_name, from a field's value already extant in within the section
         :param data:
-        :param section:
-        :param source_field:
-        :param context_key:
-        :param dest_field:
+        :param section_name:
+        :param source_name:
+        :param mapping:
+        :param dest_name:
         :return: dict
         """
-        section_data = data.get(Sections.GENERAL_DATA)
-        if not section_data:
+        section = data.get(section_name)
+        if not section:
             return data
 
-        source_data = section_data.get(source_field)
-        if not source_data:
+        key = section.get(source_name)
+        if not key:
             return data
 
-        dest_data = self.context.get(context_key, {}).get(source_data)
+        dest_data = mapping.get(key)
         if not dest_data:
             return data
 
-        data[section][dest_field] = dest_data
+        data[section_name][dest_name] = dest_data
         return data
 
     def _check_ias_verified(self, data: dict):
