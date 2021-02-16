@@ -40,8 +40,9 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         role.permissions.add(*permissions)
 
         user1 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
-        UserRole.objects.create(user=self.user, role=role)
+        user2 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
         UserRole.objects.create(user=user1, role=role)
+        UserRole.objects.create(user=user2, role=role)
 
         response = self.client.get(self._get_url(role.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -50,7 +51,7 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         role_permissions = role.permissions.all()
         enabled_permissions = [perm for perm in data["permissions"] if perm["enabled"] is True]
         self.assertEqual([p.id for p in role_permissions], [p["id"] for p in enabled_permissions])
-        self.assertEqual([u["id"] for u in data["users"]], [self.user.id, user1.id])
+        self.assertEqual([u["id"] for u in data["users"]], [user1.id, user2.id])
 
     def test_get_permissions_fail(self):
         self.user.perms = {}
@@ -90,19 +91,49 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         self.assertTrue(role.permissions.filter(permission=StaticPermissions.USER_MANAGEMENT).exists())
 
     def test_add_role_user(self):
-        """ Test adding user to role """
+        """ Test adding users to role. User role permissions should be checked if user is in a role """
         role = Role.objects.create(name="test")
-        payload = self._get_payload(role.name, {StaticPermissions.USER_MANAGEMENT: True}, [self.user.id])
+        role.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.PERFORMIQ))
+
+        user1 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+        user2 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+
+        payload = self._get_payload(role.name, {StaticPermissions.PERFORMIQ: True}, [user1.id, user2.id])
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
+
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertTrue(UserRole.objects.filter(user=self.user, role=role).exists())
+        self.assertEqual(UserRole.objects.filter(user_id__in=[user1.id, user2.id]).count(), 2)
+
+        # Check that has_permission utility method is using role permission
+        self.assertTrue(
+            user1.has_permission(StaticPermissions.PERFORMIQ)
+            and user2.has_permission(StaticPermissions.PERFORMIQ)
+        )
+        # Permission should not be added directly to user permission
+        self.assertFalse(
+            user1.perms.get(StaticPermissions.PERFORMIQ) is True
+            and user2.perms.get(StaticPermissions.PERFORMIQ) is True
+        )
 
     def test_remove_role_user(self):
-        """ Test removing user from role """
+        """ Test removing user from role. User permissions should revert to personal permissions once removed """
         role = Role.objects.create(name="test")
-        user_role = UserRole.objects.create(role=role, user=self.user)
-        payload = self._get_payload(role.name, {}, [])
+        role.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.PERFORMIQ))
+
+        user1 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+        user2 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+
+        user_role1 = UserRole.objects.create(role=role, user=user1)
+        user_role2 = UserRole.objects.create(role=role, user=user2)
+        payload = self._get_payload(role.name, {StaticPermissions.PERFORMIQ: True}, [])
         response = self.client.patch(self._get_url(role.id), data=json.dumps(payload), content_type="application/json")
+
         self.assertEqual(response.status_code, HTTP_200_OK)
-        user_role.refresh_from_db()
-        self.assertIsNone(user_role.role)
+        user_role1.refresh_from_db()
+        user_role2.refresh_from_db()
+        self.assertTrue(user_role1.role is None and user_role2.role is None)
+        # Check original permissions are not changed
+        self.assertTrue(
+            user1.perms.get(StaticPermissions.PERFORMIQ) is not True
+            and user2.perms.get(StaticPermissions.PERFORMIQ) is not True
+        )
