@@ -12,6 +12,8 @@ from channel.api.serializers.channel import ChannelSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
+from es_components.countries import COUNTRIES
+from es_components.languages import LANGUAGES
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from userprofile.constants import StaticPermissions
@@ -95,6 +97,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         context = {
             "latest_ias_ingestion": IASHistory.get_last_ingested_timestamp(),
             "user": self.request.user,
+            "countries_map": {code.upper(): name[0] for code, name in COUNTRIES.items()},
+            "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
         }
         return context
 
