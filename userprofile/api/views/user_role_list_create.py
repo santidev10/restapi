@@ -1,19 +1,9 @@
-from django.db import transaction
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_200_OK
-from rest_framework import serializers
-
 
 from userprofile.api.serializers import RoleSerializer
 from userprofile.constants import StaticPermissions
-from userprofile.models import PermissionItem
-from userprofile.models import UserRole
 from userprofile.models import Role
-from utils.views import get_object
 
 
 class UserRoleListCreateAPIView(APIView):

@@ -124,12 +124,26 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
-    def has_permission(self, perm):
+    def has_permission(self, perm: str):
+        """
+        If user is admin, user has access to everything
+        If user has role, check against role permissions
+        :param perm: PermissionItem.permission value
+        :return: bool
+        """
         # if user is admin, they automatically get whatever permission
         if self.perms.get("admin") and self.perms.get("admin") is True:
             return True
-        elif self.perms.get(perm) is not None:
-            return self.perms[perm]
+        try:
+            # user_role is related name on UserRole model
+            user_perms = {
+                p.permission: True
+                for p in self.user_role.role.permissions.all()
+            }
+        except (AttributeError, UserRole.DoesNotExist):
+            user_perms = self.perms
+        if user_perms.get(perm) is not None:
+            return user_perms[perm]
         else:
             # Attempt to return the default permission value being checked as permission was not set on user
             try:

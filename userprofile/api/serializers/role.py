@@ -2,6 +2,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from administration.api.serializers import UserSerializer
 from userprofile.api.serializers import PermissionItemSerializer
 from userprofile.models import PermissionItem
 from userprofile.models import Role
@@ -23,6 +24,9 @@ class RoleSerializer(serializers.ModelSerializer):
         return data
 
     def _get_permissions(self, obj):
+        """
+        Serialize related permissions
+        """
         current_permissions = PermissionItem.all_perms(as_obj=True)
         role_permissions = set(p.permission for p in obj.permissions.all())
         all_permissions = {
@@ -34,13 +38,13 @@ class RoleSerializer(serializers.ModelSerializer):
         return values
 
     def _get_users(self, instance):
+        """
+        Serialize users in Role
+        """
         users = get_user_model().objects.filter(user_role__role=instance)
-        users = [{
-            "id": user.id,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-        } for user in users]
-        return users
+        serializer = UserSerializer(users, many=True)
+        data = serializer.data
+        return data
 
     def validate_permissions(self, permissions):
         valid_perms = PermissionItem.all_perms()
