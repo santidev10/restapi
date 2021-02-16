@@ -1,12 +1,5 @@
 from copy import deepcopy
 
-from es_components.constants import Sections
-from es_components.countries import COUNTRIES
-from es_components.languages import LANGUAGES
-from es_components.managers.channel import ChannelManager
-from es_components.managers.channel import VettingAdminChannelManager
-from rest_framework.generics import ListAPIView
-
 from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
@@ -19,6 +12,12 @@ from channel.constants import TERMS_FILTER
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
+from es_components.constants import Sections
+from es_components.countries import COUNTRIES
+from es_components.languages import LANGUAGES
+from es_components.managers.channel import ChannelManager
+from es_components.managers.channel import VettingAdminChannelManager
+from rest_framework.generics import ListAPIView
 from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
