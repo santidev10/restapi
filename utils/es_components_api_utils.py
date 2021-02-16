@@ -423,6 +423,9 @@ class ESDictSerializer(Serializer):
         :param dest_name:
         :return: dict
         """
+        if not mapping:
+            return data
+
         section = data.get(section_name)
         if not section:
             return data
