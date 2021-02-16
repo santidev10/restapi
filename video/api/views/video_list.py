@@ -3,6 +3,8 @@ Video api views module
 """
 from copy import deepcopy
 
+from rest_framework.generics import ListAPIView
+
 from audit_tool.models import BlacklistItem
 from cache.constants import ADMIN_VIDEO_AGGREGATIONS_KEY
 from cache.constants import VIDEO_AGGREGATIONS_KEY
@@ -13,7 +15,6 @@ from es_components.languages import LANGUAGES
 from es_components.managers import ChannelManager
 from es_components.managers.video import VettingAdminVideoManager
 from es_components.managers.video import VideoManager
-from rest_framework.generics import ListAPIView
 from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
