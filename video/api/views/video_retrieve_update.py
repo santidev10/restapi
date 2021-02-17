@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from es_components.constants import Sections
+from es_components.languages import LANGUAGES
 from es_components.managers import ChannelManager
 from es_components.managers.video import VideoManager
 from userprofile.constants import StaticPermissions
@@ -77,6 +78,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
             "user": self.request.user,
             "channel_blocklist": {
                 channel_id: channel_blocklist
-            }
+            },
+            "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
         }
         return context

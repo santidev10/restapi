@@ -122,3 +122,18 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
         for field in extra_fields:
             with self.subTest(field):
                 self.assertIn(field, response.data)
+
+    def test_mapped_fields(self):
+        """
+        test that fields mapped from other fields are present and correct
+        :return:
+        """
+        self.create_admin_user()
+        video = Video(str(next(int_iterator)))
+        video.populate_general_data(lang_code="en")
+        VideoManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = self._get_url(video.main.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get(Sections.GENERAL_DATA, {}).get("language"), "English")
