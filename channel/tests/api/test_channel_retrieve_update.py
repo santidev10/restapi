@@ -260,3 +260,19 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data.get("ias_data"))
+
+    def test_mapped_fields(self):
+        """
+        test that fields mapped from other fields are present and correct
+        :return:
+        """
+        self.create_admin_user()
+        channel = Channel(str(next(int_iterator)))
+        channel.populate_general_data(country_code="US", top_lang_code="en")
+        ChannelManager([Sections.GENERAL_DATA]).upsert([channel])
+
+        url = self._get_url(channel.main.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get(Sections.GENERAL_DATA, {}).get("country"), "United States")
+        self.assertEqual(response.data.get(Sections.GENERAL_DATA, {}).get("top_language"), "English")

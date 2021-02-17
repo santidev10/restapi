@@ -212,7 +212,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         response = self.client.get(self.url)
 
-        first_item = response.data['items'][0]
+        first_item = response.data["items"][0]
         for field in extra_fields:
             with self.subTest(field):
                 if field in extra_fields_map.keys():
@@ -911,3 +911,33 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(asc_items), 4)
         self.assertEqual(asc_items[-1]["general_data"]["title"], "watchmojo")
         self.assertEqual(asc_items[-2]["general_data"]["title"], "watchmojo.com")
+
+    def test_mapped_fields(self):
+        """
+        ensure that fields whose values are mapped from other values exist, and are correct
+        :return:
+        """
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
+
+        channel_ids = [str(next(int_iterator)) for i in range(2)]
+        channel = Channel(**{
+            "meta": {
+                "id": channel_ids[0],
+            },
+            "general_data": {
+                "country_code": "US",
+                "top_lang_code": "en",
+            }
+        })
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([channel,])
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data.get("items")
+        self.assertTrue(len(items), 1)
+        res_channel = items[0]
+        self.assertEqual(res_channel.get(Sections.GENERAL_DATA, {}).get("country"), "United States")
+        self.assertTrue(res_channel.get(Sections.GENERAL_DATA, {}).get("top_language"), "English")
