@@ -11,6 +11,7 @@ from cache.constants import VIDEO_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
+from es_components.languages import LANGUAGES
 from es_components.managers import ChannelManager
 from es_components.managers.video import VettingAdminVideoManager
 from es_components.managers.video import VideoManager
@@ -18,9 +19,9 @@ from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.mutate_query_params import AddFieldsMixin
+from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import ValidYoutubeIdMixin
 from utils.api.mutate_query_params import VettingAdminAggregationsMixin
-from utils.api.mutate_query_params import BrandSuitabilityFiltersMixin
 from utils.api.mutate_query_params import mutate_query_params
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -29,8 +30,8 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
-from utils.permissions import BrandSafetyDataVisible
 from utils.permissions import AggregationFiltersPermission
+from utils.permissions import BrandSafetyDataVisible
 from video.api.serializers.video import VideoSerializer
 from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
@@ -116,7 +117,8 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
             "thumbnail_image_url": {
                 channel.main.id: channel.general_data.thumbnail_image_url
                 for channel in channels
-            }
+            },
+            "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
         }
         return context
 

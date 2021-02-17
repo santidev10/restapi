@@ -84,6 +84,9 @@ class APIScriptTracker(models.Model):
     name = models.CharField(max_length=255, unique=True, db_index=True)
     cursor = models.BigIntegerField(default=0)
     cursor_id = models.CharField(max_length=50, blank=True, null=True)
+    timestamp = models.DateTimeField(default=None, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
 
 class CommentVideo(models.Model):
