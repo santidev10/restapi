@@ -156,6 +156,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         recreate_test_demo_data()
         self.user.perms.update({
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
             StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self.user.save()
@@ -191,6 +192,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Account.objects.create(name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
 
         response = self.client.get(self.url)
