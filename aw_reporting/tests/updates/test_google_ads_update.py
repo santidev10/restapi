@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
+from django.test import TestCase
 from django.test import TransactionTestCase
 from google.auth.exceptions import RefreshError
 from googleads.errors import AdWordsReportBadRequestError
@@ -38,6 +39,7 @@ from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.utils import max_ready_date
+from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -77,17 +79,24 @@ from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.redis_mock import MockRedis
 from utils.unittests.str_iterator import str_iterator
+from utils.unittests.patch_bulk_create import patch_safe_bulk_create
 
 
-class UpdateAwAccountsTestCase(TransactionTestCase):
+class BaseUpdateAwTestCase:
+    def setUp(self):
+        self.redis_mock = patch("utils.celery.tasks.REDIS_CLIENT", MockRedis())
+        self.redis_mock.start()
+
+    def tearDown(self):
+        self.redis_mock.stop()
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
                                              update_time=manager_update_time)
         AWAccountPermission.objects.get_or_create(account=mcc_account,
-                                           aw_connection=AWConnection.objects.get_or_create()[0],
-                                           can_read=True)
+                                                  aw_connection=AWConnection.objects.get_or_create()[0],
+                                                  can_read=True)
 
         account_id = kwargs.pop("id", next(int_iterator))
         account = Account.objects.create(id=account_id, timezone=tz, update_time=account_update_time,
@@ -96,13 +105,156 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         account.save()
         return account
 
-    def setUp(self):
-        self.redis_mock = patch("utils.celery.tasks.REDIS_CLIENT", MockRedis())
-        self.redis_mock.start()
 
-    def tearDown(self):
-        self.redis_mock.stop()
+class UpdateAwAccountsTransactionTestCase(BaseUpdateAwTestCase, TransactionTestCase):
+    def test_get_ad_skip_missing_groups(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        valid_ad_group_id, invalid_ad_group_id = 1, 2
+        valid_ad_id, invalid_ad_id = 3, 4
+        ad_group = AdGroup.objects.create(id=valid_ad_group_id,
+                                          campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
+                                        average_position=1)
+        self.assertEqual(Ad.objects.all().count(), 0)
 
+        common_data = dict(
+            Date=str(today),
+            AveragePosition=1,
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+
+        test_report_data = [
+            dict(Id=str(valid_ad_id), AdGroupId=str(valid_ad_group_id), **common_data),
+            dict(Id=str(invalid_ad_id), AdGroupId=str(invalid_ad_group_id),
+                 **common_data)
+        ]
+        fields = AD_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        with patch_now(now), \
+                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+                patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
+            updater = GoogleAdsUpdater(account)
+            updater.main_updaters = (AdUpdater,)
+            updater.update_all_except_campaigns()
+
+        self.assertEqual(Ad.objects.all().count(), 1)
+        self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
+
+    def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(date=today, ad_group=ad_group,
+                                        average_position=1)
+
+        common = dict(
+            Criteria=ParentStatuses[0],
+            Date=str(today),
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+        test_report_data = [
+            dict(AdGroupId=str(99), **common),
+            dict(AdGroupId=str(ad_group.id), **common)
+        ]
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 0)
+
+        with patch_now(now), \
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
+            updater = GoogleAdsUpdater(account)
+            updater.main_updaters = (ParentUpdater,)
+            updater.update_all_except_campaigns()
+        self.assertEqual(ParentStatistic.objects.all().count(), 1)
+
+    def test_db_error_retry_on_database_error(self):
+        mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            timezone="UTC",
+            can_manage_clients=True,
+            update_time=None
+        )
+        AWAccountPermission.objects.get_or_create(
+            account=mcc_account,
+            aw_connection=AWConnection.objects.get_or_create()[0],
+            can_read=True
+        )
+        test_account_id = next(int_iterator)
+        test_customers = [
+            dict(
+                customerId=str(test_account_id),
+                name="name",
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
+
+        origin_method = CursorWrapper.execute
+
+        def errors():
+            yield Error("test")
+            while True:
+                yield None
+
+        error_generator = errors()
+
+        def mock_db_execute(inst, query, params=None):
+            if query.startswith("INSERT INTO \"aw_reporting_account\""):
+                error = next(error_generator)
+                if error is not None:
+                    raise error
+            return origin_method(inst, query, params)
+
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
+
+        with patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute), \
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
+            GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
+
+        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
+
+
+class UpdateAwAccountsTestCase(BaseUpdateAwTestCase, TestCase):
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
@@ -191,8 +343,10 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             return test_stream_statistic
 
         downloader_mock.DownloadReportAsStream = test_router
+
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         campaign.refresh_from_db()
@@ -304,7 +458,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         downloader_mock.DownloadReportAsStream = test_router
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -355,7 +510,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (CampaignLocationTargetUpdater,)
             updater.update_all_except_campaigns()
@@ -406,7 +562,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         campaign.refresh_from_db()
@@ -463,7 +620,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (ParentUpdater,)
             updater.update_all_except_campaigns()
@@ -511,57 +669,14 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (InterestUpdater,)
             updater.update_all_except_campaigns()
         self.assertEqual(Audience.objects.all().count(), 1)
         self.assertEqual(Audience.objects.first().type,
                          Audience.CUSTOM_AFFINITY_TYPE)
-
-    def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
-        today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1, account=account)
-        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
-        AdGroupStatistic.objects.create(date=today, ad_group=ad_group,
-                                        average_position=1)
-
-        common = dict(
-            Criteria=ParentStatuses[0],
-            Date=str(today),
-            Cost=0,
-            Impressions=0,
-            VideoViews=0,
-            Clicks=0,
-            Conversions=0,
-            AllConversions=0,
-            ViewThroughConversions=0,
-            VideoQuartile25Rate=0,
-            VideoQuartile50Rate=0,
-            VideoQuartile75Rate=0,
-            VideoQuartile100Rate=0,
-        )
-        test_report_data = [
-            dict(AdGroupId=str(99), **common),
-            dict(AdGroupId=str(ad_group.id), **common)
-        ]
-        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
-        test_stream = build_csv_byte_stream(fields, test_report_data)
-        aw_client_mock = MagicMock()
-        downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
-
-        self.assertEqual(ParentStatistic.objects.all().count(), 0)
-
-        with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
-            updater = GoogleAdsUpdater(account)
-            updater.main_updaters = (ParentUpdater,)
-            updater.update_all_except_campaigns()
-
-        self.assertEqual(ParentStatistic.objects.all().count(), 1)
 
     def test_get_ad_is_disapproved(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -609,7 +724,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = test_stream
 
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdUpdater,)
             updater.update_all_except_campaigns()
@@ -621,55 +737,6 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertFalse(is_disapproved(approved_ad_2))
         self.assertFalse(is_disapproved(approved_ad_3))
         self.assertTrue(is_disapproved(disapproved_ad_1))
-
-    def test_get_ad_skip_missing_groups(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
-        today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1, account=account)
-        valid_ad_group_id, invalid_ad_group_id = 1, 2
-        valid_ad_id, invalid_ad_id = 3, 4
-        ad_group = AdGroup.objects.create(id=valid_ad_group_id,
-                                          campaign=campaign)
-        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
-                                        average_position=1)
-        self.assertEqual(Ad.objects.all().count(), 0)
-
-        common_data = dict(
-            Date=str(today),
-            AveragePosition=1,
-            Cost=0,
-            Impressions=0,
-            VideoViews=0,
-            Clicks=0,
-            Conversions=0,
-            AllConversions=0,
-            ViewThroughConversions=0,
-            VideoQuartile25Rate=0,
-            VideoQuartile50Rate=0,
-            VideoQuartile75Rate=0,
-            VideoQuartile100Rate=0,
-        )
-
-        test_report_data = [
-            dict(Id=str(valid_ad_id), AdGroupId=str(valid_ad_group_id), **common_data),
-            dict(Id=str(invalid_ad_id), AdGroupId=str(invalid_ad_group_id),
-                 **common_data)
-        ]
-        fields = AD_PERFORMANCE_REPORT_FIELDS
-        test_stream = build_csv_byte_stream(fields, test_report_data)
-        aw_client_mock = MagicMock()
-        downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
-
-        with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
-            updater = GoogleAdsUpdater(account)
-            updater.main_updaters = (AdUpdater,)
-            updater.update_all_except_campaigns()
-
-        self.assertEqual(Ad.objects.all().count(), 1)
-        self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
 
     def test_update_set_boolean_fields(self):
         fields = "age_18_24", "age_25_34", "age_35_44", "age_45_54", "age_55_64", "age_65", "age_undetermined", \
@@ -720,7 +787,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         YTVideoStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
 
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.update_all_except_campaigns()
 
@@ -743,7 +811,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(campaign=campaign, **common_values)
 
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.update_all_except_campaigns()
 
@@ -774,7 +843,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -815,7 +885,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -859,7 +930,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
@@ -896,7 +968,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now_utc), \
              patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client"), \
-             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.full_update()
 
@@ -920,7 +993,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream([], [])
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (AdGroupUpdater, AdUpdater, ParentUpdater)
             updater.update_all_except_campaigns()
@@ -956,7 +1030,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+                patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(mcc).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
@@ -976,7 +1051,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             updater = GoogleAdsUpdater(account)
             updater.main_updaters = (TopicUpdater,)
             updater.update_all_except_campaigns()
@@ -1001,7 +1077,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock.side_effect = exception
 
         with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
-             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)):
+             patch.object(GoogleAdsUpdater, "MAX_RETRIES", new_callable=PropertyMock(return_value=0)),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
@@ -1051,7 +1128,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         campaign.refresh_from_db()
@@ -1102,7 +1180,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
         with patch_now(now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         campaign.refresh_from_db()
@@ -1142,62 +1221,12 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         service_mock = aw_client_mock.GetService()
         service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
+                patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(len(Account.objects.get(id=test_account_id).name), name_limit)
-
-    def test_db_error_retry_on_database_error(self):
-        mcc_account = Account.objects.create(
-            id=next(int_iterator),
-            timezone="UTC",
-            can_manage_clients=True,
-            update_time=None
-        )
-        AWAccountPermission.objects.get_or_create(
-            account=mcc_account,
-            aw_connection=AWConnection.objects.get_or_create()[0],
-            can_read=True
-        )
-        test_account_id = next(int_iterator)
-        test_customers = [
-            dict(
-                customerId=str(test_account_id),
-                name="name",
-                currencyCode="",
-                dateTimeZone="UTC",
-                canManageClients=False,
-            ),
-        ]
-
-        origin_method = CursorWrapper.execute
-
-        def errors():
-            yield Error("test")
-            while True:
-                yield None
-
-        error_generator = errors()
-
-        def mock_db_execute(inst, query, params=None):
-            if query.startswith("INSERT INTO \"aw_reporting_account\""):
-                error = next(error_generator)
-                if error is not None:
-                    raise error
-            return origin_method(inst, query, params)
-
-        aw_client_mock = MagicMock()
-        service_mock = aw_client_mock.GetService()
-        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
-        downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
-
-        with patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
-            GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
-
-        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
     def test_update_account_struck_fields(self):
         any_date = date(2019, 1, 1)
@@ -1276,7 +1305,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertTrue(AWAccountPermission.objects.filter(
             account=account.managers.first(), aw_connection__revoked_access=False).exists())
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+                patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
