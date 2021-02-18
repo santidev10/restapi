@@ -38,6 +38,8 @@ class TranscriptsFromCacheUpdater:
         self.cursor = 0
         self.videos_map = {}
         self.upsert_queue = []
+        self.floor = 0
+        self.ceiling = 0
         self.skipped_count = 0
         self.not_xml_count = 0
         self.processed_count = 0
@@ -56,6 +58,8 @@ class TranscriptsFromCacheUpdater:
         :param ceiling:
         :return:
         """
+        self.floor = floor
+        self.ceiling = ceiling
         query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__gte=floor, id__lte=ceiling) \
             .order_by("id")
         self.total_to_process_count = query.count()
@@ -72,6 +76,15 @@ class TranscriptsFromCacheUpdater:
             self._map_es_videos(chunk)
         except (IncompleteRead, ProtocolError, TransportError, ConnectionError) as e:
             logger.info(f"caught exception of type: {type(e).__name__}. {e}")
+            chunk_length = len(chunk)
+            logger.info(f"RECURSING chunk of size: {chunk_length}")
+            if chunk_length < 2:
+                logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk.first().video.video_id}")
+                return
+            divisor = round(chunk_length / 2)
+            # recursively split in two
+            for divided_chunk in [chunk[:divisor], chunk[divisor:]]:
+                self._handle_videos_chunk(divided_chunk)
             return
 
         for video in chunk:
@@ -86,7 +99,8 @@ class TranscriptsFromCacheUpdater:
         reports current progress
         :return:
         """
-        percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
+        total_percentage = round((self.cursor / self.ceiling) * 100, 2)
+        runtime_percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
         skipped_percentage = round((self.skipped_count / self.total_to_process_count) * 100, 2)
         not_xml_percentage = round((self.not_xml_count / self.total_to_process_count) * 100, 2)
         no_es_record_percentage = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
@@ -95,8 +109,8 @@ class TranscriptsFromCacheUpdater:
                                                 2)
 
         message = (
-            f"cursor: {self.cursor} \n"
-            f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%) \n"
+            f"total progress: {total_percentage}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
+            f"processed {self.processed_count} of {self.total_to_process_count} this run ({runtime_percentage}%) \n"
             f"total skipped: {self.skipped_count} ({skipped_percentage}%) \n"
             f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%) \n"
@@ -110,7 +124,7 @@ class TranscriptsFromCacheUpdater:
         except Retry:
             return
 
-        subject = f"Update transcripts from cache progress: ({percentage}%)"
+        subject = f"Update transcripts from cache progress: ({total_percentage}%)"
         send_email(
             subject=subject,
             from_email=settings.SENDER_EMAIL_ADDRESS,
