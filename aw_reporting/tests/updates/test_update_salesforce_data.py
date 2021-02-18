@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core import mail
-from django.test import TransactionTestCase
+from django.test import TestCase
 from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
@@ -20,6 +20,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SFAccount
 from aw_reporting.models import User
+from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesforceFields
@@ -33,10 +34,12 @@ from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
 from utils.unittests.str_iterator import str_iterator
+from utils.unittests.patch_bulk_create import patch_safe_bulk_create
 
 
-class UpdateSalesforceDataTestCase(TransactionTestCase):
-    def test_update_dynamic_placement_service_fee(self):
+@patch.object(BaseQueryset, "safe_bulk_create", wraps=patch_safe_bulk_create)
+class UpdateSalesforceDataTestCase(TestCase):
+    def test_update_dynamic_placement_service_fee(self, *_):
         opportunity = Opportunity.objects.create(id=1)
         today = start = end = date(2017, 1, 1)
         placement = OpPlacement.objects.create(
@@ -69,7 +72,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0))
 
-    def test_update_dynamic_placement_rate_and_tech_fee(self):
+    def test_update_dynamic_placement_rate_and_tech_fee(self, *_):
         opportunity = Opportunity.objects.create(id=1)
         today = start = end = date(2017, 1, 1)
         placement = OpPlacement.objects.create(
@@ -108,7 +111,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             flight.id, dict(Delivered_Ad_Ops__c=delivered_units,
                             Total_Flight_Cost__c=cost))
 
-    def test_links_placements_by_code_on_campaign(self):
+    def test_links_placements_by_code_on_campaign(self, *_):
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity,
                                                number="PL12345")
@@ -123,7 +126,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertIsNotNone(campaign.salesforce_placement)
         self.assertEqual(campaign.salesforce_placement, placement)
 
-    def test_does_not_brake_links(self):
+    def test_does_not_brake_links(self, *_):
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         Campaign.objects.create(salesforce_placement=placement)
@@ -132,7 +135,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(placement.adwords_campaigns.count(), 1)
 
-    def test_success_opportunity_create(self):
+    def test_success_opportunity_create(self, *_):
         self.assertEqual(Opportunity.objects.all().count(), 0)
 
         sf_mock = MockSalesforceConnection()
@@ -147,7 +150,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(Opportunity.objects.all().count(), 1)
 
-    def test_notify_ordered_units_changed(self):
+    def test_notify_ordered_units_changed(self, *_):
         ordered_units = 123
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
@@ -229,7 +232,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         expected_body = "\n\n".join(expected_body_lines)
         self.assertEqual(email.body, expected_body)
 
-    def test_not_notify_ordered_units_changed_fractional(self):
+    def test_not_notify_ordered_units_changed_fractional(self, *_):
         """ Test that notification is not sent if changed units are fractional """
         ordered_units = 554
         ad_ops = User.objects.create(
@@ -297,7 +300,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         flight.refresh_from_db()
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_dynamic_placement_notify_total_cost_changed(self):
+    def test_dynamic_placement_notify_total_cost_changed(self, *_):
         total_cost = 123.
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
@@ -381,7 +384,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         expected_body = "\n\n".join(expected_body_lines)
         self.assertEqual(email.body, expected_body)
 
-    def test_update_no_notification_if_not_changed(self):
+    def test_update_no_notification_if_not_changed(self, *_):
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
             name="Paul",
@@ -471,7 +474,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_notify_ordered_units_changed_no_ad_ops(self):
+    def test_notify_ordered_units_changed_no_ad_ops(self, *_):
         ordered_units = 123
         opportunity = Opportunity.objects.create(
             id=str(next(int_iterator)),
@@ -529,7 +532,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(mail.outbox[0].to[0], test_email)
         self.assertEqual(email.subject, "{} Ordered Units has changed".format(opportunity.name))
 
-    def test_dynamic_placement_notify_total_cost_changed_no_ad_ops(self):
+    def test_dynamic_placement_notify_total_cost_changed_no_ad_ops(self, *_):
         total_cost = 123.
         opportunity = Opportunity.objects.create(
             id=str(next(int_iterator)),
@@ -589,7 +592,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(mail.outbox[0].to[0], test_email)
         self.assertEqual(email.subject, "{} Total Client Cost has changed".format(opportunity.name))
 
-    def test_no_notifications_if_probability_low(self):
+    def test_no_notifications_if_probability_low(self, *_):
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
             name="Paul",
@@ -680,7 +683,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_notify_ordered_units_changed_debug(self):
+    def test_notify_ordered_units_changed_debug(self, *_):
         ordered_units = 123
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
@@ -747,7 +750,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
 
-    def test_dynamic_placement_notify_total_cost_changed_debug(self):
+    def test_dynamic_placement_notify_total_cost_changed_debug(self, *_):
         total_cost = 123.
         ad_ops = User.objects.create(
             id=str(next(int_iterator)),
@@ -816,7 +819,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
 
-    def test_get_flight_pacing(self):
+    def test_get_flight_pacing(self, *_):
         self.assertEqual(Opportunity.objects.all().count(), 0)
         opportunity_id = str(next(int_iterator))
         placement_id = str(next(int_iterator))
@@ -851,7 +854,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(Flight.objects.all().count(), 1)
         self.assertEqual(Flight.objects.all().first().pacing, pacing)
 
-    def test_update_pacing_changed(self):
+    def test_update_pacing_changed(self, *_):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         start = date(2017, 1, 1)
         end = today = start + timedelta(days=1)
@@ -898,7 +901,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Pacing__c=pacing * 100))
 
-    def test_update_pacing_not_changed(self):
+    def test_update_pacing_not_changed(self, *_):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         start = date(2017, 1, 1)
         end = today = start + timedelta(days=1)
@@ -945,7 +948,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         sf_mock().sf.Flight__c.update.assert_not_called()
 
-    def test_update_after_delay(self):
+    def test_update_after_delay(self, *_):
         update_delay_days = settings.SALESFORCE_UPDATE_DELAY_DAYS
         self.assertGreater(update_delay_days, 0)
         start = end = date(2019, 1, 1)
@@ -976,7 +979,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data(do_delete=False, do_get=False)
             sf_mock().sf.Flight__c.update.assert_not_called()
 
-    def test_does_not_remove_demo_data(self):
+    def test_does_not_remove_demo_data(self, *_):
         recreate_test_demo_data()
         demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
         flights_count = demo_flights_qs.count()
@@ -984,7 +987,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data(do_delete=False)
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
-    def test_no_demo_data_update(self):
+    def test_no_demo_data_update(self, *_):
         recreate_test_demo_data()
         Opportunity.objects.exclude(id=DEMO_ACCOUNT_ID).delete()
         with patch_salesforce_connector() as connector:
@@ -998,7 +1001,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         with self.subTest("Flights"):
             salesforce.Flight__c.update.assert_not_called()
 
-    def test_delete_removed_salesforce_items(self):
+    def test_delete_removed_salesforce_items(self, *_):
         opp_1 = Opportunity.objects.create(
             id=next(int_iterator)
         )
@@ -1077,7 +1080,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertTrue(OpPlacement.objects.filter(id__in=[placement_2_a.id, placement_3.id]).exists())
         self.assertTrue(Flight.objects.filter(id__in=[flight_2_a.id, flight_3_a.id]).exists())
 
-    def test_new_parent(self):
+    def test_new_parent(self, *_):
         """ FK constraint error
         https://channelfactory.atlassian.net/browse/VIQ2-326
         """
@@ -1102,7 +1105,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(parent.parent_id, parent2.id)
         self.assertIsNone(parent2.parent_id)
     
-    def test_update_with_opportunities_settings(self):
+    def test_update_with_opportunities_settings(self, *_):
         TEST_OP = "test_op"
         sf_mock = MockSalesforceConnection()
         with override_settings(SF_OPPORTUNITIES_UPDATE=[TEST_OP]), \
@@ -1114,7 +1117,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
 class MockSalesforceConnection(Connection):
     # pylint: disable=super-init-not-called
-    def __init__(self):
+    def __init__(self, *_):
         self._storage = dict()
 
     # pylint: enable=super-init-not-called
