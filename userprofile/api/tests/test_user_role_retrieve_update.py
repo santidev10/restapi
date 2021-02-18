@@ -50,7 +50,7 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         data = response.data
         role_permissions = role.permissions.all()
         enabled_permissions = [perm for perm in data["permissions"] if perm["enabled"] is True]
-        self.assertEqual([p.id for p in role_permissions], [p["id"] for p in enabled_permissions])
+        self.assertEqual([p.permission for p in role_permissions], [p["perm"] for p in enabled_permissions])
         self.assertEqual([u["id"] for u in data["users"]], [user1.id, user2.id])
 
     def test_get_permissions_fail(self):

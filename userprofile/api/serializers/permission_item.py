@@ -9,7 +9,10 @@ class PermissionItemSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def to_representation(self, instance):
-        result = super().to_representation(instance)
         enabled_permissions = self.context.get("enabled_permissions", set())
-        result["enabled"] = result["permission"] in enabled_permissions
+        result = {
+            "perm": instance.permission,
+            "enabled": instance.permission in enabled_permissions,
+            "text": instance.display
+        }
         return result

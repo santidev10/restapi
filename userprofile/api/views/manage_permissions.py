@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 
+from userprofile.api.serializers import PermissionItemSerializer
 from userprofile.models import PermissionItem
 from userprofile.models import UserProfile
 from userprofile.constants import StaticPermissions
@@ -18,19 +19,14 @@ class UserPermissionsManagement(APIView):
 
     def get(self, request):
         user = self._validate_request(request)
-        permissions = []
-        all_valid_perms = set(PermissionItem.all_perms())
-        for p in PermissionItem.objects.all():
-            if p.permission not in all_valid_perms:
-                continue
+        all_perms = PermissionItem.all_perms(as_obj=True)
+        enabled_perms = set()
+        for p in all_perms:
             enabled = user.perms.get(p.permission)
-            if enabled is None:
-                enabled = p.default_value
-            permissions.append({
-                "perm": p.permission,
-                "enabled": enabled,
-                "text": p.display
-            })
+            enabled = enabled if enabled is not None else p.default_value
+            if enabled is True:
+                enabled_perms.add(p.permission)
+        permissions = PermissionItemSerializer(all_perms, many=True, context=dict(enabled_permissions=enabled_perms)).data
         response_data = {
             "email": user.email,
             "permissions": permissions,

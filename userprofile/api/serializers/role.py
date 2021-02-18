@@ -27,15 +27,12 @@ class RoleSerializer(serializers.ModelSerializer):
         """
         Serialize related permissions
         """
-        current_permissions = PermissionItem.all_perms(as_obj=True)
+        all_permissions = PermissionItem.all_perms(as_obj=True)
         role_permissions = set(p.permission for p in obj.permissions.all())
-        all_permissions = {
-            perm["id"]: perm
-            for perm in PermissionItemSerializer(current_permissions,
-                                                 many=True, context=dict(enabled_permissions=role_permissions)).data
-        }
-        values = list(all_permissions.values())
-        return values
+        serializer = PermissionItemSerializer(all_permissions, many=True,
+                                              context=dict(enabled_permissions=role_permissions))
+        permissions = serializer.data
+        return permissions
 
     def _get_users(self, instance):
         """
