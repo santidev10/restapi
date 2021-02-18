@@ -115,7 +115,11 @@ class DashboardAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-        return queryset.order_by("-is_demo", "is_ended", sort_by)
+        queryset = queryset.order_by("-is_demo", "is_ended", sort_by)
+        if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT) is False \
+            and queryset.count() > 0 and queryset[0].id == DEMO_ACCOUNT_ID:
+            return queryset[1:]
+        return queryset
 
     # pylint: disable=too-many-branches,too-many-statements
     def filter_queryset(self, queryset):

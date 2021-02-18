@@ -98,6 +98,7 @@ class StaticPermissions:
     MANAGED_SERVICE__CAMPAIGNS_SEGMENTED = "managed_service.campaigns_segmented"
     MANAGED_SERVICE__CONVERSIONS = "managed_service.conversions"
     MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS = "managed_service.visible_all_accounts"
+    MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT = "managed_service.visible_demo_account"
     MANAGED_SERVICE__REAL_GADS_COST = "managed_service.real_gads_cost"
     MANAGED_SERVICE__GLOBAL_ACCOUNT_VISIBILITY = "managed_service.global_account_visibility"
     MANAGED_SERVICE__AUDIENCES = "managed_service.audiences"

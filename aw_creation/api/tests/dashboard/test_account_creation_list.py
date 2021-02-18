@@ -156,6 +156,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         recreate_test_demo_data()
         self.user.perms.update({
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
             StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self.user.save()
@@ -171,6 +172,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             StaticPermissions.MANAGED_SERVICE: False,
             StaticPermissions.MEDIA_BUYING: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
             StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self.user.save()
@@ -191,6 +193,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Account.objects.create(name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
 
         response = self.client.get(self.url)
@@ -364,6 +367,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_brand(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -374,6 +378,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_cost_type(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -384,6 +389,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_agency(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -493,8 +499,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.assertEqual(data["items"][0]["impressions"], campaign.impressions)
 
-    def test_demo_is_first(self):
+    def test_demo_is_first_and_visible(self):
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         recreate_test_demo_data()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
@@ -506,3 +513,18 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items_count"], 2)
         items = response.data["items"]
         self.assertEqual([i["id"] for i in items], [DEMO_ACCOUNT_ID, account.account_creation.id])
+
+    def test_invisible_demo_account_permission(self):
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = False
+        self.user.save()
+        recreate_test_demo_data()
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create()
+        account.managers.add(chf_mcc_account)
+        account.save()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        items = response.data["items"]
+        self.assertEqual([i["id"] for i in items], [account.account_creation.id])
