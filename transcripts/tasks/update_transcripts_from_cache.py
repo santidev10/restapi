@@ -10,6 +10,8 @@ from elasticsearch.helpers.errors import BulkIndexError
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
+from urllib3.exceptions import ProtocolError
+from http.client import IncompleteRead
 
 from administration.notifications import send_email
 from audit_tool.models import AuditVideoTranscript
@@ -67,7 +69,11 @@ class TranscriptsFromCacheUpdater:
         self._map_es_videos(chunk)
         for video in chunk:
             self._handle_video(video)
-        self._upsert_chunk()
+        try:
+            self._upsert_chunk()
+        except (IncompleteRead, ProtocolError) as e:
+            logger.info(f"caught exception of type: {type(e).__name__}. {e}")
+            pass
         self.upsert_queue = []
         self._report()
 
