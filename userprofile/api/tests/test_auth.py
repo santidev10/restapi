@@ -73,6 +73,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "perms",
                 "phone_number",
                 "phone_number_verified",
+                "role_id",
                 "token",
                 "is_active",
                 "has_accepted_GDPR",

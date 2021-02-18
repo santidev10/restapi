@@ -56,6 +56,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "phone_number",
                 "phone_number_verified",
                 "profile_image_url",
+                "role_id",
                 "token",
                 "is_active",
                 "has_accepted_GDPR",

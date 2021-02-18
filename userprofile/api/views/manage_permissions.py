@@ -46,14 +46,14 @@ class UserPermissionsManagement(APIView):
         Update profile
         """
         user, role = self._validate_request(request, updating=True)
-        data = self.request.data
+        data = self.request.data.get("permissions", {})
         all_permissions = {
             p.permission: p.default_value
             for p in PermissionItem.objects.all()
         }
         valid_perm_values = {True, False}
         errors = []
-        for perm_name, value in data.get("permissions", {}).items():
+        for perm_name, value in data.items():
             if perm_name not in all_permissions:
                 errors.append(f"Invalid permission name: {perm_name}.")
                 continue
