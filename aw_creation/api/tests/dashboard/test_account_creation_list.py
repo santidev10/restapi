@@ -172,6 +172,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             StaticPermissions.MANAGED_SERVICE: False,
             StaticPermissions.MEDIA_BUYING: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
             StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
         })
         self.user.save()
@@ -366,6 +367,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_brand(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -376,6 +378,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_cost_type(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -386,6 +389,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_demo_agency(self):
         recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
+        self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
