@@ -5,10 +5,13 @@ from datetime import timedelta
 from celery.exceptions import Retry
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from elasticsearch_dsl import Q
 from elasticsearch_dsl.query import Query
 from typing import Type
 
+from administration.notifications import send_email
+from audit_tool.models import APIScriptTracker
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
@@ -24,6 +27,8 @@ from utils.utils import chunks_generator
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "tts_url_transcripts"
+TRANSCRIPTS_SUCCESS_COUNTER_NAME = "transcripts_tts_url_success_count"
+TRANSCRIPTS_SUCCESS_COUNTER_DAYS = 1
 
 
 class NoMoreProxiesAvailableException(Exception):
@@ -101,6 +106,7 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
     retrieval_time = retrieval_end - retrieval_start
     logger.info("Retrieved %s Videos from Elastic Search in %s seconds.", len(all_videos), retrieval_time)
     batch_size = settings.TRANSCRIPTS_BATCH_SIZE
+    success_count = 0
     for chunk in chunks_generator(all_videos, size=batch_size):
         videos_batch = list(chunk)
         vid_ids = list({vid.main.id for vid in videos_batch})
@@ -111,6 +117,7 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
         scraper_time = scraper_end - scraper_start
         logger.info("Scraped %s Video Transcripts in %s seconds.", len(videos_batch), scraper_time)
         successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
+        success_count += len(successful_vid_ids)
         vid_ids_to_rescore = []
         logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video"
                     f" transcripts, FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
@@ -137,6 +144,10 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
                                     f"seconds.")
                     logger.info(failure.message)
                     transcripts_scraper.send_yt_blocked_email()
+                    # store count of successes over a period of time, notify if none over that period
+                    notify_if_no_successes()
+                    update_successes_count(success_count)
+
                     raise NoMoreProxiesAvailableException()
                 if isinstance(failure, ConnectionError) or str(failure) == "Exceeded connection attempts to URL.":
                     continue
@@ -171,10 +182,78 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
             rescore_end = time.perf_counter()
             rescore_time = rescore_end - rescore_start
             logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")
+
+    # store count of successes over a period of time, notify if none over that period
+    notify_if_no_successes()
+    update_successes_count(success_count)
+
     total_end = time.perf_counter()
     total_time = total_end - total_start
     logger.info("Parsed and stored %s Video Transcripts in %s seconds.", len(all_videos), total_time)
     logger.info("Finished pulling TTS_URL transcripts task.")
+
+
+def notify_if_no_successes():
+    """
+    If there have been no successful transcript pulls in TRANSCRIPTS_SUCCESS_COUNTER_DAYS days, send an email
+    :return:
+    """
+    now = timezone.now()
+    counter, created = APIScriptTracker.objects.get_or_create(name=TRANSCRIPTS_SUCCESS_COUNTER_NAME,
+                                                              defaults={"timestamp": now})
+    if created:
+        return
+
+    # if monitoring period has not yet elapsed, do not notify
+    delta = now - counter.timestamp
+    if abs(delta.days) < TRANSCRIPTS_SUCCESS_COUNTER_DAYS:
+        return
+
+    # do not notify unless count is 0
+    if counter.cursor > 0:
+        return
+
+    try:
+        lock(lock_name="notify_if_no_daily_success_count", max_retries=1, expire=timedelta(hours=24).total_seconds())
+    except Retry:
+        return
+
+    send_email(
+        subject=f"Transcripts: no successful transcript pulls for {now.date()}",
+        from_email=settings.SENDER_EMAIL_ADDRESS,
+        recipient_list=["andrew.wong@channelfactory.com"],
+        message=(
+            f"There have been {counter.cursor} transcripts pulled successfully in the last {delta.days} days"
+            f" ({delta.total_seconds()} total seconds)"
+        )
+    )
+
+
+def update_successes_count(count: int):
+    """
+    increment daily success count by `count`, or set to `count` and reset timestamp to now if monitoring period is over
+    :param count:
+    :return:
+    """
+    if not isinstance(count, int) or not count:
+        return
+
+    now = timezone.now()
+    counter, created = APIScriptTracker.objects.get_or_create(name=TRANSCRIPTS_SUCCESS_COUNTER_NAME,
+                                                              defaults={"timestamp": now, "cursor": count})
+    if created:
+        return
+
+    # if monitoring period has elapsed, reset the timestamp and count
+    delta = now - counter.timestamp
+    if abs(delta.days) >= TRANSCRIPTS_SUCCESS_COUNTER_DAYS:
+        counter.timestamp = now
+        counter.cursor = count
+        counter.save(update_fields=["cursor", "timestamp"])
+    # if within monitoring period, increment count
+    else:
+        counter.cursor += count
+        counter.save(update_fields=["cursor"])
 
 
 def get_video_ids_query(vid_ids):
