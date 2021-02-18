@@ -117,7 +117,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
             sort_by = "-created_at"
         queryset = queryset.order_by("-is_demo", "is_ended", sort_by)
         if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT) is False \
-                and queryset[0].id == DEMO_ACCOUNT_ID:
+            and len(queryset) > 0 and queryset[0].id == DEMO_ACCOUNT_ID:
             return queryset[1:]
         return queryset
 
