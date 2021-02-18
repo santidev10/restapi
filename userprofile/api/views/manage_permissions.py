@@ -5,8 +5,11 @@ from rest_framework.exceptions import PermissionDenied
 
 from userprofile.api.serializers import PermissionItemSerializer
 from userprofile.models import PermissionItem
+from userprofile.models import Role
+from userprofile.models import UserRole
 from userprofile.models import UserProfile
 from userprofile.constants import StaticPermissions
+from utils.views import get_object
 
 
 class UserPermissionsManagement(APIView):
@@ -18,7 +21,7 @@ class UserPermissionsManagement(APIView):
     )
 
     def get(self, request):
-        user = self._validate_request(request)
+        user, _ = self._validate_request(request)
         all_perms = PermissionItem.all_perms(as_obj=True)
         enabled_perms = set()
         for p in all_perms:
@@ -27,9 +30,14 @@ class UserPermissionsManagement(APIView):
             if enabled is True:
                 enabled_perms.add(p.permission)
         permissions = PermissionItemSerializer(all_perms, many=True, context=dict(enabled_permissions=enabled_perms)).data
+        try:
+            role_id = user.user_role.role_id
+        except (UserRole.DoesNotExist, Role.DoesNotExist):
+            role_id = None
         response_data = {
             "email": user.email,
             "permissions": permissions,
+            "role_id": role_id,
         }
         return Response(response_data)
 
@@ -37,8 +45,8 @@ class UserPermissionsManagement(APIView):
         """
         Update profile
         """
-        user = self._validate_request(request, updating=True)
-        data = self.request.data
+        user, role = self._validate_request(request, updating=True)
+        data = self.request.data.get("permissions", {})
         all_permissions = {
             p.permission: p.default_value
             for p in PermissionItem.objects.all()
@@ -55,6 +63,8 @@ class UserPermissionsManagement(APIView):
             raise ValidationError(errors)
         user.perms.update(data)
         user.save()
+
+        user_role, _ = UserRole.objects.update_or_create(user=user, defaults=(dict(role=role)))
         return Response({"status": "success"})
 
     def _validate_request(self, request, updating=False):
@@ -66,9 +76,12 @@ class UserPermissionsManagement(APIView):
         except UserProfile.DoesNotExist:
             raise ValidationError("Invalid user id")
 
+        role = None
         # Validate that only admin users can change admin permissions
-        if updating is True and target_user.perms.get("admin", False) != request.data.get("admin", False) \
-                and not request.user.has_permission(StaticPermissions.ADMIN):
-            raise PermissionDenied("You must be an admin to manage admin permissions.")
-
-        return target_user
+        if updating is True:
+            if target_user.perms.get("admin", False) != request.data.get("admin", False) \
+                    and not request.user.has_permission(StaticPermissions.ADMIN):
+                raise PermissionDenied("You must be an admin to manage admin permissions.")
+            if request.data.get("role_id") is not None:
+                role = get_object(Role, id=request.data["role_id"])
+        return target_user, role

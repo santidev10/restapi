@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
+from rest_framework import serializers
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
@@ -30,6 +31,7 @@ class UserSerializer(ModelSerializer):
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     user_type = CharField(max_length=255)
     domain = CharField(max_length=255)
+    role_id = serializers.IntegerField(source="user_role.role_id")
 
     class Meta:
         """
@@ -58,6 +60,7 @@ class UserSerializer(ModelSerializer):
             "phone_number_verified",
             "profile_image_url",
             "has_accepted_GDPR",
+            "role_id",
             "user_type",
         )
         read_only_fields = (

@@ -1,10 +1,14 @@
 import json
 
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_200_OK
 
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserRole
+from userprofile.models import Role
+from userprofile.models import PermissionItem
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -47,21 +51,28 @@ class UserPermissionsManagement(ExtendedAPITestCase):
     def test_bad_request_post(self):
         """ Test invalid post data raises ValidationError """
         user = self.create_admin_user()
-        invalid_permission_name = "non_exists"
-        payload = json.dumps({
-            invalid_permission_name: False
-        })
-        response = self.client.post(self._get_url(user_id=user.id), payload, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        err = response.data[0]
-        self.assertTrue("Invalid" in err and invalid_permission_name in err)
 
-        payload = json.dumps({
-            StaticPermissions.RESEARCH__VETTING: None
-        })
-        response = self.client.post(self._get_url(user_id=user.id), payload, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertTrue("must be true or false" in response.data[0])
+        with self.subTest("Test updating with non existent permission"):
+            invalid_permission_name = "non_exists"
+            payload = json.dumps({
+                "permissions": {
+                    invalid_permission_name: False
+                }
+            })
+            response = self.client.post(self._get_url(user_id=user.id), payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            err = response.data[0]
+            self.assertTrue("Invalid" in err and invalid_permission_name in err)
+
+        with self.subTest("Test updating with invalid value"):
+            payload = json.dumps({
+                "permissions": {
+                    StaticPermissions.RESEARCH__VETTING: None
+                },
+            })
+            response = self.client.post(self._get_url(user_id=user.id), payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertTrue("must be true or false" in response.data[0])
 
     def test_get_success(self):
         user = self.create_test_user()
@@ -80,8 +91,10 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         user.perms.update({StaticPermissions.USER_MANAGEMENT: True})
         user.save()
         payload = json.dumps({
-            StaticPermissions.BUILD__CTL: True,
-            StaticPermissions.RESEARCH: True,
+            "permissions": {
+                StaticPermissions.BUILD__CTL: True,
+                StaticPermissions.RESEARCH: True,
+            },
         })
         response = self.client.post(self._get_url(user.id), data=payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -97,24 +110,63 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         target = self.create_test_user(email="test2@email.com", perms={
             StaticPermissions.ADMIN: False,
         })
-
         user = self.create_test_user()
-        user.perms.update({StaticPermissions.USER_MANAGEMENT: True})
-        payload = json.dumps({
-            StaticPermissions.ADMIN: True,
-        })
-        # user is not admin user and is trying to change target user admin status
-        response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        target.refresh_from_db()
-        self.assertEqual(target.perms[StaticPermissions.ADMIN], False)
 
-        user.perms.update({
-            StaticPermissions.ADMIN: True,
+        with self.subTest("Test fails updating admin permission as non admin user"):
+            user.perms.update({StaticPermissions.USER_MANAGEMENT: True})
+            payload = json.dumps({
+                "permissions": {
+                    StaticPermissions.ADMIN: True,
+                },
+            })
+            # user is not admin user and is trying to change target user admin status
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+            target.refresh_from_db()
+            self.assertEqual(target.perms[StaticPermissions.ADMIN], False)
+
+        with self.subTest("Test success updating admin permission as admin user"):
+            user.perms.update({
+                StaticPermissions.ADMIN: True,
+            })
+            user.save()
+            # Successful since user now has admin permission
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            target.refresh_from_db()
+            self.assertEqual(target.perms[StaticPermissions.ADMIN], True)
+
+    def test_update_role(self):
+        self.create_admin_user()
+        target = get_user_model().objects.create(email="test2@email.com", perms={
+            StaticPermissions.BUILD: False,
         })
-        user.save()
-        # Successful since user now has admin permission
-        response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        target.refresh_from_db()
-        self.assertEqual(target.perms[StaticPermissions.ADMIN], True)
+        role = Role.objects.create(name="test_update_role")
+        perm = PermissionItem.objects.get(permission=StaticPermissions.BUILD)
+        role.permissions.add(perm)
+
+        with self.subTest("Test adding user to role"):
+            payload = json.dumps({
+                "permissions": {},
+                "role_id": role.id
+            })
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            target.refresh_from_db()
+            self.assertTrue(UserRole.objects.filter(user=target, role=role).exists())
+            # Adding user to role should preserve original permissions
+            self.assertFalse(target.perms[StaticPermissions.BUILD], False)
+
+        with self.subTest("Test removing user from role"):
+            payload = json.dumps({
+                "permissions": {
+                    StaticPermissions.BUILD: True,
+                },
+                "role_id": None
+            })
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            target.refresh_from_db()
+            self.assertIsNone(target.user_role.role)
