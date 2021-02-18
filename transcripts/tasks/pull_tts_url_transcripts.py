@@ -85,6 +85,7 @@ def pull_tts_url_transcripts_with_lock(lock_name: str, *args, **kwargs):
         unlock(lock_name)
         raise e
     # pylint: enable=broad-except
+    unlock(lock_name)
 
 
 def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSCRIPTS_NUM_VIDEOS):
