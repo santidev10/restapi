@@ -12,6 +12,8 @@ from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 from urllib3.exceptions import ProtocolError
 from http.client import IncompleteRead
+from elasticsearch.exceptions import TransportError
+from urllib3.exceptions import ConnectionError
 
 from administration.notifications import send_email
 from audit_tool.models import AuditVideoTranscript
@@ -28,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 5000
+    CHUNK_SIZE = 2500
     LOCK_NAME = "update_transcripts_from_cache"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -68,7 +70,7 @@ class TranscriptsFromCacheUpdater:
         """
         try:
             self._map_es_videos(chunk)
-        except (IncompleteRead, ProtocolError) as e:
+        except (IncompleteRead, ProtocolError, TransportError, ConnectionError) as e:
             logger.info(f"caught exception of type: {type(e).__name__}. {e}")
             return
 
@@ -123,9 +125,7 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_ids = [video.video.video_id for video in chunk]
-        message = "getting videos for batch from ES"
-        logger.info(message)
-        print(message)
+        logger.info("getting videos for batch from ES")
         es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
