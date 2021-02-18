@@ -66,14 +66,16 @@ class TranscriptsFromCacheUpdater:
         :param chunk:
         :return:
         """
-        self._map_es_videos(chunk)
-        for video in chunk:
-            self._handle_video(video)
         try:
-            self._upsert_chunk()
+            self._map_es_videos(chunk)
         except (IncompleteRead, ProtocolError) as e:
             logger.info(f"caught exception of type: {type(e).__name__}. {e}")
-            pass
+            return
+
+        for video in chunk:
+            self._handle_video(video)
+
+        self._upsert_chunk()
         self.upsert_queue = []
         self._report()
 
@@ -121,6 +123,9 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_ids = [video.video.video_id for video in chunk]
+        message = "getting videos for batch from ES"
+        logger.info(message)
+        print(message)
         es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
