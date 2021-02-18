@@ -115,6 +115,8 @@ class DashboardAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
+        if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT) is False:
+            return queryset.order_by("-is_demo", "is_ended", sort_by)[1:]
         return queryset.order_by("-is_demo", "is_ended", sort_by)
 
     # pylint: disable=too-many-branches,too-many-statements
