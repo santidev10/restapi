@@ -1,10 +1,14 @@
 import json
 
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_200_OK
 
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserRole
+from userprofile.models import Role
+from userprofile.models import PermissionItem
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -118,3 +122,40 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         target.refresh_from_db()
         self.assertEqual(target.perms[StaticPermissions.ADMIN], True)
+
+    def test_update_role(self):
+        self.create_admin_user()
+        target = get_user_model().objects.create(email="test2@email.com", perms={
+            StaticPermissions.BUILD: False,
+        })
+        role = Role.objects.create(name="test_update_role")
+        perm = PermissionItem.objects.get(permission=StaticPermissions.BUILD)
+        role.permissions.add(perm)
+
+        with self.subTest("Test adding user to role"):
+            payload = json.dumps({
+                "permissions": {
+                    StaticPermissions.BUILD: True,
+                },
+                "role_id": role.id
+            })
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            target.refresh_from_db()
+            self.assertTrue(UserRole.objects.filter(user=target, role=role).exists())
+            # Adding user to role should preserve original permissions
+            self.assertFalse(target.perms[StaticPermissions.BUILD], False)
+
+        with self.subTest("Test removing user from role"):
+            payload = json.dumps({
+                "permissions": {
+                    StaticPermissions.BUILD: True,
+                },
+                "role_id": None
+            })
+            response = self.client.post(self._get_url(target.id), data=payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            target.refresh_from_db()
+            self.assertIsNone(target.user_role.role)

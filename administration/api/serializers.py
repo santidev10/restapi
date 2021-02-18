@@ -2,9 +2,9 @@
 Administration api serializers module
 """
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
-from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import URLField
@@ -90,6 +90,7 @@ class UserSerializer(ModelSerializer):
     """
     can_access_media_buying = SerializerMethodField()
     domain = CharField(max_length=255)
+    role_id = serializers.IntegerField(source="user_role.role_id")
 
     class Meta:
         """
@@ -112,6 +113,7 @@ class UserSerializer(ModelSerializer):
             "google_account_id",
             "can_access_media_buying",
             "annual_ad_spend",
+            "role_id",
             "user_type",
             "status"
         )
