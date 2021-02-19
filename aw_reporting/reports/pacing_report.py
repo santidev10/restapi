@@ -1748,22 +1748,23 @@ def get_flight_pacing_allocation_ranges(flight_id):
     # Get start and end date ranges grouped by allocation value
     pacing_allocation_ranges = []
     curr = 0
-    start = pacing_allocations[curr]
-    # Find the start and end of each date range allocation
-    while curr < len(pacing_allocations):
-        step = pacing_allocations[curr]
-        if step.is_end or curr == len(pacing_allocations) - 1:
-            pacing_allocation_ranges.append({
-                "start": start.date,
-                "end": step.date,
-                "allocation": step.allocation,
-            })
-            try:
-                # Reached end of allocations
-                start = pacing_allocations[curr + 1]
-            except IndexError:
-                break
-        curr += 1
+    if len(pacing_allocations) > 0:
+        start = pacing_allocations[curr]
+        # Find the start and end of each date range allocation
+        while curr < len(pacing_allocations):
+            step = pacing_allocations[curr]
+            if step.is_end or curr == len(pacing_allocations) - 1:
+                pacing_allocation_ranges.append({
+                    "start": start.date,
+                    "end": step.date,
+                    "allocation": step.allocation,
+                })
+                try:
+                    # Reached end of allocations
+                    start = pacing_allocations[curr + 1]
+                except IndexError:
+                    break
+            curr += 1
     return pacing_allocation_mapping, pacing_allocation_ranges
 
 
