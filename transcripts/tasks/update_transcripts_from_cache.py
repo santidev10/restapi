@@ -138,6 +138,7 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_ids = [video.video.video_id for video in chunk]
+        logger.info(f"requesting {len(video_ids)} videos from ES")
         es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
