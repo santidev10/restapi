@@ -33,6 +33,12 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         super().setUp()
         self.user = self.create_test_user(perms={StaticPermissions.USER_MANAGEMENT: True})
 
+    def test_get_role_base_permissions(self):
+        """ Test that permissions are simply retrieved if role id kwarg is -1 """
+        response = self.client.get(self._get_url(0))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+
     def test_get_single_role_success(self):
         """ Test successfully retrieving permissions and users associated with role """
         permissions = PermissionItem.objects.all().order_by("id")[:10]
