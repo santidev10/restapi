@@ -18,7 +18,7 @@ from userprofile.constants import StaticPermissions
 class UserPermissionsManagement(ExtendedAPITestCase):
     def _get_url(self, user_id=None):
         params = {}
-        if user_id is not None:
+        if user_id:
             params["user_id"] = user_id
         return reverse(
             UserprofilePathName.MANAGE_PERMISSIONS,
@@ -30,6 +30,15 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         self.create_test_user()
         response = self.client.get(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_bad_request_user_id(self):
+        """ Test user_id query param is required """
+        self.create_admin_user()
+        response = self.client.get(self._get_url())
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(self._get_url(), {}, content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_bad_request_invalid_user(self):
         self.create_admin_user()
@@ -76,14 +85,6 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         self.assertEqual(user.email, data["email"])
         self.assertEqual(management_perm["enabled"], True)
         self.assertTrue(len(data) > 0)
-
-    def test_get_success_permissions(self):
-        """ Test that permissions are simply retrieved if no user_id """
-        self.create_admin_user()
-        response = self.client.get(self._get_url())
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        # Permissions are created in parent setUpClass method
-        self.assertTrue(len(response.data) > 0)
 
     def test_post_access_success(self):
         user = self.create_test_user()

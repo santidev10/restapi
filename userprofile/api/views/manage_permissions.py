@@ -21,12 +21,6 @@ class UserPermissionsManagement(APIView):
     )
 
     def get(self, request):
-        # If user_id is None, client just needs list of existing permissions to display
-        if request.query_params.get("user_id") is None:
-            permissions = PermissionItem.all_perms(as_obj=True)
-            data = PermissionItemSerializer(permissions, many=True).data
-            return Response(data)
-
         user, _ = self._validate_request(request)
         all_perms = PermissionItem.all_perms(as_obj=True)
         enabled_perms = set()
