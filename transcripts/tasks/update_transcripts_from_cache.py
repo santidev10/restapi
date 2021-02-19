@@ -11,8 +11,9 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 from http.client import IncompleteRead
-from urllib3.exceptions import ConnectionError
+from urllib3.exceptions import ConnectionError as Urllib3ConnectionError
 from urllib3.exceptions import ProtocolError
+from elasticsearch.exceptions import ConnectionError
 
 
 from administration.notifications import send_email
@@ -77,9 +78,9 @@ class TranscriptsFromCacheUpdater:
             logger.info(f"RECURSING chunk of size: {chunk_length}")
         try:
             self._map_es_videos(chunk)
-        except (ConnectionError, IncompleteRead, ProtocolError) as e:
+        except (ConnectionError, Urllib3ConnectionError, IncompleteRead, ProtocolError) as e:
             # problem video within chunk? or chunk too large?
-            logger.info(f"caught exception of type: {type(e).__name__}")
+            logger.info(f"caught exception of type:{type(e).__module__} {type(e).__name__}")
             if chunk_length < 2:
                 logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
                 return
