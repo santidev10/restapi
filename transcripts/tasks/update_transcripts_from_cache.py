@@ -1,15 +1,16 @@
 import logging
+import random
 from typing import Iterable
 
 from bs4 import BeautifulSoup
 from celery.exceptions import Retry
 from datetime import timedelta
 from django.conf import settings
-from django.utils import timezone
 from elasticsearch.helpers.errors import BulkIndexError
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
+from urllib3.exceptions import ConnectionError
 
 from administration.notifications import send_email
 from audit_tool.models import AuditVideoTranscript
@@ -34,6 +35,8 @@ class TranscriptsFromCacheUpdater:
         self.cursor = 0
         self.videos_map = {}
         self.upsert_queue = []
+        self.floor = 0
+        self.ceiling = 0
         self.skipped_count = 0
         self.not_xml_count = 0
         self.processed_count = 0
@@ -52,6 +55,8 @@ class TranscriptsFromCacheUpdater:
         :param ceiling:
         :return:
         """
+        self.floor = floor
+        self.ceiling = ceiling
         query = AuditVideoTranscript.objects.prefetch_related("video").filter(id__gte=floor, id__lte=ceiling) \
             .order_by("id")
         self.total_to_process_count = query.count()
@@ -64,9 +69,26 @@ class TranscriptsFromCacheUpdater:
         :param chunk:
         :return:
         """
-        self._map_es_videos(chunk)
+        chunk_length = len(chunk)
+        if chunk_length != self.CHUNK_SIZE:
+            logger.info(f"RECURSING chunk of size: {chunk_length}")
+        try:
+            self._map_es_videos(chunk)
+        except ConnectionError as e:
+            # problem video within chunk? or chunk too large?
+            logger.info(f"caught exception of type: {type(e).__name__}")
+            if chunk_length < 2:
+                logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
+                return
+            # split in two and recurse until we find the problem video
+            divisor = round(chunk_length / 2)
+            for half_chunk in [chunk[:divisor], chunk[divisor:]]:
+                self._handle_videos_chunk(half_chunk)
+            return
+
         for video in chunk:
             self._handle_video(video)
+
         self._upsert_chunk()
         self.upsert_queue = []
         self._report()
@@ -76,7 +98,8 @@ class TranscriptsFromCacheUpdater:
         reports current progress
         :return:
         """
-        percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
+        total_percentage = round((self.cursor / self.ceiling) * 100, 2)
+        runtime_percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
         skipped_percentage = round((self.skipped_count / self.total_to_process_count) * 100, 2)
         not_xml_percentage = round((self.not_xml_count / self.total_to_process_count) * 100, 2)
         no_es_record_percentage = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
@@ -85,9 +108,9 @@ class TranscriptsFromCacheUpdater:
                                                 2)
 
         message = (
-            f"cursor: {self.cursor} \n"
-            f"processed {self.processed_count} of {self.total_to_process_count} ({percentage}%) \n"
-            f"total skipped: {self.skipped_count} ({skipped_percentage}%) \n"
+            f"total progress: {total_percentage}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
+            f"processed {self.processed_count} of {self.total_to_process_count} this run ({runtime_percentage}%) \n"
+            f"total skipped this run: {self.skipped_count} ({skipped_percentage}%) \n"
             f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%) \n"
             f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
@@ -100,7 +123,7 @@ class TranscriptsFromCacheUpdater:
         except Retry:
             return
 
-        subject = f"Update transcripts from cache progress: ({percentage}%)"
+        subject = f"Update transcripts from cache progress: ({total_percentage}%)"
         send_email(
             subject=subject,
             from_email=settings.SENDER_EMAIL_ADDRESS,
@@ -115,6 +138,7 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_ids = [video.video.video_id for video in chunk]
+        logger.info(f"requesting {len(video_ids)} videos from ES")
         es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
@@ -176,3 +200,33 @@ class TranscriptsFromCacheUpdater:
         except IndexError:
             return None
         return item.language_code
+
+
+def recurse_proof_of_concept(chunk: list = None, size=100):
+    """
+    proof of concept for recursive try/except on ES get requests
+    :param chunk:
+    :param size:
+    :return:
+    """
+    if not chunk:
+        chunk = list(range(size))
+        occurances_count = random.randint(1, round(size / 10))
+        print(f"occurances count: {occurances_count}")
+        for _ in range(occurances_count):
+            chunk.append("x")
+        random.shuffle(chunk)
+
+    chunk_length = len(chunk)
+    print(f"chunk len: {chunk_length}")
+    print(chunk)
+
+    if "x" in chunk:
+        if chunk_length < 2:
+            print(f"found x! {chunk[0]}")
+            return
+        divisor = round(chunk_length / 2)
+        first = chunk[:divisor]
+        last = chunk[divisor:]
+        for item in [first, last]:
+            rec(item)
