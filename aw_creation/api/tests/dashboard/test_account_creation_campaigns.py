@@ -44,6 +44,7 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
     def test_demo_account_campaigns_status_not_none(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
         })
         recreate_test_demo_data()
         account = Account.objects.get(id=DEMO_ACCOUNT_ID)

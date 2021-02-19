@@ -233,7 +233,7 @@ class TaskExpiration:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
-    CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
+    CUSTOM_TRANSCRIPTS = timedelta(minutes=10).total_seconds()
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(hours=2).total_seconds()
