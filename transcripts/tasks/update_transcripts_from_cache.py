@@ -110,7 +110,7 @@ class TranscriptsFromCacheUpdater:
         message = (
             f"total progress: {total_percentage}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
             f"processed {self.processed_count} of {self.total_to_process_count} this run ({runtime_percentage}%) \n"
-            f"total skipped: {self.skipped_count} ({skipped_percentage}%) \n"
+            f"total skipped this run: {self.skipped_count} ({skipped_percentage}%) \n"
             f"----- not xml: {self.not_xml_count} ({not_xml_percentage}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%) \n"
             f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
