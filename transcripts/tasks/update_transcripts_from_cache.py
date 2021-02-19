@@ -1,5 +1,6 @@
 import logging
 import random
+import sys
 from typing import Iterable
 
 from bs4 import BeautifulSoup
@@ -48,8 +49,7 @@ class TranscriptsFromCacheUpdater:
         self.no_es_transcript_count = 0
         self.total_to_process_count = 0
         self.no_cached_transcript_count = 0
-        # self.manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
-        #                             upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
+        self.manager = self._get_manager_instance()
 
     def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
         """
@@ -81,6 +81,10 @@ class TranscriptsFromCacheUpdater:
         except (ConnectionError, Urllib3ConnectionError, IncompleteRead, ProtocolError) as e:
             # problem video within chunk? or chunk too large?
             logger.info(f"caught exception of type: {type(e).__module__}.{type(e).__qualname__}")
+            # TODO remove, debug
+            for video in chunk:
+                print(f"{video.video.id}: length - {len(video.transcript)}; size - {sys.getsizeof(video.transcript)}")
+
             if chunk_length < 2:
                 logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
                 return
@@ -147,9 +151,9 @@ class TranscriptsFromCacheUpdater:
         """
         video_ids = [video.video.video_id for video in chunk]
         logger.info(f"requesting {len(video_ids)} videos from ES")
-        manager = self._get_manager_instance()
-        es_videos = manager.get(video_ids)
-        # es_videos = self.manager.get(video_ids)
+        # manager = self._get_manager_instance()
+        # es_videos = manager.get(video_ids)
+        es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
 
@@ -197,9 +201,9 @@ class TranscriptsFromCacheUpdater:
         upsert the current upsert queue
         :return:
         """
-        manager = self._get_manager_instance()
-        manager.upsert(self.upsert_queue)
-        # self.manager.upsert(self.upsert_queue)
+        # manager = self._get_manager_instance()
+        # manager.upsert(self.upsert_queue)
+        self.manager.upsert(self.upsert_queue)
 
     def _get_language_from_video(self, video: Video):
         """
@@ -215,8 +219,8 @@ class TranscriptsFromCacheUpdater:
 
     @staticmethod
     def _get_manager_instance():
-        return VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
-                            upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
+        return VideoManager(sections=(Sections.CUSTOM_CAPTIONS,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
     """
