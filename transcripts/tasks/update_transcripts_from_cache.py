@@ -82,12 +82,19 @@ class TranscriptsFromCacheUpdater:
             # problem video within chunk? or chunk too large?
             logger.info(f"caught exception of type: {type(e).__module__}.{type(e).__qualname__}")
             # TODO remove, debug
+            video_lengths = {}
             video_sizes = {}
             for video in chunk:
-                video_sizes[video.video.video_id] = len(video.transcript)
-            video_sizes = dict(sorted(video_sizes.items(), key=lambda item: item[1]))
-            for id, size in video_sizes.items():
-                print(f"{id}: size - {size}")
+                video_id = video.video.video_id
+                video_lengths[video_id] = len(video.transcript)
+                video_sizes[video_id] = sys.getsizeof(video.transcript)
+            video_lengths = dict(sorted(video_lengths.items(), key=lambda item: item[1], reverse=True))
+            counter = 0
+            for id, length in video_lengths.items():
+                print(f"{id}: length - {length}  |  size: {video_sizes.get(id)} bytes")
+                counter += 1
+                if counter > 25:
+                    break
 
             if chunk_length < 2:
                 logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
