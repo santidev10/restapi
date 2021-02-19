@@ -18,7 +18,7 @@ from userprofile.constants import StaticPermissions
 class UserPermissionsManagement(ExtendedAPITestCase):
     def _get_url(self, user_id=None):
         params = {}
-        if user_id:
+        if user_id is not None:
             params["user_id"] = user_id
         return reverse(
             UserprofilePathName.MANAGE_PERMISSIONS,
