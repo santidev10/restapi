@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 2500
+    CHUNK_SIZE = 1000
     LOCK_NAME = "update_transcripts_from_cache"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
