@@ -31,15 +31,6 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         response = self.client.get(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_bad_request_user_id(self):
-        """ Test user_id query param is required """
-        self.create_admin_user()
-        response = self.client.get(self._get_url())
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-        response = self.client.post(self._get_url(), {}, content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
     def test_bad_request_invalid_user(self):
         self.create_admin_user()
         response = self.client.get(self._get_url(user_id=0))
@@ -85,6 +76,14 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         self.assertEqual(user.email, data["email"])
         self.assertEqual(management_perm["enabled"], True)
         self.assertTrue(len(data) > 0)
+
+    def test_get_success_permissions(self):
+        """ Test that permissions are simply retrieved if no user_id """
+        self.create_admin_user()
+        response = self.client.get(self._get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        # Permissions are created in parent setUpClass method
+        self.assertTrue(len(response.data) > 0)
 
     def test_post_access_success(self):
         user = self.create_test_user()
