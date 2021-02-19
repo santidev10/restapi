@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 5000
+    CHUNK_SIZE = 2500
     LOCK_NAME = "update_transcripts_from_cache"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -80,7 +80,7 @@ class TranscriptsFromCacheUpdater:
             self._map_es_videos(chunk)
         except (ConnectionError, Urllib3ConnectionError, IncompleteRead, ProtocolError) as e:
             # problem video within chunk? or chunk too large?
-            logger.info(f"caught exception of type:{type(e).__module__} {type(e).__name__}")
+            logger.info(f"caught exception of type:{type(e).__module__}.{type(e).__qualname__}")
             if chunk_length < 2:
                 logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
                 return
