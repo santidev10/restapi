@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 1000
-    LOCK_NAME = "update_transcripts_from_cache"
+    CHUNK_SIZE = 400
+    EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
     def __init__(self):
@@ -48,8 +48,8 @@ class TranscriptsFromCacheUpdater:
         self.no_es_transcript_count = 0
         self.total_to_process_count = 0
         self.no_cached_transcript_count = 0
-        self.manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
-                                    upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
+        # self.manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+        #                             upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
 
     def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
         """
@@ -80,7 +80,7 @@ class TranscriptsFromCacheUpdater:
             self._map_es_videos(chunk)
         except (ConnectionError, Urllib3ConnectionError, IncompleteRead, ProtocolError) as e:
             # problem video within chunk? or chunk too large?
-            logger.info(f"caught exception of type:{type(e).__module__}.{type(e).__qualname__}")
+            logger.info(f"caught exception of type: {type(e).__module__}.{type(e).__qualname__}")
             if chunk_length < 2:
                 logger.info(f"RECURSED TO PROBLEM VIDEO: {chunk[0].video.video_id}")
                 return
@@ -88,6 +88,10 @@ class TranscriptsFromCacheUpdater:
             divisor = round(chunk_length / 2)
             for half_chunk in [chunk[:divisor], chunk[divisor:]]:
                 self._handle_videos_chunk(half_chunk)
+            return
+        except Exception as e:
+            logger.warning(f"CAUGHT BROAD EXCEPTION OF TYPE: {type(e).__module__}.{type(e).__qualname__}")
+            print(e)
             return
 
         for video in chunk:
@@ -123,7 +127,7 @@ class TranscriptsFromCacheUpdater:
         logger.info(message)
 
         try:
-            lock(lock_name=self.LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
+            lock(lock_name=self.EMAIL_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
         except Retry:
             return
 
@@ -143,7 +147,9 @@ class TranscriptsFromCacheUpdater:
         """
         video_ids = [video.video.video_id for video in chunk]
         logger.info(f"requesting {len(video_ids)} videos from ES")
-        es_videos = self.manager.get(video_ids)
+        manager = self._get_manager_instance()
+        es_videos = manager.get(video_ids)
+        # es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
 
@@ -191,7 +197,9 @@ class TranscriptsFromCacheUpdater:
         upsert the current upsert queue
         :return:
         """
-        self.manager.upsert(self.upsert_queue)
+        manager = self._get_manager_instance()
+        manager.upsert(self.upsert_queue)
+        # self.manager.upsert(self.upsert_queue)
 
     def _get_language_from_video(self, video: Video):
         """
@@ -205,6 +213,10 @@ class TranscriptsFromCacheUpdater:
             return None
         return item.language_code
 
+    @staticmethod
+    def _get_manager_instance():
+        return VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+                            upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
     """
@@ -233,4 +245,4 @@ def recurse_proof_of_concept(chunk: list = None, size=100):
         first = chunk[:divisor]
         last = chunk[divisor:]
         for item in [first, last]:
-            rec(item)
+            recurse_proof_of_concept(item)
