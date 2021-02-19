@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 2500
+    CHUNK_SIZE = 5000
     LOCK_NAME = "update_transcripts_from_cache"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -138,7 +138,6 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         video_ids = [video.video.video_id for video in chunk]
-        logger.info("getting videos for batch from ES")
         es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
