@@ -84,11 +84,15 @@ class TranscriptsFromCacheUpdater:
             # TODO remove, debug
             video_lengths = {}
             video_sizes = {}
+            print(f"video ids: {[video.video.video_id for video in chunk]}")
             for video in chunk:
                 video_id = video.video.video_id
                 video_lengths[video_id] = len(video.transcript)
                 video_sizes[video_id] = sys.getsizeof(video.transcript)
             video_lengths = dict(sorted(video_lengths.items(), key=lambda item: item[1], reverse=True))
+            total_length = sum(video_lengths.values())
+            total_size = sum(video_sizes.values())
+            print(f"total length: {total_length}, total size: {total_size}")
             counter = 0
             for id, length in video_lengths.items():
                 print(f"{id}: length - {length}  |  size: {video_sizes.get(id)} bytes")
