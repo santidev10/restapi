@@ -9,6 +9,7 @@ from userprofile.api.urls.names import UserprofilePathName
 from userprofile.constants import StaticPermissions
 from userprofile.models import PermissionItem
 from userprofile.models import Role
+from userprofile.models import UserRole
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -46,7 +47,8 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
                 StaticPermissions.RESEARCH: True,
                 StaticPermissions.USER_MANAGEMENT: True,
                 StaticPermissions.MANAGED_SERVICE: False,
-            }
+            },
+            users=[self.user.id],
         )
         response = self.client.post(self.url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -56,3 +58,4 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
 
         self.assertTrue({StaticPermissions.RESEARCH, StaticPermissions.USER_MANAGEMENT}.issubset(permissions))
         self.assertFalse(StaticPermissions.MANAGED_SERVICE in permissions)
+        self.assertTrue(UserRole.objects.filter(role=role, user=self.user).exists())
