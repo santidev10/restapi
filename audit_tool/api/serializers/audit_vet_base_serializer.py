@@ -274,7 +274,7 @@ class AuditVetBaseSerializer(Serializer):
         brand_safety_limbo = self._get_brand_safety_limbo(task_us_data, item_overall_score, pre_limbo_score)
 
         # Update Elasticsearch document with vetted data
-        doc = self.document_model(item_id)
+        doc = self.es_manager.get_or_create([item_id])[0]
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(
