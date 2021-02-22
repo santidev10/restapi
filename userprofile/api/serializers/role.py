@@ -76,5 +76,7 @@ class RoleSerializer(serializers.ModelSerializer):
         UserRole.objects.bulk_create([
             UserRole(user_id=user_id, role=role) for user_id in user_id_roles_to_create
         ])
+        # Update existing user roles to be part of this role
+        UserRole.objects.filter(user_id__in=user_ids).update(role=role)
+        # Remove existing user roles from this role
         UserRole.objects.filter(role=role).exclude(user_id__in=user_ids).update(role=None)
-
