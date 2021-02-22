@@ -1,6 +1,7 @@
 import logging
 import random
 import sys
+from time import sleep
 from typing import Iterable
 
 from bs4 import BeautifulSoup
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 400
+    CHUNK_SIZE = 200
     EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -49,7 +50,7 @@ class TranscriptsFromCacheUpdater:
         self.no_es_transcript_count = 0
         self.total_to_process_count = 0
         self.no_cached_transcript_count = 0
-        self.manager = self._get_manager_instance()
+        # self.manager = self._get_manager_instance()
 
     def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
         """
@@ -106,6 +107,7 @@ class TranscriptsFromCacheUpdater:
             # split in two and recurse until we find the problem video
             divisor = round(chunk_length / 2)
             for half_chunk in [chunk[:divisor], chunk[divisor:]]:
+                sleep(5)
                 self._handle_videos_chunk(half_chunk)
             return
         except Exception as e:
@@ -166,9 +168,9 @@ class TranscriptsFromCacheUpdater:
         """
         video_ids = [video.video.video_id for video in chunk]
         logger.info(f"requesting {len(video_ids)} videos from ES")
-        # manager = self._get_manager_instance()
-        # es_videos = manager.get(video_ids)
-        es_videos = self.manager.get(video_ids)
+        manager = self._get_manager_instance()
+        es_videos = manager.get(video_ids)
+        # es_videos = self.manager.get(video_ids)
         self.videos_map = {video.main.id: video for video in es_videos
                            if hasattr(video, "main") and hasattr(video.main, "id")}
 
@@ -216,9 +218,9 @@ class TranscriptsFromCacheUpdater:
         upsert the current upsert queue
         :return:
         """
-        # manager = self._get_manager_instance()
-        # manager.upsert(self.upsert_queue)
-        self.manager.upsert(self.upsert_queue)
+        manager = self._get_manager_instance()
+        manager.upsert(self.upsert_queue)
+        # self.manager.upsert(self.upsert_queue)
 
     def _get_language_from_video(self, video: Video):
         """
