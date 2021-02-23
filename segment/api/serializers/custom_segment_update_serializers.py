@@ -117,6 +117,9 @@ class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpd
 
         for field, value in validated_data.items():
             setattr(instance, field, value)
+
+        if validated_data.get("is_featured") is False:
+            instance.is_regenerating = False
         instance.save()
         self._update_content_disposition(instance)
         return instance
