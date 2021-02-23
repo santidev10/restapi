@@ -151,7 +151,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
         for metric_name, result in self._total_results.items():
             if self.params.get(metric_name):
                 passed, failed = result.get("passed", 0), result.get("failed", 0)
-                performance = self.get_score(passed, passed + failed)
+                # If no valid values were analyzed, then no data was available for analysis and overall performance
+                # percentage should not be calculated
+                if passed == failed == 0:
+                    performance = None
+                else:
+                    performance = self.get_score(passed, passed + failed)
             else:
                 # Threshold value was not saved for current IQCampaign
                 performance = None
