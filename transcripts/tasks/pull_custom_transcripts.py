@@ -9,6 +9,7 @@ from django.conf import settings
 from elasticsearch_dsl import Q
 from elasticsearch_dsl import Search
 
+from audit_tool.constants import SourceTypeEnum
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.connections import init_es_connection
@@ -107,7 +108,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         transcript_text = get_formatted_captions_from_soup(transcript_soup)
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
-                                               transcript=str(transcript_soup))
+                                               transcript=str(transcript_soup), source=SourceTypeEnum.CUSTOM)
             logger.info("VIDEO WITH ID %s HAS A CUSTOM TRANSCRIPT.", vid_id)
             transcripts_counter += 1
             transcript_texts.append(transcript_text)
