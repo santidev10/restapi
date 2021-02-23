@@ -56,6 +56,7 @@ class RoleSerializer(serializers.ModelSerializer):
             permissions = PermissionItem.objects.filter(permission__in=validated_data["permissions"])
             role = Role.objects.create(name=validated_data["name"])
             role.permissions.add(*permissions)
+            self._update_or_create_user_roles(role, validated_data.get("users", []))
         return role
 
     def update(self, instance, validated_data):
@@ -66,13 +67,16 @@ class RoleSerializer(serializers.ModelSerializer):
             enabled_permission_names = validated_data["permissions"]
             instance.permissions.add(*PermissionItem.objects.filter(permission__in=enabled_permission_names))
             instance.permissions.remove(*PermissionItem.objects.exclude(permission__in=enabled_permission_names))
-
-            users = get_user_model().objects.filter(id__in=validated_data["users"])
-            user_ids = [u.id for u in users]
-            user_roles_exist = UserRole.objects.filter(user_id__in=user_ids)
-            user_id_roles_to_create = set(user_ids) - set(user_roles_exist.values_list("user_id", flat=True))
-            UserRole.objects.bulk_create([
-                UserRole(user_id=user_id, role=instance) for user_id in user_id_roles_to_create
-            ])
-            UserRole.objects.filter(role=instance).exclude(user_id__in=user_ids).update(role=None)
+            self._update_or_create_user_roles(instance, validated_data.get("users", []))
         return instance
+
+    def _update_or_create_user_roles(self, role, user_ids):
+        user_roles_exist = UserRole.objects.filter(user_id__in=user_ids)
+        user_id_roles_to_create = set(user_ids) - set(user_roles_exist.values_list("user_id", flat=True))
+        UserRole.objects.bulk_create([
+            UserRole(user_id=user_id, role=role) for user_id in user_id_roles_to_create
+        ])
+        # Update existing user roles to be part of this role
+        UserRole.objects.filter(user_id__in=user_ids).update(role=role)
+        # Remove existing user roles from this role
+        UserRole.objects.filter(role=role).exclude(user_id__in=user_ids).update(role=None)
