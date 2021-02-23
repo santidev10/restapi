@@ -64,6 +64,20 @@ class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
             with self.subTest(key):
                 self.assertEqual(items[0][key], payload[key])
 
+        with self.subTest("Test setting is_featured as false also sets is_regenerating as false"):
+            segment = self._create_custom_segment(owner=user)
+            segment.is_featured = segment.is_regenerating = True
+            segment.save()
+            payload = {
+                "is_featured": False,
+            }
+            response = self.client.patch(
+                self._get_url(reverse_args=[segment.id]), json.dumps(payload), content_type="application/json"
+            )
+            segment.refresh_from_db()
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertTrue(segment.is_featured == segment.is_regenerating is False)
+
     @mock_s3
     def test_featured_image_upload(self):
         user = self.create_admin_user()
