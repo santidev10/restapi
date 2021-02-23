@@ -9,7 +9,7 @@ from utils.views import get_object
 
 
 class PerformIQAnalysisOwnerPermission(permissions.BasePermission):
-    """ Check if user is created PerformIQ Analysis """
+    """ Check permissions and if user created requested analysis """
     def has_permission(self, request, view):
         analysis = get_object(IQCampaign, id=view.kwargs["pk"], message="Analysis not found")
         has_permission = isinstance(request.user, get_user_model()) \
