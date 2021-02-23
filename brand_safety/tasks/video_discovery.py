@@ -15,8 +15,8 @@ from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
-# @celery_app.task(bind=True)
-# @celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
+@celery_app.task(bind=True)
+@celery_lock(Schedulers.VideoDiscovery.NAME, expire=TaskExpiration.BRAND_SAFETY_VIDEO_DISCOVERY, max_retries=0)
 def video_discovery_scheduler():
     """
     Discovers Videos that have either rescore=True or have never been scored before
