@@ -105,10 +105,10 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
         search.query = full_cursor_exclusion_query
 
         results = []
-        for hit in search.scan():
-            results.append(hit)
-            if len(results) >= size:
-                yield results
-                results = []
-
+        for batch in search_generator(search, full_cursor_exclusion_query, "main.id", size):
+            for hit in batch:
+                results.append(hit)
+                if len(results) >= size:
+                    yield results
+                    results.clear()
         yield results
