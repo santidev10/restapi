@@ -5,7 +5,7 @@ from django.core.management import BaseCommand
 from django.utils import timezone
 from pid import PidFile
 
-from audit_tool.constants import SourceTypeEnum
+from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
@@ -53,9 +53,11 @@ class Command(BaseCommand):
                         video_id = video.main.id
                         video_transcript = vid_transcripts[video_id]
                         populate_video_custom_captions(video, [video_transcript], ["en"], source="Watson")
-                        vid_transcript = AuditVideoTranscript.get_or_create(video_id=video_id, language="en",
-                                                                            transcript=video_transcript,
-                                                                            source=SourceTypeEnum.WATSON)
+                        vid_transcript = AuditVideoTranscript\
+                            .update_or_create_with_parent(video_id=video_id,
+                                                          lang_code="en",
+                                                          defaults={"source": SourceTypeEnum.WATSON.value,
+                                                                    "transcript": video_transcript})
                         vid_transcript.submitted = timezone.now()
                         vid_transcript.retrieved = timezone.now()
                         vid_transcript.save(update_fields=["submitted", "retrieved"])

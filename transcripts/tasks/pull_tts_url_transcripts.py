@@ -11,7 +11,7 @@ from elasticsearch_dsl.query import Query
 from typing import Type
 
 from administration.notifications import send_email
-from audit_tool.constants import SourceTypeEnum
+from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import APIScriptTracker
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
@@ -160,13 +160,14 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
             # we want to save the raw response to PG so that if we ever need to re-process
             # a transcript from the response, then we'll have it on hand
             raw_response = transcripts_scraper.successful_vids[vid_id].captions_url_response
-            language = transcripts_scraper.successful_vids[vid_id].captions_language
-            AuditVideoTranscript.get_or_create(video_id=vid_id, language=language, transcript=raw_response,
-                                               source=SourceTypeEnum.TTS_URL)
+            lang_code = transcripts_scraper.successful_vids[vid_id].captions_language
+            AuditVideoTranscript.update_or_create_with_parent(video_id=vid_id, lang_code=lang_code,
+                                                              defaults={"source": SourceTypeEnum.TTS_URL.value,
+                                                                        "transcript": raw_response})
             # we'll store the processed transcript in ES for display
             processed_transcript = transcripts_scraper.successful_vids[vid_id].captions
-            populate_video_custom_captions(vid_obj, [processed_transcript], [language], source="tts_url",
-                                           asr_lang=language)
+            populate_video_custom_captions(vid_obj, [processed_transcript], [lang_code], source="tts_url",
+                                           asr_lang=lang_code)
             updated_videos.append(vid_obj)
             if "task_us_data" not in vid_obj:
                 vid_ids_to_rescore.append(vid_id)
