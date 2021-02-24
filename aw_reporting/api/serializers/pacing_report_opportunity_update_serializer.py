@@ -1,4 +1,5 @@
 from rest_framework.serializers import CharField
+from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import PrimaryKeyRelatedField
 
@@ -14,6 +15,7 @@ class PacingReportOpportunityUpdateSerializer(ModelSerializer):
                                    queryset=User.objects.all())
     ad_ops = PrimaryKeyRelatedField(source="ad_ops_manager",
                                     queryset=User.objects.all())
+    config = JSONField(required=False, allow_null=True)
 
     class Meta:
         model = Opportunity

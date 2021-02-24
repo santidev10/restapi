@@ -165,3 +165,6 @@ class PlacementAlert(Enum):
 class FlightAlert(Enum):
     DATES_CHANGED = 0
 
+
+class OpportunityConfig(Enum):
+    MARGIN_PERIOD = "margin_period"
