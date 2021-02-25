@@ -191,7 +191,7 @@ class TranscriptsFromCacheUpdater:
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
             f"----- average chunk duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
             f"----- chunks to completion: {chunks_remaining_count} \n"
-            f"----- total runtime: {timezone.now() - self.start_datetime} \n"
+            f"----- runtime: {timezone.now() - self.start_datetime} \n"
             f"----- approx. time to completion: {timedelta(seconds=eta_seconds)} \n"
             f"videos processed this run: {self.videos_processed_count} \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
