@@ -166,7 +166,7 @@ class TranscriptsFromCacheUpdater:
         message = (
             "\n"
             f"total progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"videos processed {self.videos_processed_count} of {self.total_to_process_count} this run "
+            f"videos processed: {self.videos_processed_count} of {self.total_to_process_count} this run "
             f"({runtime_pct}%)\n"
             f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
             f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed) \n"
