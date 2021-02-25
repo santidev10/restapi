@@ -53,19 +53,18 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         with patch.object(VideoManager, "forced_filters", return_value=Q({"bool": {}})),\
                 patch.object(VideoManager, "search") as mock_search,\
                 patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=0),\
-                patch("brand_safety.tasks.video_discovery.VideoAuditor") as mock_audit,\
-                patch("brand_safety.tasks.video_discovery.bulk_search") as mock_bulk_search:
+                patch("brand_safety.tasks.video_discovery.VideoAuditor") as mock_audit:
             instance = mock_audit.return_value
             instance.channels_to_rescore = rescore_channel_ids
             video_discovery_scheduler()
-            query = mock_search.call_args.args[0]
+            query = mock_search.call_args_list[0].args[0]
             # Use protected method instead of search method to bypass patch.Object statement
             search = self.video_manager._search()
             search.query = query
             videos = search.execute()
             response_ids = [v.main.id for v in videos]
             channels = self.channel_manager.get(rescore_channel_ids, skip_none=True)
-        # These videos should not be retrived for scoring
+        # These videos should not be retrieved for scoring
         self.assertTrue(doc_excluded_has_bs.main.id not in response_ids)
         self.assertTrue(doc_excluded_rescore_false.main.id not in response_ids)
 
@@ -75,8 +74,8 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         # Check that videos with no score retrieved with bulk search functions correctly
         search = self.video_manager._search()
         search.query = query
-        bulk_search_query = mock_bulk_search.call_args.args[1]
-        search.query = bulk_search_query
+        no_score_query = mock_search.call_args_list[1].args[0]
+        search.query = no_score_query
         no_score_vid_ids = [v.main.id for v in search.execute()]
         self.assertTrue(doc_included_has_no_bs.main.id in no_score_vid_ids)
 
