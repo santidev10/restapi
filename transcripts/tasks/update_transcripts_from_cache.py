@@ -148,9 +148,14 @@ class TranscriptsFromCacheUpdater:
         """
         total_pct = round((self.cursor / self.ceiling) * 100, 2)
         runtime_pct = round((self.videos_processed_count / self.total_to_process_count) * 100, 2)
-        custom_pct = round((self.custom_transcripts_count / self.cursor) * 100, 2)
-        tts_url_pct = round((self.tts_url_transcripts_count / self.cursor) * 100, 2)
-        watson_pct = round((self.watson_transcripts_count / self.cursor) * 100, 2)
+        transcripts_processed_count = sum([
+            self.custom_transcripts_count,
+            self.watson_transcripts_count,
+            self.tts_url_transcripts_count
+        ])
+        custom_pct = round((self.custom_transcripts_count / transcripts_processed_count) * 100, 2)
+        tts_url_pct = round((self.tts_url_transcripts_count / transcripts_processed_count) * 100, 2)
+        watson_pct = round((self.watson_transcripts_count / transcripts_processed_count) * 100, 2)
 
         skipped_pct = round((self.skipped_count / self.total_to_process_count) * 100, 2)
         no_es_record_pct = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
