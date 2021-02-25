@@ -39,6 +39,7 @@ TRANSCRIPTS_UPDATE_ID_CEILING = 45831922
 class TranscriptsFromCacheUpdater:
 
     CHUNK_SIZE = 5000
+    SLEEP_SECONDS = 60
     EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -77,7 +78,8 @@ class TranscriptsFromCacheUpdater:
         self.total_to_process_count = query.count()
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
             self._handle_videos_chunk(chunk)
-            sleep(60)
+            logger.info(f"sleeping for {self.SLEEP_SECONDS}")
+            sleep(self.SLEEP_SECONDS)
 
     def _handle_videos_chunk(self, chunk: Iterable):
         """
