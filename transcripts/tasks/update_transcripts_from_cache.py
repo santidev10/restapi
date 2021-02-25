@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class TranscriptsFromCacheUpdater:
 
-    CHUNK_SIZE = 200
+    CHUNK_SIZE = 5000
     EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -47,11 +47,14 @@ class TranscriptsFromCacheUpdater:
         self.floor = 0
         self.ceiling = 0
         self.skipped_count = 0
-        self.processed_count = 0
+        self.videos_processed_count = 0
         self.no_es_record_count = 0
-        self.no_es_transcript_count = 0
+        self.no_pg_transcripts_count = 0
         self.total_to_process_count = 0
-        self.no_cached_transcript_count = 0
+        self.empty_pg_transcripts_count = 0
+        self.custom_transcripts_count = 0
+        self.watson_transcripts_count = 0
+        self.tts_url_transcripts_count = 0
         self.en_language = None
         # self.manager = self._get_manager_instance()
 
@@ -65,7 +68,6 @@ class TranscriptsFromCacheUpdater:
         """
         self.floor = floor
         self.ceiling = ceiling
-        # annotate = AuditVideo.objects.annotate(multiples=)
         query = AuditVideoTranscript.objects.prefetch_related("video", "language")\
             .filter(id__gte=floor, id__lte=ceiling)\
             .order_by("id")
@@ -140,21 +142,30 @@ class TranscriptsFromCacheUpdater:
         reports current progress
         :return:
         """
-        total_percentage = round((self.cursor / self.ceiling) * 100, 2)
-        runtime_percentage = round((self.processed_count / self.total_to_process_count) * 100, 2)
-        skipped_percentage = round((self.skipped_count / self.total_to_process_count) * 100, 2)
-        no_es_record_percentage = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
-        no_es_transcript_percentage = round((self.no_es_transcript_count / self.total_to_process_count) * 100, 2)
-        no_cached_transcript_percentage = round((self.no_cached_transcript_count / self.total_to_process_count) * 100,
-                                                2)
+        total_pct = round((self.cursor / self.ceiling) * 100, 2)
+        runtime_pct = round((self.videos_processed_count / self.total_to_process_count) * 100, 2)
+        custom_pct = round((self.custom_transcripts_count / self.cursor) * 100, 2)
+        tts_url_pct = round((self.tts_url_transcripts_count / self.cursor) * 100, 2)
+        watson_pct = round((self.watson_transcripts_count / self.cursor) * 100, 2)
+
+        skipped_pct = round((self.skipped_count / self.total_to_process_count) * 100, 2)
+        no_es_record_pct = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
+        no_pg_transcripts_pct = round((self.no_pg_transcripts_count / self.total_to_process_count) * 100, 2)
+        empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.total_to_process_count) * 100,
+                                         2)
 
         message = (
-            f"total progress: {total_percentage}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"processed {self.processed_count} of {self.total_to_process_count} this run ({runtime_percentage}%) \n"
-            f"total skipped this run: {self.skipped_count} ({skipped_percentage}%) \n"
-            f"----- no es record: {self.no_es_record_count} ({no_es_record_percentage}%) \n"
-            f"----- no es transcript: {self.no_es_transcript_count} ({no_es_transcript_percentage}%) \n"
-            f"----- no cached transcript: {self.no_cached_transcript_count} ({no_cached_transcript_percentage}%) \n"
+            "\n"
+            f"total progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
+            f"videos processed {self.videos_processed_count} of {self.total_to_process_count} this run "
+            f"({runtime_pct}%)\n"
+            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed)"
+            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed)"
+            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct} of processed)"
+            f"total skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
+            f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
+            f"----- no PG transcripts: {self.no_pg_transcripts_count} ({no_pg_transcripts_pct}%) \n"
+            f"----- empty PG transcripts: {self.empty_pg_transcripts_count} ({empty_pg_transcripts_pct}%) \n"
         )
         logger.info(message)
 
@@ -163,7 +174,7 @@ class TranscriptsFromCacheUpdater:
         except Retry:
             return
 
-        subject = f"Update transcripts from cache progress: ({total_percentage}%)"
+        subject = f"Update transcripts from cache progress: ({total_pct}%)"
         send_email(
             subject=subject,
             from_email=settings.SENDER_EMAIL_ADDRESS,
@@ -235,6 +246,7 @@ class TranscriptsFromCacheUpdater:
         transcripts = self.pg_transcript_map.get(video_id, [])
         if not transcripts:
             self.skipped_count += 1
+            self.no_pg_transcripts_count += 1
             return
 
         self.cursor = max([transcript.id for transcript in transcripts])
@@ -242,7 +254,7 @@ class TranscriptsFromCacheUpdater:
         transcripts = [transcript for transcript in transcripts if transcript.transcript]
         if not transcripts:
             self.skipped_count += 1
-            self.no_cached_transcript_count += 1
+            self.empty_pg_transcripts_count += 1
             return
 
         es_video = self.es_videos_map.get(video_id, None)
@@ -277,6 +289,7 @@ class TranscriptsFromCacheUpdater:
         if len(lang_codes) and len(transcript_texts) == len(lang_codes):
             populate_video_custom_captions(es_video, transcript_texts=transcript_texts, transcript_languages=lang_codes,
                                            source="timedtext")
+            self.custom_transcripts_count += len(lang_codes)
             append = True
 
         # re-process tts url captions, should only get the top tts url transcript
@@ -286,6 +299,7 @@ class TranscriptsFromCacheUpdater:
             populate_video_custom_captions(es_video, transcript_texts=transcript_texts[:1],
                                            transcript_languages=lang_codes[:1], source="tts_url",
                                            asr_lang=lang_codes[0], append=append)
+            self.tts_url_transcripts_count += 1
             append = True
 
         # re-add the watson transcript, there should only be one
@@ -296,9 +310,10 @@ class TranscriptsFromCacheUpdater:
             populate_video_custom_captions(es_video, transcript_texts=[watson_transcript.transcript],
                                            transcript_languages=[watson_transcript.language.language],
                                            source="Watson", append=append)
+            self.watson_transcripts_count += 1
 
         self.upsert_queue.append(es_video)
-        self.processed_count += 1
+        self.videos_processed_count += 1
 
     def _get_english_language_instance(self):
         """
@@ -358,7 +373,7 @@ class TranscriptsFromCacheUpdater:
 
     @staticmethod
     def _get_manager_instance():
-        return VideoManager(sections=(Sections.CUSTOM_CAPTIONS,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+        return VideoManager(sections=(Sections.MAIN,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
 
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
