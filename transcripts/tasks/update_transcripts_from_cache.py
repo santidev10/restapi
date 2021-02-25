@@ -54,7 +54,7 @@ class TranscriptsFromCacheUpdater:
         self.videos_processed_count = 0
         self.no_es_record_count = 0
         self.no_pg_transcripts_count = 0
-        self.total_to_process_count = 0
+        self.transcripts_to_process_count = 0
         self.empty_pg_transcripts_count = 0
         self.custom_transcripts_count = 0
         self.watson_transcripts_count = 0
@@ -75,7 +75,7 @@ class TranscriptsFromCacheUpdater:
         query = AuditVideoTranscript.objects.prefetch_related("video", "language")\
             .filter(id__gte=floor, id__lte=ceiling)\
             .order_by("id")
-        self.total_to_process_count = query.count()
+        self.transcripts_to_process_count = query.count()
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
             self._handle_videos_chunk(chunk)
             logger.info(f"sleeping for {self.SLEEP_SECONDS}")
@@ -149,7 +149,8 @@ class TranscriptsFromCacheUpdater:
         :return:
         """
         total_pct = round((self.cursor / self.ceiling) * 100, 2)
-        runtime_pct = round((self.videos_processed_count / self.total_to_process_count) * 100, 2)
+        transcripts_this_run = self.cursor - self.floor
+        runtime_pct = round((transcripts_this_run / self.ceiling) * 100, 2)
         transcripts_processed_count = sum([
             self.custom_transcripts_count,
             self.watson_transcripts_count,
@@ -159,17 +160,18 @@ class TranscriptsFromCacheUpdater:
         tts_url_pct = round((self.tts_url_transcripts_count / transcripts_processed_count) * 100, 2)
         watson_pct = round((self.watson_transcripts_count / transcripts_processed_count) * 100, 2)
 
-        skipped_pct = round((self.skipped_count / self.total_to_process_count) * 100, 2)
-        no_es_record_pct = round((self.no_es_record_count / self.total_to_process_count) * 100, 2)
-        no_pg_transcripts_pct = round((self.no_pg_transcripts_count / self.total_to_process_count) * 100, 2)
-        empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.total_to_process_count) * 100,
+        skipped_pct = round((self.skipped_count / self.transcripts_to_process_count) * 100, 2)
+        no_es_record_pct = round((self.no_es_record_count / self.transcripts_to_process_count) * 100, 2)
+        no_pg_transcripts_pct = round((self.no_pg_transcripts_count / self.transcripts_to_process_count) * 100, 2)
+        empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.transcripts_to_process_count) * 100,
                                          2)
 
         message = (
             "\n"
             f"total progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"videos processed: {self.videos_processed_count} of {self.total_to_process_count} this run "
-            f"({runtime_pct}%)\n"
+            f"transcripts this run: {transcripts_this_run} ({runtime_pct})% \n"
+            f"videos processed this run: {self.videos_processed_count} \n"
+            f"total remaining: {self.transcripts_to_process_count - self.cursor} \n"
             f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
             f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed) \n"
             f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct} of processed) \n"
