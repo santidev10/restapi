@@ -20,5 +20,11 @@ class PacingReportOpportunityUpdateSerializer(ModelSerializer):
     class Meta:
         model = Opportunity
         fields = (
-            "region", "am", "sales", "ad_ops", "category", "notes", "cpm_buffer", "cpv_buffer"
+            "region", "am", "sales", "ad_ops", "category", "notes", "cpm_buffer", "cpv_buffer", "config",
         )
+
+    def validate_config(self, val):
+        val = val or {}
+        config = self.instance.config or {}
+        config.update(val)
+        return config
