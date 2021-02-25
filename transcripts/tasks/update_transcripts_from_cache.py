@@ -45,7 +45,6 @@ class TranscriptsFromCacheUpdater:
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
     def __init__(self):
-        self.start_datetime = timezone.now()
         self.cursor = 0
         self.es_videos_map = {}
         self.pg_transcript_map = {}
@@ -67,6 +66,7 @@ class TranscriptsFromCacheUpdater:
         self.latest_chunk_dur_seconds = 0
         self.average_chunk_dur_seconds = 0
         self.en_language = None
+        self.start_datetime = None
         # self.manager = self._get_manager_instance()
 
     def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
@@ -77,6 +77,7 @@ class TranscriptsFromCacheUpdater:
         :param ceiling:
         :return:
         """
+        self.start_datetime = timezone.now()
         self.floor = floor
         self.ceiling = ceiling
         query = AuditVideoTranscript.objects.prefetch_related("video", "language")\
