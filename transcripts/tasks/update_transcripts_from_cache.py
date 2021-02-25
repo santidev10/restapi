@@ -65,6 +65,8 @@ class TranscriptsFromCacheUpdater:
         self.chunks_count = 0
         self.latest_chunk_dur_seconds = 0
         self.average_chunk_dur_seconds = 0
+        self.latest_chunk_video_count = 0
+        self.average_chunk_video_count = 0
         self.en_language = None
         self.start_datetime = None
         # self.manager = self._get_manager_instance()
@@ -92,6 +94,9 @@ class TranscriptsFromCacheUpdater:
             self.average_chunk_dur_seconds = running_average(count=self.chunks_count,
                                                              value=self.latest_chunk_dur_seconds,
                                                              average=self.average_chunk_dur_seconds)
+            self.average_chunk_video_count = running_average(count=self.chunks_count,
+                                                             value=self.latest_chunk_video_count,
+                                                             average=self.average_chunk_video_count)
             self._report()
 
             if self.SLEEP_SECONDS:
@@ -192,7 +197,9 @@ class TranscriptsFromCacheUpdater:
             f"----- average chunk duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
             f"----- chunks to completion: {chunks_remaining_count} \n"
             f"----- runtime: {timezone.now() - self.start_datetime} \n"
-            f"----- approx. time to completion: {timedelta(seconds=eta_seconds)} \n"
+            f"----- estimated time to completion: {timedelta(seconds=eta_seconds)} \n"
+            f"----- videos this chunk: {self.latest_chunk_video_count} \n"
+            f"----- average videos per chunk: {self.average_chunk_video_count}"
             f"videos processed this run: {self.videos_processed_count} \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
@@ -417,7 +424,7 @@ class TranscriptsFromCacheUpdater:
         return transcript_texts, lang_codes
 
     # exp. backoff w/ noise, intended to catch ES query queue limit exceeded exception
-    @backoff(max_backoff=120, exceptions=(BulkIndexError,))
+    @backoff(max_backoff=600, exceptions=(BulkIndexError,))
     def _upsert_chunk(self):
         """
         upsert the current upsert queue
@@ -425,6 +432,7 @@ class TranscriptsFromCacheUpdater:
         """
         manager = self._get_manager_instance()
         manager.upsert(self.upsert_queue)
+        self.latest_chunk_video_count = len(self.upsert_queue)
         # self.manager.upsert(self.upsert_queue)
 
     @staticmethod
@@ -442,6 +450,7 @@ def running_average(count: int, value: float, average: float):
     """
     average += (value - average) / count
     return average
+
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
     """
