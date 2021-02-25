@@ -22,7 +22,6 @@ from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
-from transcripts.tasks.update_tts_url_transcripts import TRANSCRIPTS_UPDATE_ID_CEILING
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.exception import backoff
@@ -31,6 +30,10 @@ from utils.utils import chunked_queryset
 
 
 logger = logging.getLogger(__name__)
+
+
+# the greatest extant AuditVideoTranscript ID after VIQ2-643 was released
+TRANSCRIPTS_UPDATE_ID_CEILING = 45831922
 
 
 class TranscriptsFromCacheUpdater:
