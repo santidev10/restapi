@@ -74,6 +74,7 @@ class TranscriptsFromCacheUpdater:
         self.total_to_process_count = query.count()
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
             self._handle_videos_chunk(chunk)
+            sleep(60)
 
     def _handle_videos_chunk(self, chunk: Iterable):
         """
@@ -159,9 +160,9 @@ class TranscriptsFromCacheUpdater:
             f"total progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
             f"videos processed {self.videos_processed_count} of {self.total_to_process_count} this run "
             f"({runtime_pct}%)\n"
-            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed)"
-            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed)"
-            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct} of processed)"
+            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
+            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed) \n"
+            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct} of processed) \n"
             f"total skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
             f"----- no PG transcripts: {self.no_pg_transcripts_count} ({no_pg_transcripts_pct}%) \n"
