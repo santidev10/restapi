@@ -199,7 +199,7 @@ class TranscriptsFromCacheUpdater:
             f"----- runtime: {timezone.now() - self.start_datetime} \n"
             f"----- estimated time to completion: {timedelta(seconds=eta_seconds)} \n"
             f"----- videos this chunk: {self.latest_chunk_video_count} \n"
-            f"----- average videos per chunk: {self.average_chunk_video_count}"
+            f"----- average videos per chunk: {round(self.average_chunk_video_count, 2)} \n"
             f"videos processed this run: {self.videos_processed_count} \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
