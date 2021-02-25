@@ -167,4 +167,5 @@ class FlightAlert(Enum):
 
 
 class OpportunityConfig(Enum):
+    """ Keys used in Opportunity.config"""
     MARGIN_PERIOD = "margin_period"

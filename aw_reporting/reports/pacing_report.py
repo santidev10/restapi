@@ -405,10 +405,10 @@ class PacingReport:
                                 allocation_ko=1, campaign_id=None, period=None):
         if period == PacingReportPeriod.MONTH.value:
             curr_month = now_in_default_tz().month
-            flights = filter(
+            flights = list(filter(
                 lambda flight: isinstance(flight.get("start"), date) and flight["start"].month == curr_month,
                 flights
-            )
+            ))
         return get_margin_from_flights(flights, cost, plan_cost, allocation_ko, campaign_id)
 
     def add_calculated_fields(self, report):
@@ -485,7 +485,7 @@ class PacingReport:
             "billing_server",
             "territory", "margin_cap_required",
             "cpm_buffer", "cpv_buffer",
-            "budget"
+            "budget", "config",
         )
         if limit:
             opportunities = opportunities[:limit]
@@ -563,7 +563,7 @@ class PacingReport:
                 flights,
                 o["cost"],
                 o["current_cost_limit"],
-                o["config"].get(OpportunityConfig.MARGIN_PERIOD.value)
+                period=(o["config"] or {}).get(OpportunityConfig.MARGIN_PERIOD.value)
             )
 
             o["thumbnail"] = thumbnails.get(o["ad_ops_manager__email"])
