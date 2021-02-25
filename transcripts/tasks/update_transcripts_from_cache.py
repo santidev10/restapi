@@ -180,7 +180,7 @@ class TranscriptsFromCacheUpdater:
         empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.transcripts_to_process_count) * 100,
                                          2)
 
-        chunks_remaining_count = round(self.transcripts_to_process_count / self.CHUNK_SIZE)
+        chunks_remaining_count = round((self.ceiling - self.cursor) / self.CHUNK_SIZE)
         eta_seconds = round(self.average_chunk_dur_seconds * chunks_remaining_count)
         message = (
             "\n"
