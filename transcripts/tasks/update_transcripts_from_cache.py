@@ -45,6 +45,7 @@ class TranscriptsFromCacheUpdater:
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
     def __init__(self):
+        self.start_datetime = timezone.now()
         self.cursor = 0
         self.es_videos_map = {}
         self.pg_transcript_map = {}
@@ -189,7 +190,8 @@ class TranscriptsFromCacheUpdater:
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
             f"----- average chunk duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
             f"----- chunks to completion: {chunks_remaining_count} \n"
-            f"----- approx. time to completion: {timedelta(seconds=eta_seconds)}\n"
+            f"----- total runtime: {timezone.now() - self.start_datetime} \n"
+            f"----- approx. time to completion: {timedelta(seconds=eta_seconds)} \n"
             f"videos processed this run: {self.videos_processed_count} \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
