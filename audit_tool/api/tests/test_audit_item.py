@@ -14,6 +14,7 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from userprofile.models import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -49,7 +50,10 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_get_channel(self):
-        self.create_admin_user()
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH__VETTING: True,
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
+        })
         channel = self.channel_manager.model(f"test_youtube_channel_{next(int_iterator)}")
         channel.populate_general_data(title="test_channel")
         channel.populate_monetization(is_monetizable=False)

@@ -33,6 +33,12 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         super().setUp()
         self.user = self.create_test_user(perms={StaticPermissions.USER_MANAGEMENT: True})
 
+    def test_get_role_base_permissions(self):
+        """ Test that permissions are simply retrieved if role id kwarg is -1 """
+        response = self.client.get(self._get_url(0))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+
     def test_get_single_role_success(self):
         """ Test successfully retrieving permissions and users associated with role """
         permissions = PermissionItem.objects.all().order_by("id")[:10]
@@ -137,3 +143,29 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
             user1.perms.get(StaticPermissions.PERFORMIQ) is not True
             and user2.perms.get(StaticPermissions.PERFORMIQ) is not True
         )
+
+    def test_update_role_existing(self):
+        """ Test updating existing user roles that were part of a different role """
+        role1 = Role.objects.create(name="test1")
+        role1.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.PERFORMIQ))
+
+        role2 = Role.objects.create(name="test2")
+        role2.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.MANAGED_SERVICE))
+
+        user1 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+        user2 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+        user3 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
+
+        user_role1 = UserRole.objects.create(role=role1, user=user1)
+        user_role2 = UserRole.objects.create(role=role1, user=user2)
+        user_role3 = UserRole.objects.create(role=role1, user=user3)
+        payload = self._get_payload(role2.name, {StaticPermissions.PERFORMIQ: True}, [user2.id, user3.id])
+        response = self.client.patch(self._get_url(role2.id), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user_role1.refresh_from_db()
+        user_role2.refresh_from_db()
+        user_role3.refresh_from_db()
+        self.assertEqual(user_role1.role_id, role1.id)
+        # Should update to from role1 to rol2
+        self.assertEqual(user_role2.role_id, role2.id)
+        self.assertEqual(user_role3.role_id, role2.id)
