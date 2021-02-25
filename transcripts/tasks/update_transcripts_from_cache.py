@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from celery.exceptions import Retry
 from datetime import timedelta
 from django.conf import settings
+from django.utils import timezone
 from elasticsearch.helpers.errors import BulkIndexError
 from http.client import IncompleteRead
 from urllib3.exceptions import ConnectionError as Urllib3ConnectionError
@@ -39,7 +40,7 @@ TRANSCRIPTS_UPDATE_ID_CEILING = 45831922
 class TranscriptsFromCacheUpdater:
 
     CHUNK_SIZE = 5000
-    SLEEP_SECONDS = 60
+    SLEEP_SECONDS = 0
     EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
     EMAIL_LIST = ["andrew.wong@channelfactory.com"]
 
@@ -50,6 +51,7 @@ class TranscriptsFromCacheUpdater:
         self.upsert_queue = []
         self.floor = 0
         self.ceiling = 0
+        self.counts_by_lang_code = {}
         self.skipped_count = 0
         self.videos_processed_count = 0
         self.no_es_record_count = 0
@@ -59,6 +61,10 @@ class TranscriptsFromCacheUpdater:
         self.custom_transcripts_count = 0
         self.watson_transcripts_count = 0
         self.tts_url_transcripts_count = 0
+        # chunking
+        self.chunks_count = 0
+        self.latest_chunk_dur_seconds = 0
+        self.average_chunk_dur_seconds = 0
         self.en_language = None
         # self.manager = self._get_manager_instance()
 
@@ -77,9 +83,18 @@ class TranscriptsFromCacheUpdater:
             .order_by("id")
         self.transcripts_to_process_count = query.count()
         for chunk in chunked_queryset(query, self.CHUNK_SIZE):
+            start = timezone.now()
             self._handle_videos_chunk(chunk)
-            logger.info(f"sleeping for {self.SLEEP_SECONDS}")
-            sleep(self.SLEEP_SECONDS)
+            self.latest_chunk_dur_seconds = (timezone.now() - start).total_seconds()
+            self.chunks_count += 1
+            self.average_chunk_dur_seconds = running_average(count=self.chunks_count,
+                                                             value=self.latest_chunk_dur_seconds,
+                                                             average=self.average_chunk_dur_seconds)
+            self._report()
+
+            if self.SLEEP_SECONDS:
+                logger.info(f"sleeping for {self.SLEEP_SECONDS}")
+                sleep(self.SLEEP_SECONDS)
 
     def _handle_videos_chunk(self, chunk: Iterable):
         """
@@ -141,7 +156,6 @@ class TranscriptsFromCacheUpdater:
 
         self._upsert_chunk()
         self.upsert_queue = []
-        self._report()
 
     def _report(self):
         """
@@ -166,20 +180,35 @@ class TranscriptsFromCacheUpdater:
         empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.transcripts_to_process_count) * 100,
                                          2)
 
+        chunks_remaining_count = round(self.transcripts_to_process_count / self.CHUNK_SIZE)
+        eta_seconds = round(self.average_chunk_dur_seconds * chunks_remaining_count)
+        eta_days = round(eta_seconds / 86400, 2)
         message = (
             "\n"
-            f"total progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"total transcripts remaining: {self.transcripts_to_process_count - self.cursor} \n"
+            f"total transcripts progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
+            f"batches this run: {self.chunks_count} \n"
+            f"latest batch duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
+            f"average batch duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
+            f"batches_to_completion: {chunks_remaining_count} \n"
+            f"approx. time to completion: {timedelta(seconds=eta_seconds)} ({eta_days} days)\n"
+            "\n"
             f"videos processed this run: {self.videos_processed_count} \n"
-            f"transcripts processed this run: {transcripts_this_run} ({runtime_pct})% \n"
-            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
-            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct} of processed) \n"
-            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct} of processed) \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
             f"----- no PG transcripts: {self.no_pg_transcripts_count} ({no_pg_transcripts_pct}%) \n"
             f"----- empty PG transcripts: {self.empty_pg_transcripts_count} ({empty_pg_transcripts_pct}%) \n"
+            "\n"
+            f"total transcripts remaining: {self.transcripts_to_process_count - self.cursor} \n"
+            f"transcripts processed this run: {transcripts_this_run} ({runtime_pct})% \n"
+            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
+            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct}% of processed) \n"
+            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct}% of processed) \n"
+            "\n"
+            f"transcript languages: \n"
         )
+        sorted_counts = dict(sorted(self.counts_by_lang_code.items(), key=lambda item: item[1], reverse=True))
+        for code, count in sorted_counts.items():
+            message += f"----- {code}: {count}"
         logger.info(message)
 
         try:
@@ -194,6 +223,7 @@ class TranscriptsFromCacheUpdater:
             recipient_list=self.EMAIL_LIST,
             message=message
         )
+        logger.info("progress email sent!")
 
     def _map_pg_transcripts(self, chunk: Iterable):
         """
@@ -302,6 +332,8 @@ class TranscriptsFromCacheUpdater:
         if len(lang_codes) and len(transcript_texts) == len(lang_codes):
             populate_video_custom_captions(es_video, transcript_texts=transcript_texts, transcript_languages=lang_codes,
                                            source="timedtext")
+            for code in lang_codes:
+                self._increment_language_count(code)
             self.custom_transcripts_count += len(lang_codes)
             append = True
 
@@ -312,6 +344,7 @@ class TranscriptsFromCacheUpdater:
             populate_video_custom_captions(es_video, transcript_texts=transcript_texts[:1],
                                            transcript_languages=lang_codes[:1], source="tts_url",
                                            asr_lang=lang_codes[0], append=append)
+            self._increment_language_count(lang_codes[0])
             self.tts_url_transcripts_count += 1
             append = True
 
@@ -323,10 +356,21 @@ class TranscriptsFromCacheUpdater:
             populate_video_custom_captions(es_video, transcript_texts=[watson_transcript.transcript],
                                            transcript_languages=[watson_transcript.language.language],
                                            source="Watson", append=append)
+            self._increment_language_count(watson_transcript.language.language)
             self.watson_transcripts_count += 1
 
         self.upsert_queue.append(es_video)
         self.videos_processed_count += 1
+
+    def _increment_language_count(self, code: str):
+        """
+        increment language count
+        :param code:
+        :return:
+        """
+        count = self.counts_by_lang_code.get(code, 0)
+        count += 1
+        self.counts_by_lang_code[code] = count
 
     def _get_english_language_instance(self):
         """
@@ -388,6 +432,17 @@ class TranscriptsFromCacheUpdater:
     def _get_manager_instance():
         return VideoManager(sections=(Sections.MAIN,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
 
+
+def running_average(count: int, value: float, average: float):
+    """
+    get a running average
+    :param count:
+    :param value:
+    :param average:
+    :return:
+    """
+    average += (value - average) / count
+    return average
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
     """
