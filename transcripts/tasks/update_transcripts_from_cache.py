@@ -182,33 +182,29 @@ class TranscriptsFromCacheUpdater:
 
         chunks_remaining_count = round(self.transcripts_to_process_count / self.CHUNK_SIZE)
         eta_seconds = round(self.average_chunk_dur_seconds * chunks_remaining_count)
-        eta_days = round(eta_seconds / 86400, 2)
         message = (
             "\n"
             f"total transcripts progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"batches this run: {self.chunks_count} \n"
-            f"latest batch duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
-            f"average batch duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
-            f"batches_to_completion: {chunks_remaining_count} \n"
-            f"approx. time to completion: {timedelta(seconds=eta_seconds)} ({eta_days} days)\n"
-            "\n"
+            f"----- chunks processed this run: {self.chunks_count} \n"
+            f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
+            f"----- average chunk duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
+            f"----- chunks to completion: {chunks_remaining_count} \n"
+            f"----- approx. time to completion: {timedelta(seconds=eta_seconds)}\n"
             f"videos processed this run: {self.videos_processed_count} \n"
             f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
             f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
             f"----- no PG transcripts: {self.no_pg_transcripts_count} ({no_pg_transcripts_pct}%) \n"
             f"----- empty PG transcripts: {self.empty_pg_transcripts_count} ({empty_pg_transcripts_pct}%) \n"
-            "\n"
             f"total transcripts remaining: {self.transcripts_to_process_count - self.cursor} \n"
             f"transcripts processed this run: {transcripts_this_run} ({runtime_pct})% \n"
             f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
             f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct}% of processed) \n"
             f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct}% of processed) \n"
-            "\n"
             f"transcript languages: \n"
         )
         sorted_counts = dict(sorted(self.counts_by_lang_code.items(), key=lambda item: item[1], reverse=True))
         for code, count in sorted_counts.items():
-            message += f"----- {code}: {count}"
+            message += f"----- {code}: {count} \n"
         logger.info(message)
 
         try:
