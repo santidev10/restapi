@@ -553,6 +553,7 @@ class AuditExportApiView(APIView):
             "Unique Exclusion Words (videos)",
             "Exclusion Words (channel)",
             "Exclusion Words (video)",
+            "Exclusion Words (video titles)",
             "Inclusion Words (channel)",
             "Inclusion Words (video)",
             "Brand Safety Score",
@@ -578,6 +579,7 @@ class AuditExportApiView(APIView):
         good_hit_words = {}
         bad_hit_words = {}
         bad_video_hit_words = {}
+        bad_video_title_hit_words = {}
         good_video_hit_words = {}
         bad_videos_count = {}
         kid_videos_count = {}
@@ -636,6 +638,9 @@ class AuditExportApiView(APIView):
                     e_v = cid.word_hits.get('exclusion_videos')
                     if e_v:
                         bad_video_hit_words[full_channel_id] = set(e_v)
+                    e_v = cid.word_hits.get('exclusion_videos_title')
+                    if e_v:
+                        bad_video_title_hit_words[full_channel_id] = set(e_v)
                 # pylint: disable=broad-except
                 except Exception:
                 # pylint: enable=broad-except
@@ -717,6 +722,8 @@ class AuditExportApiView(APIView):
                     channel.channel_id) else 0,
                 ','.join(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else "",
                 ','.join(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
+                    channel.channel_id) else "",
+                ','.join(bad_video_title_hit_words.get(channel.channel_id)) if bad_video_title_hit_words.get(
                     channel.channel_id) else "",
                 ','.join(good_hit_words.get(channel.channel_id)) if good_hit_words.get(channel.channel_id) else "",
                 ','.join(good_video_hit_words.get(channel.channel_id)) if good_video_hit_words.get(
