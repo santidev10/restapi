@@ -462,7 +462,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             start=placement.start, end=placement.end,
             total_cost=total_cost_1,
         )
-        # Flight starts next month and should not be factored into margin calculation
+        # Flights that do not start and end in current month should be excluded
         Flight.objects.create(
             id=next(int_iterator),
             placement=placement,

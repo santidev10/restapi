@@ -403,10 +403,14 @@ class PacingReport:
 
     def get_margin_from_flights(self, flights, cost, plan_cost,
                                 allocation_ko=1, campaign_id=None, period=None):
+        # Get flights that start and end in current month
         if period == PacingReportPeriod.MONTH.value:
             curr_month = now_in_default_tz().month
             flights = list(filter(
-                lambda flight: isinstance(flight.get("start"), date) and flight["start"].month == curr_month,
+                lambda flight: all(
+                    isinstance(flight.get(date_key), date) and flight[date_key].month == curr_month
+                    for date_key in ("start", "end")
+                ),
                 flights
             ))
         return get_margin_from_flights(flights, cost, plan_cost, allocation_ko, campaign_id)
