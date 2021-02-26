@@ -293,7 +293,7 @@ class AuditProcessor(models.Model):
         elif self.seed_status == 1:
             return "seeding"
         elif self.seed_status == 2:
-            return "done"
+            return None
 
     def get_num_videos(self):
         num_videos = self.params.get("num_videos")
