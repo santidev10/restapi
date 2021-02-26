@@ -134,9 +134,11 @@ class PerformanceAnalyzer(BaseAnalyzer):
             }
         """
         self._add_performance_percentage_results()
-        # overall_score should be calculated only if params were applied for this analyzer
+        # overall_score should be calculated only if params were applied for this analyzer and any metrics were analyzed
         params_exist = any(self.params.get(field) is not None for field in self.ANALYSIS_FIELDS)
-        overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen) if params_exist else None
+        analyzed = any(self._total_results[metric]["performance"] is not None for metric in self._total_results.keys())
+        overall_score = self.get_score(self._seen - self._failed_channels_count, self._seen) \
+            if params_exist and analyzed else None
         averages = self._calculate_averages()
         self._total_results["overall_score"] = overall_score
         for metric_name, average in averages.items():
@@ -151,7 +153,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
         for metric_name, result in self._total_results.items():
             if self.params.get(metric_name):
                 passed, failed = result.get("passed", 0), result.get("failed", 0)
-                performance = self.get_score(passed, passed + failed)
+                # If no valid values were analyzed, then no data was available for analysis and overall performance
+                # percentage should not be calculated
+                if passed == failed == 0:
+                    performance = None
+                else:
+                    performance = self.get_score(passed, passed + failed)
             else:
                 # Threshold value was not saved for current IQCampaign
                 performance = None

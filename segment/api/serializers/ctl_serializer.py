@@ -297,8 +297,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         Method to handle invoking necessary methods for full CTL creation
         These methods are used here because both create or update methods may call this method
         """
+        self._create_query(segment)
         with transaction.atomic():
-            self._create_query(segment)
             self._create_source_file(segment)
             self._start_segment_export_task(segment)
         return segment

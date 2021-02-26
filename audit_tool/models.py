@@ -267,6 +267,7 @@ class AuditProcessor(models.Model):
             "include_unknown_views": self.params.get("include_unknown_views"),
             "force_data_refresh": self.params.get("force_data_refresh"),
             "override_blocklist": self.params.get("override_blocklist"),
+            "seed_status": self.seed_status_text,
         }
         d["export_status"] = self.get_export_status()
         d["has_history"] = self.has_history()
@@ -284,6 +285,15 @@ class AuditProcessor(models.Model):
             if d["percent_done"] > 100:
                 d["percent_done"] = 100
         return d
+
+    @property
+    def seed_status_text(self):
+        if self.seed_status == 0:
+            return "pending"
+        elif self.seed_status == 1:
+            return "seeding"
+        elif self.seed_status == 2:
+            return None
 
     def get_num_videos(self):
         num_videos = self.params.get("num_videos")
