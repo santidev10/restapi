@@ -495,12 +495,16 @@ class Command(BaseCommand):
                 pass
             try:
                 db_video_meta.likes = int(i["statistics"]["likeCount"])
+                if db_video_meta.likes and db_video_meta.likes > 9223372036854775807:
+                    db_video_meta.likes = 9223372036854775807
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
                 pass
             try:
                 db_video_meta.dislikes = int(i["statistics"]["dislikeCount"])
+                if db_video_meta.dislikes and db_video_meta.dislikes > 9223372036854775807:
+                    db_video_meta.dislikes = 9223372036854775807
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
