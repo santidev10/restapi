@@ -46,7 +46,18 @@ class UserChannelsNotAvailable(Exception):
 
 
 class ChannelESFilterBackend(ESFilterBackend):
-    def __get_similar_channels(self, query_params):
+
+    def _get_query_generator_context(self) -> dict:
+        """
+        provide a context dictionary for the query generator on instantiation
+        :return:
+        """
+        return {
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp().isoformat(),
+        }
+
+    @staticmethod
+    def __get_similar_channels(query_params):
         similar_to = query_params.get("similar_to", None)
         if similar_to:
             channel = ChannelManager(Sections.SIMILAR_CHANNELS).get([similar_to]).pop()
@@ -148,6 +159,16 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
             "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
         }
         return context
+
+    @staticmethod
+    def _get_manager_context():
+        """
+        return a context dictionary for the ChannelManager instance
+        :return:
+        """
+        return {
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp().isoformat(),
+        }
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
