@@ -1,5 +1,6 @@
 import datetime
 import urllib
+from datetime import timedelta
 from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
@@ -941,3 +942,54 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         res_channel = items[0]
         self.assertEqual(res_channel.get(Sections.GENERAL_DATA, {}).get("country"), "United States")
         self.assertTrue(res_channel.get(Sections.GENERAL_DATA, {}).get("top_language"), "English")
+
+    def test_ias_verified_filter(self):
+        """
+        test that ias verified filters based on the last completed IASHistory's `started` timestamp
+        :return:
+        """
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+        })
+
+        now = timezone.now()
+        unverified = []
+        for _ in range(5):
+            id = next(int_iterator)
+            unverified.append(Channel(**{
+                "meta": {
+                    "id": f"channel_{id}",
+                },
+                "general_data": {
+                    "title": f"title_{id}",
+                    "description": "description"
+                },
+                "ias_data": {
+                    "ias_verified": now - timedelta(minutes=1)
+                }
+            }))
+
+        IASHistory.objects.create(name="asdf", started=now, completed=now + timedelta(minutes=1))
+
+        verified = []
+        for _ in range(8):
+            id = next(int_iterator)
+            unverified.append(Channel(**{
+                "meta": {
+                    "id": f"channel_{id}",
+                },
+                "general_data": {
+                    "title": f"title_{id}",
+                    "description": "description"
+                },
+                "ias_data": {
+                    "ias_verified": now
+                }
+            }))
+
+        filtered_url = self.url + "?" + urllib.parse.urlencode({
+            "ias_data.ias_verified": "true",
+        })
+        response = self.client.get(filtered_url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(verified), response.data.get("items_count"))
