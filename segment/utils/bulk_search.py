@@ -2,6 +2,8 @@ from operator import attrgetter
 
 from elasticsearch_dsl import Q
 
+from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import SortDirections
 from es_components.query_builder import QueryBuilder
 
 
@@ -37,7 +39,7 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
         options = [None]
     # Create generator for each option to yield all results from
     generators = [
-        search_generator(base_search, query, cursor_field, size=batch_size, option=option, direction=direction,
+        search_generator(model, base_search, query, cursor_field, size=batch_size, option=option, direction=direction,
                          include_cursor_exclusions=include_cursor_exclusions)
         for option in options
     ]
@@ -46,7 +48,7 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
         yield from gen
 
 
-def search_generator(search, query, cursor_field, size=1000, option=None, direction=0, include_cursor_exclusions=False):
+def search_generator(model, search, query, cursor_field, size=1000, option=None, direction=0, include_cursor_exclusions=False):
     """
     Helper function to encapsulate batch cursor queries
         Search object should have all options except query applied
@@ -54,6 +56,7 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
         Direction determines subsequent gte or lte range queries
         First query uses gte / lte option to include min/max item in first batch
         Subsequent queries will use gt / lt to exclude last item retrieved in each batch
+    :param model: Elasticsearch model. Will be used to potentially recurse with bulk_search
     :param search: Elasticsearch Search object
     :param query: QueryBuilder object
     :param cursor_field: str
@@ -102,13 +105,12 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
         full_cursor_exclusion_query = query & cursor_exclusion_query & option \
             if option is not None \
             else query & cursor_exclusion_query
-        search.query = full_cursor_exclusion_query
-
         results = []
-        for hit in search.scan():
-            results.append(hit)
-            if len(results) >= size:
-                yield results
-                results = []
-
+        # Recursively call bulk_search to retrieve rest of items with exclusion query
+        for batch in bulk_search(model, full_cursor_exclusion_query, [{MAIN_ID_FIELD: {"order": SortDirections.DESCENDING}}], "main.id"):
+            for hit in batch:
+                results.append(hit)
+                if len(results) >= size:
+                    yield results
+                    results.clear()
         yield results
