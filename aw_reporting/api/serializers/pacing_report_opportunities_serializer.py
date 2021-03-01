@@ -39,6 +39,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     is_upcoming = BooleanField()
     is_watched = SerializerMethodField()
     margin = PercentField()
+    margin_curr_month = PercentField()
     margin_direction = IntegerField()
     margin_quality = IntegerField()
     name = CharField(max_length=250)

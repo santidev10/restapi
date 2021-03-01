@@ -444,9 +444,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(
             probability=100,
             budget=total_cost,
-            config={
-                OpportunityConfig.MARGIN_PERIOD.value: PacingReportPeriod.MONTH.value
-            }
         )
         placement = OpPlacement.objects.create(
             opportunity=opportunity,
@@ -454,7 +451,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             total_cost=total_cost,
             ordered_rate=ordered_rate,
             start=today,
-            end=today + timedelta(days=1),
+            end=today,
         )
         Flight.objects.create(
             id=next(int_iterator),
@@ -477,7 +474,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
         delivered_1, delivered_2 = 30, 10
         cost_1, cost_2 = 9, 3
-        aw_cost = sum([cost_1, cost_2])
         CampaignStatistic.objects.create(
             campaign=campaign,
             date=placement.start,
@@ -497,7 +493,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
 
         actualized_client_cost_1 = min(client_cost_1, total_cost_1)
         # Calculate expected margin using first flight as it is in this month
-        expected_margin = 1 - aw_cost / actualized_client_cost_1
+        expected_margin = 1 - cost_1 / actualized_client_cost_1
         report = PacingReport()
         opportunities = report.get_opportunities({})
-        self.assertAlmostEqual(opportunities[0]["margin"], expected_margin)
+        self.assertAlmostEqual(opportunities[0]["margin_curr_month"], expected_margin)
