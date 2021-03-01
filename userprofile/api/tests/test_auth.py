@@ -19,6 +19,10 @@ from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from userprofile.models import UserDeviceToken
+from userprofile.models import UserRole
+from userprofile.models import Role
+from userprofile.models import PermissionItem
+from userprofile.constants import StaticPermissions
 from utils.unittests.reverse import reverse
 
 CUSTOM_AUTH_FLAGS = {
@@ -244,3 +248,39 @@ class AuthAPITestCase(AwReportingAPITestCase):
         response = self.client.delete(self._url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertFalse(UserDeviceToken.objects.filter(key=token.key).exists())
+
+    def test_user_role_permissions(self):
+        """ Test that user.perms is serialized with Role permissions if part of role """
+        user = self.create_test_user()
+        role = Role.objects.create(name="test")
+        role_perms = PermissionItem.objects.filter(permission__in=[
+            StaticPermissions.RESEARCH__VETTING_DATA, StaticPermissions.BLOCKLIST_MANAGER, StaticPermissions.PERFORMIQ
+        ])
+        role.permissions.add(*role_perms)
+
+        response = self.client.post(
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        actual_perms = {}
+        expected_perms = {}
+        for perm in role_perms.values_list("permission", flat=True):
+            actual_perms[perm] = response.data["perms"][perm]
+            expected_perms[perm] = True
+        self.assertNotEqual(actual_perms, expected_perms)
+
+        # Add user to role
+        UserRole.objects.create(user=user, role=role)
+        response = self.client.post(
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        expected_perms = {
+            perm[0]: perm[1] for perm in PermissionItem.STATIC_PERMISSIONS
+        }
+        expected_perms.update({
+            perm.permission: True for perm in role_perms
+        })
+        self.assertEqual(response.data["perms"], expected_perms)
