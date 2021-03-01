@@ -53,7 +53,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         :return:
         """
         return {
-            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp().isoformat(),
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
         }
 
     @staticmethod
@@ -167,7 +167,7 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
         :return:
         """
         return {
-            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp().isoformat(),
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
         }
 
     def get_queryset(self):
@@ -205,7 +205,7 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
 
         self.add_fields()
         is_default_page = self.is_default_page()
-        return ESQuerysetAdapter(self.get_manager_class()(sections),
+        return ESQuerysetAdapter(self.get_manager_class()(sections, context=self._get_manager_context()),
                                  cached_aggregations=self.get_cached_aggregations(),
                                  is_default_page=is_default_page)
 
