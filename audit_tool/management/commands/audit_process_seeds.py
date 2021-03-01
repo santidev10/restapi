@@ -103,9 +103,11 @@ class Command(BaseCommand):
             # pylint: enable=broad-except
             self.audit.params["error"] = "can not open seed file"
             self.audit.completed = timezone.now()
-            self.seed_status = 2
+            self.audit.seed_status = 2
+            self.audit.machine = None
+            self.audit.thread = None
             self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause", "seed_status"])
+            self.audit.save(update_fields=["params", "completed", "pause", "seed_status", "machine", "thread"])
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
@@ -148,13 +150,17 @@ class Command(BaseCommand):
         if counter == 0 and resume_val == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
-            self.seed_status = 2
+            self.audit.seed_status = 2
+            self.audit.machine = None
+            self.audit.thread = None
             self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause", "seed_status"])
+            self.audit.save(update_fields=["params", "completed", "pause", "seed_status", "machine", "thread"])
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         audit = self.audit
         audit.seed_status = 2
-        audit.save(update_fields=["seed_status"])
+        audit.machine = None
+        audit.thread = None
+        audit.save(update_fields=["seed_status", "machine", "thread"])
         return vids
     # pylint: enable=too-many-statements
 
@@ -195,8 +201,10 @@ class Command(BaseCommand):
             self.audit.params["error"] = "can not open seed file"
             self.audit.completed = timezone.now()
             self.audit.seed_status = 2
+            self.audit.machine = None
+            self.audit.thread = None
             self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause", "seed_status"])
+            self.audit.save(update_fields=["params", "completed", "pause", "seed_status", "machine", "thread"])
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
@@ -220,13 +228,17 @@ class Command(BaseCommand):
         if counter == 0 and resume_val == 0:
             self.audit.params["error"] = "no valid YouTube Video URL's in seed file"
             self.audit.seed_status = 2
+            self.audit.machine = None
+            self.audit.thread = None
             self.audit.completed = timezone.now()
             self.audit.pause = 0
-            self.audit.save(update_fields=["params", "completed", "pause", "seed_status"])
+            self.audit.save(update_fields=["params", "completed", "pause", "seed_status", "machine", "thread"])
             raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
         audit = self.audit
         audit.seed_status = 2
-        audit.save(update_fields=["seed_status"])
+        audit.machine = None
+        audit.thread = None
+        audit.save(update_fields=["seed_status", "machine", "thread"])
 
     def clone_audit(self):
         self.num_clones += 1

@@ -20,6 +20,8 @@ class AuditPauseApiView(APIView):
         if audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id, completed__isnull=True)
+                if audit.source !=0:
+                    raise ValidationError("can not pause a CTL audit")
                 if audit.temp_stop != pause:
                     audit.temp_stop = pause
                     audit.save(update_fields=['temp_stop'])
