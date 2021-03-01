@@ -46,7 +46,18 @@ class UserChannelsNotAvailable(Exception):
 
 
 class ChannelESFilterBackend(ESFilterBackend):
-    def __get_similar_channels(self, query_params):
+
+    def _get_query_generator_context(self) -> dict:
+        """
+        provide a context dictionary for the query generator on instantiation
+        :return:
+        """
+        return {
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
+        }
+
+    @staticmethod
+    def __get_similar_channels(query_params):
         similar_to = query_params.get("similar_to", None)
         if similar_to:
             channel = ChannelManager(Sections.SIMILAR_CHANNELS).get([similar_to]).pop()
@@ -149,6 +160,16 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
         }
         return context
 
+    @staticmethod
+    def _get_manager_context():
+        """
+        return a context dictionary for the ChannelManager instance
+        :return:
+        """
+        return {
+            "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
+        }
+
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
@@ -184,7 +205,7 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
 
         self.add_fields()
         is_default_page = self.is_default_page()
-        return ESQuerysetAdapter(self.get_manager_class()(sections),
+        return ESQuerysetAdapter(self.get_manager_class()(sections, context=self._get_manager_context()),
                                  cached_aggregations=self.get_cached_aggregations(),
                                  is_default_page=is_default_page)
 
