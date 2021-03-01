@@ -1,6 +1,7 @@
 # pylint: disable=too-many-lines
 from collections import Counter
 from collections import defaultdict
+from datetime import date
 from datetime import timedelta
 from distutils.util import strtobool
 from math import ceil
@@ -18,6 +19,7 @@ from django.db.models import When
 from django.http import QueryDict
 from django.utils import timezone
 
+from .constants import PacingReportPeriod
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
 from aw_reporting.models import Account
@@ -41,6 +43,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.salesforce_constants import FlightAlert
+from aw_reporting.models.salesforce_constants import OpportunityConfig
 from aw_reporting.models.salesforce_constants import PlacementAlert
 from aw_reporting.update.recalculate_de_norm_fields import FLIGHTS_DELIVERY_ANNOTATE
 from aw_reporting.utils import get_dates_range
@@ -399,9 +402,18 @@ class PacingReport:
         return result
 
     def get_margin_from_flights(self, flights, cost, plan_cost,
-                                allocation_ko=1, campaign_id=None):
-        return get_margin_from_flights(flights, cost, plan_cost, allocation_ko,
-                                       campaign_id)
+                                allocation_ko=1, campaign_id=None, period=None):
+        # Get flights that start and end in current month
+        if period == PacingReportPeriod.MONTH.value:
+            curr_month = now_in_default_tz().month
+            flights = list(filter(
+                lambda flight: all(
+                    isinstance(flight.get(date_key), date) and flight[date_key].month == curr_month
+                    for date_key in ("start", "end")
+                ),
+                flights
+            ))
+        return get_margin_from_flights(flights, cost, plan_cost, allocation_ko, campaign_id)
 
     def add_calculated_fields(self, report):
         # border signals
@@ -477,7 +489,7 @@ class PacingReport:
             "billing_server",
             "territory", "margin_cap_required",
             "cpm_buffer", "cpv_buffer",
-            "budget"
+            "budget", "config",
         )
         if limit:
             opportunities = opportunities[:limit]
@@ -551,8 +563,12 @@ class PacingReport:
             o.update(plan_stats)
 
             o["pacing"] = get_pacing_from_flights(flights)
-            o["margin"] = self.get_margin_from_flights(flights, o["cost"],
-                                                       o["current_cost_limit"])
+            o["margin"] = self.get_margin_from_flights(
+                flights,
+                o["cost"],
+                o["current_cost_limit"],
+                period=(o["config"] or {}).get(OpportunityConfig.MARGIN_PERIOD.value)
+            )
 
             o["thumbnail"] = thumbnails.get(o["ad_ops_manager__email"])
 

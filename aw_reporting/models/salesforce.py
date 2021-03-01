@@ -235,6 +235,9 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     has_alerts = models.BooleanField(default=False, db_index=True)
     disney_campaign_advertiser_id = models.CharField(max_length=255, null=True, default=None)
 
+    # Store configuration of how to display data in ViewIQ
+    config = models.JSONField(default=None, null=True)
+
     @property
     def thumbnail(self):
         if self.ad_ops_email:

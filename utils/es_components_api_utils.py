@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from abc import abstractmethod
 from urllib.parse import unquote
 
 from django.contrib.auth import get_user_model
@@ -12,8 +13,8 @@ from rest_framework.serializers import Serializer
 
 import brand_safety.constants as brand_safety_constants
 from es_components.constants import Sections
-from es_components.query_builder import QueryBuilder
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
+from es_components.query_builder import QueryBuilder
 from es_components.query_repository import get_ias_verified_exists_filter
 from es_components.query_repository import get_last_vetted_at_exists_filter
 from userprofile.constants import StaticPermissions
@@ -129,8 +130,9 @@ class QueryGenerator:
     params_adapters = ()
     must_not_terms_filter = ()
 
-    def __init__(self, query_params):
+    def __init__(self, query_params, context: dict = None):
         self.query_params = self._adapt_query_params(query_params)
+        self.context = context or dict()
 
     def add_should_filters(self, ranges, filters, field):
         if ranges is None:
@@ -298,10 +300,17 @@ class QueryGenerator:
         else:
             return
 
-    @staticmethod
-    def adapt_ias_filters(filters, value):
+    def adapt_ias_filters(self, filters, value):
+        """
+        ias filter requires a string timestamp from IASHistory.get_last_ingested_timestamp. this is passed in the
+        context dictionary on instantiation, by the ESFilterBackend
+        :param filters:
+        :param value:
+        :return:
+        """
         if value is True or value == "true":
-            query = get_ias_verified_exists_filter()
+            timestamp = self.context.get("ias_last_ingested_timestamp")
+            query = get_ias_verified_exists_filter(timestamp)
             filters.append(query)
         return
 
@@ -652,6 +661,14 @@ class ESQuerysetAdapter:
 
 class ESFilterBackend(BaseFilterBackend):
 
+    @abstractmethod
+    def _get_query_generator_context(self) -> dict:
+        """
+        get a context dictionary to be passed to the query generator on instantiation
+        :return:
+        """
+        return {}
+
     def _get_query_params(self, request):
         return request.query_params.dict()
 
@@ -669,7 +686,7 @@ class ESFilterBackend(BaseFilterBackend):
             )
         )
         query_params = self._get_query_params(request)
-        return dynamic_generator_class(query_params)
+        return dynamic_generator_class(query_params, context=self._get_query_generator_context())
 
     # pylint: disable=unused-argument
     def _get_aggregations(self, request, queryset, view):
@@ -721,6 +738,10 @@ class ESFilterBackend(BaseFilterBackend):
 
 
 class ESPOSTFilterBackend(ESFilterBackend):
+
+    def _get_query_generator_context(self) -> dict:
+        return super()._get_query_generator_context()
+
     def _get_query_params(self, request):
         query_params = super()._get_query_params(request)
         if request.method == "POST":

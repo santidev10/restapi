@@ -12,6 +12,8 @@ from aw_reporting.models import Category
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
+from aw_reporting.models.salesforce_constants import OpportunityConfig
+from aw_reporting.reports.constants import PacingReportPeriod
 from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
@@ -48,6 +50,7 @@ class PacingReportTestCase(APITestCase):
         opportunity = Opportunity.objects.create(
             id="1", name="", category=category1, territory="test 1", notes="Hi there",
             account_manager_id="0", sales_manager_id="1", ad_ops_manager_id="2",
+            config={},
         )
         update = dict(
             region="test 2",
@@ -57,7 +60,10 @@ class PacingReportTestCase(APITestCase):
             sales="0",
             notes="PenPineappleApplePen",
             cpm_buffer=0,
-            cpv_buffer=0
+            cpv_buffer=0,
+            config={
+                OpportunityConfig.MARGIN_PERIOD.value: PacingReportPeriod.MONTH.value,
+            },
         )
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",

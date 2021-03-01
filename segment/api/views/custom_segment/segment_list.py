@@ -70,9 +70,9 @@ class SegmentListApiView(ListAPIView):
             if sort_by == "items":
                 queryset = queryset.annotate(items=Cast(KeyTextTransform("items_count", "statistics"), IntegerField()))
             if self.request.query_params.get("ascending"):
-                sort_by = "{}".format(sort_by)
-            else:
                 sort_by = "-{}".format(sort_by)
+            else:
+                sort_by = "{}".format(sort_by)
             queryset = queryset.order_by(sort_by)
         except KeyError:
             pass
