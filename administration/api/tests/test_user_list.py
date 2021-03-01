@@ -8,9 +8,11 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from administration.api.serializers import UserSerializer
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserStatuses
+from userprofile.constants import StaticPermissions
+from userprofile.models import PermissionItem
 from userprofile.models import Role
 from userprofile.models import UserRole
-from userprofile.constants import UserStatuses
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -106,3 +108,39 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data.get("items")), 1)
         self.assertEqual(response.data["items"][0]["id"], user1.id)
+
+    def test_user_role_permissions(self):
+        """ Test that user.perms is serialized with Role permissions if part of role """
+        self.create_test_user(perms={
+            StaticPermissions.USER_MANAGEMENT: True,
+        })
+
+        user1 = get_user_model().objects.create(email="test_list1@example.com", status=UserStatuses.ACTIVE.value)
+        role = Role.objects.create(name="test")
+        role_perms = PermissionItem.objects.filter(permission__in=[
+            StaticPermissions.RESEARCH__VETTING_DATA, StaticPermissions.BLOCKLIST_MANAGER, StaticPermissions.PERFORMIQ
+        ])
+        role.permissions.add(*role_perms)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        actual_perms = {}
+        expected_perms = {}
+        for perm in role_perms.values_list("permission", flat=True):
+            actual_perms[perm] = data["perms"][perm]
+            expected_perms[perm] = True
+        self.assertNotEqual(actual_perms, expected_perms)
+
+        # Add user to role
+        UserRole.objects.create(user=user1, role=role)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        expected_perms = {
+            perm[0]: perm[1] for perm in PermissionItem.STATIC_PERMISSIONS
+        }
+        expected_perms.update({
+            perm.permission: True for perm in role_perms
+        })
+        self.assertEqual(data["perms"], expected_perms)

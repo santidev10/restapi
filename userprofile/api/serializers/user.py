@@ -12,11 +12,11 @@ from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.constants import StaticPermissions
 from userprofile.constants import UserSettingsKey
-from userprofile.models import PermissionItem
 from userprofile.models import WhiteLabel
+from userprofile.api.serializers.permission_mixin import PermissionSerializerMixin
 
 
-class UserSerializer(ModelSerializer):
+class UserSerializer(ModelSerializer, PermissionSerializerMixin):
     """
     Serializer for update/retrieve user
     """
@@ -27,11 +27,11 @@ class UserSerializer(ModelSerializer):
     has_aw_accounts = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
     last_name = CharField(max_length=255, required=True)
-    perms = SerializerMethodField()
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     user_type = CharField(max_length=255)
     domain = CharField(max_length=255)
     role_id = serializers.IntegerField(source="user_role.role_id")
+    perms = serializers.SerializerMethodField()
 
     class Meta:
         """
@@ -110,16 +110,6 @@ class UserSerializer(ModelSerializer):
             error = err.response["Error"]["Message"]
             raise ValidationError(error)
         return phone_number
-
-    def get_perms(self, obj):
-        """ Get permissions and update with default values if missing """
-        perms = obj.perms
-        perms.update({
-            perm: default
-            for perm, default, _ in PermissionItem.STATIC_PERMISSIONS
-            if perm not in perms
-        })
-        return perms
 
     def get_aw_settings(self, obj):
         """ Remove deprecated fields """
