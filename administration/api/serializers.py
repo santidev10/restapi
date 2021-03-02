@@ -14,6 +14,7 @@ from rest_framework.validators import ValidationError
 from administration.models import UserAction
 from userprofile.constants import StaticPermissions
 from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.api.serializers.permission_mixin import PermissionSerializerMixin
 from userprofile.constants import UserStatuses
 
 
@@ -84,12 +85,13 @@ class UserActionRetrieveSerializer(ModelSerializer):
         return None
 
 
-class UserSerializer(ModelSerializer):
+class UserSerializer(PermissionSerializerMixin, ModelSerializer):
     """
     Retrieve user serializer
     """
     can_access_media_buying = SerializerMethodField()
     domain = CharField(max_length=255)
+    perms = serializers.SerializerMethodField()
     role_id = serializers.IntegerField(source="user_role.role_id")
 
     class Meta:

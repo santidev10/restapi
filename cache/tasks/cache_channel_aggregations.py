@@ -1,5 +1,6 @@
 import logging
 
+from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
@@ -37,7 +38,9 @@ def cache_channel_aggregations():
             cached_channel_aggregations, _ = CacheItem.objects.get_or_create(key=key)
 
             logger.info(f"Collecting channel aggregations for key, '{key}'.")
-            manager = manager_class(sections)
+            manager = manager_class(sections, context={
+                "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp()
+            })
             aggregations = manager.get_aggregation(
                 search=manager.search(filters=manager.forced_filters()),
                 properties=aggregation_params

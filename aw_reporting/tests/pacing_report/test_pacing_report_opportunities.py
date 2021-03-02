@@ -15,6 +15,8 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import OpportunityConfig
+from aw_reporting.reports.constants import PacingReportPeriod
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
@@ -430,3 +432,72 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(opportunities), 1)
         first_op_data = opportunities[0]
         self.assertAlmostEqual(first_op_data["margin"], expected_margin)
+
+    def test_margin_period(self):
+        """ Test that margin is calculated correctly for the correct time period """
+        today = now_in_default_tz().date()
+        next_month = today + timedelta(days=31)
+        total_cost_1 = total_cost_2 = 10
+        total_cost = sum([total_cost_1, total_cost_2])
+        ordered_rate = .5
+        # Create opportunity with config margin period as this month
+        opportunity = Opportunity.objects.create(
+            probability=100,
+            budget=total_cost,
+            config={
+                OpportunityConfig.MARGIN_PERIOD.value: PacingReportPeriod.MONTH.value
+            }
+        )
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            total_cost=total_cost,
+            ordered_rate=ordered_rate,
+            start=today,
+            end=today + timedelta(days=1),
+        )
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=placement.start, end=placement.end,
+            total_cost=total_cost_1,
+        )
+        # Flights that do not start and end in current month should be excluded
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=next_month, end=next_month,
+            total_cost=total_cost_2,
+        )
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(
+            account=account,
+            salesforce_placement=placement,
+        )
+        delivered_1, delivered_2 = 30, 10
+        cost_1, cost_2 = 9, 3
+        aw_cost = sum([cost_1, cost_2])
+        CampaignStatistic.objects.create(
+            campaign=campaign,
+            date=placement.start,
+            video_views=delivered_1,
+            cost=cost_1,
+        )
+        CampaignStatistic.objects.create(
+            campaign=campaign,
+            date=next_month,
+            video_views=delivered_2,
+            cost=cost_2,
+        )
+        recalculate_de_norm_fields_for_account(account.id)
+        client_cost_1, client_cost_2 = delivered_1 * ordered_rate, delivered_2 * ordered_rate
+        self.assertGreater(client_cost_1, total_cost_1)
+        self.assertLess(client_cost_2, total_cost_2)
+
+        actualized_client_cost_1 = min(client_cost_1, total_cost_1)
+        # Calculate expected margin using first flight as it is in this month
+        expected_margin = 1 - aw_cost / actualized_client_cost_1
+        report = PacingReport()
+        opportunities = report.get_opportunities({})
+        self.assertAlmostEqual(opportunities[0]["margin"], expected_margin)

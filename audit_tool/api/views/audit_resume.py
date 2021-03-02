@@ -19,6 +19,8 @@ class AuditResumeApiView(APIView):
         if audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id, completed__isnull=False, audit_type=0)
+                if audit.source !=0:
+                    raise ValidationError("can not pause a CTL audit")
                 params = audit.params
                 related_audits = params.get('related_audits')
                 if not related_audits:

@@ -1,6 +1,7 @@
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import IntegerField
 from django.db.models import Q
+from django.db.models import F
 from django.db.models.functions import Cast
 from rest_framework.generics import ListAPIView
 from rest_framework.serializers import ValidationError
@@ -69,11 +70,17 @@ class SegmentListApiView(ListAPIView):
                 raise ValidationError("Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
             if sort_by == "items":
                 queryset = queryset.annotate(items=Cast(KeyTextTransform("items_count", "statistics"), IntegerField()))
-            if self.request.query_params.get("ascending"):
-                sort_by = "{}".format(sort_by)
+                if self.request.query_params.get("ascending"):
+                    queryset = queryset.order_by(F("items").asc(nulls_first=True))
+                else:
+                    queryset = queryset.order_by(F("items").desc(nulls_last=True))
             else:
-                sort_by = "-{}".format(sort_by)
-            queryset = queryset.order_by(sort_by)
+                invert = True if sort_by in ["updated_at", "created_at"] else False
+                if self.request.query_params.get("ascending"):
+                    sort_by = "{}".format(sort_by) if invert else "-{}".format(sort_by)
+                else:
+                    sort_by = "-{}".format(sort_by) if invert else "{}".format(sort_by)
+                queryset = queryset.order_by(sort_by)
         except KeyError:
             pass
         return queryset
