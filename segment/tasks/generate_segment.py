@@ -8,6 +8,7 @@ from django.conf import settings
 from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditProcessor
+from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models.constants import SegmentTypeEnum
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-@retry(count=10, delay=5, exceptions=(ConnectionError, IncompleteRead))
+@retry(count=10, delay=5, failed_callback=CTLSerializer.delete_related)
 def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
