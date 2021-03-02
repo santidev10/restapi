@@ -141,8 +141,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             "{}&{}".format(self._get_url("video"), query_prams))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(data["items"][0]["id"], seg_1.id)
-        self.assertEqual(data["items"][1]["id"], seg_2.id)
+        self.assertEqual(data["items"][0]["id"], seg_2.id)
+        self.assertEqual(data["items"][1]["id"], seg_1.id)
 
     def test_sort_by_created_ascending(self):
         seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1")
@@ -191,8 +191,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             "{}&{}".format(self._get_url("video"), query_prams))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(data["items"][0]["id"], seg_1.id)
-        self.assertEqual(data["items"][1]["id"], seg_2.id)
+        self.assertEqual(data["items"][0]["id"], seg_2.id)
+        self.assertEqual(data["items"][1]["id"], seg_1.id)
 
     def test_sort_by_title_descending(self):
         seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="First")
