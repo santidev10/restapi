@@ -402,23 +402,11 @@ class PacingReport:
         return result
 
     def get_margin_from_flights(self, flights, cost, plan_cost,
-                                allocation_ko=1, campaign_id=None, period=None):
-        # Get flights that start and end in current month
-        if period == PacingReportPeriod.MONTH.value:
-            curr_month = now_in_default_tz().month
-            flights = list(filter(
-                lambda flight: all(
-                    isinstance(flight.get(date_key), date) and flight[date_key].month == curr_month
-                    for date_key in ("start", "end")
-                ),
-                flights
-            ))
+                                allocation_ko=1, campaign_id=None):
         return get_margin_from_flights(flights, cost, plan_cost, allocation_ko, campaign_id)
 
-    def add_calculated_fields(self, report):
-        # border signals
+    def _get_margin_fields(self, margin):
         border = self.borders["margin"]
-        margin = report["margin"]
         if margin is None or margin >= border[0]:
             margin_quality = 2
             margin_direction = 0
@@ -428,6 +416,10 @@ class PacingReport:
         else:
             margin_quality = 0
             margin_direction = 1
+        return margin_quality, margin_direction
+
+    def add_calculated_fields(self, report):
+        margin_quality, margin_direction = self._get_margin_fields(report.get("margin"))
 
         low, high = self.borders["pacing"]
         pacing = report["pacing"]
@@ -567,8 +559,9 @@ class PacingReport:
                 flights,
                 o["cost"],
                 o["current_cost_limit"],
-                period=(o["config"] or {}).get(OpportunityConfig.MARGIN_PERIOD.value)
             )
+
+            self._update_opportunity_period_stats(o, flights, PacingReportPeriod.MONTH.value)
 
             o["thumbnail"] = thumbnails.get(o["ad_ops_manager__email"])
 
@@ -641,6 +634,28 @@ class PacingReport:
 
         return opportunities
 
+    def _update_opportunity_period_stats(self, opportunity, flights, period):
+        if period == PacingReportPeriod.MONTH.value:
+            curr_month = now_in_default_tz().month
+            curr_month_flights = list(filter(
+                lambda flight: all(
+                    isinstance(flight.get(date_key), date) and flight[date_key].month == curr_month
+                    for date_key in ("start", "end")
+                ),
+                flights
+            ))
+            curr_month_plan_stats = self.get_plan_stats_from_flights(curr_month_flights)
+            margin_curr_month = self.get_margin_from_flights(
+                flights,
+                curr_month_plan_stats["cost"],
+                curr_month_plan_stats["current_cost_limit"],
+            )
+            margin_quality, margin_direction = self._get_margin_fields(margin_curr_month)
+            opportunity.update({
+                "margin_curr_month": margin_curr_month,
+                "margin_quality_curr_month": margin_quality,
+                "margin_direction_curr_month": margin_direction,
+            })
     # pylint: enable=too-many-statements
 
     def get_opportunities_queryset(self, get, user, aw_cid, sort):

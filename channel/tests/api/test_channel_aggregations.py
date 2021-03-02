@@ -1,8 +1,11 @@
 import mock
+from datetime import timedelta
 
+from django.utils import timezone
 from elasticsearch_dsl import Q
 from rest_framework.status import HTTP_200_OK
 
+from audit_tool.models import IASHistory
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -10,9 +13,12 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.reverse import reverse
+from utils.unittests.int_iterator import int_iterator
 
 
 class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
+
+
     def _get_url(self, args):
         url = reverse(ChannelPathName.CHANNEL_LIST, [Namespace.CHANNEL], query_params=args)
         return url
@@ -50,7 +56,7 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
                         "stats.subscribers:min", "stats.views_per_video:max", "stats.views_per_video:min",
                         "task_us_data.age_group", "task_us_data.content_type", "task_us_data.content_quality",
                         "task_us_data.gender", "task_us_data:exists", "task_us_data:missing",
-                        "brand_safety.limbo_status",]
+                        "brand_safety.limbo_status", "ias_data.ias_verified:exists", ]
         manager.upsert([manager.model("test_channel")], refresh="wait_for")
         params = dict(
             aggregations=",".join(aggregations)
@@ -60,3 +66,35 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
             data = self.client.get(url).data["aggregations"]
         self.assertEqual(set(data), set(aggregations))
 
+    def test_ias_verified_aggregation(self):
+        """
+        test that ias verified aggregations filters based on the last completed IASHistory's `started` timestamp
+        :return:
+        """
+        self.create_admin_user()
+
+        now = timezone.now()
+        manager = ChannelManager(upsert_sections=[Sections.MAIN, Sections.GENERAL_DATA, Sections.IAS_DATA])
+        unverified = manager.get_or_create(ids=[f"channel_{next(int_iterator)}" for _ in range(5)])
+        for channel in unverified:
+            channel.populate_general_data(title=channel.main.id, description="description")
+            channel.populate_ias_data(ias_verified=(now - timedelta(days=1)))
+        manager.upsert(unverified)
+
+        IASHistory.objects.create(name="asdf", started=now, completed=(now + timedelta(minutes=1)))
+
+        verified = manager.get_or_create(ids=[f"channel_{next(int_iterator)}" for _ in range(8)])
+        for channel in verified:
+            channel.populate_general_data(title=channel.main.id, description="asdf")
+            channel.populate_ias_data(ias_verified=(now + timedelta(minutes=1)))
+        manager.upsert(verified)
+
+        params = dict(
+            aggregations="ias_data.ias_verified:exists"
+        )
+        url = self._get_url(params)
+        with mock.patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ias_verified_agg = response.data.get("aggregations", {}).get("ias_data.ias_verified:exists")
+        self.assertEqual(len(verified), ias_verified_agg)

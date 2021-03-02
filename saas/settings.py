@@ -567,8 +567,9 @@ DEMO_SOURCE_ACCOUNT_ID = 8277883480
 DOMAIN_MANAGEMENT_PERMISSIONS = (
     "Google OAuth",
     "Research",
-    "Media Buying > Accounts",
     "List Builder",
+    "Media Buying > Accounts",
+    "Review",
     "Analytics > Managed Service",
     "Analytics > Forecasting",
     "Tools > Pacing Report",

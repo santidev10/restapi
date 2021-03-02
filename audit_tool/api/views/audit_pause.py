@@ -20,15 +20,17 @@ class AuditPauseApiView(APIView):
         if audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id, completed__isnull=True)
-                if audit.temp_stop != pause:
-                    audit.temp_stop = pause
-                    audit.save(update_fields=['temp_stop'])
-                else:
-                    raise ValidationError("invalid action")
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
                 raise ValidationError("invalid audit_id: please verify you are pausing or un-pausing a running audit.")
+            if audit.source !=0:
+                raise ValidationError("can not pause a CTL audit")
+            if audit.temp_stop != pause:
+                audit.temp_stop = pause
+                audit.save(update_fields=['temp_stop'])
+            else:
+                raise ValidationError("invalid action")
             return Response(audit.to_dict())
         else:
             return Response({'error': 'must provide audit_id'})
