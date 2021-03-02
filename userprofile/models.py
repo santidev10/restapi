@@ -293,7 +293,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.PERFORMIQ__EXPORT,               False,  "Export"],
         [StaticPermissions.PRICING_TOOL,                    False,  "Pricing Tool"],
 
-        [StaticPermissions.RESEARCH,                        True,   "Research Read"],
+        [StaticPermissions.RESEARCH,                        True,   "Insights Read"],
         [StaticPermissions.RESEARCH__AUTH,                  False,  "Auth channels/videos & audience data"],
         [StaticPermissions.RESEARCH__AGE_GENDER,            False,  "Age & gender data"],
         [StaticPermissions.RESEARCH__BRAND_SUITABILITY,     False,  "View brand suitability filters & badges"],
