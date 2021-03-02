@@ -28,7 +28,7 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
-from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.tasks import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
@@ -181,13 +181,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise err
         except CTLEmptySourceUrlException:
             segment_type_repr = SegmentTypeEnum(segment.segment_type).name
-            segment.delete()
+            self.delete_related(segment)
             raise ValidationError(f"Mismatching file format. {segment_type_repr.capitalize()} lists "
                                   f"need {segment_type_repr.lower()} urls. Please adjust and try again")
         except Exception as error:
             # pylint: enable=broad-except
             # Delete CTL if unexpected exception occurs
-            segment.delete()
+            self.delete_related(segment)
             raise ValidationError(f"Exception trying to create segment: {error}. Please try again.")
         return segment
 
@@ -298,9 +298,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         These methods are used here because both create or update methods may call this method
         """
         self._create_query(segment)
-        with transaction.atomic():
-            self._create_source_file(segment)
-            self._start_segment_export_task(segment)
+        self._create_source_file(segment)
+        self._start_segment_export_task(segment)
         return segment
 
     def _start_segment_export_task(self, segment: CustomSegment):
@@ -559,6 +558,23 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
         segment.save(update_fields=[*set_false, "audit_id", "statistics"])
+
+    @staticmethod
+    def delete_related(segment, *_, **__):
+        """ Delete CTL and related objects in case of exceptions while creating ctl """
+        def _delete_audit(audit_id):
+            try:
+                AuditProcessor.objects.get(id=audit_id).delete()
+            except AuditProcessor.DoesNotExist:
+                pass
+        if isinstance(segment, str):
+            try:
+                segment = CustomSegment.objects.get(id=segment)
+            except CustomSegment.DoesNotExist:
+                return
+        _delete_audit(segment.audit_id)
+        _delete_audit(segment.params.get("meta_audit_id"))
+        segment.delete()
 
 
 class CTLWithoutDownloadUrlSerializer(CTLSerializer):

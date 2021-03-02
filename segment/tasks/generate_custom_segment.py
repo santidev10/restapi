@@ -54,5 +54,5 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
             raise e
 # pylint: disable=broad-except
     except Exception:
-        logger.exception("Error in generate_custom_segment task")
+        logger.exception(f"Error in generate_custom_segment task with id: {segment_id}")
 # pylint: enable=broad-except
