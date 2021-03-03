@@ -16,19 +16,26 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(SECTIONS)
     video_manager = VideoManager(SECTIONS)
 
-    def _get_url(self, data_type):
-        url = reverse(AuditPathName.BLOCKLIST_EXPORT, [Namespace.AUDIT_TOOL], kwargs=dict(data_type=data_type))
+    def _get_url_video(self):
+        url = reverse(AuditPathName.BLOCKLIST_VIDEO_EXPORT, [Namespace.AUDIT_TOOL])
+        return url
+
+    def _get_url_channel(self):
+        url = reverse(AuditPathName.BLOCKLIST_CHANNEL_EXPORT, [Namespace.AUDIT_TOOL])
         return url
 
     def test_admin_permission(self):
         self.create_test_user()
-        res1 = self.client.get(self._get_url("video"))
-        res2 = self.client.get(self._get_url("channel"))
+        res1 = self.client.get(self._get_url_video())
+        res2 = self.client.get(self._get_url_channel())
         self.assertEqual(res1.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res2.status_code, HTTP_403_FORBIDDEN)
 
     def test_success(self):
         self.create_admin_user()
-        res = self.client.get(self._get_url("video"))
-        self.assertEqual(res.status_code, HTTP_200_OK)
-        self.assertIsNotNone(res.data["message"])
+        res1 = self.client.get(self._get_url_video())
+        res2 = self.client.get(self._get_url_channel())
+        self.assertEqual(res1.status_code, HTTP_200_OK)
+        self.assertEqual(res2.status_code, HTTP_200_OK)
+        self.assertIsNotNone(res1.data["message"])
+        self.assertIsNotNone(res2.data["message"])
