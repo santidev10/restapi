@@ -1,6 +1,7 @@
 from distutils.util import strtobool
 
 from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 
@@ -78,6 +79,9 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         except ValueError:
             raise ValidationError("Please provide the query parameter 'block' as 'true' or 'false'.")
         data_type = kwargs["data_type"]
+        if self._check_blocklist_permission(data_type, should_block) is False:
+            raise PermissionDenied("You do not have permission to perform this action.")
+
         # Determine which field BlacklistItem counter field we need to increment
         counter_key = "blocked_count" if should_block else "unblocked_count"
         item_ids = self._map_urls(request.data.get("item_urls", []), data_type=data_type)
@@ -185,3 +189,9 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             channel=ChannelManager,
         )
         return managers[doc_type]
+
+    def _check_blocklist_permission(self, data_type: str, should_block: bool):
+        action_type = ".create_" if should_block else ".delete_"
+        perm_name = StaticPermissions.BLOCKLIST_MANAGER + action_type + data_type
+        return self.request.user.has_permission(perm_name)
+
