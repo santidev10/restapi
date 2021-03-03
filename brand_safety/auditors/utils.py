@@ -40,7 +40,7 @@ def pickled_data(fp, expires):
                 else:
                     data = func(*_, **__)
                     should_save = True
-            except (OSError, EOFError):
+            except (OSError, EOFError, pickle.UnpicklingError):
                 data = func(*_, **__)
                 should_save = True
             if should_save:
