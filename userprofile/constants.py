@@ -60,9 +60,12 @@ class StaticPermissions:
     AUDIT_QUEUE__SET_PRIORITY = "audit_queue.set_priority"
 
     BLOCKLIST_MANAGER = "blocklist_manager"
-    BLOCKLIST_MANAGER__CREATE = "blocklist_manager.create"
-    BLOCKLIST_MANAGER__DELETE = "blocklist_manager.delete"
-    BLOCKLIST_MANAGER__EXPORT = "blocklist_manager.export"
+    BLOCKLIST_MANAGER__CREATE_CHANNEL = "blocklist_manager.create_channel"
+    BLOCKLIST_MANAGER__DELETE_CHANNEL = "blocklist_manager.delete_channel"
+    BLOCKLIST_MANAGER__EXPORT_CHANNEL = "blocklist_manager.export_channel"
+    BLOCKLIST_MANAGER__CREATE_VIDEO = "blocklist_manager.create_video"
+    BLOCKLIST_MANAGER__DELETE_VIDEO = "blocklist_manager.delete_video"
+    BLOCKLIST_MANAGER__EXPORT_VIDEO = "blocklist_manager.export_video"
 
     BSTE = "bste"
     BSTE__CREATE = "bste.create"

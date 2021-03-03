@@ -29,9 +29,12 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
         self.user = self.create_test_user(perms={
             StaticPermissions.BLOCKLIST_MANAGER: True,
-            StaticPermissions.BLOCKLIST_MANAGER__CREATE: True,
-            StaticPermissions.BLOCKLIST_MANAGER__DELETE: True,
-            StaticPermissions.BLOCKLIST_MANAGER__EXPORT: True,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE_CHANNEL: True,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE_CHANNEL: True,
+            StaticPermissions.BLOCKLIST_MANAGER__EXPORT_CHANNEL: True,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE_VIDEO: True,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE_VIDEO: True,
+            StaticPermissions.BLOCKLIST_MANAGER__EXPORT_VIDEO: True,
         })
 
     def _get_url(self, data_type):
@@ -346,3 +349,26 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertTrue(all(item.custom_properties.blocklist is False for item in updated_channels))
         self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_videos))
+
+
+    def test_blocklist_create_delete_permissions(self):
+        self.create_test_user(perms={
+            StaticPermissions.BLOCKLIST_MANAGER: True,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE_CHANNEL: False,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE_CHANNEL: False,
+            StaticPermissions.BLOCKLIST_MANAGER__CREATE_VIDEO: False,
+            StaticPermissions.BLOCKLIST_MANAGER__DELETE_VIDEO: False,
+        })
+
+        res1 = self.client.post(self._get_url("video") + "?block=true", data=json.dumps({}),
+                                content_type="application/json")
+        res2 = self.client.post(self._get_url("video") + "?block=false", data=json.dumps({}),
+                                content_type="application/json")
+        res3 = self.client.post(self._get_url("channel") + "?block=true", data=json.dumps({}),
+                                content_type="application/json")
+        res4 = self.client.post(self._get_url("channel") + "?block=false", data=json.dumps({}),
+                                content_type="application/json")
+        self.assertEqual(res1.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(res2.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(res3.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(res4.status_code, HTTP_403_FORBIDDEN)

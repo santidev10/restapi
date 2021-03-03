@@ -241,10 +241,13 @@ class PermissionItem(models.Model):
         [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
         [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
 
-        [StaticPermissions.BLOCKLIST_MANAGER,               False,  "Blocklist Manager Read"],
-        [StaticPermissions.BLOCKLIST_MANAGER__CREATE,       False,  "Blocklist Manager Create"],
-        [StaticPermissions.BLOCKLIST_MANAGER__DELETE,       False,  "Blocklist Manager Delete"],
-        [StaticPermissions.BLOCKLIST_MANAGER__EXPORT,       False,  "Blocklist Manager Export"],
+        [StaticPermissions.BLOCKLIST_MANAGER,                       False,  "Blocklist Manager Read"],
+        [StaticPermissions.BLOCKLIST_MANAGER__CREATE_CHANNEL,       False,  "Blocklist Manager Create Channel"],
+        [StaticPermissions.BLOCKLIST_MANAGER__DELETE_CHANNEL,       False,  "Blocklist Manager Delete Channel"],
+        [StaticPermissions.BLOCKLIST_MANAGER__EXPORT_CHANNEL,       False,  "Blocklist Manager Export Channel"],
+        [StaticPermissions.BLOCKLIST_MANAGER__CREATE_VIDEO,         False,  "Blocklist Manager Create Video"],
+        [StaticPermissions.BLOCKLIST_MANAGER__DELETE_VIDEO,         False,  "Blocklist Manager Delete Video"],
+        [StaticPermissions.BLOCKLIST_MANAGER__EXPORT_VIDEO,         False,  "Blocklist Manager Export Video"],
 
         [StaticPermissions.BSTE,                            False,  "Brand Safety Tags Editor Read"],
         [StaticPermissions.BSTE__CREATE,                    False,  "Brand Safety Tags Editor Create"],
