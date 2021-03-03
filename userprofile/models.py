@@ -131,9 +131,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         :param perm: PermissionItem.permission value
         :return: bool
         """
-        # if user is admin, they automatically get whatever permission
-        if self.perms.get("admin") and self.perms.get("admin") is True:
-            return True
         try:
             # user_role is related name on UserRole model
             user_perms = {
@@ -142,6 +139,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             }
         except (AttributeError, UserRole.DoesNotExist):
             user_perms = self.perms
+        # if user is admin, they automatically get whatever permission
+        if user_perms.get("admin") and user_perms.get("admin") is True:
+            return True
         if user_perms.get(perm) is not None:
             return user_perms[perm]
         else:
