@@ -38,9 +38,8 @@ class NoMoreProxiesAvailableException(Exception):
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements,too-many-locals
-@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
+@celery_app.task(expires=TaskExpiration.TTS_URL_TRANSCRIPTS, soft_time_limit=TaskTimeout.TTS_URL_TRANSCRIPTS)
 def pull_tts_url_transcripts_task():
-    # TODO register the updated task name
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
@@ -58,18 +57,20 @@ def pull_tts_url_transcripts_task():
                 f"num_vids: {num_vids}")
     query = get_video_transcripts_query(lang_codes=lang_codes, country_codes=country_codes,
                                         iab_categories=iab_categories, brand_safety_score=brand_safety_score)
-    pull_tts_url_transcripts_with_lock(lock_name=LOCK_NAME, query=query, num_vids=num_vids)
+    pull_tts_url_transcripts_with_lock(lock_name=LOCK_NAME, expire=TaskExpiration.TTS_URL_TRANSCRIPTS, query=query,
+                                       num_vids=num_vids)
 
 
-def pull_tts_url_transcripts_with_lock(lock_name: str, *args, **kwargs):
+def pull_tts_url_transcripts_with_lock(lock_name: str, expire: int, *args, **kwargs):
     """
     calls the pull_tts_url_transcripts_with_query function and locks
     :param lock_name: name of the lock to use for the task
+    :param expire: lock expiration time, in seconds
     :param args:
     :param kwargs:
     :return:
     """
-    lock(lock_name=lock_name, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+    lock(lock_name=lock_name, max_retries=1, expire=expire)
     try:
         pull_tts_url_transcripts(*args, **kwargs)
     except Retry:
