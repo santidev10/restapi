@@ -351,15 +351,13 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(all(item.custom_properties.blocklist is True for item in updated_videos))
 
 
-    def test_blocklist_video_permissions(self):
+    def test_blocklist_create_delete_permissions(self):
         self.create_test_user(perms={
             StaticPermissions.BLOCKLIST_MANAGER: True,
             StaticPermissions.BLOCKLIST_MANAGER__CREATE_CHANNEL: False,
             StaticPermissions.BLOCKLIST_MANAGER__DELETE_CHANNEL: False,
-            StaticPermissions.BLOCKLIST_MANAGER__EXPORT_CHANNEL: False,
             StaticPermissions.BLOCKLIST_MANAGER__CREATE_VIDEO: False,
             StaticPermissions.BLOCKLIST_MANAGER__DELETE_VIDEO: False,
-            StaticPermissions.BLOCKLIST_MANAGER__EXPORT_VIDEO: False
         })
 
         res1 = self.client.post(self._get_url("video") + "?block=true", data=json.dumps({}),
@@ -370,14 +368,7 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
                                 content_type="application/json")
         res4 = self.client.post(self._get_url("channel") + "?block=false", data=json.dumps({}),
                                 content_type="application/json")
-        res5 = self.client.post(self._get_url("video") + "export/")
-        res6 = self.client.post(self._get_url("channel") + "export/")
         self.assertEqual(res1.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res2.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res3.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res4.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(res5.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(res6.status_code, HTTP_403_FORBIDDEN)
-
-    # def test_blocklist_channel_permissions(self):
-
