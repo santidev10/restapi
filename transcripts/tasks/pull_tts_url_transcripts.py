@@ -233,6 +233,22 @@ def notify_if_no_successes():
     )
 
 
+def notify_daily_total(counter: APIScriptTracker):
+    """
+    notify number of successful new transcripts pulled
+    :param counter:
+    :return:
+    """
+    send_email(
+        subject=(f"Transcripts: {counter.cursor} transcripts pulled in the last {TRANSCRIPTS_SUCCESS_COUNTER_DAYS} "
+                 f"day(s)"),
+        from_email=settings.SENDER_EMAIL_ADDRESS,
+        recipient_list=["andrew.wong@channelfactory.com"],
+        message=(f"There have been {counter.cursor} transcripts pulled successfully in the last "
+                 f"{TRANSCRIPTS_SUCCESS_COUNTER_DAYS} day(s)")
+    )
+
+
 def update_successes_count(count: int):
     """
     increment daily success count by `count`, or set to `count` and reset timestamp to now if monitoring period is over
@@ -248,9 +264,10 @@ def update_successes_count(count: int):
     if created:
         return
 
-    # if monitoring period has elapsed, reset the timestamp and count
+    # if monitoring period has elapsed, notify, and reset the timestamp and count
     delta = now - counter.timestamp
     if abs(delta.days) >= TRANSCRIPTS_SUCCESS_COUNTER_DAYS:
+        notify_daily_total(counter)
         counter.timestamp = now
         counter.cursor = count
         counter.save(update_fields=["cursor", "timestamp"])
