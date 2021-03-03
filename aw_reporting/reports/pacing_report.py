@@ -646,7 +646,7 @@ class PacingReport:
             ))
             curr_month_plan_stats = self.get_plan_stats_from_flights(curr_month_flights)
             margin_curr_month = self.get_margin_from_flights(
-                flights,
+                curr_month_flights,
                 curr_month_plan_stats["cost"],
                 curr_month_plan_stats["current_cost_limit"],
             )
