@@ -52,7 +52,6 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
     def test_get_channel(self):
         self.create_test_user(perms={
             StaticPermissions.RESEARCH__VETTING: True,
-            StaticPermissions.RESEARCH__VETTING_DATA: True,
         })
         channel = self.channel_manager.model(f"test_youtube_channel_{next(int_iterator)}")
         channel.populate_general_data(title="test_channel")
