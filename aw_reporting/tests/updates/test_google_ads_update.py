@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 from unittest.mock import PropertyMock
 from unittest.mock import patch
 
+from django.core import mail
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
 from django.test import TestCase
@@ -1347,6 +1348,17 @@ class UpdateAwAccountsTestCase(BaseUpdateAwTestCase, TestCase):
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(account.id, to_update)
+
+    def test_send_alert_email(self):
+        """ Test email is only set if lock is acquired """
+        account = self._create_account()
+        updater = GoogleAdsUpdater(account)
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", side_effect=RefreshError):
+            updater.update_campaigns()
+        self.assertEqual(len(mail.outbox), 1)
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", side_effect=RefreshError):
+            updater.update_campaigns()
+        self.assertEqual(len(mail.outbox), 1)
 
 
 class FakeExceptionWithArgs:
