@@ -37,8 +37,8 @@ fasttext==0.9.2
 flashtext==2.7
 future==0.18.2
 google-ads==8.2.0
-google-api-core==1.25.1
-google-api-python-client==2.0.0
+google-api-core==1.26.0
+google-api-python-client==1.12.8
 google-auth==1.27.0
 google-auth-httplib2==0.0.4
 google-auth-oauthlib==0.4.2
