@@ -40,9 +40,10 @@ class SegmentExport(APIView):
                                  f"ready."
         else:
             if request.query_params.get("video_exclusion"):
-                s3_key = get_object(CustomSegmentFileUpload, id=segment.statistics.get("video_exclusion_list_id"))
+                video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get("video_exclusion_list_id"))
+                s3_key = video_exclusion_ctl.export.filename
                 response["download_url"] = segment.s3.generate_temporary_url(s3_key)
-            if hasattr(segment, "export"):
+            elif hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
                 if request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
