@@ -101,7 +101,7 @@ class Command(BaseCommand):
                 c.save(update_fields=["last_uploaded", "last_uploaded_view_count", "last_uploaded_category"])
             # pylint: disable=broad-except
             except Exception:
-                if videos.count() == 0:
+                if not c.name and videos.count() == 0:
                     c.video_count = 0
                     c.save(update_fields=['video_count'])
             # pylint: enable=broad-except

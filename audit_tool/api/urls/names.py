@@ -15,6 +15,8 @@ class AuditPathName:
     AUDIT_ADMIN = "audit_admin"
     AUDIT_ITEM = "audit_item"
     BLOCKLIST_LIST_CREATE = "blocklist_list_create"
-    BLOCKLIST_EXPORT = "blocklist_export"
+    BLOCKLIST_VIDEO_EXPORT = "blocklist_video_export"
+    BLOCKLIST_CHANNEL_EXPORT = "blocklist_channel_export"
+
 
 
