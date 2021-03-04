@@ -24,8 +24,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
     REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories", "language")
 
     permission_classes = (
-        (StaticPermissions.has_perms(StaticPermissions.RESEARCH__VETTING)
-         & StaticPermissions.has_perms(StaticPermissions.RESEARCH__VETTING_DATA)),
+        StaticPermissions.has_perms(StaticPermissions.RESEARCH__VETTING),
     )
 
     def get(self, request, *args, **kwargs):
