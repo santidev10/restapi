@@ -137,9 +137,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 p.permission: True
                 for p in self.user_role.role.permissions.all()
             }
-            user_perms.update({
-                perm: False for perm in PermissionItem.all_perms() if perm not in user_perms
-            })
         except (AttributeError, UserRole.DoesNotExist):
             user_perms = self.perms
         # if user is admin, they automatically get whatever permission
