@@ -57,6 +57,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
+    # Store general statistics / results data
     statistics = models.JSONField(default=dict)
     list_type = models.IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE)

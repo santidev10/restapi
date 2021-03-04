@@ -3,35 +3,52 @@ import csv
 import logging
 import os
 import tempfile
+from typing import List
 
 from django.conf import settings
+from uuid import uuid4
 
 from es_components.constants import Sections
 from es_components.models import Video
 from es_components.query_builder import QueryBuilder
+from segment.models import CustomSegment
 from utils.lang import merge
 from utils.utils import chunks_generator
 
 
 logger = logging.getLogger(__name__)
+LIMIT = 125000
 
 
-def generate_videos_blacklist(channel_ctl, channel_ids):
+# def generate_videos_blacklist(channel_ctl: CustomSegment, channel_ctl_fp):
+def generate_videos_blacklist(channel_ctl: CustomSegment, channel_ids):
+    all_blocklist = []
     all_videos = []
     video_blacklist_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
+        # for chunk in chunks_generator(_channels_generator(channel_ctl_fp), size=2):
         for chunk in chunks_generator(channel_ids, size=2):
-            videos = []
+            curr_blocklist = []
+            curr_videos = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                 futures = [executor.submit(get_videos_for_channel, channel_id, 80) for channel_id in chunk]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
-                    videos.extend(result)
-            videos.sort(key=lambda doc: doc.brand_safety.overall_score)
-            all_videos = merge(all_videos, videos, lambda doc: doc.brand_safety.overall_score)
+                    _sort_videos(result, curr_blocklist, curr_videos)
+            curr_videos.sort(key=lambda doc: doc.brand_safety.overall_score)
+            all_videos = merge(all_videos, curr_videos, lambda doc: doc.brand_safety.overall_score)
+            all_blocklist.extend(curr_blocklist)
 
+            # Ensure that entire blocklist is used
+            all_videos = all_videos[:LIMIT]
+            if len(all_blocklist) >= LIMIT:
+                break
+
+            break
+
+        all_results = (all_blocklist + all_videos)[:LIMIT]
         rows = []
-        for video in all_videos:
+        for video in all_results:
             row = [video.general_data.title]
             overall_score = video.brand_safety.overall_score if video.custom_properties.blocklist is False else -1
             row.append(overall_score)
@@ -41,7 +58,7 @@ def generate_videos_blacklist(channel_ctl, channel_ids):
             writer = csv.writer(file)
             writer.writerow(["title", "score"])
             writer.writerows(rows)
-        channel_ctl.s3.export_file_to_s3()
+        channel_ctl.s3.export_file_to_s3(video_blacklist_fp, f"{uuid4()}.csv")
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_blacklist({channel_ctl, channel_ids})")
     finally:
@@ -58,3 +75,19 @@ def get_videos_for_channel(channel_id, bs_score_limit):
     )
     videos_generator = Video.search().source(video_source).query(query).scan()
     yield from videos_generator
+
+
+def _sort_videos(videos, blocklist_list, videos_list):
+    for video in videos:
+        if video.custom_properties.blocklist is True:
+            container = blocklist_list
+        else:
+            container = videos_list
+        container.append(video)
+
+def _channels_generator(fp):
+    with open(fp, mode="r") as file:
+        reader = csv.reader(file)
+        next(reader)
+        for row in reader:
+            yield row[0]
