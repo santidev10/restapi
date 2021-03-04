@@ -33,6 +33,7 @@ from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
+from aw_reporting.google_ads.utils import send_read_lost_email
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Account
 from aw_reporting.models import OpPlacement
@@ -250,6 +251,10 @@ class GoogleAdsUpdater:
                 logger.warning((permission, e))
                 aw_connection.revoked_access = True
                 aw_connection.save()
+
+                message = f"RefreshError, HttpAccessTokenRefreshError in GoogleAdsUpdater.execute_with_any_permission: " \
+                          f"Revoked access for aw_connection id: {aw_connection.email}"
+                send_read_lost_email(self.account, message)
                 continue
 
             except WebFault as e:
@@ -257,12 +262,18 @@ class GoogleAdsUpdater:
                     logger.warning((permission, e))
                     permission.can_read = False
                     permission.save()
+
+                    message = "fAuthorizationError.USER_PERMISSION_DENIED in GoogleAdsUpdater.execute_with_any_permission: " \
+                              f"permission.can_read set to False for aw_connection id: {aw_connection.email}"
+                    send_read_lost_email(self.account, message)
                 else:
                     raise
 
             except AccountInactiveError:
                 self.account.is_active = False
                 self.account.save()
+                message = "AccountInactiveError in GoogleAdsUpdater.execute_with_any_permission"
+                send_read_lost_email(self.account, message)
 
             # pylint: disable=broad-except
             except Exception:
