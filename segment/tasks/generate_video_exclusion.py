@@ -20,6 +20,7 @@ from segment.models.constants import SegmentTypeEnum
 from utils.lang import merge
 from utils.utils import chunks_generator
 from utils.datetime import now_in_default_tz
+from utils.brand_safety import map_score_threshold
 
 
 logger = logging.getLogger(__name__)
@@ -43,11 +44,12 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids):
     all_videos = []
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        for chunk in chunks_generator(_channels_generator(channel_ids), size=2):
+        score_threshold = map_score_threshold(channel_ctl.export.query["params"]["score_threshold"])
+        for chunk in chunks_generator(channel_ids, size=5):
             curr_blocklist = []
             curr_videos = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                futures = [executor.submit(get_videos_for_channel, channel_id, 80) for channel_id in chunk]
+                futures = [executor.submit(get_videos_for_channel, channel_id, score_threshold) for channel_id in chunk]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _sort_videos(result, curr_blocklist, curr_videos)
@@ -60,8 +62,6 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids):
             # If blocklist videos exceeds limit, then list should only consist of blocklist videos
             if len(all_blocklist) >= LIMIT:
                 break
-
-            break
 
         all_results = (all_blocklist + all_videos)[:LIMIT]
         rows = []
@@ -83,7 +83,7 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids):
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
     else:
         title = f"{channel_ctl.title}_video_exclusion_list"
-        video_exclusion_ctl, _ = CustomSegment.objects.create_or_create(
+        video_exclusion_ctl, _ = CustomSegment.objects.update_or_create(
             segment_type=SegmentTypeEnum.VIDEO.value,
             owner_id=channel_ctl.owner_id,
             title=title,
@@ -94,7 +94,6 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids):
                 }
             )
         )
-        print(video_exclusion_s3_key)
         CustomSegmentFileUpload.objects.update_or_create(
             segment=video_exclusion_ctl,
             defaults=dict(
@@ -103,10 +102,7 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids):
                 query={},
             )
         )
-        channel_ctl.statistics.update({
-            "video_exclusion_list_id": video_exclusion_ctl.id
-        })
-        channel_ctl.save(update_fields=["statistics"])
+        return video_exclusion_ctl
     finally:
         os.remove(video_exclusion_fp)
 

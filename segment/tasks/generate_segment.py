@@ -2,7 +2,6 @@ import logging
 import os
 import tempfile
 from collections import defaultdict
-from http.client import IncompleteRead
 
 from django.conf import settings
 from elasticsearch_dsl import Q
@@ -16,6 +15,7 @@ from segment.models.constants import VideoConfig
 from segment.models.constants import ChannelConfig
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from userprofile.constants import StaticPermissions
 from utils.exception import retry
 from utils.utils import chunks_generator
@@ -156,6 +156,12 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 "s3_key": s3_key,
                 "admin_s3_key": admin_s3_key,
             }
+
+        if segment.params.get("with_video_exclusion"):
+            video_exclusion_ctl = generate_video_exclusion(segment, item_ids)
+            results["statistics"].update({
+                "video_exclusion_list_id": video_exclusion_ctl.id
+            })
         return results
     finally:
         os.remove(admin_filename)
