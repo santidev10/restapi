@@ -54,7 +54,8 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
-        role_permissions = role.permissions.all()
+        default_enabled = PermissionItem.objects.filter(default_value=True)
+        role_permissions = [*role.permissions.all(), *default_enabled]
         enabled_permissions = [perm for perm in data["permissions"] if perm["enabled"] is True]
         self.assertEqual([p.permission for p in role_permissions], [p["perm"] for p in enabled_permissions])
         self.assertEqual([u["id"] for u in data["users"]], [user1.id, user2.id])
