@@ -1,7 +1,6 @@
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
-from rest_framework.status import HTTP_403_FORBIDDEN
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
@@ -40,6 +39,9 @@ class SegmentExport(APIView):
                     "message"] = f"Processing. You will receive an email when your export for: {segment.title} is " \
                                  f"ready."
         else:
+            if request.query_params.get("video_exclusion"):
+                s3_key = get_object(CustomSegmentFileUpload, id=segment.statistics.get("video_exclusion_list_id"))
+                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             if hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
