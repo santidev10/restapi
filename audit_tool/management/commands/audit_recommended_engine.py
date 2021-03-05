@@ -98,7 +98,7 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             self.machine_number = 0
-        with PidFile(piddir=".", pidname="recommendation_{}.pid".format(self.thread_id)):
+        with PidFile(piddir="pids", pidname="recommendation_{}.pid".format(self.thread_id)):
             try:
                 self.audit = AuditProcessor.objects \
                     .filter(temp_stop=False,
