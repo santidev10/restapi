@@ -54,7 +54,8 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
-        role_permissions = role.permissions.all()
+        default_enabled = PermissionItem.objects.filter(default_value=True)
+        role_permissions = [*role.permissions.all(), *default_enabled]
         enabled_permissions = [perm for perm in data["permissions"] if perm["enabled"] is True]
         self.assertEqual([p.permission for p in role_permissions], [p["perm"] for p in enabled_permissions])
         self.assertEqual([u["id"] for u in data["users"]], [user1.id, user2.id])
@@ -169,3 +170,14 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         # Should update to from role1 to rol2
         self.assertEqual(user_role2.role_id, role2.id)
         self.assertEqual(user_role3.role_id, role2.id)
+
+    def test_default_value(self):
+        """ Test that if a permission is not in a role, the default value is used """
+        role = Role.objects.create(name="test1")
+
+        permission = PermissionItem.objects.get(permission=StaticPermissions.RESEARCH)
+        response = self.client.get(self._get_url(role.id))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        serialized = [item for item in data["permissions"] if item["perm"] == permission.permission][0]
+        self.assertEqual(serialized["enabled"], permission.default_value)
