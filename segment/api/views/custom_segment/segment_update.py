@@ -5,6 +5,8 @@ from segment.api.serializers.custom_segment_update_serializers import CustomSegm
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentUpdateSerializer
 from segment.models import CustomSegment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
+from segment.utils.utils import CustomSegmentChannelCreatePermission
+from segment.utils.utils import CustomSegmentVideoCreatePermission
 from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes
 
@@ -13,7 +15,10 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
     permission_classes = (
         or_permission_classes(
             AdminCustomSegmentOwnerPermission,
-            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE, StaticPermissions.BUILD__CTL_FEATURE_LIST)
+            (CustomSegmentChannelCreatePermission
+             and StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_FEATURE_LIST)),
+            (CustomSegmentVideoCreatePermission
+             and StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_FEATURE_LIST))
         ),
     )
 

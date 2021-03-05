@@ -12,15 +12,17 @@ from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
+from segment.utils.utils import CustomSegmentChannelCreatePermission
+from segment.utils.utils import CustomSegmentVideoCreatePermission
 from segment.utils.utils import set_user_perm_params
-from userprofile.constants import StaticPermissions
+from utils.permissions import or_permission_classes
 from utils.views import get_object
 
 
 class SegmentCreateUpdateApiView(CreateAPIView):
     serializer_class = CTLSerializer
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE),
+        or_permission_classes(CustomSegmentChannelCreatePermission, CustomSegmentVideoCreatePermission),
     )
     parser_classes = [MultiPartParser]
 

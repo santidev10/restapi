@@ -6,7 +6,8 @@ from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
-from userprofile.constants import StaticPermissions
+from segment.utils.utils import CustomSegmentChannelDeletePermission
+from segment.utils.utils import CustomSegmentVideoDeletePermission
 from utils.permissions import or_permission_classes
 
 
@@ -15,7 +16,8 @@ class SegmentDeleteApiView(DestroyAPIView):
     permission_classes = (
          or_permission_classes(
              AdminCustomSegmentOwnerPermission,
-             StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_DELETE),
+             CustomSegmentChannelDeletePermission,
+             CustomSegmentVideoDeletePermission
          ),
     )
 
