@@ -84,11 +84,13 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         return params
 
     def test_reject_permission(self, mock_generate):
+        """
+        user without create perms should not be allowed to create
+        :param mock_generate:
+        :return:
+        """
         self.create_test_user()
-        payload = {}
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
+        response = self.client.post(self._get_url(), {})
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(mock_generate.call_count, 0)
 
@@ -739,7 +741,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             data=json.dumps(payload),
             source_file=source_file
         )
-        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids", return_value=["source_url"]),\
+        with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids",
+                   return_value=["source_url"]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_file_to_s3"):
             response = self.client.patch(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_200_OK)

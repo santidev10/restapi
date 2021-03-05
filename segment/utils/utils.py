@@ -213,11 +213,13 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
 
         data = json.loads(request.data.get("data", "{}"))
         segment_type = data.get("segment_type")
-        validate_segment_type(segment_type)
+        if segment_type is not None:
+            validate_segment_type(segment_type)
         if segment_type == self.segment_type and request.user.has_permission(self.required_permission):
             return True
 
-        segment_id = view.kwargs.get("pk")
+        # id is in different places depending on request method
+        segment_id = view.kwargs.get("pk") or data.get("id")
         if not segment_id:
             return False
         try:

@@ -70,8 +70,8 @@ class SegmentDeleteApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    @mock_s3
-    def test_delete_permission_success(self):
+    @patch("segment.models.utils.segment_exporter.SegmentExporter.delete_export")
+    def test_delete_permission_success(self, mock_delete_export):
         """
         allow deletes only if the user has the delete permission for that segment type
         :return:
