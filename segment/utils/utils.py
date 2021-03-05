@@ -125,6 +125,14 @@ def validate_all_in(members: list, container: list) -> list:
     return [validate_in(member, container) for member in members]
 
 
+def validate_segment_type(segment_type: int) -> int:
+    try:
+        SegmentTypeEnum(segment_type)
+    except ValueError:
+        raise ValidationError(f"Invalid list_type: {segment_type}. 0 = video, 1 = channel.")
+    return segment_type
+
+
 def with_unknown(options=None, choice=None):
     """
     If choice is None, create dict mapping of id, name for list of two element tuple options
@@ -205,6 +213,7 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
 
         data = json.loads(request.data.get("data", "{}"))
         segment_type = data.get("segment_type")
+        validate_segment_type(segment_type)
         if segment_type == self.segment_type and request.user.has_permission(self.required_permission):
             return True
 

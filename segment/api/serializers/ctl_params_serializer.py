@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from es_components.iab_categories import IAB_TIER2_SET
 from segment.models.constants import SegmentTypeEnum
 from segment.utils.utils import validate_all_in
+from segment.utils.utils import validate_segment_type
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
 from utils.serializers.fields.coerce_time_to_seconds_field import CoerceTimeToSecondsField
@@ -202,11 +203,7 @@ class CTLParamsSerializer(serializers.Serializer):
         return validated_data
 
     def validate_segment_type(self, data: int) -> int:
-        try:
-            SegmentTypeEnum(data)
-        except ValueError:
-            raise ValidationError(f"Invalid list_type: {data}. 0 = video, 1 = channel.")
-        return data
+        return validate_segment_type(data)
 
     def _validate_categories(self, data: dict) -> None:
         content_categories = data["content_categories"]
