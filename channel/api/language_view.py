@@ -9,12 +9,4 @@ class LanguageListApiView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, *args, **kwargs):
-        return Response(
-            [
-                {
-                    "id": code,
-                    "common": language
-                }
-                for code, language in LANGUAGES.items()
-            ]
-        )
+        return Response(LANGUAGES)
