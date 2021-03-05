@@ -133,10 +133,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         try:
             # user_role is related name on UserRole model
-            user_perms = {
-                p.permission: True
-                for p in self.user_role.role.permissions.all()
-            }
+            user_perms = self.user_role.role.permissions
         except (AttributeError, UserRole.DoesNotExist):
             user_perms = self.perms
         # if user is admin, they automatically get whatever permission
@@ -390,7 +387,7 @@ class WhiteLabel(models.Model):
 
 class Role(models.Model):
     name = models.CharField(max_length=20, unique=True)
-    permissions = models.ManyToManyField(PermissionItem, related_name="roles", db_index=True)
+    permissions = models.JSONField(default=dict)
 
 
 class UserRole(models.Model):
