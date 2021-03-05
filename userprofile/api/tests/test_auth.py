@@ -252,11 +252,11 @@ class AuthAPITestCase(AwReportingAPITestCase):
     def test_user_role_permissions(self):
         """ Test that user.perms is serialized with Role permissions if part of role """
         user = self.create_test_user()
-        role = Role.objects.create(name="test")
-        role_perms = PermissionItem.objects.filter(permission__in=[
-            StaticPermissions.RESEARCH__VETTING_DATA, StaticPermissions.BLOCKLIST_MANAGER, StaticPermissions.PERFORMIQ
-        ])
-        role.permissions.add(*role_perms)
+        role = Role.objects.create(name="test", permissions={
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
+            StaticPermissions.BLOCKLIST_MANAGER: True,
+            StaticPermissions.PERFORMIQ: True,
+        })
 
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
@@ -265,7 +265,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         actual_perms = {}
         expected_perms = {}
-        for perm in role_perms.values_list("permission", flat=True):
+        for perm in role.permissions:
             actual_perms[perm] = response.data["perms"][perm]
             expected_perms[perm] = True
         self.assertNotEqual(actual_perms, expected_perms)
@@ -280,7 +280,5 @@ class AuthAPITestCase(AwReportingAPITestCase):
         expected_perms = {
             perm[0]: perm[1] for perm in PermissionItem.STATIC_PERMISSIONS
         }
-        expected_perms.update({
-            perm.permission: True for perm in role_perms
-        })
+        expected_perms.update(role.permissions)
         self.assertEqual(response.data["perms"], expected_perms)

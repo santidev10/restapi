@@ -116,18 +116,17 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         })
 
         user1 = get_user_model().objects.create(email="test_list1@example.com", status=UserStatuses.ACTIVE.value)
-        role = Role.objects.create(name="test")
-        role_perms = PermissionItem.objects.filter(permission__in=[
-            StaticPermissions.RESEARCH__VETTING_DATA, StaticPermissions.BLOCKLIST_MANAGER, StaticPermissions.PERFORMIQ
-        ])
-        role.permissions.add(*role_perms)
-
+        role = Role.objects.create(name="test", permissions={
+            StaticPermissions.RESEARCH__VETTING_DATA: True,
+            StaticPermissions.BLOCKLIST_MANAGER: True,
+            StaticPermissions.PERFORMIQ: True,
+        })
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["items"][0]
         actual_perms = {}
         expected_perms = {}
-        for perm in role_perms.values_list("permission", flat=True):
+        for perm in role.permissions:
             actual_perms[perm] = data["perms"][perm]
             expected_perms[perm] = True
         self.assertNotEqual(actual_perms, expected_perms)
@@ -140,7 +139,5 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         expected_perms = {
             perm[0]: perm[1] for perm in PermissionItem.STATIC_PERMISSIONS
         }
-        expected_perms.update({
-            perm.permission: True for perm in role_perms
-        })
+        expected_perms.update(role.permissions)
         self.assertEqual(data["perms"], expected_perms)
