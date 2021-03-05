@@ -7,7 +7,6 @@ import tempfile
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
@@ -28,6 +27,7 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
+from segment.models.constants import VideoExclusion
 from segment.tasks import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from userprofile.models import UserProfile
@@ -89,6 +89,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
+    with_video_exclusion = BooleanField(write_only=True)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -297,6 +298,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         Method to handle invoking necessary methods for full CTL creation
         These methods are used here because both create or update methods may call this method
         """
+        if self.validated_data.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
+            segment.params.update({
+                VideoExclusion.WITH_VIDEO_EXCLUSION: True,
+            })
+            segment.save(update_fields=["params"])
         self._create_query(segment)
         self._create_source_file(segment)
         self._start_segment_export_task(segment)

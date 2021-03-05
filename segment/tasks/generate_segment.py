@@ -10,6 +10,7 @@ from audit_tool.models import AuditProcessor
 from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.models.constants import VideoExclusion
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoConfig
 from segment.models.constants import ChannelConfig
@@ -157,10 +158,10 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 "admin_s3_key": admin_s3_key,
             }
 
-        if segment.params.get("with_video_exclusion"):
+        if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
             video_exclusion_ctl = generate_video_exclusion(segment, item_ids)
             results["statistics"].update({
-                "video_exclusion_list_id": video_exclusion_ctl.id
+                VideoExclusion.VIDEO_EXCLUSION_ID: video_exclusion_ctl.id
             })
         return results
     finally:
