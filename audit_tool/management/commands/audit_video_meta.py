@@ -262,7 +262,19 @@ class Command(BaseCommand):
                 avp.save(update_fields=["processed", "clean"])
             else:
                 db_video.channel = AuditChannel.get_or_create(channel_id)
-                db_video_meta.save()
+                try:
+                    db_video_meta.save()
+                except ValueError:
+                    db_video_meta.keywords = ''
+                    try:
+                        db_video_meta.save()
+                    except ValueError:
+                        db_video_meta.description = ''
+                        try:
+                            db_video_meta.save()
+                        except ValueError:
+                            db_video_meta.name = ''
+                            db_video_meta.save()
                 db_video.save()
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                     channel=db_video.channel,
