@@ -7,7 +7,6 @@ from django.conf import settings
 from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditProcessor
-from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models.constants import VideoExclusion
@@ -16,6 +15,7 @@ from segment.models.constants import VideoConfig
 from segment.models.constants import ChannelConfig
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from segment.utils.utils import delete_related
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from userprofile.constants import StaticPermissions
 from utils.exception import retry
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-@retry(count=10, delay=5, failed_callback=CTLSerializer.delete_related)
+@retry(count=10, delay=5, failed_callback=delete_related)
 def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments

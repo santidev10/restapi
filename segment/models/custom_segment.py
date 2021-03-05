@@ -218,6 +218,17 @@ class CustomSegment(SegmentMixin, Timestampable):
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(list(vetting_yt_ids)).get()
         return query
 
+    def delete_related(self, *_, **__):
+        """ Delete CTL and related objects in case of exceptions while creating ctl """
+        def _delete_audit(audit_id):
+            try:
+                AuditProcessor.objects.get(id=audit_id).delete()
+            except AuditProcessor.DoesNotExist:
+                pass
+        _delete_audit(self.audit_id)
+        _delete_audit(self.params.get("meta_audit_id"))
+        self.delete()
+
 
 class CustomSegmentRelated(models.Model):
     related_id = models.CharField(max_length=100)

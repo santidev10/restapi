@@ -14,6 +14,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditChannelVet
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.api.serializers.ctl_serializer import CTLSerializer
@@ -24,6 +25,7 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models import CustomSegmentVettedFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
+from segment.models.constants import VideoExclusion
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -33,7 +35,7 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
-class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
+class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
@@ -578,6 +580,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         old_params = created.export.query["params"]
 
         updated_payload = self.get_params(id=created.id, minimum_views=1, segment_type=1)
+        updated_payload[VideoExclusion.WITH_VIDEO_EXCLUSION] = True
+
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
             response2 = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
         self.assertEqual(response2.status_code, HTTP_200_OK)
@@ -1177,3 +1181,30 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())
+
+    def test_with_video_exclusion(self, mock_generate):
+        self.create_admin_user()
+        with self.subTest("Test success creating video exclusion with channel ctl"):
+            payload = {
+                "title": "test_with_video_exclusion_success",
+                "segment_type": 1,
+                "with_video_exclusion": True,
+            }
+            payload = self.get_params(**payload)
+            form = dict(
+                data=json.dumps(payload)
+            )
+            response = self.client.post(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        with self.subTest("Test fail creating video exclusion with video ctl"):
+            payload = {
+                "title": "test_with_video_exclusion_fail",
+                "segment_type": 1,
+                "with_video_exclusion": True,
+            }
+            form = dict(
+                data=json.dumps(payload)
+            )
+            response = self.client.post(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
