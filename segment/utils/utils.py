@@ -203,7 +203,9 @@ def delete_related(segment, *_, **__):
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
     """ Check if user is admin or is CTL creator """
     def has_permission(self, request, view):
-        if isinstance(request.user, get_user_model()) and request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
+        if not isinstance(request.user, get_user_model()):
+            return False
+        if request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
             return True
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])

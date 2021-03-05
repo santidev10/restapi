@@ -312,11 +312,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         Method to handle invoking necessary methods for full CTL creation
         These methods are used here because both create or update methods may call this method
         """
-        if self.validated_data.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
-            segment.params.update({
-                VideoExclusion.WITH_VIDEO_EXCLUSION: True,
-            })
-            segment.save(update_fields=["params"])
         self._create_query(segment)
         self._create_source_file(segment)
         self._start_segment_export_task(segment)

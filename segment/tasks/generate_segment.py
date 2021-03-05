@@ -9,10 +9,10 @@ from elasticsearch_dsl import Q
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
-from segment.models.constants import VideoExclusion
+from segment.models.constants import ChannelConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoConfig
-from segment.models.constants import ChannelConfig
+from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
 from segment.utils.utils import delete_related

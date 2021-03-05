@@ -6,6 +6,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.utils.segment_action import segment_action
 from segment.models.constants import SegmentActionEnum
+from segment.models.constants import VideoExclusion
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
@@ -40,7 +41,7 @@ class SegmentExport(APIView):
                                  f"ready."
         else:
             if request.query_params.get("video_exclusion"):
-                video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get("video_exclusion_list_id"))
+                video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_ID))
                 s3_key = video_exclusion_ctl.export.filename
                 response["download_url"] = segment.s3.generate_temporary_url(s3_key)
             elif hasattr(segment, "export"):
