@@ -4,6 +4,7 @@ Channel api urls module
 from django.conf.urls import url
 
 from channel.api.country_view import CountryListApiView
+from channel.api.language_view import LanguageListApiView
 from channel.api.views import ChannelAuthenticationApiView
 from channel.api.views import ChannelListApiView
 from channel.api.views import ChannelListExportApiView
@@ -14,6 +15,7 @@ from .names import ChannelPathName
 
 urlpatterns = [
     url(r"^countries/$", CountryListApiView.as_view(), name=ChannelPathName.COUNTRIES_LIST),
+    url(r"^languages/$", LanguageListApiView.as_view(), name=ChannelPathName.LANGUAGES_LIST),
     url(r"^channels/authentication/$", ChannelAuthenticationApiView.as_view(),
         name=ChannelPathName.CHANNEL_AUTHENTICATION),
     url(r"^channels/$", ChannelListApiView.as_view(), name=ChannelPathName.CHANNEL_LIST),
