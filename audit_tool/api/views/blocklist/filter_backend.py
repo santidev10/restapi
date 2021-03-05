@@ -19,7 +19,7 @@ class BlocklistESFilterBackend(BaseFilterBackend):
         query = QueryBuilder().build().must().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist").value(True).get() \
              & self._get_search_filter(request)
         result = queryset.filter([query])
-        return result
+        return result.order_by(f"{Sections.CUSTOM_PROPERTIES}.updated_at:desc")
 
     def _get_search_filter(self, request):
         search_term = request.query_params.get("search")
