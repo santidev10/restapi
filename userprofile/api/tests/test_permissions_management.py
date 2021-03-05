@@ -8,7 +8,6 @@ from rest_framework.status import HTTP_200_OK
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserRole
 from userprofile.models import Role
-from userprofile.models import PermissionItem
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -141,10 +140,9 @@ class UserPermissionsManagement(ExtendedAPITestCase):
         target = get_user_model().objects.create(email="test2@email.com", perms={
             StaticPermissions.BUILD: False,
         })
-        role = Role.objects.create(name="test_update_role")
-        perm = PermissionItem.objects.get(permission=StaticPermissions.BUILD)
-        role.permissions.add(perm)
-
+        role = Role.objects.create(name="test_update_role", permissions={
+            StaticPermissions.BUILD: True
+        })
         with self.subTest("Test adding user to role"):
             payload = json.dumps({
                 "permissions": {},

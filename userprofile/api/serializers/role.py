@@ -27,10 +27,10 @@ class RoleSerializer(serializers.ModelSerializer):
         """
         Serialize related permissions
         """
+        role_permissions = self._update_default(obj.permissions)
+        enabled = set(perm for perm in role_permissions if role_permissions[perm] is True)
         all_permissions = PermissionItem.all_perms(as_obj=True)
-        role_permissions = set(p.permission for p in obj.permissions.all())
-        serializer = PermissionItemSerializer(all_permissions, many=True,
-                                              context=dict(enabled_permissions=role_permissions))
+        serializer = PermissionItemSerializer(all_permissions, many=True, context=dict(enabled_permissions=enabled))
         permissions = serializer.data
         return permissions
 
@@ -48,25 +48,21 @@ class RoleSerializer(serializers.ModelSerializer):
         invalid_perms = set(permissions.keys()) - set(valid_perms)
         if invalid_perms:
             raise serializers.ValidationError(f"Trying to save invalid permission names: {invalid_perms}")
-        enabled_permission_names = [p for p in permissions if permissions[p] is True]
-        return enabled_permission_names
+        return permissions
 
     def create(self, validated_data):
+        permissions = self._update_default(validated_data["permissions"])
         with transaction.atomic():
-            permissions = PermissionItem.objects.filter(permission__in=validated_data["permissions"])
-            role = Role.objects.create(name=validated_data["name"])
-            role.permissions.add(*permissions)
+            role = Role.objects.create(name=validated_data["name"], permissions=permissions)
             self._update_or_create_user_roles(role, validated_data.get("users", []))
         return role
 
     def update(self, instance, validated_data):
         with transaction.atomic():
             instance.name = validated_data["name"]
-            instance.save()
-
-            enabled_permission_names = validated_data["permissions"]
-            instance.permissions.add(*PermissionItem.objects.filter(permission__in=enabled_permission_names))
-            instance.permissions.remove(*PermissionItem.objects.exclude(permission__in=enabled_permission_names))
+            permissions = self._update_default(validated_data["permissions"])
+            instance.permissions = permissions
+            instance.save(update_fields=["permissions", "name"])
             self._update_or_create_user_roles(instance, validated_data.get("users", []))
         return instance
 
@@ -80,3 +76,10 @@ class RoleSerializer(serializers.ModelSerializer):
         UserRole.objects.filter(user_id__in=user_ids).update(role=role)
         # Remove existing user roles from this role
         UserRole.objects.filter(role=role).exclude(user_id__in=user_ids).update(role=None)
+
+    def _update_default(self, permissions):
+        all_perms = {
+            perm: default_value for perm, default_value, _ in PermissionItem.STATIC_PERMISSIONS
+        }
+        all_perms.update(permissions)
+        return all_perms
