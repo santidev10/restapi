@@ -172,12 +172,23 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         self.assertEqual(user_role3.role_id, role2.id)
 
     def test_default_value(self):
-        """ Test that if a permission is not in a role, the default value is used """
-        role = Role.objects.create(name="test1")
+        """
+        Test that if a permission is not in a role, the default value is used
+        Test thatt if a permission is set in a role, the default value is NOT used
+        """
+        role = Role.objects.create(name=f"test_{next(int_iterator)}")
+        with self.subTest("Test default value used"):
+            permission = PermissionItem.objects.get(permission=StaticPermissions.RESEARCH)
+            response = self.client.get(self._get_url(role.id))
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            data = response.data
+            serialized = [item for item in data["permissions"] if item["perm"] == permission.permission][0]
+            self.assertEqual(serialized["enabled"], permission.default_value)
 
-        permission = PermissionItem.objects.get(permission=StaticPermissions.RESEARCH)
-        response = self.client.get(self._get_url(role.id))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        serialized = [item for item in data["permissions"] if item["perm"] == permission.permission][0]
-        self.assertEqual(serialized["enabled"], permission.default_value)
+        with self.subTest("Test default value is not used"):
+            PermissionItem.objects.filter(permission=StaticPermissions.BLOCKLIST_MANAGER).update(default_value=True)
+            role = Role.objects.create(name="test1", permissions={StaticPermissions.BLOCKLIST_MANAGER: False})
+            response = self.client.get(self._get_url(role.id))
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            serialized = [item for item in data["permissions"] if item["perm"] == StaticPermissions.BLOCKLIST_MANAGER][0]
+            self.assertEqual(serialized["enabled"], False)
