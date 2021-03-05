@@ -723,7 +723,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
     def test_regenerate_source_urls_changed(self, mock_generate):
         """ Test that CTL is regenerated if source urls have changed """
         user = self.create_admin_user()
-        payload = self.get_params(segment_type=1)
+        payload = self.get_params(segment_type=SegmentTypeEnum.CHANNEL.value)
         params = CTLParamsSerializer(data=payload)
         params.is_valid(raise_exception=True)
 

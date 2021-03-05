@@ -211,15 +211,16 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
         if not isinstance(request.user, get_user_model()):
             return False
 
-        data = json.loads(request.data.get("data", "{}"))
-        segment_type = data.get("segment_type")
+        # touching request.data here breaks fileuploads, so we're using the request.body byte object
+        segment_type = self._get_from_request_bytes("segment_type", request.body)
         if segment_type is not None:
+            segment_type = int(segment_type)
             validate_segment_type(segment_type)
         if segment_type == self.segment_type and request.user.has_permission(self.required_permission):
             return True
 
         # id is in different places depending on request method
-        segment_id = view.kwargs.get("pk") or data.get("id")
+        segment_id = view.kwargs.get("pk") or self._get_from_request_bytes("id", request.body)
         if not segment_id:
             return False
         try:
@@ -231,6 +232,24 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
             return True
 
         return segment.segment_type == self.segment_type and request.user.has_permission(self.required_permission)
+
+
+    @staticmethod
+    def _get_from_request_bytes(key: str, body: bytes):
+        """
+        get the segment type from the request body byte object
+        :param request:
+        :return:
+        """
+        decoded = body.decode("utf-8")
+        key_split = decoded.split(f"\"{key}\":")
+        if not len(key_split) > 1:
+            return None
+        contains_value = key_split[1].strip()
+        value_split = contains_value.split(",")
+        value = value_split[0]
+        print("value:", value)
+        return value
 
 
 class CustomSegmentVideoCreatePermission(AbstractSegmentTypePermission):
