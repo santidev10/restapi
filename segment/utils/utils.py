@@ -211,8 +211,8 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
         if not isinstance(request.user, get_user_model()):
             return False
 
-        # touching request.data here breaks fileuploads, so we're using the request.body byte object
-        segment_type = self._get_from_request_bytes("segment_type", request.body)
+        data = json.loads(request.data.get("data", "{}"))
+        segment_type = data.get("segment_type")
         if segment_type is not None:
             segment_type = int(segment_type)
             validate_segment_type(segment_type)
@@ -220,7 +220,7 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
             return True
 
         # id is in different places depending on request method
-        segment_id = view.kwargs.get("pk") or self._get_from_request_bytes("id", request.body)
+        segment_id = view.kwargs.get("pk") or data.get("id")
         if not segment_id:
             return False
         try:
@@ -237,18 +237,24 @@ class AbstractSegmentTypePermission(permissions.BasePermission):
     @staticmethod
     def _get_from_request_bytes(key: str, body: bytes):
         """
+        TODO this needs a ton more fault-checking to work right
         get the segment type from the request body byte object
         :param request:
         :return:
         """
         decoded = body.decode("utf-8")
+        # split on the key to check if present
         key_split = decoded.split(f"\"{key}\":")
-        if not len(key_split) > 1:
+        if len(key_split) < 2:
             return None
+        # get the split that contains the value
         contains_value = key_split[1].strip()
-        value_split = contains_value.split(",")
-        value = value_split[0]
-        print("value:", value)
+        # split on json to get the raw value
+        for split in [",", "}"]:
+            value_split = contains_value.split(split)
+            if len(value_split) > 1:
+                break
+        value = value_split[0].strip("\"")
         return value
 
 
