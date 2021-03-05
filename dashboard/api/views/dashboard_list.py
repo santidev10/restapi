@@ -17,6 +17,8 @@ class DashboardListAPIView(APIView):
     DOMAIN_FEATURE_EXCLUSIONS = {
         "Analytics > Managed Service": StaticPermissions.MANAGED_SERVICE,
         "Research": StaticPermissions.RESEARCH,
+        "Tools > Audit Queue": StaticPermissions.AUDIT_QUEUE,
+        "Tools > Pacing Report": StaticPermissions.PACING_REPORT,
     }
 
     def get(self, request, *args, **kwargs):

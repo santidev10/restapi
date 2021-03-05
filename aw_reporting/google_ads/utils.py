@@ -3,10 +3,14 @@ import re
 from datetime import datetime
 from datetime import timedelta
 
-import pytz
+from django.conf import settings
 from django.db.models import Max
 from django.db.models import Min
+import pytz
 
+from administration.notifications import send_html_email
+from audit_tool.models import get_hash_name
+from aw_reporting.models import Account
 from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
@@ -14,6 +18,8 @@ from aw_reporting.google_ads.constants import GEO_TARGET_CONSTANT_FIELDS
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
+from utils.celery.tasks import REDIS_CLIENT
+
 
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 10
 """int: Number of days, when Ads data can be changed by Google Ads.
@@ -171,6 +177,8 @@ def detect_success_aw_read_permissions():
                 account = permission.account
                 account.is_active = False
                 account.save()
+                send_read_lost_email(account.name, account.id,
+                                     "AccountInactiveError in detect_success_aw_read_permissions")
             # pylint: disable=broad-except
             except Exception as e:
                 # pylint: enable=broad-except
@@ -192,3 +200,17 @@ def get_criteria_exists_key(ad_group_id: int, criteria_type_value: int, statisti
         raise ValueError("statistic_criteria must be str")
     exists_key = (ad_group_id, criteria_type_value, statistic_criteria)
     return exists_key
+
+
+def send_read_lost_email(account: Account, message, recipients=settings.GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES):
+    lock_name = f"adwords_update_alert_email_{get_hash_name(f'{account.id}{message}')}"
+    is_acquired = REDIS_CLIENT.lock(lock_name, timeout=60 * 60 * 12).acquire(blocking=False)
+    if is_acquired:
+        subject = f"Adwords API Update: Read lost for account: {account.name} - {account.id}"
+        send_html_email(
+            subject=subject,
+            to=recipients,
+            text_header=subject,
+            text_content=message,
+            from_email=settings.EXPORTS_EMAIL_ADDRESS
+        )
