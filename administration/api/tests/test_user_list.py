@@ -139,5 +139,5 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         expected_perms = {
             perm[0]: perm[1] for perm in PermissionItem.STATIC_PERMISSIONS
         }
-        expected_perms.update(role.perms)
+        expected_perms.update(role.permissions)
         self.assertEqual(data["perms"], expected_perms)
