@@ -34,10 +34,12 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user(perms={StaticPermissions.USER_MANAGEMENT: True})
 
     def test_get_role_base_permissions(self):
-        """ Test that permissions are simply retrieved if role id kwarg is -1 """
+        """ Test that permissions are simply retrieved if role id kwarg is 0 """
         response = self.client.get(self._get_url(0))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(len(response.data) > 0)
+        default_enabled = set(p["perm"] for p in response.data if p["enabled"] is True)
+        self.assertEqual(default_enabled, set(PermissionItem.objects.filter(default_value=True).values_list("permission", flat=True)))
 
     def test_get_single_role_success(self):
         """ Test successfully retrieving permissions and users associated with role """
@@ -174,7 +176,7 @@ class UserRoleRetrieveUpdateAPITestCase(ExtendedAPITestCase):
     def test_default_value(self):
         """
         Test that if a permission is not in a role, the default value is used
-        Test thatt if a permission is set in a role, the default value is NOT used
+        Test that if a permission is set in a role, the default value is NOT used
         """
         role = Role.objects.create(name=f"test_{next(int_iterator)}")
         with self.subTest("Test default value used"):
