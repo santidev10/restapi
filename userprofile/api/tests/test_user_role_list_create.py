@@ -23,11 +23,9 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user(perms={StaticPermissions.USER_MANAGEMENT: True})
 
     def test_get_success(self):
-        permissions = PermissionItem.objects.all()
-        roles = [Role(name=f"role_{next(int_iterator)}") for _ in range(2)]
+        permissions = PermissionItem.objects.all().values_list("permission", flat=True)
+        roles = [Role(name=f"role_{next(int_iterator)}", permissions={permissions[0]: True}) for _ in range(2)]
         Role.objects.bulk_create(roles)
-        roles[0].permissions.add(permissions[0])
-        roles[1].permissions.add(permissions[1])
 
         response = self.client.get(self.url)
         data = response.data
@@ -45,7 +43,7 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
         payload = dict(
             name="test_role",
             permissions={
-                StaticPermissions.RESEARCH: True,
+                StaticPermissions.RESEARCH: False,
                 StaticPermissions.USER_MANAGEMENT: True,
                 StaticPermissions.MANAGED_SERVICE: False,
             },
@@ -55,17 +53,20 @@ class UserRoleListCreateAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         role = Role.objects.get(name=payload["name"])
-        permissions = set(role.permissions.all().values_list("permission", flat=True))
+        permissions = set(role.permissions.keys())
 
         self.assertTrue({StaticPermissions.RESEARCH, StaticPermissions.USER_MANAGEMENT}.issubset(permissions))
-        self.assertFalse(StaticPermissions.MANAGED_SERVICE in permissions)
         self.assertTrue(UserRole.objects.filter(role=role, user=self.user).exists())
+        actual = {}
+        expected = {}
+        for perm in payload["permissions"]:
+            actual[perm] = role.permissions[perm]
+            expected[perm] = payload["permissions"][perm]
+        self.assertEqual(actual, expected)
 
     def test_create_role_update_existing(self):
         """ Test updating existing user roles that were part of a different role during creation """
-        role1 = Role.objects.create(name="test1")
-        role1.permissions.add(PermissionItem.objects.get(permission=StaticPermissions.PERFORMIQ))
-
+        role1 = Role.objects.create(name="test1", permissions={StaticPermissions.PERFORMIQ: True})
         user1 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
         user2 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")
         user3 = get_user_model().objects.create(email=f"tester@{next(int_iterator)}.com")

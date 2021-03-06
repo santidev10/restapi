@@ -12,7 +12,7 @@ class PermissionItemSerializer(serializers.ModelSerializer):
         enabled_permissions = self.context.get("enabled_permissions", set())
         result = {
             "perm": instance.permission,
-            "enabled": instance.permission in enabled_permissions or instance.default_value,
+            "enabled": instance.permission in enabled_permissions,
             "text": instance.display
         }
         return result
