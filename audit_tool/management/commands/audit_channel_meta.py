@@ -90,7 +90,7 @@ class Command(BaseCommand):
             print("problem {} {}".format(self.thread_id, str(e)))
 
     # pylint: disable=too-many-branches,too-many-statements
-    def process_audit(self, num=1000):
+    def process_audit(self, num=500):
         self.load_inclusion_list()
         self.load_exclusion_list()
         self.force_data_refresh = self.audit.params.get("force_data_refresh")
