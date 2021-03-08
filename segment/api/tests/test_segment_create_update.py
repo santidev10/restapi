@@ -1249,3 +1249,22 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             )
             response = self.client.post(self._get_url(), form)
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_video_exclusion_permission(self, mock_generate):
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,})
+        payload = {
+            "title": "test_video_exclusion_permission",
+            "segment_type": 1,
+            "with_video_exclusion": True,
+        }
+        payload = self.get_params(**payload)
+        form = dict(
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
+        user.save(update_fields=["perms"])
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)

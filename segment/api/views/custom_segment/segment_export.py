@@ -1,3 +1,5 @@
+from distutils.util import strtobool
+
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
@@ -40,7 +42,9 @@ class SegmentExport(APIView):
                     "message"] = f"Processing. You will receive an email when your export for: {segment.title} is " \
                                  f"ready."
         else:
-            if request.query_params.get("video_exclusion"):
+            if strtobool(request.query_params.get("video_exclusion")):
+                if not request.user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
+                    raise PermissionDenied
                 video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_ID))
                 s3_key = video_exclusion_ctl.export.filename
                 response["download_url"] = segment.s3.generate_temporary_url(s3_key)

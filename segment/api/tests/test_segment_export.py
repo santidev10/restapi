@@ -15,6 +15,7 @@ from segment.models import CustomSegmentVettedFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import VideoExclusion
+from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
 from utils.datetime import now_in_default_tz
 from utils.unittests.int_iterator import int_iterator
@@ -116,8 +117,11 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         self.assertTrue(action.created_at > now)
 
     def test_video_exclusion_export(self):
+        user = self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
+            StaticPermissions.BUILD__CTL_EXPORT_BASIC: True,
+        })
         test_user = self._create_user()
-        self.create_admin_user()
         video_exclusion_ctl = CustomSegment.objects.create(owner=test_user, segment_type=0)
         CustomSegmentFileUpload.objects.create(segment=video_exclusion_ctl,
                                                filename="test_video_exclusion_export", query={})
@@ -127,7 +131,14 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         segment, _ = self._create_segment(segment_params=dict(owner=test_user, statistics=data))
         with patch.object(S3Exporter, "exists", return_value=True):
             url = self._get_url(segment.id) + "?video_exclusion=true"
-            response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data.get("download_url"))
 
+            with self.subTest("Test permissions fail"):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+            with self.subTest("Test permissions success"):
+                user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
+                user.save(update_fields=["perms"])
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertIsNotNone(response.data.get("download_url"))
