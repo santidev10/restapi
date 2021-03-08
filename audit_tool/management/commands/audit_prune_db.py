@@ -22,7 +22,7 @@ process:
 class Command(BaseCommand):
     def handle(self, *args, **options):
         days = 180
-        with PidFile(piddir=".", pidname="audit_prune_db.pid"):
+        with PidFile(piddir="pids", pidname="audit_prune_db.pid"):
             old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now() - timedelta(
                 days=days)).exclude(completed__isnull=True)
             count = 0

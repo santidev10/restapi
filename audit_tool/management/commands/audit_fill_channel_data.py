@@ -48,7 +48,7 @@ class Command(BaseCommand):
         thread_id = options.get("thread_id")
         if not thread_id:
             thread_id = 0
-        with PidFile(piddir=".", pidname="audit_fill_channels{}.pid".format(thread_id)):
+        with PidFile(piddir="pids", pidname="audit_fill_channels{}.pid".format(thread_id)):
             count = 0
             pending_channels = AuditChannelMeta.objects.filter(channel__processed_time__isnull=True)
             total_to_go = pending_channels.count()

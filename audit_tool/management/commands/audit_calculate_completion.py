@@ -18,7 +18,7 @@ process:
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        with PidFile(piddir=".", pidname="calculate_completion.pid"):
+        with PidFile(piddir="pids", pidname="calculate_completion.pid"):
             audits = AuditProcessor.objects.filter(completed__isnull=True,
                                                    started__lt=timezone.now() - timedelta(minutes=30))
             for audit in audits:

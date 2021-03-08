@@ -84,7 +84,7 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             self.machine_number = 0
-        with PidFile(piddir=".", pidname="audit_video_meta_{}.pid".format(self.thread_id)):
+        with PidFile(piddir="pids", pidname="audit_video_meta_{}.pid".format(self.thread_id)):
             # self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type__in=[1,2],

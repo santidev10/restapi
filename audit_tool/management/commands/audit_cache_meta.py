@@ -24,7 +24,7 @@ process:
 
 class Command(BaseCommand):
 
-    @pidfile(piddir=".", pidname="audit_cache_meta.pid")
+    @pidfile(piddir="pids", pidname="audit_cache_meta.pid")
     def handle(self, *args, **options):
         count = 0
         audits = AuditProcessor.objects \
