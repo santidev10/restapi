@@ -3,7 +3,7 @@ import uuid
 from django.urls import reverse
 
 from saas.urls.namespaces import Namespace
-from segment.api.serializers import CTLSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
