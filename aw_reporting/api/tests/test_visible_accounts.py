@@ -29,7 +29,7 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_demo_account_is_first(self):
+    def test_demo_account_is_not_returned(self):
         chf_manager = Account.objects.create(id=111)
         account = Account.objects.create(id=123, name="123")
         account.managers.add(chf_manager)
@@ -45,7 +45,7 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         ids = [i["id"] for i in response.data]
-        self.assertEqual(ids, [DEMO_ACCOUNT_ID, account.id])
+        self.assertNotIn(DEMO_ACCOUNT_ID, ids)
 
     def test_visibility(self):
         chf_manager = Account.objects.create(id=111)

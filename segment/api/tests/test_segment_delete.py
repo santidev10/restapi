@@ -19,10 +19,12 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
+from segment.models.constants import SegmentTypeEnum
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.datetime import now_in_default_tz
 from utils.unittests.patch_bulk_create import patch_bulk_create
+from userprofile.constants import StaticPermissions
 
 
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
@@ -48,13 +50,54 @@ class SegmentDeleteApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    def test_delete_permission_forbidden(self):
+        """
+        don't allow deletes if the the user has a delete permission, but for the wrong type
+        :return:
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=1, segment_type=SegmentTypeEnum.VIDEO.value, title="test_1")
+        response = self.client.delete(
+            self._get_url("video", "1")
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=2, segment_type=SegmentTypeEnum.CHANNEL.value,
+                                     title="test_2")
+        response = self.client.delete(
+            self._get_url("video", "2")
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    @patch("segment.models.utils.segment_exporter.SegmentExporter.delete_export")
+    def test_delete_permission_success(self, mock_delete_export):
+        """
+        allow deletes only if the user has the delete permission for that segment type
+        :return:
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=1, segment_type=SegmentTypeEnum.VIDEO.value, title="test_1")
+        response = self.client.delete(
+            self._get_url("video", "1")
+        )
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=2, segment_type=SegmentTypeEnum.CHANNEL.value,
+                                     title="test_2")
+        response = self.client.delete(
+            self._get_url("video", "2")
+        )
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
     @patch("segment.models.utils.segment_exporter.SegmentExporter.delete_export")
     def test_success(self, mock_delete_export):
         mock_delete_export.return_value = {}
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
         segment_uuid = uuid.uuid4()
-        segment = CustomSegment.objects.create(uuid=segment_uuid, owner=user, list_type=0, segment_type=0,
-                                               title="test_1")
+        segment = CustomSegment.objects.create(uuid=segment_uuid, owner=user, list_type=0,
+                                               segment_type=SegmentTypeEnum.VIDEO.value, title="test_1")
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
 
         mock_data = PersistentSegmentPreviewApiViewTestCase.get_mock_data(5, "channel", str(segment.uuid))
@@ -70,10 +113,12 @@ class SegmentDeleteApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_reject_segment_audit(self):
         """ Segments with audit vetting enabled can not be deleted """
-        user = self.create_test_user()
-        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, list_type=0, segment_type=0, title="test_1",
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
+        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, list_type=0,
+                                     segment_type=SegmentTypeEnum.VIDEO.value, title="test_1",
                                      audit_id=1)
-        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=SegmentTypeEnum.VIDEO.value,
+                                     title="test_1")
         response = self.client.delete(
             self._get_url("video", 1)
         )

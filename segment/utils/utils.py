@@ -1,3 +1,4 @@
+import json
 import time
 from datetime import datetime
 
@@ -9,6 +10,7 @@ from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
+from segment.models.constants import SegmentTypeEnum
 from segment.models.persistent.base import BasePersistentSegment
 from userprofile.constants import StaticPermissions
 
@@ -123,6 +125,14 @@ def validate_all_in(members: list, container: list) -> list:
     return [validate_in(member, container) for member in members]
 
 
+def validate_segment_type(segment_type: int) -> int:
+    try:
+        SegmentTypeEnum(segment_type)
+    except ValueError:
+        raise ValidationError(f"Invalid list_type: {segment_type}. 0 = video, 1 = channel.")
+    return segment_type
+
+
 def with_unknown(options=None, choice=None):
     """
     If choice is None, create dict mapping of id, name for list of two element tuple options
@@ -190,3 +200,91 @@ class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
         except CustomSegment.DoesNotExist:
             raise ValidationError(f"Custom Segment with id {view.kwargs['pk']} does not exist.")
         return request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN) or segment.owner == request.user
+
+
+class AbstractSegmentTypePermission(permissions.BasePermission):
+    """
+    abstract class for handling permissions based on segment type
+    """
+
+    def has_permission(self, request, view):
+        if not isinstance(request.user, get_user_model()):
+            return False
+
+        data = json.loads(request.data.get("data", "{}"))
+        segment_type = data.get("segment_type")
+        if segment_type is not None:
+            segment_type = int(segment_type)
+            validate_segment_type(segment_type)
+        if segment_type == self.segment_type and request.user.has_permission(self.required_permission):
+            return True
+
+        # id is in different places depending on request method
+        segment_id = view.kwargs.get("pk") or data.get("id")
+        if not segment_id:
+            return False
+        try:
+            segment = CustomSegment.objects.get(id=segment_id)
+        except CustomSegment.DoesNotExist:
+            raise ValidationError(f"Custom Segment with id {segment_id} does not exist.")
+
+        if segment.owner == request.user:
+            return True
+
+        return segment.segment_type == self.segment_type and request.user.has_permission(self.required_permission)
+
+
+    @staticmethod
+    def _get_from_request_bytes(key: str, body: bytes):
+        """
+        TODO this needs a ton more fault-checking to work right
+        get the segment type from the request body byte object
+        :param request:
+        :return:
+        """
+        decoded = body.decode("utf-8")
+        # split on the key to check if present
+        key_split = decoded.split(f"\"{key}\":")
+        if len(key_split) < 2:
+            return None
+        # get the split that contains the value
+        contains_value = key_split[1].strip()
+        # split on json to get the raw value
+        for split in [",", "}"]:
+            value_split = contains_value.split(split)
+            if len(value_split) > 1:
+                break
+        value = value_split[0].strip("\"")
+        return value
+
+
+class CustomSegmentVideoCreatePermission(AbstractSegmentTypePermission):
+    """
+    allows video segment creation/updates
+    """
+    segment_type = SegmentTypeEnum.VIDEO.value
+    required_permission = StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST
+
+
+class CustomSegmentChannelCreatePermission(AbstractSegmentTypePermission):
+    """
+    allows channel segment creation/updates
+    """
+    segment_type = SegmentTypeEnum.CHANNEL.value
+    required_permission = StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST
+
+
+class CustomSegmentVideoDeletePermission(AbstractSegmentTypePermission):
+    """
+    allows video segment delete
+    """
+    segment_type = SegmentTypeEnum.VIDEO.value
+    required_permission = StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST
+
+
+class CustomSegmentChannelDeletePermission(AbstractSegmentTypePermission):
+    """
+    allows channel segment delete
+    """
+    segment_type = SegmentTypeEnum.CHANNEL.value
+    required_permission = StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST
