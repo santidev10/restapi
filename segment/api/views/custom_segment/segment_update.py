@@ -15,37 +15,33 @@ class CustomSegmentUpdateApiView(UpdateAPIView, SegmentTypePermissionMixin):
     permission_classes = (
         or_permission_classes(
             AdminCustomSegmentOwnerPermission,
-            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE, StaticPermissions.BUILD__CTL_FEATURE_LIST),
-            # TODO re-enable after 5.14 for FE work
-            # StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST,
-            #                             StaticPermissions.BUILD__CTL_FEATURE_LIST),
-            # StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
-            #                             StaticPermissions.BUILD__CTL_FEATURE_LIST)
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST,
+                                        StaticPermissions.BUILD__CTL_FEATURE_LIST),
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
+                                        StaticPermissions.BUILD__CTL_FEATURE_LIST)
         ),
     )
-    # TODO re-enable after 5.14 for FE work
-    # permission_by_segment_type = {
-    #     SegmentTypeEnum.VIDEO.value: StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
-    #     SegmentTypeEnum.CHANNEL.value: StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST
-    # }
+    permission_by_segment_type = {
+        SegmentTypeEnum.VIDEO.value: StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
+        SegmentTypeEnum.CHANNEL.value: StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST
+    }
 
     def get_object(self):
         pk = self.kwargs.get("pk", None)
         return CustomSegment.objects.get(pk=pk)
 
-    # TODO re-enable after 5.14 for FE work
-    # def patch(self, request, *args, **kwargs):
-    #     """
-    #     override the default patch method to check segment type permissions.
-    #     Checking with a permission class breaks file uploads on access to request.data
-    #     :param request:
-    #     :param args:
-    #     :param kwargs:
-    #     :return:
-    #     """
-    #     segment = self.get_object()
-    #     self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
-    #     return super().patch(request, *args, **kwargs)
+    def patch(self, request, *args, **kwargs):
+        """
+        override the default patch method to check segment type permissions.
+        Checking with a permission class breaks file uploads on access to request.data
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        segment = self.get_object()
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
+        return super().patch(request, *args, **kwargs)
 
     def get_serializer(self, instance, *args, **kwargs):
         """

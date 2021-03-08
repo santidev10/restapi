@@ -100,9 +100,7 @@ class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
 
     @mock_s3
     def test_non_admin_owner_update(self):
-        # TODO re-enable after 5.14 for FE work
-        # user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
         segment = self._create_custom_segment(owner=user)
         payload = {
             "title": "new title",

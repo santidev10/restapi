@@ -459,9 +459,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
-        # TODO re-enable after 5.14 for FE work
-        # self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
         data = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -477,43 +475,42 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
-        # TODO re-enable after 5.14 for FE work
-    #     self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
-    #     data["segment_type"] = SegmentTypeEnum.CHANNEL.value
-    #     data = self.get_params(**data)
-    #     form = dict(data=json.dumps(data))
-    #     response = self.client.post(self._get_url(), form)
-    #     self.assertEqual(response.status_code, HTTP_201_CREATED)
-    #
-    # def test_user_not_admin_permission_failure(self, mock_generate):
-    #     """
-    #     test individual video/channel create permissions
-    #     :param mock_generate:
-    #     :return:
-    #     """
-    #     self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
-    #     data = {
-    #         "languages": ["es"],
-    #         "score_threshold": 1,
-    #         "title": "test blacklist",
-    #         "content_categories": [],
-    #         "minimum_views": 0,
-    #         "segment_type": SegmentTypeEnum.VIDEO.value,  # video
-    #         "content_type": 0,
-    #         "content_quality": 0,
-    #     }
-    #     data = self.get_params(**data)
-    #     form = dict(data=json.dumps(data))
-    #     response = self.client.post(self._get_url(), form)
-    #     self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-    #
-    #     # test video perm not allowed
-    #     self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
-    #     data["segment_type"] = SegmentTypeEnum.CHANNEL.value
-    #     data = self.get_params(**data)
-    #     form = dict(data=json.dumps(data))
-    #     response = self.client.post(self._get_url(), form)
-    #     self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
+        data["segment_type"] = SegmentTypeEnum.CHANNEL.value
+        data = self.get_params(**data)
+        form = dict(data=json.dumps(data))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+    def test_user_not_admin_permission_failure(self, mock_generate):
+        """
+        test individual video/channel create permissions
+        :param mock_generate:
+        :return:
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
+        data = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "title": "test blacklist",
+            "content_categories": [],
+            "minimum_views": 0,
+            "segment_type": SegmentTypeEnum.VIDEO.value,  # video
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        data = self.get_params(**data)
+        form = dict(data=json.dumps(data))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        # test video perm not allowed
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
+        data["segment_type"] = SegmentTypeEnum.CHANNEL.value
+        data = self.get_params(**data)
+        form = dict(data=json.dumps(data))
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_segment_saves_params(self, mock_generate):
         """ Test that params saves successfully """
@@ -1143,9 +1140,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_create_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
-        # TODO re-enable after 5.14 for FE work
-        # self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -1162,9 +1157,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase):
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
         """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
-        # TODO re-enable after 5.14 for FE work
-        # user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
-        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE: True})
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=SegmentTypeEnum.CHANNEL.value, owner=user,
