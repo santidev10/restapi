@@ -42,7 +42,7 @@ class SegmentExport(APIView):
                     "message"] = f"Processing. You will receive an email when your export for: {segment.title} is " \
                                  f"ready."
         else:
-            if strtobool(request.query_params.get("video_exclusion")):
+            if strtobool(request.query_params.get("video_exclusion", "false")):
                 if not request.user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
                     raise PermissionDenied
                 video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_ID))
