@@ -33,7 +33,7 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             sync_threshold = 4000
-        with PidFile(piddir=".", pidname="audit_sync_channels_with_viewiq.pid"):
+        with PidFile(piddir="pids", pidname="audit_sync_channels_with_viewiq.pid"):
             pending_channels = AuditChannelMeta.objects \
                 .filter(synced_with_viewiq__isnull=True,
                         subscribers__gte=sync_threshold) \

@@ -43,7 +43,7 @@ class Command(BaseCommand):
         self.thread_id = options.get("thread_id")
         if not self.thread_id:
             self.thread_id = 0
-        with PidFile(piddir=".", pidname="process_seed_{}.pid".format(self.thread_id)):
+        with PidFile(piddir="pids", pidname="process_seed_{}.pid".format(self.thread_id)):
             try:
                 self.machine_number = settings.AUDIT_MACHINE_NUMBER
             # pylint: disable=broad-except

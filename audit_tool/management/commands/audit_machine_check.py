@@ -16,7 +16,7 @@ requirements:
 
 
 class Command(BaseCommand):
-    @pidfile(piddir=".", pidname="audit_machine_check.pid")
+    @pidfile(piddir="pids", pidname="audit_machine_check.pid")
     def handle(self, *args, **options):
         try:
             machine_number = settings.AUDIT_MACHINE_NUMBER

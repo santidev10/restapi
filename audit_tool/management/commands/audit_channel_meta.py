@@ -74,7 +74,7 @@ class Command(BaseCommand):
         # pylint: enable=broad-except
             self.machine_number = 0
         try:
-            with PidFile(piddir=".", pidname="audit_channel_meta_{}.pid".format(self.thread_id)):
+            with PidFile(piddir="pids", pidname="audit_channel_meta_{}.pid".format(self.thread_id)):
                 try:
                     self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type=2,
                                                                source__in=[0,2]).order_by("pause", "id")[self.machine_number]
@@ -90,7 +90,7 @@ class Command(BaseCommand):
             print("problem {} {}".format(self.thread_id, str(e)))
 
     # pylint: disable=too-many-branches,too-many-statements
-    def process_audit(self, num=1000):
+    def process_audit(self, num=500):
         self.load_inclusion_list()
         self.load_exclusion_list()
         self.force_data_refresh = self.audit.params.get("force_data_refresh")

@@ -44,7 +44,7 @@ class Command(BaseCommand):
             self.days = 3
         if not self.upsert_batch_size or self.upsert_batch_size > 10000:
             self.upsert_batch_size = 1000
-        with PidFile(piddir=".", pidname="check_monetised_campaigns.pid"):
+        with PidFile(piddir="pids", pidname="check_monetised_campaigns.pid"):
             self.channel_ids = set()
             # get video/channel meta audits
             self.audits = AuditProcessor.objects.filter(
