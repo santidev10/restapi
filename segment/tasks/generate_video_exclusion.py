@@ -67,44 +67,11 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
                 break
 
         all_results = (all_blocklist + all_videos)[:LIMIT]
-        rows = []
-        for video in all_results:
-            row = [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
-            # serialize blocklist overall score as -1
-            overall_score = -1 if video.custom_properties.blocklist is True \
-                else video.brand_safety.overall_score
-            row.append(overall_score)
-            rows.append(row)
-
-        with open(video_exclusion_fp, mode="w+") as file:
-            writer = csv.writer(file)
-            writer.writerow(["URL", "title", "score"])
-            writer.writerows(rows)
-        video_exclusion_s3_key = f"{uuid4()}.csv"
-        channel_ctl.s3.export_file_to_s3(video_exclusion_fp, video_exclusion_s3_key)
+        video_exclusion_s3_key = _export_results(channel_ctl.s3, video_exclusion_fp, all_results)
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
     else:
-        title = f"{channel_ctl.title}_video_exclusion_list"
-        video_exclusion_ctl, _ = CustomSegment.objects.update_or_create(
-            segment_type=SegmentTypeEnum.VIDEO.value,
-            owner_id=channel_ctl.owner_id,
-            title=title,
-            title_hash=get_hash_name(title),
-            defaults=dict(
-                statistics={
-                    VideoExclusion.CHANNEL_SOURCE_ID: channel_ctl.id
-                }
-            )
-        )
-        CustomSegmentFileUpload.objects.update_or_create(
-            segment=video_exclusion_ctl,
-            defaults=dict(
-                completed_at=now_in_default_tz(),
-                filename=video_exclusion_s3_key,
-                query={},
-            )
-        )
+        video_exclusion_ctl = _update_create_related(video_exclusion_s3_key, channel_ctl)
         return video_exclusion_ctl
     finally:
         os.remove(video_exclusion_fp)
@@ -145,3 +112,59 @@ def _separate_videos(videos: iter, blocklist_list, videos_list):
             else:
                 container = videos_list
             container.append(video)
+
+
+def _export_results(s3, export_fp: str, results: List):
+    """
+    Write results to file and export to S3
+    :param s3: S3Exporter
+    :param export_fp: Filepath to write results
+    :param results: Video exclusion results
+    :return: str
+    """
+    rows = []
+    for video in results:
+        row = [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
+        # serialize blocklist overall score as -1
+        overall_score = -1 if video.custom_properties.blocklist is True \
+            else video.brand_safety.overall_score
+        row.append(overall_score)
+        rows.append(row)
+
+    with open(export_fp, mode="w+") as file:
+        writer = csv.writer(file)
+        writer.writerow(["URL", "title", "score"])
+        writer.writerows(rows)
+    video_exclusion_s3_key = f"{uuid4()}.csv"
+    s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
+    return video_exclusion_s3_key
+
+
+def _update_create_related(video_exclusion_s3_key: str, channel_ctl: CustomSegment) -> CustomSegment:
+    """
+    Update or create related objects
+    :param video_exclusion_s3_key: S3 key for video exclusion ctl
+    :param channel_ctl: Source Channel CTL
+    :return: Video exclusion CustomSegment
+    """
+    title = f"{channel_ctl.title}_video_exclusion_list"
+    video_exclusion_ctl, _ = CustomSegment.objects.update_or_create(
+        segment_type=SegmentTypeEnum.VIDEO.value,
+        owner_id=channel_ctl.owner_id,
+        title=title,
+        title_hash=get_hash_name(title),
+        defaults=dict(
+            statistics={
+                VideoExclusion.CHANNEL_SOURCE_ID: channel_ctl.id
+            }
+        )
+    )
+    CustomSegmentFileUpload.objects.update_or_create(
+        segment=video_exclusion_ctl,
+        defaults=dict(
+            completed_at=now_in_default_tz(),
+            filename=video_exclusion_s3_key,
+            query={},
+        )
+    )
+    return video_exclusion_ctl
