@@ -15,9 +15,11 @@ from saas.urls.namespaces import Namespace
 from segment.api.serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
+from segment.models.constants import SegmentTypeEnum
 from segment.models.custom_segment import CustomSegment
-from utils.unittests.test_case import ExtendedAPITestCase
+from userprofile.constants import StaticPermissions
 from utils.unittests.s3_mock import mock_s3 as mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
@@ -31,7 +33,7 @@ class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
             "uuid": uuid_id,
             "title": f"testing custom segment update api view v1: {uuid_id}",
             "owner": owner,
-            "segment_type": 0,
+            "segment_type": SegmentTypeEnum.VIDEO.value,
         })
 
     @mock_s3
@@ -98,7 +100,7 @@ class CustomSegmentUpdateApiViewTestCase(ExtendedAPITestCase):
 
     @mock_s3
     def test_non_admin_owner_update(self):
-        user = self.create_test_user()
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
         segment = self._create_custom_segment(owner=user)
         payload = {
             "title": "new title",

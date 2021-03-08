@@ -9,20 +9,32 @@ from rest_framework.status import HTTP_200_OK
 
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
+from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
+from segment.models.constants import SegmentTypeEnum
 from segment.models.utils.segment_action import segment_action
+from segment.utils.utils import CustomSegmentChannelCreatePermission
+from segment.utils.utils import CustomSegmentVideoCreatePermission
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
+from utils.permissions import or_permission_classes
 from utils.views import get_object
 
 
-class SegmentCreateUpdateApiView(CreateAPIView):
+class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
     serializer_class = CTLSerializer
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE),
+        or_permission_classes(
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST),
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST)
+        ),
     )
     parser_classes = [MultiPartParser]
+    permission_by_segment_type = {
+        SegmentTypeEnum.VIDEO.value: StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
+        SegmentTypeEnum.CHANNEL.value: StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST
+    }
 
     def _prep_request(self, request):
         request.upload_handlers = [TemporaryFileUploadHandler(request)]
@@ -38,6 +50,7 @@ class SegmentCreateUpdateApiView(CreateAPIView):
         """
         request, data = self._prep_request(request)
         validated_params = self._validate_params(data)
+        self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_201_CREATED, data=res)
@@ -50,6 +63,7 @@ class SegmentCreateUpdateApiView(CreateAPIView):
         """
         request, data = self._prep_request(request)
         segment = get_object(CustomSegment, id=data.get("id"))
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
         # Keep track of data.keys as CTLParamsSerializer sets default values for some fields during creation.
         # validated_params will need to be cleaned of these default values and only the keys send for updating should
         # be included in context

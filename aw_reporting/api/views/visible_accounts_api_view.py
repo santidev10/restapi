@@ -55,9 +55,13 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         visible_ids = aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         types_settings = aw_settings.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
+        demo_account_item = None
 
         for ac_info in data:
             account_id = ac_info["id"]
+            if account_id == DEMO_ACCOUNT_ID:
+                demo_account_item = ac_info
+                continue
             ac_info["visible"] = account_id in visible_ids
 
             hidden_types = types_settings.get(str(account_id), [])
@@ -69,6 +73,9 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                 )
                 for ct in campaign_types
             ]
+        # Hide the demo account from the user "Accounts settings" page
+        if demo_account_item:
+            data.remove(demo_account_item)
 
         return Response(data=data)
 

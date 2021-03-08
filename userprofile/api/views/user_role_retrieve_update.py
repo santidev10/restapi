@@ -18,7 +18,8 @@ class UserRoleRetrieveUpdateAPIView(APIView):
         # If pk is 0, client just needs list of existing permissions to display
         if str(kwargs.get("pk")) == "0":
             permissions = PermissionItem.all_perms(as_obj=True)
-            data = PermissionItemSerializer(permissions, many=True).data
+            enabled = [p.permission for p in permissions if p.default_value is True]
+            data = PermissionItemSerializer(permissions, many=True, context=dict(enabled_permissions=enabled)).data
             return Response(data)
 
         role = get_object(Role, id=kwargs.get("pk"))
