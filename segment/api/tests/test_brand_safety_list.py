@@ -3,13 +3,14 @@ import uuid
 from django.urls import reverse
 
 from saas.urls.namespaces import Namespace
-from segment.api.serializers import CTLSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import VideoExclusion
 from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -116,7 +117,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         item = response.data["items"][0]
         self.assertNotIn("download_url", item)
         serializer = CTLWithoutDownloadUrlSerializer()
-        self.assertEqual(set(serializer.fields.keys()), set(item.keys()))
+        self.assertEqual(set(serializer.fields.keys()), {*item.keys(), VideoExclusion.WITH_VIDEO_EXCLUSION})
 
     def test_fields_present(self):
         self.create_admin_user()
@@ -133,4 +134,4 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         serializer = CTLSerializer()
         for item in data.get("items"):
             with self.subTest(item):
-                self.assertEqual(set(serializer.fields.keys()), set(item.keys()))
+                self.assertEqual(set(serializer.fields.keys()), {*item.keys(), VideoExclusion.WITH_VIDEO_EXCLUSION})

@@ -2,20 +2,21 @@ import logging
 import os
 import tempfile
 from collections import defaultdict
-from http.client import IncompleteRead
 
 from django.conf import settings
 from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditProcessor
-from segment.api.serializers import CTLSerializer
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from segment.models.constants import ChannelConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoConfig
-from segment.models.constants import ChannelConfig
+from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
+from segment.utils.utils import delete_related
+from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from userprofile.constants import StaticPermissions
 from utils.exception import retry
 from utils.utils import chunks_generator
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-@retry(count=10, delay=5, failed_callback=CTLSerializer.delete_related)
+@retry(count=10, delay=5, failed_callback=delete_related)
 def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
@@ -156,6 +157,12 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 "s3_key": s3_key,
                 "admin_s3_key": admin_s3_key,
             }
+
+        if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
+            video_exclusion_ctl = generate_video_exclusion(segment, item_ids)
+            results["statistics"].update({
+                VideoExclusion.VIDEO_EXCLUSION_ID: video_exclusion_ctl.id
+            })
         return results
     finally:
         os.remove(admin_filename)

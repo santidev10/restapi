@@ -1,6 +1,7 @@
 import json
 
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import CreateAPIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import VideoExclusion
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import CustomSegmentChannelCreatePermission
 from segment.utils.utils import CustomSegmentVideoCreatePermission
@@ -49,7 +51,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment task through CTLSerializer
         """
         request, data = self._prep_request(request)
-        validated_params = self._validate_params(data)
+        validated_params = self._validate_params(request.user, data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
@@ -68,7 +70,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         # validated_params will need to be cleaned of these default values and only the keys send for updating should
         # be included in context
         data_keys = set(data.keys())
-        validated_params = self._validate_params(data, partial=True)
+        validated_params = self._validate_params(request.user, data, partial=True)
         cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
         serializer = self.serializer_class(segment, data=data, context=self._get_context(cleaned_params),
                                            partial=True)
@@ -87,12 +89,15 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         serializer.data.update(validated_ctl_params)
         return serializer.data
 
-    def _validate_params(self, data, partial=False):
+    def _validate_params(self, user, data, partial=False):
         """
         Validate request data
         :param data: dict
         :return: dict
         """
+        if data.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
+                and not user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
+            raise PermissionDenied
         params_serializer = CTLParamsSerializer(data=data, partial=partial)
         params_serializer.is_valid(raise_exception=True)
         validated_data = params_serializer.validated_data

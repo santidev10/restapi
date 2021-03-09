@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 
+from audit_tool.models import AuditProcessor
 from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
@@ -190,10 +191,31 @@ def set_user_perm_params(request, ctl_params):
     return ctl_params
 
 
+def delete_related(segment, *_, **__):
+    """ Delete CTL and related objects in case of exceptions while creating ctl """
+
+    def _delete_audit(audit_id):
+        try:
+            AuditProcessor.objects.get(id=audit_id).delete()
+        except AuditProcessor.DoesNotExist:
+            pass
+
+    if isinstance(segment, str):
+        try:
+            segment = CustomSegment.objects.get(id=segment)
+        except CustomSegment.DoesNotExist:
+            return
+    _delete_audit(segment.audit_id)
+    _delete_audit(segment.params.get("meta_audit_id"))
+    segment.delete()
+
+
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
     """ Check if user is admin or is CTL creator """
     def has_permission(self, request, view):
-        if isinstance(request.user, get_user_model()) and request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
+        if not isinstance(request.user, get_user_model()):
+            return False
+        if request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):
             return True
         try:
             segment = CustomSegment.objects.get(id=view.kwargs["pk"])

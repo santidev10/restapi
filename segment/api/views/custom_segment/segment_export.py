@@ -1,12 +1,14 @@
+from distutils.util import strtobool
+
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
-from rest_framework.status import HTTP_403_FORBIDDEN
 
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.utils.segment_action import segment_action
 from segment.models.constants import SegmentActionEnum
+from segment.models.constants import VideoExclusion
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
@@ -40,7 +42,13 @@ class SegmentExport(APIView):
                     "message"] = f"Processing. You will receive an email when your export for: {segment.title} is " \
                                  f"ready."
         else:
-            if hasattr(segment, "export"):
+            if strtobool(request.query_params.get("video_exclusion", "false")):
+                if not request.user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
+                    raise PermissionDenied
+                video_exclusion_ctl = get_object(CustomSegment, id=segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_ID))
+                s3_key = video_exclusion_ctl.export.filename
+                response["download_url"] = segment.s3.generate_temporary_url(s3_key)
+            elif hasattr(segment, "export"):
                 related_file_obj = get_object(CustomSegmentFileUpload, f"CustomSegmentFileUpload obj with " \
                                             f"segment_id: {segment.id} not found.", segment_id=segment.id)
                 if request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN):

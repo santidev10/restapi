@@ -31,7 +31,9 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
         the cursor_field option
     :return:
     """
-    base_search = model.search().sort(*sort)
+    base_search = model.search()
+    if sort:
+        base_search = base_search.sort(*sort)
     if source:
         base_search = base_search.source(source)
     # If no options set, use base query
