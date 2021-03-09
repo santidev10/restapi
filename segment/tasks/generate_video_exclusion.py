@@ -8,19 +8,14 @@ from typing import List
 from django.conf import settings
 from uuid import uuid4
 
-from audit_tool.models import get_hash_name
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from segment.models import CustomSegment
-from segment.models import CustomSegmentFileUpload
-from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
 from utils.utils import chunks_generator
-from utils.datetime import now_in_default_tz
 from utils.brand_safety import map_score_threshold
 
 
@@ -28,7 +23,7 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
-def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str]):
+def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str]) -> str:
     """
     Generate video exclusion list using channels from Channel CTL
     The video exclusion list is generated from the videos of the channels in channel_ctl. If a channel's video
@@ -71,13 +66,12 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
     else:
-        video_exclusion_ctl = _update_create_related(video_exclusion_s3_key, channel_ctl)
-        return video_exclusion_ctl
+        return video_exclusion_s3_key
     finally:
         os.remove(video_exclusion_fp)
 
 
-def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int):
+def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter:
     """
     Retrieve videos using channel_ids
     :param channel_ids: list of channel ids to retrieve videos for
@@ -96,14 +90,14 @@ def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int):
     yield from bulk_search(Video, query, None, MAIN_ID_FIELD, batch_size=2000, source=video_source)
 
 
-def _separate_videos(videos: iter, blocklist_list, videos_list):
+def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
     """
     Separate videos into either blocklist or videos list
     blocklisted videos are prioritized on final list but nonblocklisted videos must be sorted with all videos
     :param videos: List[list] -> Generator result from bulk_search. Each videos yield is a list itself
-    :param blocklist_list: list
-    :param videos_list:
-    :return:
+    :param blocklist_list: list container to hold blocklisted videos
+    :param videos_list: list container to hold nonblocklisted videos
+    :return: None
     """
     for batch in videos:
         for video in batch:
@@ -114,7 +108,7 @@ def _separate_videos(videos: iter, blocklist_list, videos_list):
             container.append(video)
 
 
-def _export_results(s3, export_fp: str, results: List):
+def _export_results(s3, export_fp: str, results: List[Video]) -> str:
     """
     Write results to file and export to S3
     :param s3: S3Exporter
@@ -122,49 +116,14 @@ def _export_results(s3, export_fp: str, results: List):
     :param results: Video exclusion results
     :return: str
     """
-    rows = []
-    for video in results:
-        row = [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
-        # serialize blocklist overall score as -1
-        overall_score = -1 if video.custom_properties.blocklist is True \
-            else video.brand_safety.overall_score
-        row.append(overall_score)
-        rows.append(row)
-
+    rows = [
+        [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
+        for video in results
+    ]
     with open(export_fp, mode="w+") as file:
         writer = csv.writer(file)
-        writer.writerow(["URL", "title", "score"])
+        writer.writerow(["URL", "Title"])
         writer.writerows(rows)
     video_exclusion_s3_key = f"{uuid4()}.csv"
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
     return video_exclusion_s3_key
-
-
-def _update_create_related(video_exclusion_s3_key: str, channel_ctl: CustomSegment) -> CustomSegment:
-    """
-    Update or create related objects
-    :param video_exclusion_s3_key: S3 key for video exclusion ctl
-    :param channel_ctl: Source Channel CTL
-    :return: Video exclusion CustomSegment
-    """
-    title = f"{channel_ctl.title}_video_exclusion_list"
-    video_exclusion_ctl, _ = CustomSegment.objects.update_or_create(
-        segment_type=SegmentTypeEnum.VIDEO.value,
-        owner_id=channel_ctl.owner_id,
-        title=title,
-        title_hash=get_hash_name(title),
-        defaults=dict(
-            statistics={
-                VideoExclusion.CHANNEL_SOURCE_ID: channel_ctl.id
-            }
-        )
-    )
-    CustomSegmentFileUpload.objects.update_or_create(
-        segment=video_exclusion_ctl,
-        defaults=dict(
-            completed_at=now_in_default_tz(),
-            filename=video_exclusion_s3_key,
-            query={},
-        )
-    )
-    return video_exclusion_ctl

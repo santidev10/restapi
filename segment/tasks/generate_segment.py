@@ -159,9 +159,9 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             }
 
         if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
-            video_exclusion_ctl = generate_video_exclusion(segment, item_ids)
+            video_exclusion_filename = generate_video_exclusion(segment, item_ids)
             results["statistics"].update({
-                VideoExclusion.VIDEO_EXCLUSION_ID: video_exclusion_ctl.id
+                VideoExclusion.VIDEO_EXCLUSION_FILENAME: video_exclusion_filename
             })
         return results
     finally:

@@ -5,6 +5,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from utils.utils import chunks_generator
+from utils.exception import upsert_retry
 
 
 class BaseAuditor:
@@ -35,11 +36,11 @@ class BaseAuditor:
             raise_on_exception=False, yield_ok=False
         )
         if len(audit_results) < 100:
-            es_manager.upsert(audit_results, **upsert_params)
+            upsert_retry(es_manager, audit_results, **upsert_params)
         else:
             args = chunks_generator(audit_results, 100)
             with ThreadPoolExecutor(max_workers=20) as executor:
-                list(executor.submit(es_manager.upsert, list(arg), **upsert_params) for arg in args)
+                list(executor.submit(upsert_retry, [es_manager, list(arg)], **upsert_params) for arg in args)
 
     def _blocklist_handler(self, doc, **__):
         """
@@ -51,9 +52,5 @@ class BaseAuditor:
         :return:
         """
         if doc.custom_properties.blocklist is True:
-            handled = self._blank_doc(doc.main.id)
-            handled.populate_brand_safety(overall_score=0)
-            return handled
-
-    def _blank_doc(self, item_id):
-        return self.es_model(item_id)
+            doc.brand_safety.overall_score = 0
+            return doc
