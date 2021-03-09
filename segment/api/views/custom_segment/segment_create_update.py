@@ -63,7 +63,8 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         """
         request, data = self._prep_request(request)
         segment = get_object(CustomSegment, id=data.get("id"))
-        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
+                                            segment=segment)
         # Keep track of data.keys as CTLParamsSerializer sets default values for some fields during creation.
         # validated_params will need to be cleaned of these default values and only the keys send for updating should
         # be included in context
