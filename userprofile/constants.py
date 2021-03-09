@@ -90,6 +90,7 @@ class StaticPermissions:
     BUILD__CTL_VET = "build.ctl_vet"
     BUILD__CTL_VET_ADMIN = "build.ctl_vet_admin"
     BUILD__CTL_VET_EXPORT = "build.ctl_vet_export"
+    BUILD__CTL_VIDEO_EXCLUSION = "build.ctl_video_exclusion"
 
     DOMAIN_MANAGER = "domain_manager"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"

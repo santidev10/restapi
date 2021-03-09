@@ -179,3 +179,27 @@ class _GeneratorWrapper:
 
 def as_generator(items):
     yield from items
+
+
+def merge(l1, l2, accessor=None):
+    i = j = 0
+    merged = []
+    while i < len(l1) or j < len(l2):
+        if i < len(l1) and j < len(l2):
+            if accessor:
+                val1, val2 = accessor(l1[i]), accessor(l2[j])
+            else:
+                val1, val2 = l1[i], l2[j]
+            if val1 <= val2:
+                merged.append(l1[i])
+                i += 1
+            else:
+                merged.append(l2[j])
+                j += 1
+        elif i < len(l1):
+            merged.append(l1[i])
+            i += 1
+        else:
+            merged.append(l2[j])
+            j += 1
+    return merged

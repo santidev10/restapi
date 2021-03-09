@@ -7,7 +7,9 @@ from django.utils import timezone
 
 from saas import celery_app
 from segment.models import CustomSegment
+from segment.models.constants import VideoExclusion
 from segment.tasks.generate_segment import generate_segment
+from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
@@ -57,3 +59,10 @@ def regenerate_custom_segments():
         if export.admin_filename is None:
             export.admin_filename = results["admin_s3_key"]
         export.save()
+
+        if segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_ID):
+            try:
+                source_ids = segment.s3.get_extract_export_ids()
+                generate_video_exclusion(segment, source_ids)
+            except Exception:
+                logger.exception(f"Exception regenerating video exclusion for: {segment.id}")

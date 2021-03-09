@@ -7,7 +7,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.serializers import ValidationError
 
 from segment.api.paginator import SegmentPaginator
-from segment.api.serializers import CTLSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentListType
 from segment.models.custom_segment import CustomSegment

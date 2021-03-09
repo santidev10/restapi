@@ -7,7 +7,6 @@ import tempfile
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
@@ -28,8 +27,10 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
+from segment.models.constants import VideoExclusion
 from segment.tasks import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
+from segment.utils.utils import delete_related
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
 from utils.datetime import seconds_to_hhmmss
@@ -89,6 +90,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
+    with_video_exclusion = BooleanField(write_only=True, required=False)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -163,6 +165,19 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise ValidationError(f"A {segment_type_repr} target list with the title: {title} already exists.")
         return title
 
+    def validate_with_video_exclusion(self, with_video_exclusion):
+        """ with_video_exclusion is only allowed with channel CTL """
+        if self.initial_data["segment_type"] == SegmentTypeEnum.VIDEO.value and with_video_exclusion is True:
+            raise ValidationError("Video exclusion CTL can only be created with a Channel CTL.")
+        return with_video_exclusion
+
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+        params = data.get("params", {})
+        params[VideoExclusion.WITH_VIDEO_EXCLUSION] = data.pop(VideoExclusion.WITH_VIDEO_EXCLUSION, False)
+        data["params"] = params
+        return data
+
     def create(self, validated_data: dict) -> CustomSegment:
         """
         Handle CustomSegment obj creation
@@ -181,13 +196,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise err
         except CTLEmptySourceUrlException:
             segment_type_repr = SegmentTypeEnum(segment.segment_type).name
-            self.delete_related(segment)
+            delete_related(segment)
             raise ValidationError(f"Mismatching file format. {segment_type_repr.capitalize()} lists "
                                   f"need {segment_type_repr.lower()} urls. Please adjust and try again")
         except Exception as error:
             # pylint: enable=broad-except
             # Delete CTL if unexpected exception occurs
-            self.delete_related(segment)
+            delete_related(segment)
             raise ValidationError(f"Exception trying to create segment: {error}. Please try again.")
         return segment
 
@@ -558,23 +573,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
         segment.save(update_fields=[*set_false, "audit_id", "statistics"])
-
-    @staticmethod
-    def delete_related(segment, *_, **__):
-        """ Delete CTL and related objects in case of exceptions while creating ctl """
-        def _delete_audit(audit_id):
-            try:
-                AuditProcessor.objects.get(id=audit_id).delete()
-            except AuditProcessor.DoesNotExist:
-                pass
-        if isinstance(segment, str):
-            try:
-                segment = CustomSegment.objects.get(id=segment)
-            except CustomSegment.DoesNotExist:
-                return
-        _delete_audit(segment.audit_id)
-        _delete_audit(segment.params.get("meta_audit_id"))
-        segment.delete()
 
 
 class CTLWithoutDownloadUrlSerializer(CTLSerializer):
