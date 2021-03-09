@@ -136,6 +136,8 @@ class BrandSafetyChannelAudit(object):
         channel = self.doc
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_data = {
+            "updated_at": channel.brand_safety.updated_at,
+            "created_at": channel.brand_safety.created_at,
             "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
             "videos_scored": brand_safety_score.videos_scored,
             "language": self.audit_metadata["language"],
