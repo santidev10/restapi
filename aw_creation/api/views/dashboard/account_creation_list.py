@@ -21,7 +21,6 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from aw_reporting.models import CONVERSIONS
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -88,10 +87,9 @@ class DashboardAccountCreationListApiView(ListAPIView):
     )
 
     def get_queryset(self, **filters):
-        user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
             if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS) \
-            else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
+            else Q(account__id__in=self.request.user.get_visible_accounts_list())
         queryset = AccountCreation.objects.all() \
             .annotate(is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
                                    default=False,

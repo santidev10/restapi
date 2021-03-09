@@ -11,7 +11,6 @@ from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.charts.dashboard_charts import Indicator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 
 
 class DashboardPerformanceChartApiView(APIView):
@@ -42,10 +41,8 @@ class DashboardPerformanceChartApiView(APIView):
     def post(self, request, pk, **_):
         self.filter_hidden_sections()
         filters = {}
-        user_settings = request.user.get_aw_settings()
         if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            filters["account__id__in"] = \
-                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = request.user.get_visible_accounts_list()
         try:
             item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:

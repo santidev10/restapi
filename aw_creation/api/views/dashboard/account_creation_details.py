@@ -28,7 +28,6 @@ from aw_reporting.models import dict_quartiles_to_rates
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 
 logger = logging.getLogger(__name__)
@@ -49,9 +48,8 @@ class DashboardAccountCreationDetailsAPIView(APIView):
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
-        user_settings = request.user.get_aw_settings()
         if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = request.user.get_visible_accounts_list()
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:
             return queryset.get(pk=pk)
