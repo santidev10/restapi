@@ -1,6 +1,8 @@
 import logging
 
 from .base_auditor import BaseAuditor
+from .constants import CHANNEL_SOURCE
+from .constants import VIDEO_SOURCE
 from .video_auditor import VideoAuditor
 from brand_safety.auditors.serializers import BrandSafetyChannel
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
@@ -8,15 +10,13 @@ from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from es_components.models import Channel
+from utils.search_after import search_after
 
 logger = logging.getLogger(__name__)
 
 
 class ChannelAuditor(BaseAuditor):
     es_model = Channel
-
-    CHANNEL_BATCH_SIZE = 2
-    MAX_THREAD_POOL = 3
 
     def __init__(self, *args, **kwargs):
         """
@@ -33,7 +33,7 @@ class ChannelAuditor(BaseAuditor):
         :param channel_id: str
         :return: list
         """
-        channel = self.channel_manager.get([channel_id], skip_none=True)[0]
+        channel = self.channel_manager.get([channel_id], skip_none=True, source=CHANNEL_SOURCE)[0]
         with_data = BrandSafetyChannel(channel).to_representation()
         return with_data
 
@@ -66,7 +66,9 @@ class ChannelAuditor(BaseAuditor):
         """
         query = QueryBuilder().build().must().term().field(VIDEO_CHANNEL_ID_FIELD).value(channel_id).get() \
                 & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
-        results = self.video_manager.search(query, limit=10000).execute().hits
+        results = []
+        for batch in search_after(query, self.video_manager):
+            results.extend(batch)
         return results
 
     def audit(self, channel: Channel, index=True) -> Channel:

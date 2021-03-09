@@ -1,7 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from .constants import CHANNEL_SECTIONS
-from .constants import VIDEO_SECTIONS
 from .utils import AuditUtils
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -14,12 +12,13 @@ class BaseAuditor:
 
     def __init__(self, audit_utils=None):
         self.audit_utils = audit_utils or AuditUtils()
+        # Set sections as None as source fields will be set during manager.get method calls
         self.channel_manager = ChannelManager(
-            sections=CHANNEL_SECTIONS,
+            sections=None,
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=VIDEO_SECTIONS,
+            sections=None,
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
