@@ -122,11 +122,8 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
             StaticPermissions.BUILD__CTL_EXPORT_BASIC: True,
         })
         test_user = self._create_user()
-        video_exclusion_ctl = CustomSegment.objects.create(owner=test_user, segment_type=0)
-        CustomSegmentFileUpload.objects.create(segment=video_exclusion_ctl,
-                                               filename="test_video_exclusion_export", query={})
         data = {
-            VideoExclusion.VIDEO_EXCLUSION_ID: video_exclusion_ctl.id
+            VideoExclusion.VIDEO_EXCLUSION_FILENAME: "test_video_exclusion_export"
         }
         segment, _ = self._create_segment(segment_params=dict(owner=test_user, statistics=data))
         with patch.object(S3Exporter, "exists", return_value=True):
