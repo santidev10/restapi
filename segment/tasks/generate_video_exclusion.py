@@ -121,18 +121,13 @@ def _export_results(s3, export_fp: str, results: List):
     :param results: Video exclusion results
     :return: str
     """
-    rows = []
-    for video in results:
-        row = [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
-        # serialize blocklist overall score as -1
-        overall_score = -1 if video.custom_properties.blocklist is True \
-            else video.brand_safety.overall_score
-        row.append(overall_score)
-        rows.append(row)
-
+    rows = [
+        [f"https://www.youtube.com/watch?v={video.main.id}", video.general_data.title]
+        for video in results
+    ]
     with open(export_fp, mode="w+") as file:
         writer = csv.writer(file)
-        writer.writerow(["URL", "title", "score"])
+        writer.writerow(["URL", "Title"])
         writer.writerows(rows)
     video_exclusion_s3_key = f"{uuid4()}.csv"
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
