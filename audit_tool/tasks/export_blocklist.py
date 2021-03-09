@@ -57,7 +57,7 @@ def _blocklist_generator(doc_type: str) -> object:
         video=VideoManager,
         channel=ChannelManager,
     )
-    sections = (Sections.GENERAL_DATA, Sections.TASK_US_DATA)
+    sections = (Sections.GENERAL_DATA, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES)
     query = QueryBuilder().build().must().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist").value(True).get()
     manager = managers[doc_type]
     for doc in manager(sections).scan(query):
