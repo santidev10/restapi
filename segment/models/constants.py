@@ -63,3 +63,9 @@ class SegmentVettingStatusEnum(enum.Enum):
     NOT_VETTED = 0
     VETTED_SAFE = 1
     VETTED_RISKY = 2
+
+
+class VideoExclusion:
+    VIDEO_EXCLUSION_ID = "video_exclusion_id"
+    WITH_VIDEO_EXCLUSION = "with_video_exclusion"
+    CHANNEL_SOURCE_ID = "channel_source_id"

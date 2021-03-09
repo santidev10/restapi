@@ -268,6 +268,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_VET,                  False,  "Vet Stuff"],
         [StaticPermissions.BUILD__CTL_VET_ADMIN,            False,  "Vet Admin"],
         [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
+        [StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION,      False,  "Create and export Video Exclusion CTL for Channel CTL"],
 
         [StaticPermissions.DOMAIN_MANAGER,                  False,  "Domain Manager Read"],
         [StaticPermissions.DOMAIN_MANAGER__CREATE,          False,  "Domain Manager Create"],

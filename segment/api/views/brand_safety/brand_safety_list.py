@@ -3,7 +3,7 @@ import operator
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from segment.api.serializers import CTLSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers import CTLWithoutDownloadUrlSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
