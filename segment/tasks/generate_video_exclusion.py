@@ -8,19 +8,14 @@ from typing import List
 from django.conf import settings
 from uuid import uuid4
 
-from audit_tool.models import get_hash_name
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from segment.models import CustomSegment
-from segment.models import CustomSegmentFileUpload
-from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
 from utils.utils import chunks_generator
-from utils.datetime import now_in_default_tz
 from utils.brand_safety import map_score_threshold
 
 
@@ -28,7 +23,7 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
-def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str]):
+def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str]) -> str:
     """
     Generate video exclusion list using channels from Channel CTL
     The video exclusion list is generated from the videos of the channels in channel_ctl. If a channel's video
@@ -76,7 +71,7 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
         os.remove(video_exclusion_fp)
 
 
-def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int):
+def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter:
     """
     Retrieve videos using channel_ids
     :param channel_ids: list of channel ids to retrieve videos for
@@ -95,14 +90,14 @@ def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int):
     yield from bulk_search(Video, query, None, MAIN_ID_FIELD, batch_size=2000, source=video_source)
 
 
-def _separate_videos(videos: iter, blocklist_list, videos_list):
+def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
     """
     Separate videos into either blocklist or videos list
     blocklisted videos are prioritized on final list but nonblocklisted videos must be sorted with all videos
     :param videos: List[list] -> Generator result from bulk_search. Each videos yield is a list itself
-    :param blocklist_list: list
-    :param videos_list:
-    :return:
+    :param blocklist_list: list container to hold blocklisted videos
+    :param videos_list: list container to hold nonblocklisted videos
+    :return: None
     """
     for batch in videos:
         for video in batch:
@@ -113,7 +108,7 @@ def _separate_videos(videos: iter, blocklist_list, videos_list):
             container.append(video)
 
 
-def _export_results(s3, export_fp: str, results: List):
+def _export_results(s3, export_fp: str, results: List[Video]) -> str:
     """
     Write results to file and export to S3
     :param s3: S3Exporter
