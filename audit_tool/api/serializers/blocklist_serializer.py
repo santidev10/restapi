@@ -2,11 +2,11 @@ from rest_framework import serializers
 
 
 class BlocklistSerializer(serializers.Serializer):
-    EXPORT_FIELDS = ("title", "url", "date_added", "added_by_user", "blocked_count", "unblocked_count")
+    EXPORT_FIELDS = ("title", "url", "updated_at", "added_by_user", "blocked_count", "unblocked_count")
 
     title = serializers.CharField(source="general_data.title")
     url = serializers.SerializerMethodField("get_url")
-    date_added = serializers.SerializerMethodField()
+    updated_at = serializers.SerializerMethodField()
     added_by_user = serializers.SerializerMethodField()
     blocked_count = serializers.SerializerMethodField()
     unblocked_count = serializers.SerializerMethodField()
@@ -19,8 +19,8 @@ class BlocklistSerializer(serializers.Serializer):
             raise KeyError("You must provide blacklist_data as a dictionary of video or channel id, BlacklistItem key, "
                            "values in serializer context.")
 
-    def get_date_added(self,  obj):
-        added = self._get(obj.main.id, "updated_at")
+    def get_updated_at(self,  obj):
+        added = obj.custom_properties.updated_at
         try:
             added = added.date()
         except AttributeError:
