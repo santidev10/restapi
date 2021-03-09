@@ -66,28 +66,6 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertTrue(len(lines) > 1)
 
     @mock_s3
-    def test_results_blocklist_first(self):
-        """ Test that blocklist are sorted first. Blocklist scores are serialized as -1 """
-        conn = self._create_bucket()
-        mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
-        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values):
-            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl, mock_channel_ids)
-        lines = self._get_lines(conn, video_exclusion_ctl)
-        scores = [int(r.split(",")[2]) for r in lines]
-        self.assertEqual(scores, list(sorted(scores)))
-
-    @mock_s3
-    def test_results_sorted(self):
-        """ Test that results are sorted ascending brand safety score """
-        conn = self._create_bucket()
-        mock_channel_ids, mock_return_values = self._create_mock_args()
-        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values):
-            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl, mock_channel_ids)
-        lines = self._get_lines(conn, video_exclusion_ctl)
-        scores = [int(r.split(",")[2]) for r in lines]
-        self.assertEqual(scores, list(sorted(scores)))
-
-    @mock_s3
     def test_results_truncated(self):
         """ Test that results are truncated at limit """
         conn = self._create_bucket()
