@@ -67,9 +67,8 @@ def video_update(video_ids, rescore=False):
     if rescore is True:
         reset_rescore_videos = []
         for audit in scored_videos:
-            video = Video(audit.doc.main.id)
-            video.populate_channel(id=audit.doc.channel.id)
-            video.populate_brand_safety(rescore=False)
+            video = audit.doc
+            video.brand_safety.rescore = False
             reset_rescore_videos.append(video)
         auditor.video_manager.upsert(reset_rescore_videos)
 
