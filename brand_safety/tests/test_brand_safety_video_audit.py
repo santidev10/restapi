@@ -1,6 +1,6 @@
 import time
-import mock
 import pickle
+from unittest import mock
 
 from django.utils import timezone
 from elasticsearch_dsl import Index
@@ -119,8 +119,15 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
             tags=None,
         )
         auditor = VideoAuditor()
-        audit = auditor.audit_serialized(data)
-        audit2 = auditor.audit_serialized(data2)
+        with mock.patch.object(VideoManager, "get") as mock_get,\
+                mock.patch.object(VideoManager, "search") as mock_search,\
+                mock.patch.object(VideoManager, "upsert") as mock_upsert:
+            audit = auditor.audit_serialized(data)
+            audit2 = auditor.audit_serialized(data2)
+
+            mock_get.assert_not_called()
+            mock_search.assert_not_called()
+            mock_upsert.assert_not_called()
         video_audit_score = getattr(audit, "brand_safety_score")
         video_audit_score2 = getattr(audit2, "brand_safety_score")
         self.assertTrue(0 <= video_audit_score.overall_score <= 100)
