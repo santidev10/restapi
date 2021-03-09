@@ -20,12 +20,12 @@ class BlocklistSerializer(serializers.Serializer):
                            "values in serializer context.")
 
     def get_updated_at(self,  obj):
-        added = obj.custom_properties.updated_at
+        updated_at = obj.custom_properties.updated_at
         try:
-            added = added.date()
+            updated_at = updated_at.date()
         except AttributeError:
             pass
-        return added
+        return updated_at
 
     def get_added_by_user(self, obj):
         name = self._get(obj.main.id, "name")
