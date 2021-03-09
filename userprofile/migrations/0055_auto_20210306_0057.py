@@ -9,18 +9,15 @@ BUILD__CTL_DELETE = "build.ctl_delete"
 
 old_perms = [BUILD__CTL_CREATE, BUILD__CTL_DELETE]
 
-new_perms_by_old_perms = {
-    BUILD__CTL_CREATE: [StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,
-                        StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST],
-    BUILD__CTL_DELETE: [StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST,
-                        StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST]
+new_perms_by_old_perm = {
+    BUILD__CTL_CREATE: [StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST],
+    BUILD__CTL_DELETE: [StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST],
 }
 
 
 def add_segment_type_permission(apps, schema_editor):
     """
-    for each user, we'll remove the old perm with pop, and set all of the new split perms to the same value and
-    save each modified user. This assumes that admin will remove segment type perms for users that shouldn't have them.
+    for each user, we'll add the video create/delete perm set to current value of the repurposed channel create/delete
     :param apps:
     :param schema_editor:
     :return:
@@ -30,10 +27,10 @@ def add_segment_type_permission(apps, schema_editor):
         user_perms = user.perms
         new_user_perms = {}
         for old_perm in old_perms:
-            value = user_perms.pop(old_perm, None)
+            value = user_perms.get(old_perm, None)
             if value is None:
                 continue
-            new_perms = new_perms_by_old_perms.get(old_perm)
+            new_perms = new_perms_by_old_perm.get(old_perm)
             for new_perm in new_perms:
                 new_user_perms[new_perm] = value
 
