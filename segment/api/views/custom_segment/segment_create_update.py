@@ -16,8 +16,6 @@ from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoExclusion
 from segment.models.utils.segment_action import segment_action
-from segment.utils.utils import CustomSegmentChannelCreatePermission
-from segment.utils.utils import CustomSegmentVideoCreatePermission
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes

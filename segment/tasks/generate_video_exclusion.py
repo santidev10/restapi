@@ -71,8 +71,7 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
     else:
-        video_exclusion_ctl = _update_create_related(video_exclusion_s3_key, channel_ctl)
-        return video_exclusion_ctl
+        return video_exclusion_s3_key
     finally:
         os.remove(video_exclusion_fp)
 
@@ -138,33 +137,3 @@ def _export_results(s3, export_fp: str, results: List):
     video_exclusion_s3_key = f"{uuid4()}.csv"
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
     return video_exclusion_s3_key
-
-
-def _update_create_related(video_exclusion_s3_key: str, channel_ctl: CustomSegment) -> CustomSegment:
-    """
-    Update or create related objects
-    :param video_exclusion_s3_key: S3 key for video exclusion ctl
-    :param channel_ctl: Source Channel CTL
-    :return: Video exclusion CustomSegment
-    """
-    title = f"{channel_ctl.title}_video_exclusion_list"
-    video_exclusion_ctl, _ = CustomSegment.objects.update_or_create(
-        segment_type=SegmentTypeEnum.VIDEO.value,
-        owner_id=channel_ctl.owner_id,
-        title=title,
-        title_hash=get_hash_name(title),
-        defaults=dict(
-            statistics={
-                VideoExclusion.CHANNEL_SOURCE_ID: channel_ctl.id
-            }
-        )
-    )
-    CustomSegmentFileUpload.objects.update_or_create(
-        segment=video_exclusion_ctl,
-        defaults=dict(
-            completed_at=now_in_default_tz(),
-            filename=video_exclusion_s3_key,
-            query={},
-        )
-    )
-    return video_exclusion_ctl

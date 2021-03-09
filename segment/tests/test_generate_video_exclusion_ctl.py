@@ -14,7 +14,6 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from segment.tasks.generate_video_exclusion import LIMIT
 from utils.unittests.int_iterator import int_iterator
-
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -28,9 +27,8 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         return conn
 
-    def _get_lines(self, conn, video_exclusion_ctl):
-        export_key = video_exclusion_ctl.export.filename
-        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"].read()
+    def _get_lines(self, conn, video_exclusion_filename):
+        lines = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, video_exclusion_filename).get()["Body"].read()
         # Skip header
         lines = lines.decode('utf-8').split()[1:]
         return lines
@@ -63,12 +61,9 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         conn = self._create_bucket()
         mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
         with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values):
-            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl, mock_channel_ids)
-        lines = self._get_lines(conn, video_exclusion_ctl)
+            video_exclusion_filename = generate_video_exclusion(self.channel_ctl, mock_channel_ids)
+        lines = self._get_lines(conn, video_exclusion_filename)
         self.assertTrue(len(lines) > 1)
-        video_exclusion_ctl.refresh_from_db()
-        self.channel_ctl.refresh_from_db()
-        self.assertEqual(video_exclusion_ctl.statistics[VideoExclusion.CHANNEL_SOURCE_ID], self.channel_ctl.id)
 
     @mock_s3
     def test_results_blocklist_first(self):
