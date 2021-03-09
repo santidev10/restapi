@@ -67,7 +67,7 @@ class ChannelAuditor(BaseAuditor):
         query = QueryBuilder().build().must().term().field(VIDEO_CHANNEL_ID_FIELD).value(channel_id).get() \
                 & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
         results = []
-        for batch in search_after(query, self.video_manager):
+        for batch in search_after(query, self.video_manager, source=VIDEO_SOURCE):
             results.extend(batch)
         return results
 
