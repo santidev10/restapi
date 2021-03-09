@@ -28,7 +28,7 @@ from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
 from segment.models.constants import VideoExclusion
-from segment.tasks import generate_custom_segment
+from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.query_builder import SegmentQueryBuilder
 from segment.utils.utils import delete_related
 from userprofile.models import UserProfile
