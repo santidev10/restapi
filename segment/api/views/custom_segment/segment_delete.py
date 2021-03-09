@@ -1,7 +1,7 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import DestroyAPIView
 
-from segment.api.serializers import CTLSerializer
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum

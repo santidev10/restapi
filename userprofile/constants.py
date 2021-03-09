@@ -78,13 +78,10 @@ class StaticPermissions:
     BUILD__BSTL_EXPORT = "build.bstl_export"
 
     BUILD__CTL = "build.ctl"
-    BUILD__CTL_CREATE_CHANNEL_LIST = "build.ctl_create_channel_list"
-    BUILD__CTL_DELETE_CHANNEL_LIST = "build.ctl_delete_channel_list"
+    BUILD__CTL_CREATE_CHANNEL_LIST = "build.ctl_create"
+    BUILD__CTL_DELETE_CHANNEL_LIST = "build.ctl_delete"
     BUILD__CTL_CREATE_VIDEO_LIST = "build.ctl_create_video_list"
     BUILD__CTL_DELETE_VIDEO_LIST = "build.ctl_delete_video_list"
-    # TODO remove
-    BUILD__CTL_CREATE = "build.ctl_create"
-    BUILD__CTL_DELETE = "build.ctl_delete"
 
     BUILD__CTL_FEATURE_LIST = "build.ctl_feature_list"
     BUILD__CTL_EXPORT_BASIC = "build.ctl_export_basic"
@@ -93,6 +90,7 @@ class StaticPermissions:
     BUILD__CTL_VET = "build.ctl_vet"
     BUILD__CTL_VET_ADMIN = "build.ctl_vet_admin"
     BUILD__CTL_VET_EXPORT = "build.ctl_vet_export"
+    BUILD__CTL_VIDEO_EXCLUSION = "build.ctl_video_exclusion"
 
     DOMAIN_MANAGER = "domain_manager"
     DOMAIN_MANAGER__CREATE = "domain_manager.create"

@@ -1,4 +1,3 @@
-from .generate_custom_segment import generate_custom_segment
 from .generate_persistent_segments import generate_persistent_segments
 from .generate_vetted_segment import generate_vetted_segment
 from .regenerate_custom_segments import regenerate_custom_segments_with_lock
