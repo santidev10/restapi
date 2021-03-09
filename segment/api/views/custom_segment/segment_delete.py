@@ -32,7 +32,8 @@ class SegmentDeleteApiView(DestroyAPIView, SegmentTypePermissionMixin):
     @segment_action(SegmentActionEnum.DELETE.value)
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
-        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
+                                            segment=segment)
         if segment.audit_id:
             raise ValidationError("Vetted lists can not be deleted.")
         segment.s3.delete_export()
