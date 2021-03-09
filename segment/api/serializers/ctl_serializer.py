@@ -317,7 +317,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             # then there is no need to create an audit
             if audit:
                 extra_kwargs = dict(with_audit=True)
-        generate_custom_segment.generate_custom_segment.delay(segment.id, **extra_kwargs)
+        generate_custom_segment.delay(segment.id, **extra_kwargs)
 
     def _create_query(self, segment: CustomSegment) -> None:
         """
