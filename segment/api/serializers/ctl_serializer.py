@@ -183,7 +183,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
     def validate_with_video_exclusion(self, with_video_exclusion):
         """ with_video_exclusion is only allowed with channel CTL """
-        if self.initial_data["segment_type"] == SegmentTypeEnum.VIDEO.value and with_video_exclusion is True:
+        if self.initial_data["segment_type"] == SegmentTypeEnum.VIDEO.value and with_video_exclusion is True or \
+                (self.instance and self.instance.segment_type == SegmentTypeEnum.VIDEO.value):
             raise ValidationError("Video exclusion CTL can only be created with a Channel CTL.")
         return with_video_exclusion
 
