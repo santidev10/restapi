@@ -618,9 +618,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         created = CustomSegment.objects.get(id=response.data["id"])
         old_params = created.export.query["params"]
-
         updated_payload = self.get_params(id=created.id, minimum_views=1, segment_type=1)
-        updated_payload[VideoExclusion.WITH_VIDEO_EXCLUSION] = True
 
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
             response2 = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
