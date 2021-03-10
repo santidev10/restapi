@@ -1,6 +1,8 @@
 import json
 from mock import patch
 
+import time
+
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -372,3 +374,51 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(res2.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res3.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(res4.status_code, HTTP_403_FORBIDDEN)
+
+    def test_blocklist_list_updated_at_sort(self):
+        self.create_test_user(perms={
+            StaticPermissions.BLOCKLIST_MANAGER: True
+        })
+
+        video_1 = self._create_doc("video")
+        video_2 = self._create_doc("video")
+        channel_1 = self._create_doc("channel")
+        channel_2 = self._create_doc("channel")
+        video_1.populate_custom_properties(blocklist=True)
+        video_2.populate_custom_properties(blocklist=True)
+        channel_1.populate_custom_properties(blocklist=True)
+        channel_2.populate_custom_properties(blocklist=True)
+
+        self.video_manager.upsert([video_1, video_2])
+        self.channel_manager.upsert([channel_1, channel_2])
+
+        video_bl1 = BlacklistItem.objects.create(item_id=video_1.main.id, item_type=0,
+                                           item_id_hash=get_hash_name(video_1.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        video_bl2 = BlacklistItem.objects.create(item_id=video_2.main.id, item_type=0,
+                                           item_id_hash=get_hash_name(video_2.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        channel_bl1 = BlacklistItem.objects.create(item_id=channel_1.main.id, item_type=1,
+                                           item_id_hash=get_hash_name(channel_1.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        channel_bl2 = BlacklistItem.objects.create(item_id=channel_2.main.id, item_type=1,
+                                           item_id_hash=get_hash_name(channel_2.main.id),
+                                           blocked_count=1, unblocked_count=1)
+        video_bl1.save()
+        time.sleep(1)
+        video_bl2.save()
+
+        channel_bl1.save()
+        time.sleep(1)
+        channel_bl2.save()
+
+        res_v = self.client.get(self._get_url("video"))
+        res_ch = self.client.get(self._get_url("channel"))
+
+        v1, v2 = res_v.data["items"][0], res_v.data["items"][1]
+        c1, c2 = res_ch.data["items"][0], res_ch.data["items"][1]
+
+        self.assertEqual(v1['url'].split("/watch?v=")[-1], video_bl2.item_id)
+        self.assertEqual(v2['url'].split("/watch?v=")[-1], video_bl1.item_id)
+        self.assertEqual(c1['url'].split("/channel/")[-1], channel_bl2.item_id)
+        self.assertEqual(c2['url'].split("/channel/")[-1], channel_bl1.item_id)
