@@ -32,7 +32,7 @@ class BlocklistESFilterBackend(BaseFilterBackend):
         if "youtube.com" in search_term:
             separator = "/channel/" if request.parser_context["kwargs"]["data_type"] == "channel" else "?v="
             search_term = search_term.split(separator)[-1]
-        query = QueryBuilder().build().must().term().field("main.id").value(search_term).get() \
-            | QueryBuilder().build().must().match_phrase().field("general_data.title").value(search_term).get() \
+        query = (QueryBuilder().build().must().term().field("main.id").value(search_term).get()
+            | QueryBuilder().build().must().match_phrase().field("general_data.title").value(search_term).get()) \
             & QueryBuilder().build().must().term().field("custom_properties.blocklist").value(True).get()
         return query
