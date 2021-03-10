@@ -1,5 +1,7 @@
 from distutils.util import strtobool
 
+from django.db.models import F
+
 from rest_framework.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListCreateAPIView
@@ -48,8 +50,12 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
     def get_queryset(self) -> ESQuerysetAdapter:
         """ Validate query params and instantiate queryset """
         self._validate()
+        data_type = self._get_blacklist_data_type(self.kwargs["data_type"])
         es_manager_class = self._get_es_manager(self.kwargs["data_type"])
-        queryset = ESQuerysetAdapter(es_manager_class(), from_cache=False)
+        objects = BlacklistItem.objects.filter(item_type=data_type, blocklist=True).order_by(F("updated_at").desc(nulls_last=True))
+        ordered_ids = [item.item_id for item in objects]
+        sections = (Sections.GENERAL_DATA,)
+        queryset = es_manager_class(sections=sections).get(ordered_ids)
         return queryset
 
     def _validate(self):
@@ -189,6 +195,13 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
             channel=ChannelManager,
         )
         return managers[doc_type]
+
+    def _get_blacklist_data_type(self, doc_type: str):
+        data_types = dict(
+            video=0,
+            channel=1
+        )
+        return data_types[doc_type]
 
     def _check_blocklist_permission(self, data_type: str, should_block: bool):
         action_type = ".create_" if should_block else ".delete_"
