@@ -13,6 +13,7 @@ from saas.configs.celery import TaskExpiration
 from utils.celery.tasks import celery_lock
 from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
+from utils.exception import upsert_retry
 
 
 @celery_app.task(bind=True)
@@ -67,11 +68,10 @@ def video_update(video_ids, rescore=False):
     if rescore is True:
         reset_rescore_videos = []
         for audit in scored_videos:
-            video = Video(audit.doc.main.id)
-            video.populate_channel(id=audit.doc.channel.id)
-            video.populate_brand_safety(rescore=False)
+            video = audit.doc
+            video.brand_safety.rescore = False
             reset_rescore_videos.append(video)
-        auditor.video_manager.upsert(reset_rescore_videos)
+        upsert_retry(auditor.video_manager, reset_rescore_videos)
 
 
 def get_rescore_ids(manager, base_query):
