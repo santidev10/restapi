@@ -21,7 +21,10 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
         size = segment.config.ADMIN_LIST_SIZE
         args = (segment, export.query["body"], size)
         results = generate_segment(*args, with_audit=with_audit)
-        segment.statistics = results.get("statistics", {})
+        segment.statistics = {
+            **(segment.statistics or {}),
+            **results.get("statistics", {}),
+        }
         export.download_url = results.get("download_url")
         export.completed_at = timezone.now()
         export.filename = results.get("s3_key")

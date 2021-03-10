@@ -12,11 +12,9 @@ from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models.constants import ChannelConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoConfig
-from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from segment.utils.utils import get_content_disposition
 from segment.utils.utils import delete_related
-from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from userprofile.constants import StaticPermissions
 from utils.exception import retry
 from utils.utils import chunks_generator
@@ -157,12 +155,6 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 "s3_key": s3_key,
                 "admin_s3_key": admin_s3_key,
             }
-
-        if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION):
-            video_exclusion_filename = generate_video_exclusion(segment, item_ids)
-            results["statistics"].update({
-                VideoExclusion.VIDEO_EXCLUSION_FILENAME: video_exclusion_filename
-            })
         return results
     finally:
         os.remove(admin_filename)
