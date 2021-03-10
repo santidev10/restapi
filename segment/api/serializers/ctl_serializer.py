@@ -86,7 +86,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     pending = SerializerMethodField()
     segment_type = SegmentTypeField()
     source_name = SerializerMethodField(read_only=True)
-    # statistics = JSONField(read_only=True)
     statistics = SerializerMethodField()
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
