@@ -10,6 +10,7 @@ from django.db.models import IntegerField
 from django.utils import timezone
 
 from audit_tool.constants import CHOICE_UNKNOWN
+from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.models import Timestampable
 
@@ -524,7 +525,9 @@ class AuditVideo(models.Model):
 
 class AuditVideoTranscript(models.Model):
     SOURCE_OPTIONS = {
-        0: "Custom Transcripts",
+        AuditVideoTranscriptSourceTypeEnum.CUSTOM: "Custom Transcripts",
+        AuditVideoTranscriptSourceTypeEnum.WATSON: "Watson",
+        AuditVideoTranscriptSourceTypeEnum.TTS_URL: "Youtube TTS URL",
     }
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
     language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
@@ -543,6 +546,23 @@ class AuditVideoTranscript(models.Model):
             t.transcript = transcript
             t.save(update_fields=["transcript"])
         return t
+
+    @staticmethod
+    def update_or_create_with_parent(video_id: str, lang_code: str, **update_or_create_kwargs):
+        """
+        shortcut to update_or_create, but also get_or_creates the requisite fk items
+        :param video_id:
+        :param lang_code:
+        :param update_or_create_kwargs:
+        :return:
+        """
+        audit_video = AuditVideo.get_or_create(video_id)
+        audit_language = AuditLanguage.from_string(lang_code)
+        audit_video_transcript, _ = AuditVideoTranscript.objects.update_or_create(video=audit_video,
+                                                                                  language=audit_language,
+                                                                                  **update_or_create_kwargs)
+        return audit_video_transcript
+
 
 
 class AuditVideoMeta(models.Model):
