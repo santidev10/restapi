@@ -1100,7 +1100,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment.refresh_from_db()
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
-        self.assertFalse(segment.params)
+        self.assertFalse(segment.params.get("meta_audit_id"))
 
     def test_regneration_deletes_records(self, mock_generate):
         """
