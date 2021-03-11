@@ -91,7 +91,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
-    with_video_exclusion = BooleanField(write_only=True, required=False)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -181,20 +180,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             raise ValidationError(f"A {segment_type_repr} target list with the title: {title} already exists.")
         return title
 
-    def validate_with_video_exclusion(self, with_video_exclusion):
-        """ with_video_exclusion is only allowed with channel CTL """
-        if self.initial_data["segment_type"] == SegmentTypeEnum.VIDEO.value and with_video_exclusion is True or \
-                (self.instance and self.instance.segment_type == SegmentTypeEnum.VIDEO.value):
-            raise ValidationError("Video exclusion CTL can only be created with a Channel CTL.")
-        return with_video_exclusion
-
-    def to_internal_value(self, data):
-        data = super().to_internal_value(data)
-        params = data.get("params", {})
-        params[VideoExclusion.WITH_VIDEO_EXCLUSION] = data.pop(VideoExclusion.WITH_VIDEO_EXCLUSION, False)
-        data["params"] = params
-        return data
-
     def create(self, validated_data: dict) -> CustomSegment:
         """
         Handle CustomSegment obj creation
@@ -232,11 +217,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :return:
         """
         # Check only creating video exclusion ctl
-        if list(validated_data["params"].keys()) == [VideoExclusion.WITH_VIDEO_EXCLUSION] \
-                and validated_data["params"][VideoExclusion.WITH_VIDEO_EXCLUSION] is True:
-            generate_video_exclusion.delay(instance.id)
-            instance.params[VideoExclusion.WITH_VIDEO_EXCLUSION] = True
+        video_exclusion_params = self.context.get("video_exclusion_params")
+        if video_exclusion_params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+            instance.params.update(video_exclusion_params)
             instance.save(update_fields=["params"])
+            generate_video_exclusion.delay(instance.id)
             return instance
         try:
             old_params = instance.export.query.get("params", {})
@@ -592,11 +577,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         [setattr(segment, key, False) for key in set_false]
         segment.audit_id = None
         segment.statistics = {}
+        segment.params[VideoExclusion.WITH_VIDEO_EXCLUSION] = False
         if hasattr(segment, "export"):
             segment.export.delete()
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
-        segment.save(update_fields=[*set_false, "audit_id", "statistics"])
+        segment.save(update_fields=[*set_false, "audit_id", "statistics", "params"])
 
 
 class CTLWithoutDownloadUrlSerializer(CTLSerializer):

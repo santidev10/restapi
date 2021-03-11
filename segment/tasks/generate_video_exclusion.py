@@ -17,6 +17,7 @@ from segment.models import CustomSegment
 from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
+from utils.exception import retry
 from utils.utils import chunks_generator
 from utils.brand_safety import map_score_threshold
 
@@ -27,6 +28,17 @@ LIMIT = 125000
 
 @celery_app.task
 def generate_video_exclusion(channel_ctl_id: int) -> str:
+    """
+    Wrapper for celery task decorator
+    :param channel_ctl_id: int
+    :return:
+    """
+    video_exclusion_s3_key = _generate_video_exclusion(channel_ctl_id)
+    return video_exclusion_s3_key
+
+
+@retry(delay=10)
+def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
     The video exclusion list is generated from the videos of the channels in channel_ctl. If a channel's video
@@ -50,14 +62,14 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        score_threshold = map_score_threshold(channel_ctl.export.query["params"]["score_threshold"])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=30):
             curr_blocklist = []
             curr_videos = []
             # Split chunk of channel ids for get_videos_for_channels func
             channel_id_args = [list(ids) for ids in chunks_generator(chunk, size=5)]
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(get_videos_for_channels, channel_ids, score_threshold) for channel_ids in channel_id_args]
+                futures = [executor.submit(get_videos_for_channels, channel_ids, mapped_score_threshold) for channel_ids in channel_id_args]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)
@@ -72,9 +84,11 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
                 break
 
         all_results = (all_blocklist + all_videos)[:LIMIT]
-        video_exclusion_s3_key = _export_results(channel_ctl.s3, video_exclusion_fp, all_results)
+        video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, all_results)
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
+        # Raise for retry decorator
+        raise
     else:
         channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
         channel_ctl.save(update_fields=["statistics"])
@@ -97,7 +111,7 @@ def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter
     query = (
         QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
         & QueryBuilder().build().must().exists().field(overall_score_field).get()
-        & QueryBuilder().build().must().range().field(overall_score_field).lte(bs_score_limit).get()
+        & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
     )
     yield from bulk_search(Video, query, None, MAIN_ID_FIELD, batch_size=2000, source=video_source)
 
@@ -120,7 +134,7 @@ def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> N
             container.append(video)
 
 
-def _export_results(s3, export_fp: str, results: List[Video]) -> str:
+def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Video]) -> str:
     """
     Write results to file and export to S3
     :param s3: S3Exporter
@@ -137,5 +151,8 @@ def _export_results(s3, export_fp: str, results: List[Video]) -> str:
         writer.writerow(["URL", "Title"])
         writer.writerows(rows)
     video_exclusion_s3_key = f"{uuid4()}.csv"
-    s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
+    s3 = channel_ctl.s3
+    content_disposition = s3.get_content_disposition(f"{channel_ctl.title}_video_exclusion.csv")
+    s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
+                         extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
