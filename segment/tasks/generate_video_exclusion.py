@@ -62,14 +62,14 @@ def _generate_video_exclusion(channel_ctl_id: int):
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        score_threshold = map_score_threshold(channel_ctl.export.query["params"]["score_threshold"])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=30):
             curr_blocklist = []
             curr_videos = []
             # Split chunk of channel ids for get_videos_for_channels func
             channel_id_args = [list(ids) for ids in chunks_generator(chunk, size=5)]
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(get_videos_for_channels, channel_ids, score_threshold) for channel_ids in channel_id_args]
+                futures = [executor.submit(get_videos_for_channels, channel_ids, mapped_score_threshold) for channel_ids in channel_id_args]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)

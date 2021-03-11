@@ -1223,49 +1223,61 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_with_video_exclusion(self, mock_generate):
         self.create_admin_user()
-        with self.subTest("Test success creating video exclusion with channel ctl"):
-            payload = {
-                "title": "test_with_video_exclusion_success",
-                "segment_type": 1,
-                "with_video_exclusion": True,
-            }
-            payload = self.get_params(**payload)
-            form = dict(
-                data=json.dumps(payload)
-            )
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
+        channel_ctl = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion_channel",
+            segment_type=SegmentTypeEnum.CHANNEL.value
+        )
+        video_ctl = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion_video",
+            segment_type=SegmentTypeEnum.VIDEO.value
+        )
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay"):
+            with self.subTest("Test success creating video exclusion with channel ctl"):
+                payload = {
+                    "id": channel_ctl.id,
+                    "with_video_exclusion": True,
+                    "video_exclusion_score_threshold": 1,
+                }
+                form = dict(
+                    data=json.dumps(payload)
+                )
+                response = self.client.patch(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_200_OK)
 
-        with self.subTest("Test fail creating video exclusion with video ctl"):
-            payload = {
-                "title": "test_with_video_exclusion_fail",
-                "segment_type": 1,
-                "with_video_exclusion": True,
-            }
-            form = dict(
-                data=json.dumps(payload)
-            )
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            with self.subTest("Test fail creating video exclusion with video ctl"):
+                payload = {
+                    "id": video_ctl.id,
+                    "with_video_exclusion": True,
+                    "video_exclusion_score_threshold": 1,
+                }
+                form = dict(
+                    data=json.dumps(payload)
+                )
+                response = self.client.patch(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_video_exclusion_permission(self, mock_generate):
         user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,})
-        payload = {
-            "title": "test_video_exclusion_permission",
-            "segment_type": 1,
-            "with_video_exclusion": True,
-        }
-        payload = self.get_params(**payload)
-        form = dict(
-            data=json.dumps(payload)
+        segment = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion",
+            segment_type=SegmentTypeEnum.CHANNEL.value
         )
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        payload = {
+            "id": segment.id,
+            "with_video_exclusion": True,
+            "video_exclusion_score_threshold": 2,
+        }
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay"):
+            form = dict(
+                data=json.dumps(payload)
+            )
+            response = self.client.patch(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-        user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
-        user.save(update_fields=["perms"])
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
+            user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
+            user.save(update_fields=["perms"])
+            response = self.client.patch(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_video_exclusion_update(self, mock_generate):
         """ Test updating channel ctl to create video ctl simply creates video ctl and does not update params """
@@ -1280,13 +1292,13 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         })
         payload = {
             "id": channel_ctl.id,
-            "segment_type": 1,
             "with_video_exclusion": True,
+            "video_exclusion_score_threshold": 3,
         }
-        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion", return_value="testfile.csv") as mock_exclusion_generate:
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay", return_value="testfile.csv") as mock_exclusion_generate:
             response = self.client.patch(self._get_url(), dict(data=json.dumps(payload)))
         self.assertEqual(response.status_code, HTTP_200_OK)
         channel_ctl.refresh_from_db()
         self.assertEqual(channel_ctl.export.query["params"], params)
         self.assertEqual(channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION], True)
-        mock_exclusion_generate.delay.assert_called_once()
+        mock_exclusion_generate.assert_called_once()
