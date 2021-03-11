@@ -27,6 +27,7 @@ from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import VideoExclusion
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -1140,25 +1141,59 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertFalse(hasattr(segment, "export"))
         self.assertFalse(hasattr(segment, "vetted_export"))
 
-    def test_create_regular_user_vetted_safe_only(self, mock_generate):
-        """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
+    def test_any_vetting_status_permission(self, mock_generate):
+        """
+        the BUILD__CTL_ANY_VETTING_STATUS permission should allow all vetting statuses
+        :param mock_generate:
+        :return:
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
+                                     StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS: True})
+        all_vetting_statuses = [SegmentVettingStatusEnum.NOT_VETTED.value, SegmentVettingStatusEnum.VETTED_SAFE.value,
+                                SegmentVettingStatusEnum.VETTED_RISKY.value]
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
             "segment_type": SegmentTypeEnum.VIDEO.value,
             "title": "test vetted safe only",
-            "vetting_status": [],
+            "vetting_status": all_vetting_statuses,
         }
         params = self.get_params(**payload)
         response = self.client.post(self._get_url(), dict(data=json.dumps(params)))
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         ctl = CustomSegment.objects.get(title=payload["title"])
         export = ctl.export
-        self.assertEqual(export.query["params"]["vetting_status"], [1])
+        for status in all_vetting_statuses:
+            with self.subTest(status):
+                self.assertIn(status, export.query["params"]["vetting_status"])
+
+    def test_create_regular_user_vetted_safe_only(self, mock_generate):
+        """
+        Test that if a user does not have the BUILD__CTL_ANY_VETTING_STATUS permission, that lists should be created
+        with results that are vetted safe only
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+            "title": "test vetted safe only",
+            "vetting_status": [SegmentVettingStatusEnum.VETTED_RISKY.value, SegmentVettingStatusEnum.NOT_VETTED.value],
+        }
+        params = self.get_params(**payload)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(params)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        export = ctl.export
+        self.assertEqual(export.query["params"]["vetting_status"], [SegmentVettingStatusEnum.VETTED_SAFE.value])
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
-        """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
+        """
+        Test that if a user does not have the BUILD__CTL_ANY_VETTING_STATUS permission, that lists should be updated
+        with results that are vetted safe only
+        :param mock_generate:
+        :return:
+        """
         user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
@@ -1169,7 +1204,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         payload = dict(
             id=segment.id,
             languages=["es"],
-            vetting_status=[0]
+            vetting_status=[SegmentVettingStatusEnum.NOT_VETTED.value]
         )
         params = self.get_params(**payload)
         with patch.object(CTLSerializer, "_start_segment_export_task") as mock_start_export:
@@ -1177,7 +1212,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         segment.refresh_from_db()
         export = segment.export
-        self.assertEqual(export.query["params"]["vetting_status"], [1])
+        self.assertEqual(export.query["params"]["vetting_status"], [SegmentVettingStatusEnum.VETTED_SAFE.value])
 
     def test_empty_channel_source_urls_deletes(self, mock_generate):
         """ Test that channel CTL being created during validation without valid source urls is deleted """
