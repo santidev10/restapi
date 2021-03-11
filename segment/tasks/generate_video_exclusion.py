@@ -17,6 +17,7 @@ from segment.models import CustomSegment
 from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
+from utils.exception import retry
 from utils.utils import chunks_generator
 from utils.brand_safety import map_score_threshold
 
@@ -27,6 +28,17 @@ LIMIT = 125000
 
 @celery_app.task
 def generate_video_exclusion(channel_ctl_id: int) -> str:
+    """
+    Wrapper for celery task decorator
+    :param channel_ctl_id: int
+    :return:
+    """
+    video_exclusion_s3_key = _generate_video_exclusion(channel_ctl_id)
+    return video_exclusion_s3_key
+
+
+@retry(delay=10)
+def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
     The video exclusion list is generated from the videos of the channels in channel_ctl. If a channel's video
@@ -72,9 +84,11 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
                 break
 
         all_results = (all_blocklist + all_videos)[:LIMIT]
-        video_exclusion_s3_key = _export_results(channel_ctl.s3, video_exclusion_fp, all_results)
+        video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, all_results)
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
+        # Raise for retry decorator
+        raise
     else:
         channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
         channel_ctl.save(update_fields=["statistics"])
@@ -120,7 +134,7 @@ def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> N
             container.append(video)
 
 
-def _export_results(s3, export_fp: str, results: List[Video]) -> str:
+def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Video]) -> str:
     """
     Write results to file and export to S3
     :param s3: S3Exporter
@@ -137,5 +151,8 @@ def _export_results(s3, export_fp: str, results: List[Video]) -> str:
         writer.writerow(["URL", "Title"])
         writer.writerows(rows)
     video_exclusion_s3_key = f"{uuid4()}.csv"
-    s3.export_file_to_s3(export_fp, video_exclusion_s3_key)
+    s3 = channel_ctl.s3
+    content_disposition = s3.get_content_disposition(f"{channel_ctl.title}_video_exclusion.csv")
+    s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
+                         extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
