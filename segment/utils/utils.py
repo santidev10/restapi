@@ -12,6 +12,7 @@ from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
 from segment.models.persistent.base import BasePersistentSegment
 from userprofile.constants import StaticPermissions
 
@@ -184,10 +185,9 @@ def set_user_perm_params(request, ctl_params):
     :param ctl_params: dict: Request body data used for CTL
     :return:
     """
-    # If user is not admin / vetting admin, force create vetted safe only
-    if not (request.user and request.user.has_permission(StaticPermissions.BUILD__CTL_EXPORT_ADMIN)) \
-            or not request.user.has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
-        ctl_params["vetting_status"] = [1]
+    # Force vetted safe only unless the user has perm for using any vetting status
+    if not request.user or not request.user.has_permission(StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS):
+        ctl_params["vetting_status"] = [SegmentVettingStatusEnum.VETTED_SAFE.value]
     return ctl_params
 
 
