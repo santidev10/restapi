@@ -10,6 +10,7 @@ from es_components.tests.utils import ESTestCase
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoExclusion
+from segment.models.utils.segment_exporter import SegmentExporter
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from segment.tasks.generate_video_exclusion import LIMIT
@@ -45,12 +46,12 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         # get_videos_for_channels values lists of lists
         if randomize is True:
             mock_return_values = [
-                [[self._video(blocklist=bool(random.randint(0, 1))) for _ in range(random.randint(10, 50))]]
+                [[self._video(blocklist=bool(random.randint(0, 1))) for _ in range(random.randint(10, 30))]]
                 for _ in range(len(mock_channel_ids))
             ]
         else:
             mock_return_values = [
-                [[self._video(blocklist=blocklist) for _ in range(random.randint(10, 50))]]
+                [[self._video(blocklist=blocklist) for _ in range(random.randint(10, 30))]]
                 for _ in range(len(mock_channel_ids))
             ]
         return mock_channel_ids, mock_return_values
@@ -60,10 +61,13 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test that file is exported correctly and results are saved """
         conn = self._create_bucket()
         mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
-        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values):
-            video_exclusion_filename = generate_video_exclusion(self.channel_ctl, mock_channel_ids)
+        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values),\
+                patch.object(SegmentExporter, "get_extract_export_ids", return_value=mock_channel_ids):
+            video_exclusion_filename = generate_video_exclusion(self.channel_ctl.id)
+        self.channel_ctl.refresh_from_db()
         lines = self._get_lines(conn, video_exclusion_filename)
         self.assertTrue(len(lines) > 1)
+        self.assertTrue(self.channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME])
 
     @mock_s3
     def test_results_truncated(self):
@@ -72,8 +76,9 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         mock_return_values = [
             [[self._video(blocklist=bool(random.randint(0, 1))) for _ in range(LIMIT + 1)]]
         ]
-        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values):
-            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl, [f"yt_channel_{next(int_iterator)}"])
+        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values),\
+                patch.object(SegmentExporter, "get_extract_export_ids", return_value=[f"yt_channel_{next(int_iterator)}"]):
+            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl.id)
         lines = self._get_lines(conn, video_exclusion_ctl)
         self.assertEqual(len(lines), LIMIT)
 

@@ -12,7 +12,9 @@ from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.models import Video
 from es_components.query_builder import QueryBuilder
+from saas import celery_app
 from segment.models import CustomSegment
+from segment.models.constants import VideoExclusion
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
 from utils.utils import chunks_generator
@@ -23,7 +25,8 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
-def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str]) -> str:
+@celery_app.task
+def generate_video_exclusion(channel_ctl_id: int) -> str:
     """
     Generate video exclusion list using channels from Channel CTL
     The video exclusion list is generated from the videos of the channels in channel_ctl. If a channel's video
@@ -32,12 +35,19 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
         brand safety score <= the score threshold of the channel_ctl. Lowest scores are prioritized
         e.g. channel_ctl was created with Suitable filter, all videos should have a score of less than Suitable
     Lower brand safety scores have priority of being on the list over higher brand safety scores
-    :param channel_ctl: Channel CTL that will be used as source channels to retrieve videos
-    :param channel_ids: Channels in channel_ctl
+
+    Lastly saves video exlcusion filename on channel_ctl statistics dict
+    :param channel_ctl_id: Channel CTL that will be used as source channels to retrieve videos
     :return:
     """
     all_blocklist = []
     all_videos = []
+    try:
+        channel_ctl = CustomSegment.objects.get(id=channel_ctl_id)
+        channel_ids = channel_ctl.s3.get_extract_export_ids()
+    except Exception:
+        logger.exception(f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
+        return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         score_threshold = map_score_threshold(channel_ctl.export.query["params"]["score_threshold"])
@@ -66,6 +76,8 @@ def generate_video_exclusion(channel_ctl: CustomSegment, channel_ids: List[str])
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
     else:
+        channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
+        channel_ctl.save(update_fields=["statistics"])
         return video_exclusion_s3_key
     finally:
         os.remove(video_exclusion_fp)

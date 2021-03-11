@@ -16,7 +16,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")
 STATISTICS_FIELDS_CHANNEL = ("subscribers", "likes", "dislikes", "views", "audited_videos", "items_count",
-                             "monthly_views", "monthly_subscribers", "average_brand_safety_score")
+                             "monthly_views", "monthly_subscribers", "average_brand_safety_score", "video_exclusion_filename")
 STATISTICS_FIELDS_VIDEO = ("items_count", "views", "likes", "dislikes", "monthly_views", "average_brand_safety_score",
                            "sentiment")
 
@@ -86,6 +86,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
                 "average_cpv": 0,
                 "average_cpm": 0,
                 "views": 0,
+                "video_exclusion_filename": None,
                 "monthly_views": 0,
                 "monthly_subscribers": 0,
                 "average_brand_safety_score": 0,

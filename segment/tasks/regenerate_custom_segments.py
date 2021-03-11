@@ -52,7 +52,10 @@ def regenerate_custom_segments():
         export = segment.export
         size = segment.config.ADMIN_LIST_SIZE
         results = generate_segment(segment, export.query["body"], size, add_uuid=False)
-        segment.statistics = results["statistics"]
+        segment.statistics = {
+            **(segment.statistics or {}),
+            **results["statistics"]
+        }
         segment.save()
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
@@ -60,9 +63,5 @@ def regenerate_custom_segments():
             export.admin_filename = results["admin_s3_key"]
         export.save()
 
-        if segment.statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME):
-            try:
-                source_ids = segment.s3.get_extract_export_ids()
-                generate_video_exclusion(segment, source_ids)
-            except Exception:
-                logger.exception(f"Exception regenerating video exclusion for: {segment.id}")
+        if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+            generate_video_exclusion(segment)
