@@ -577,11 +577,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         [setattr(segment, key, False) for key in set_false]
         segment.audit_id = None
         segment.statistics = {}
+        segment.params[VideoExclusion.WITH_VIDEO_EXCLUSION] = False
         if hasattr(segment, "export"):
             segment.export.delete()
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
-        segment.save(update_fields=[*set_false, "audit_id", "statistics"])
+        segment.save(update_fields=[*set_false, "audit_id", "statistics", "params"])
 
 
 class CTLWithoutDownloadUrlSerializer(CTLSerializer):
