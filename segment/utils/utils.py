@@ -191,7 +191,7 @@ def set_user_perm_params(request, ctl_params):
     return ctl_params
 
 
-def delete_related(segment, *_, **__):
+def delete_related(segment, *_, delete_ctl=True, **__):
     """ Delete CTL and related objects in case of exceptions while creating ctl """
 
     def _delete_audit(audit_id):
@@ -207,7 +207,8 @@ def delete_related(segment, *_, **__):
             return
     _delete_audit(segment.audit_id)
     _delete_audit(segment.params.get("meta_audit_id"))
-    segment.delete()
+    if delete_ctl:
+        segment.delete()
 
 
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):
