@@ -2,7 +2,6 @@ from typing import List
 
 from django.db import models
 
-from userprofile.constants import UserSettingsKey
 from userprofile.constants import StaticPermissions
 
 
@@ -18,8 +17,7 @@ class UserRelatedManagerMixin:
 
     def __filter_by_user(self, queryset: models.QuerySet, user):
         if self.__is_account_filter_applicable(user):
-            account_ids = user.get_aw_settings() \
-                .get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            account_ids = user.get_visible_accounts_list()
             queryset = self.__filter_by_account_ids(queryset, account_ids)
         return queryset
 

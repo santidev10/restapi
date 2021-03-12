@@ -4,7 +4,6 @@ from rest_framework.views import APIView
 
 from aw_reporting.models import Account
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 
 
 class AccountCreationByAccountAPIView(APIView):
@@ -12,11 +11,9 @@ class AccountCreationByAccountAPIView(APIView):
 
     def get(self, request, account_id):
         user = request.user
-        user_settings = user.get_aw_settings()
         accounts_queryset = Account.objects.all()
         if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(
-                UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = user.get_visible_accounts_list()
             accounts_queryset = accounts_queryset \
                 .filter(id__in=visible_accounts)
         try:

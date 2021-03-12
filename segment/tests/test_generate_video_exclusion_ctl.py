@@ -3,6 +3,7 @@ import random
 
 import boto3
 from django.conf import settings
+from elasticsearch.exceptions import ConnectionError
 from moto import mock_s3
 
 from es_components.models import Video
@@ -20,7 +21,10 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
-        self.channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, owner=None)
+        self.channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, params={
+            VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
+            VideoExclusion.WITH_VIDEO_EXCLUSION: True,
+        })
         CustomSegmentFileUpload.objects.create(segment=self.channel_ctl, query=dict(params={"score_threshold": 4}))
 
     def _create_bucket(self):
@@ -74,13 +78,25 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         """ Test that results are truncated at limit """
         conn = self._create_bucket()
         mock_return_values = [
-            [[self._video(blocklist=bool(random.randint(0, 1))) for _ in range(LIMIT + 1)]]
+            [self._video(blocklist=bool(random.randint(0, 1))) for _ in range(LIMIT + 1)]
         ]
-        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", side_effect=mock_return_values),\
+        with patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", return_value=mock_return_values),\
                 patch.object(SegmentExporter, "get_extract_export_ids", return_value=[f"yt_channel_{next(int_iterator)}"]):
-            video_exclusion_ctl = generate_video_exclusion(self.channel_ctl.id)
-        lines = self._get_lines(conn, video_exclusion_ctl)
+            video_exclusion_ctl_filename = generate_video_exclusion(self.channel_ctl.id)
+        lines = self._get_lines(conn, video_exclusion_ctl_filename)
         self.assertEqual(len(lines), LIMIT)
+
+    @mock_s3
+    def test_retry(self):
+        """ Test task is retried """
+        mock_return_values = [
+            [self._video()]
+        ]
+        with patch.object(SegmentExporter, "get_extract_export_ids", return_value=[f"yt_channel_{next(int_iterator)}"]),\
+                patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", return_value=mock_return_values), \
+                patch("segment.tasks.generate_video_exclusion._export_results", side_effect=[ConnectionError, None]) as mock_export:
+            generate_video_exclusion(self.channel_ctl.id)
+        self.assertTrue(mock_export.call_count > 1)
 
     def _video(self, blocklist=False):
         video = Video(f"video_{next(int_iterator)}")

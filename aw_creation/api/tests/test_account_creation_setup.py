@@ -33,7 +33,6 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
-from userprofile.constants import UserSettingsKey
 from userprofile.constants import StaticPermissions
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.generic_test import generic_test

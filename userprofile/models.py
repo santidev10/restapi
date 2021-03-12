@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_settings():
     return {
-        UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
+        UserSettingsKey.VISIBLE_ACCOUNTS: [],
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     }
 
@@ -175,6 +175,23 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         return self.first_name
 
+    def get_visible_accounts_list(self):
+        """
+        Only use the MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT permission to show/hide the demo account
+        """
+        result = []
+        aw_settings = dict(**self.aw_settings)
+        if UserSettingsKey.VISIBLE_ACCOUNTS in aw_settings:
+            result = aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS]
+
+        # Ignore demo account from aw_settings
+        if DEMO_ACCOUNT_ID in result:
+            result.remove(DEMO_ACCOUNT_ID)
+
+        if self.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT):
+            result.insert(0, DEMO_ACCOUNT_ID)
+        return result
+
     def get_aw_settings(self):
         aw_settings = dict(**self.aw_settings)
         for default_settings_key, default_settings_value in get_default_settings().items():
@@ -261,6 +278,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST,  False,  "Delete Channel Lists"],
         [StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,    False,  "Create Video Lists"],
         [StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST,    False,  "Delete Video Lists"],
+        [StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS,   False,  "Create/Update CTLs with any Vetting Status"],
         [StaticPermissions.BUILD__CTL_FEATURE_LIST,         False,  "Feature / Unfeature List"],
         [StaticPermissions.BUILD__CTL_EXPORT_BASIC,         False,  "Export (basic)"],
         [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],

@@ -118,7 +118,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         item = response.data["items"][0]
         self.assertNotIn("download_url", item)
         serializer = CTLWithoutDownloadUrlSerializer()
-        self.assertEqual(set(serializer.fields.keys()), {*item.keys(), VideoExclusion.WITH_VIDEO_EXCLUSION})
+        self.assertEqual(set(serializer.fields.keys()), set(item.keys()))
 
     def test_fields_present(self):
         self.create_admin_user()
@@ -135,4 +135,4 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         serializer = CTLSerializer()
         for item in data.get("items"):
             with self.subTest(item):
-                self.assertEqual(set(serializer.fields.keys()), {*item.keys(), VideoExclusion.WITH_VIDEO_EXCLUSION})
+                self.assertEqual(set(serializer.fields.keys()), {*item.keys()})

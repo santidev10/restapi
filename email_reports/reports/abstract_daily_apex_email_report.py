@@ -12,7 +12,6 @@ from django.core.mail import EmailMessage
 from aw_reporting.models import Campaign
 from aw_reporting.models import SalesForceGoalType
 from email_reports.reports.base import BaseEmailReport
-from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -101,7 +100,7 @@ class AbstractDailyApexEmailReport(BaseEmailReport):
         get the visible accounts for the supplied user
         :return:
         """
-        return self.user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        return self.user.get_visible_accounts_list()
 
     def _get_campaign_ids(self):
         """
