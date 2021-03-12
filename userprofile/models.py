@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_settings():
     return {
-        UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
+        UserSettingsKey.VISIBLE_ACCOUNTS: [],
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     }
 
@@ -174,6 +174,23 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         Returns the short name for the user
         """
         return self.first_name
+
+    def get_visible_accounts_list(self):
+        """
+        Only use the MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT permission to show/hide the demo account
+        """
+        result = []
+        aw_settings = dict(**self.aw_settings)
+        if UserSettingsKey.VISIBLE_ACCOUNTS in aw_settings:
+            result = aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS]
+
+        # Ignore demo account from aw_settings
+        if DEMO_ACCOUNT_ID in result:
+            result.remove(DEMO_ACCOUNT_ID)
+
+        if self.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT):
+            result.insert(0, DEMO_ACCOUNT_ID)
+        return result
 
     def get_aw_settings(self):
         aw_settings = dict(**self.aw_settings)

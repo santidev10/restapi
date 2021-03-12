@@ -30,7 +30,6 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.constants import CONVERSIONS
-from userprofile.constants import UserSettingsKey
 from userprofile.constants import StaticPermissions
 
 
@@ -57,9 +56,8 @@ class DashboardAccountCreationOverviewAPIView(APIView):
 
     def _get_account_creation(self, pk):
         account_creation_queryset = AccountCreation.objects.all()
-        user_settings = self.request.user.get_aw_settings()
         if not self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = self.request.user.get_visible_accounts_list()
             account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
         try:
             return account_creation_queryset.get(pk=pk)
