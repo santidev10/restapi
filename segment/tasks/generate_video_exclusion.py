@@ -112,6 +112,7 @@ def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter
         QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
         & QueryBuilder().build().must().exists().field(overall_score_field).get()
         & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
+        & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
     )
     yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=2000, source=video_source)
 
