@@ -37,7 +37,7 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
     return video_exclusion_s3_key
 
 
-@retry(delay=10)
+@retry(count=5, delay=10)
 def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
@@ -113,7 +113,7 @@ def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter
         & QueryBuilder().build().must().exists().field(overall_score_field).get()
         & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
     )
-    yield from bulk_search(Video, query, None, MAIN_ID_FIELD, batch_size=2000, source=video_source)
+    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=2000, source=video_source)
 
 
 def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
