@@ -15,7 +15,7 @@ def remove_old_permissions(apps, schema_editor):
     :param schema_editor:
     :return:
     """
-    UserProfile = apps.get("userprofile", "UserProfile")
+    UserProfile = apps.get_model("userprofile", "UserProfile")
     for user in UserProfile.objects.all():
         should_save = False
         for perm in PERMS_TO_REMOVE:
@@ -34,5 +34,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(remove_old_permissions)
+        migrations.RunPython(remove_old_permissions),
     ]
