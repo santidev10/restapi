@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements
-@retry(count=10, delay=5, failed_callback=delete_related)
+@retry(count=10, delay=5, failed_callback=delete_related, failed_kwargs=dict(delete_ctl=False))
 def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3_key=None, options=None, add_uuid=False, with_audit=False):
     """
     Helper method to create segments
@@ -65,6 +65,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
     except Exception:
         logger.exception("Error trying to retrieve source list for "
                          "segment: %s, segment_type: %s", segment.title, segment.segment_type)
+        raise CTLGenerateException("Unable to process source list")
     try:
         sort = sort or [segment.config.SORT_KEY]
         seen = 0
@@ -156,6 +157,8 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
                 "admin_s3_key": admin_s3_key,
             }
         return results
+    except Exception:
+        raise CTLGenerateException("Unable to generate export")
     finally:
         os.remove(admin_filename)
         if segment.is_vetting is False:
@@ -180,3 +183,11 @@ def with_source_generator(segment, source_ids: set, query_dict: dict, sort: list
 
 class MaxItemsException(Exception):
     pass
+
+
+class CTLGenerateException(Exception):
+    message = None
+
+    def __init__(self, message):
+        super().__init__()
+        self.message = message

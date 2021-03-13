@@ -7,6 +7,7 @@ from django.utils import timezone
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.tasks.generate_segment import generate_segment
+from segment.tasks.generate_segment import CTLGenerateException
 from segment.utils.send_export_email import send_export_email
 from userprofile.constants import StaticPermissions
 
@@ -15,8 +16,9 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task
 def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False):
+    error_message = None
+    segment = CustomSegment.objects.get(id=segment_id)
     try:
-        segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
         size = segment.config.ADMIN_LIST_SIZE
         args = (segment, export.query["body"], size)
@@ -55,7 +57,14 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
             generate_custom_segment(segment_id, results=results, tries=tries)
         else:
             raise e
-# pylint: disable=broad-except
+
+    except CTLGenerateException as e:
+        logger.exception(f"Error in generate_segment with id: {segment_id}")
+        error_message = e.message
     except Exception:
-        logger.exception(f"Error in generate_custom_segment task with id: {segment_id}")
-# pylint: enable=broad-except
+        logger.exception(f"Uncaught error in generate_custom_segment task with id: {segment_id}")
+        error_message = "Unable to generate export"
+    finally:
+        if error_message:
+            segment.statistics["error"] = error_message
+            segment.save(update_fields=["statistics"])
