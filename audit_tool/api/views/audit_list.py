@@ -14,7 +14,7 @@ from userprofile.constants import StaticPermissions
 
 class AuditListApiView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE__READ),
     )
 
     def get(self, request):

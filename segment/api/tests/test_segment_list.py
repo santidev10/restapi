@@ -396,7 +396,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
         self.create_test_user(perms={
-            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_SEE_ALL: True,
         })
 
         test_user_1 = self._create_user()
@@ -430,8 +430,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual({item["id"] for item in response.data["items"]}, {seg_1.id, seg_3.id})
 
     def test_vetting_complete(self):
-        vetting_user = self.create_test_user(perms={
-            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
+        self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_SEE_ALL: True,
         })
 
         test_user_1 = self._create_user()
@@ -447,9 +447,9 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         AuditProcessor.objects.create(id=seg_2.audit_id)
 
         response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         data["items"].sort(key=lambda x: x["id"])
-        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(data["items_count"], 3)
         self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
         self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
