@@ -1143,12 +1143,12 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_any_vetting_status_permission(self, mock_generate):
         """
-        the BUILD__CTL_ANY_VETTING_STATUS permission should allow all vetting statuses
+        the BUILD__CTL_CUSTOM_VETTING_DATA permission should allow all vetting statuses
         :param mock_generate:
         :return:
         """
         self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
-                                     StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS: True})
+                                     StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA: True})
         all_vetting_statuses = [SegmentVettingStatusEnum.NOT_VETTED.value, SegmentVettingStatusEnum.VETTED_SAFE.value,
                                 SegmentVettingStatusEnum.VETTED_RISKY.value]
         payload = {
@@ -1169,7 +1169,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_create_regular_user_vetted_safe_only(self, mock_generate):
         """
-        Test that if a user does not have the BUILD__CTL_ANY_VETTING_STATUS permission, that lists should be created
+        Test that if a user does not have the BUILD__CTL_CUSTOM_VETTING_DATA permission, that lists should be created
         with results that are vetted safe only
         """
         self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
@@ -1189,7 +1189,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
         """
-        Test that if a user does not have the BUILD__CTL_ANY_VETTING_STATUS permission, that lists should be updated
+        Test that if a user does not have the BUILD__CTL_CUSTOM_VETTING_DATA permission, that lists should be updated
         with results that are vetted safe only
         :param mock_generate:
         :return:

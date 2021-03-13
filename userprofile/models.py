@@ -261,7 +261,6 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST,  False,  "Delete Channel Lists"],
         [StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,    False,  "Create Video Lists"],
         [StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST,    False,  "Delete Video Lists"],
-        [StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS,   False,  "Create/Update CTLs with any Vetting Status"],
         [StaticPermissions.BUILD__CTL_FEATURE_LIST,         False,  "Feature / Unfeature List"],
         [StaticPermissions.BUILD__CTL_EXPORT_BASIC,         False,  "Export (basic)"],
         [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],

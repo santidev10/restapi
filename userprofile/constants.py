@@ -83,7 +83,6 @@ class StaticPermissions:
     BUILD__CTL_CREATE_VIDEO_LIST = "build.ctl_create_video_list"
     BUILD__CTL_DELETE_VIDEO_LIST = "build.ctl_delete_video_list"
 
-    BUILD__CTL_ANY_VETTING_STATUS = "build.ctl_any_vetting_status"
     BUILD__CTL_FEATURE_LIST = "build.ctl_feature_list"
     BUILD__CTL_EXPORT_BASIC = "build.ctl_export_basic"
     BUILD__CTL_EXPORT_ADMIN = "build.ctl_export_admin"

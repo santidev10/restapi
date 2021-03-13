@@ -4,22 +4,27 @@ from django.db import migrations
 
 
 BUILD__CTL_VET_ADMIN = "build.ctl_vet_admin"
+BUILD__CTL_ANY_VETTING_STATUS = "build.ctl_any_vetting_status"
+PERMS_TO_REMOVE = (BUILD__CTL_VET_ADMIN, BUILD__CTL_ANY_VETTING_STATUS)
 
 
-def remove_vet_admin_permission(apps, schema_editor):
+def remove_old_permissions(apps, schema_editor):
     """
-    remove the "build.ctl_vet_admin" permission
+    remove the old permissions above
     :param apps:
     :param schema_editor:
     :return:
     """
     UserProfile = apps.get("userprofile", "UserProfile")
     for user in UserProfile.objects.all():
-        vet_admin_perm = user.perms.pop(BUILD__CTL_VET_ADMIN, None)
-        if vet_admin_perm is None:
-            continue
+        should_save = False
+        for perm in PERMS_TO_REMOVE:
+            user_perm = user.perms.pop(perm, None)
+            if user_perm is not None:
+                should_save = True
 
-        user.save(update_fields=["perms"])
+        if should_save:
+            user.save(update_fields=["perms"])
 
 
 class Migration(migrations.Migration):
@@ -29,5 +34,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(remove_vet_admin_permission)
+        migrations.RunPython(remove_old_permissions)
     ]
