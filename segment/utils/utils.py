@@ -186,12 +186,12 @@ def set_user_perm_params(request, ctl_params):
     :return:
     """
     # Force vetted safe only unless the user has perm for using any vetting status
-    if not request.user or not request.user.has_permission(StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS):
+    if not request.user or not request.user.has_permission(StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA):
         ctl_params["vetting_status"] = [SegmentVettingStatusEnum.VETTED_SAFE.value]
     return ctl_params
 
 
-def delete_related(segment, *_, **__):
+def delete_related(segment, *_, delete_ctl=True, **__):
     """ Delete CTL and related objects in case of exceptions while creating ctl """
 
     def _delete_audit(audit_id):
@@ -207,7 +207,8 @@ def delete_related(segment, *_, **__):
             return
     _delete_audit(segment.audit_id)
     _delete_audit(segment.params.get("meta_audit_id"))
-    segment.delete()
+    if delete_ctl:
+        segment.delete()
 
 
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):

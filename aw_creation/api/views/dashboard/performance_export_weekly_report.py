@@ -6,7 +6,6 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
-from userprofile.constants import UserSettingsKey
 from utils.views import xlsx_response
 from userprofile.constants import StaticPermissions
 
@@ -32,9 +31,8 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
     def post(self, request, pk, **_):
         user = request.user
         queryset = AccountCreation.objects.all()
-        user_settings = user.get_aw_settings()
         if not user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = user.get_visible_accounts_list()
             queryset = queryset.filter(account_id__in=visible_accounts)
         try:
             item = queryset.get(pk=pk)

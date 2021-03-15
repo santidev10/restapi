@@ -10,7 +10,6 @@ from aw_reporting.charts.dashboard_charts import DeliveryChart
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import MANAGED_SERVICE_DELIVERY_DATA
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 
 
 class DashboardPerformanceChartItemsApiView(APIView):
@@ -40,9 +39,8 @@ class DashboardPerformanceChartItemsApiView(APIView):
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get("dimension")
         queryset = AccountCreation.objects.all()
-        user_settings = request.user.get_aw_settings()
         if not request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = request.user.get_visible_accounts_list()
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:
             item = queryset.get(pk=pk)

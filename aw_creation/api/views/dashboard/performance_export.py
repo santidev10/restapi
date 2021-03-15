@@ -24,7 +24,6 @@ from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
-from userprofile.constants import UserSettingsKey
 from userprofile.constants import StaticPermissions
 from utils.api.exceptions import BadRequestError
 from utils.api.exceptions import PermissionsError
@@ -48,10 +47,9 @@ class DashboardPerformanceExportApiView(APIView):
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
-        user_settings = request.user.get_aw_settings()
         visible_all_accounts = request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS)
         if not visible_all_accounts:
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
+            visible_accounts = request.user.get_visible_accounts_list()
             queryset = queryset.filter(account__id__in=visible_accounts)
         try:
             return queryset.get(pk=pk)

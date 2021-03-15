@@ -10,14 +10,14 @@ class DashboardListAPIView(APIView):
     DASHBOARD_PERMISSIONS = {
         StaticPermissions.RESEARCH: Dashboards.INDUSTRY_TOP_PERFORMERS,
         StaticPermissions.PACING_REPORT: Dashboards.PACING_ALERTS,
-        StaticPermissions.AUDIT_QUEUE: Dashboards.AUDIT_TOOL,
+        StaticPermissions.AUDIT_QUEUE__READ: Dashboards.AUDIT_TOOL,
         StaticPermissions.MANAGED_SERVICE: Dashboards.PERFORMANCE,
     }
     # Mapping of subdomain feature names
     DOMAIN_FEATURE_EXCLUSIONS = {
         "Analytics > Managed Service": StaticPermissions.MANAGED_SERVICE,
         "Research": StaticPermissions.RESEARCH,
-        "Tools > Audit Queue": StaticPermissions.AUDIT_QUEUE,
+        "Tools > Audit Queue": StaticPermissions.AUDIT_QUEUE__READ,
         "Tools > Pacing Report": StaticPermissions.PACING_REPORT,
     }
 
