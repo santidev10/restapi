@@ -1,6 +1,7 @@
 import datetime
 import urllib
 from datetime import timedelta
+from datetime import datetime
 from urllib.parse import urlencode
 from time import sleep
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from rest_framework.status import HTTP_200_OK
 from audit_tool.models import IASHistory
 from brand_safety import constants
 from channel.api.urls.names import ChannelPathName
+from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
@@ -706,7 +708,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         latest_ias = IASHistory.objects.create(name="", started=now, completed=now)
         channel_outdated_ias = Channel(f"channel_{next(int_iterator)}")
         channel_outdated_ias.populate_general_data(title="test")
-        channel_outdated_ias.populate_ias_data(ias_verified=now - datetime.timedelta(days=1))
+        channel_outdated_ias.populate_ias_data(ias_verified=now - timedelta(days=1))
         channel_outdated_ias.populate_stats(total_videos_count=1)
 
         channel_current_ias = Channel(f"channel_{next(int_iterator)}")
@@ -993,3 +995,24 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         response = self.client.get(filtered_url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(verified), response.data.get("items_count"))
+
+    def test_auth_channel_filter(self):
+        """ Tests that auth channel filter only pulls channels with matching AuthChannel object and active token """
+        self.create_admin_user()
+
+        manager = ChannelManager(upsert_sections=[Sections.MAIN, Sections.GENERAL_DATA,])
+        channels = manager.get_or_create(ids=[f"channel_{next(int_iterator)}" for _ in range(5)])
+        manager.upsert(channels)
+        ids = [item.main.id for item in channels]
+
+        AuthChannel.objects.create(channel_id=ids[0], token_revocation=None)
+        AuthChannel.objects.create(channel_id=ids[2], token_revocation=datetime.now())
+        AuthChannel.objects.create(channel_id=ids[4], token_revocation=None)
+
+        filtered_url = self.url + "?" + urllib.parse.urlencode({
+            "auth_channel": "true",
+        })
+        with patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            response = self.client.get(filtered_url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 2)
