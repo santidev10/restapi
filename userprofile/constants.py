@@ -91,6 +91,7 @@ class StaticPermissions:
     BUILD__CTL_CUSTOM_VETTING_DATA = "build.ctl_custom_vetting_data"
     BUILD__CTL_REPORT_VETTING_ISSUE = "build.ctl_report_vetting_issue"
     BUILD__CTL_RESOLVE_LIMBO_STATE = "build.ctl_resolve_limbo_state"
+    BUILD__CTL_FROM_CUSTOM_LIST = "build.ctl_from_custom_list"
 
     BUILD__CTL_VET_EXPORT = "build.ctl_vet_export"
     BUILD__CTL_VIDEO_EXCLUSION = "build.ctl_video_exclusion"

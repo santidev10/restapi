@@ -431,14 +431,15 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(file.name, source.name)
 
     @mock_s3
-    def test_create_with_source_limit(self, mock_generate):
-        """ Test that source list is limited to size """
+    def test_create_with_source_limit_success(self, mock_generate):
+        """ Test that source list is limited to size, also test permissions on non-admin user"""
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        self.create_admin_user()
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
+                                     StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST: True})
         payload = {
             "title": "test_create_with_source_success_limit",
-            "segment_type": 1,
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
         }
         payload = self.get_params(**payload)
         file = BytesIO()
@@ -459,6 +460,34 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         exported_soure_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
             .get()["Body"].read().decode('utf-8').split()
         self.assertEqual(len(exported_soure_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
+
+    @mock_s3
+    def test_source_file_permission_denied(self, mock_generate):
+        """
+        test that access is denied if the user creates a CTL from source list without the proper permission
+        :param mock_generate:
+        :return:
+        """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST: False})
+        payload = {
+            "title": "test_create_with_source_success_limit",
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.write(b"\n".join([f"https://www.youtube.com/channel/{str(i).zfill(24)}".encode("utf-8")
+                               for i in range(30)]))
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """

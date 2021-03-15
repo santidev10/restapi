@@ -269,6 +269,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA,  False,  "Use CTL Vet Status Filters, See CTL Vetting Status"],
         [StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE, False,  "Report CTL Vetting issue"],
         [StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE,  False,  "Resolve Limbo State"],
+        [StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST,     False,  "Create CTL From a Custom List"],
 
         [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
         [StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION,      False,  "Create and export Video Exclusion CTL for Channel CTL"],
