@@ -62,6 +62,12 @@ from utils.unittests.xlsx import get_sheet_from_response
 
 
 class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        recreate_test_demo_data()
+
     def _get_url(self, account_creation_id):
         return reverse(Name.Dashboard.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id,))
@@ -772,7 +778,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
 
     def test_success_for_demo_account(self):
-        recreate_test_demo_data()
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
@@ -782,7 +787,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_header(self):
-        recreate_test_demo_data()
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
@@ -879,7 +883,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertGreater(view_rate, 0)
 
     def test_demo_account_campaigns(self):
-        recreate_test_demo_data()
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
@@ -958,7 +961,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
 
     def test_demo_cta(self):
-        recreate_test_demo_data()
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,

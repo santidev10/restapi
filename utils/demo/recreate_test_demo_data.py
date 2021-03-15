@@ -77,9 +77,8 @@ int_iterator = itertools.count(3000, 1)
 
 
 def recreate_test_demo_data():
-    with transaction.atomic():
-        remove_data()
-        create_data()
+    remove_data()
+    create_data()
 
 
 def remove_data():
