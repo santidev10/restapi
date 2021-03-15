@@ -11,6 +11,7 @@ from channel.constants import EXISTS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import TERMS_FILTER
+from channel.models import AuthChannel
 from channel.utils import ChannelGroupParamAdapter
 from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
@@ -54,6 +55,7 @@ class ChannelESFilterBackend(ESFilterBackend):
         """
         return {
             "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
+            "auth_channel_ids": AuthChannel.get_auth_channel_ids(),
         }
 
     @staticmethod
@@ -168,6 +170,7 @@ class ChannelListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsM
         """
         return {
             "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
+            "auth_channel_ids": AuthChannel.get_auth_channel_ids(),
         }
 
     def get_queryset(self):

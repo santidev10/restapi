@@ -1,4 +1,5 @@
 import mock
+from datetime import datetime
 from datetime import timedelta
 
 from django.utils import timezone
@@ -7,6 +8,7 @@ from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import IASHistory
 from channel.api.urls.names import ChannelPathName
+from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.tests.utils import ESTestCase
@@ -49,7 +51,7 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
                         "analytics.age65_:min", "analytics.gender_female:max", "analytics.gender_female:min",
                         "analytics.gender_male:max", "analytics.gender_male:min", "analytics.gender_other:max",
                         "analytics.gender_other:min", "brand_safety", "custom_properties.is_tracked",
-                        "custom_properties.preferred", "general_data.country_code", "general_data.iab_categories",
+                        "auth_channel", "general_data.country_code", "general_data.iab_categories",
                         "general_data.top_lang_code", "monetization.is_monetizable:exists",
                         "stats.last_30day_subscribers:max", "stats.last_30day_subscribers:min",
                         "stats.last_30day_views:max", "stats.last_30day_views:min", "stats.subscribers:max",
@@ -98,3 +100,29 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         ias_verified_agg = response.data.get("aggregations", {}).get("ias_data.ias_verified:exists")
         self.assertEqual(len(verified), ias_verified_agg)
+
+    def test_auth_channels_aggregation(self):
+        """
+        test that auth channel aggregations filters based on token revocation status in AuthChannel model
+        :return:
+        """
+        self.create_admin_user()
+
+        manager = ChannelManager(upsert_sections=[Sections.MAIN, Sections.GENERAL_DATA, Sections.IAS_DATA])
+        channels = manager.get_or_create(ids=[f"channel_{next(int_iterator)}" for _ in range(5)])
+        manager.upsert(channels)
+        ids = [item.main.id for item in channels]
+
+        AuthChannel.objects.create(channel_id=ids[0], token_revocation=None)
+        AuthChannel.objects.create(channel_id=ids[2], token_revocation=datetime.now())
+        AuthChannel.objects.create(channel_id=ids[4], token_revocation=None)
+
+        params = dict(
+            aggregations="auth_channel"
+        )
+        url = self._get_url(params)
+        with mock.patch.object(ChannelManager, "forced_filters", return_value=Q()):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        auth_channel_agg = response.data.get("aggregations", {}).get("auth_channel")
+        self.assertEqual(auth_channel_agg['buckets'][0]['doc_count'], 2)
