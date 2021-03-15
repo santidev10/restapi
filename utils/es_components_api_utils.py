@@ -229,6 +229,8 @@ class QueryGenerator:
                                 }
                             })
                     filters.append(query)
+                elif field == "auth_channel":
+                    self.adapt_auth_channel_filters(filters)
                 else:
                     filters.append(
                         QueryBuilder().build().must().terms().field(field).value(value).get()
@@ -312,6 +314,13 @@ class QueryGenerator:
             timestamp = self.context.get("ias_last_ingested_timestamp")
             query = get_ias_verified_exists_filter(timestamp)
             filters.append(query)
+        return
+
+    def adapt_auth_channel_filters(self, filters):
+        """ adds filter for channels with matching AuthChannel object and active token """
+        auth_channel_ids = self.context.get("auth_channel_ids")
+        query = QueryBuilder().build().must().terms().field("main.id").value(auth_channel_ids).get()
+        filters.append(query)
         return
 
     @staticmethod
