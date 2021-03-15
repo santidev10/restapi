@@ -12,12 +12,13 @@ from utils.views import get_object
 
 class AuditAdminAPIView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET_ADMIN),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE),
     )
 
     def patch(self, request, *_, **__):
         """
         Update vetting items that should be re-vetted
+        this is the "report vetting issue" endpoint
         """
         data = request.data
         audit_id = data["audit_id"]

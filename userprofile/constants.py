@@ -55,7 +55,7 @@ class StaticPermissions:
     ADS_ANALYZER = "ads_analyzer"
     ADS_ANALYZER__RECIPIENTS = "ads_analyzer.recipients"
 
-    AUDIT_QUEUE = "audit_queue"
+    AUDIT_QUEUE__READ = "audit_queue"
     AUDIT_QUEUE__CREATE = "audit_queue.create"
     AUDIT_QUEUE__SET_PRIORITY = "audit_queue.set_priority"
 
@@ -83,13 +83,15 @@ class StaticPermissions:
     BUILD__CTL_CREATE_VIDEO_LIST = "build.ctl_create_video_list"
     BUILD__CTL_DELETE_VIDEO_LIST = "build.ctl_delete_video_list"
 
-    BUILD__CTL_ANY_VETTING_STATUS = "build.ctl_any_vetting_status"
     BUILD__CTL_FEATURE_LIST = "build.ctl_feature_list"
     BUILD__CTL_EXPORT_BASIC = "build.ctl_export_basic"
     BUILD__CTL_EXPORT_ADMIN = "build.ctl_export_admin"
     BUILD__CTL_SEE_ALL = "build.ctl_see_all"
     BUILD__CTL_VET = "build.ctl_vet"
-    BUILD__CTL_VET_ADMIN = "build.ctl_vet_admin"
+    BUILD__CTL_CUSTOM_VETTING_DATA = "build.ctl_custom_vetting_data"
+    BUILD__CTL_REPORT_VETTING_ISSUE = "build.ctl_report_vetting_issue"
+    BUILD__CTL_RESOLVE_LIMBO_STATE = "build.ctl_resolve_limbo_state"
+
     BUILD__CTL_VET_EXPORT = "build.ctl_vet_export"
     BUILD__CTL_VIDEO_EXCLUSION = "build.ctl_video_exclusion"
 

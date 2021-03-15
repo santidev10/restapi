@@ -29,7 +29,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                        "language", "vetting_id", "suitable", "language")
 
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET, StaticPermissions.BUILD__CTL_VET_ADMIN),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET),
     )
 
     def get(self, request, *args, **kwargs):

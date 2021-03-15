@@ -22,6 +22,7 @@ from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.models import CustomSegment
+from segment.models.constants import SegmentTypeEnum
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -371,14 +372,14 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual({"Automotive", "Scooters", "Auto Rentals", "Industries"}, set(updated_video.task_us_data.iab_categories))
 
     def test_patch_admin_channel(self, mock_generate_vetted):
-        """ Test admin vetting is final and resolves limbo_status """
+        """ Test build.ctl_resolve_limbo_state is final and resolves limbo_status """
         user = self.create_test_user(perms={
-            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE: True,
+            StaticPermissions.BUILD__CTL_VET: True,
         })
         audit = AuditProcessor.objects.create(audit_type=1)
-        # CustomSegment segment_type=1 for channels
-        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
-                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        CustomSegment.objects.create(owner=user, title="test", segment_type=SegmentTypeEnum.CHANNEL.value,
+                                     audit_id=audit.id, list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
         channel = Channel(audit_item_yt_id)
         channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
@@ -424,12 +425,12 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def test_patch_admin_video(self, mock_generate_vetted):
         """ Test admin vetting is final and resolves limbo_status """
         user = self.create_test_user(perms={
-            StaticPermissions.BUILD__CTL_VET_ADMIN: True,
+            StaticPermissions.BUILD__CTL_VET: True,
+            StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE: True,
         })
         audit = AuditProcessor.objects.create(audit_type=1)
-        # CustomSegment segment_type=0 for videos
-        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
-                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        CustomSegment.objects.create(owner=user, title="test", segment_type=SegmentTypeEnum.VIDEO.value,
+                                     audit_id=audit.id, list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
         video = Video(
             main=dict(id=audit_item_yt_id),

@@ -13,6 +13,7 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
+from userprofile.models import StaticPermissions
 from saas.urls.namespaces import Namespace
 from segment.models import CustomSegmentVettedFileUpload
 from utils.unittests.reverse import reverse
@@ -60,7 +61,9 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         Admin reporting of vetting items should reset AuditProcessor
             completed and AuditVideoVet objects vetting fields
         """
-        user = self.create_admin_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE: True,
+        })
         now = timezone.now()
         audit, segment = self._create_segment_audit(
             user,
@@ -92,7 +95,9 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         Admin reporting of vetting items should reset AuditProcessor
             completed and AuditChannelVet vetting fields
         """
-        user = self.create_admin_user()
+        user = self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE: True,
+        })
         now = timezone.now()
         audit, segment = self._create_segment_audit(
             user,
@@ -120,7 +125,13 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertFalse(CustomSegmentVettedFileUpload.objects.filter(segment=segment).exists())
 
     def test_reject_permissions(self):
-        self.create_test_user()
+        """
+        user must be either an Admin, or have the BUILD__CTL_REPORT_VETTING_ISSUE permission
+        :return:
+        """
+        self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE: False,
+        })
         response = self.client.patch(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 

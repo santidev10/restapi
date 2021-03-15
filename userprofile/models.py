@@ -251,7 +251,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.ADS_ANALYZER,                    False,  "Ads Analyzer Read"],
         [StaticPermissions.ADS_ANALYZER__RECIPIENTS,        False,  "View all Ads Analyzer reports"],
 
-        [StaticPermissions.AUDIT_QUEUE,                     False,  "Audit Queue Read"],
+        [StaticPermissions.AUDIT_QUEUE__READ,               False,  "Audit Queue Read"],
         [StaticPermissions.AUDIT_QUEUE__CREATE,             False,  "Audit Queue Create"],
         [StaticPermissions.AUDIT_QUEUE__SET_PRIORITY,       False,  "Audit Queue Set Audit Priority"],
 
@@ -278,13 +278,15 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST,  False,  "Delete Channel Lists"],
         [StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST,    False,  "Create Video Lists"],
         [StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST,    False,  "Delete Video Lists"],
-        [StaticPermissions.BUILD__CTL_ANY_VETTING_STATUS,   False,  "Create/Update CTLs with any Vetting Status"],
         [StaticPermissions.BUILD__CTL_FEATURE_LIST,         False,  "Feature / Unfeature List"],
         [StaticPermissions.BUILD__CTL_EXPORT_BASIC,         False,  "Export (basic)"],
         [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],
         [StaticPermissions.BUILD__CTL_SEE_ALL,              False,  "See all Lists"],
         [StaticPermissions.BUILD__CTL_VET,                  False,  "Vet Stuff"],
-        [StaticPermissions.BUILD__CTL_VET_ADMIN,            False,  "Vet Admin"],
+        [StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA,  False,  "Use CTL Vet Status Filters, See CTL Vetting Status"],
+        [StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE, False,  "Report CTL Vetting issue"],
+        [StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE,  False,  "Resolve Limbo State"],
+
         [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
         [StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION,      False,  "Create and export Video Exclusion CTL for Channel CTL"],
 
