@@ -1016,3 +1016,5 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             response = self.client.get(filtered_url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data.get("items_count"), 2)
+        self.assertEqual(response.data['items'][0]['main']['id'], ids[0])
+        self.assertEqual(response.data['items'][1]['main']['id'], ids[4])

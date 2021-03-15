@@ -103,12 +103,11 @@ class ChannelAggregationsTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_auth_channels_aggregation(self):
         """
-        test that auth channel aggregations filters based on token revocation status in postgres
+        test that auth channel aggregations filters based on token revocation status in AuthChannel model
         :return:
         """
         self.create_admin_user()
 
-        now = timezone.now()
         manager = ChannelManager(upsert_sections=[Sections.MAIN, Sections.GENERAL_DATA, Sections.IAS_DATA])
         channels = manager.get_or_create(ids=[f"channel_{next(int_iterator)}" for _ in range(5)])
         manager.upsert(channels)
