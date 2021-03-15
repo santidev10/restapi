@@ -114,3 +114,8 @@ class S3Exporter(ABC):
     def download_file(cls, s3_key, fp):
         S3Exporter._s3().download_file(cls.bucket_name, s3_key, fp)
         return fp
+
+    @classmethod
+    def get_content_disposition(cls, filename):
+        content_disposition = 'attachment;filename="{filename}"'.format(filename=filename)
+        return content_disposition

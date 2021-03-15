@@ -9,6 +9,7 @@ from django.conf import settings
 from elasticsearch_dsl import Q
 from elasticsearch_dsl import Search
 
+from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.connections import init_es_connection
@@ -21,7 +22,6 @@ from saas.configs.celery import TaskTimeout
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from utils.lang import replace_apostrophes
 from utils.transform import populate_video_custom_captions
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,9 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
     for vid_lang_code, transcript_soup in top_5_transcripts.items():
         transcript_text = get_formatted_captions_from_soup(transcript_soup)
         if transcript_text != "":
-            AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
-                                               transcript=str(transcript_soup))
+            AuditVideoTranscript.update_or_create_with_parent(video_id=vid_id, lang_code=vid_lang_code,
+                                                              defaults={"source": SourceTypeEnum.CUSTOM.value,
+                                                                        "transcript": str(transcript_soup)})
             logger.info("VIDEO WITH ID %s HAS A CUSTOM TRANSCRIPT.", vid_id)
             transcripts_counter += 1
             transcript_texts.append(transcript_text)

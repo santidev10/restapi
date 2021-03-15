@@ -29,6 +29,7 @@ from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
 from segment.models.constants import VideoExclusion
 from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from segment.utils.query_builder import SegmentQueryBuilder
 from segment.utils.utils import delete_related
 from userprofile.models import UserProfile
@@ -85,12 +86,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     pending = SerializerMethodField()
     segment_type = SegmentTypeField()
     source_name = SerializerMethodField(read_only=True)
-    statistics = JSONField(read_only=True)
+    statistics = SerializerMethodField()
     title = CharField(max_length=255)
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
-    with_video_exclusion = BooleanField(write_only=True, required=False)
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """
@@ -139,6 +139,21 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             name = None
         return name
 
+    def get_statistics(self, obj: CustomSegment) -> dict:
+        statistics = obj.statistics
+        if obj.segment_type == SegmentTypeEnum.CHANNEL.value:
+            video_exclusion_filename = statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME, False)
+            # If params set but filename is unavailable, video exclusion ctl is being generated so
+            # serialize as None to represent "pending"
+            if obj.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
+                    and not video_exclusion_filename:
+                statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = None
+            else:
+                # Simply serialize with result of get call. If filename was set, then it is available for export.
+                # If not, then video_exclusion_filename will be False, which represents it is available for creation.
+                statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_filename
+        return statistics
+
     def validate_owner(self, owner_id: int) -> UserProfile:
         try:
             user = UserProfile.objects.get(id=owner_id)
@@ -164,19 +179,6 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             segment_type_repr = SegmentTypeEnum(segment_type).name.lower()
             raise ValidationError(f"A {segment_type_repr} target list with the title: {title} already exists.")
         return title
-
-    def validate_with_video_exclusion(self, with_video_exclusion):
-        """ with_video_exclusion is only allowed with channel CTL """
-        if self.initial_data["segment_type"] == SegmentTypeEnum.VIDEO.value and with_video_exclusion is True:
-            raise ValidationError("Video exclusion CTL can only be created with a Channel CTL.")
-        return with_video_exclusion
-
-    def to_internal_value(self, data):
-        data = super().to_internal_value(data)
-        params = data.get("params", {})
-        params[VideoExclusion.WITH_VIDEO_EXCLUSION] = data.pop(VideoExclusion.WITH_VIDEO_EXCLUSION, False)
-        data["params"] = params
-        return data
 
     def create(self, validated_data: dict) -> CustomSegment:
         """
@@ -214,6 +216,13 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         :param validated_data: dict
         :return:
         """
+        # Check only creating video exclusion ctl
+        video_exclusion_params = self.context.get("video_exclusion_params")
+        if video_exclusion_params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+            instance.params.update(video_exclusion_params)
+            instance.save(update_fields=["params"])
+            generate_video_exclusion.delay(instance.id)
+            return instance
         try:
             old_params = instance.export.query.get("params", {})
         except CustomSegmentFileUpload.DoesNotExist:
@@ -568,11 +577,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         [setattr(segment, key, False) for key in set_false]
         segment.audit_id = None
         segment.statistics = {}
+        segment.params[VideoExclusion.WITH_VIDEO_EXCLUSION] = False
         if hasattr(segment, "export"):
             segment.export.delete()
         if hasattr(segment, "vetted_export"):
             segment.vetted_export.delete()
-        segment.save(update_fields=[*set_false, "audit_id", "statistics"])
+        segment.save(update_fields=[*set_false, "audit_id", "statistics", "params"])
 
 
 class CTLWithoutDownloadUrlSerializer(CTLSerializer):

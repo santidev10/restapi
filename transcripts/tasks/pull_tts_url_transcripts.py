@@ -11,6 +11,7 @@ from elasticsearch_dsl.query import Query
 from typing import Type
 
 from administration.notifications import send_email
+from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import APIScriptTracker
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
@@ -37,9 +38,8 @@ class NoMoreProxiesAvailableException(Exception):
 
 
 # pylint: disable=too-many-nested-blocks,too-many-statements,too-many-locals
-@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
+@celery_app.task(expires=TaskExpiration.TTS_URL_TRANSCRIPTS, soft_time_limit=TaskTimeout.TTS_URL_TRANSCRIPTS)
 def pull_tts_url_transcripts_task():
-    # TODO register the updated task name
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
@@ -57,18 +57,20 @@ def pull_tts_url_transcripts_task():
                 f"num_vids: {num_vids}")
     query = get_video_transcripts_query(lang_codes=lang_codes, country_codes=country_codes,
                                         iab_categories=iab_categories, brand_safety_score=brand_safety_score)
-    pull_tts_url_transcripts_with_lock(lock_name=LOCK_NAME, query=query, num_vids=num_vids)
+    pull_tts_url_transcripts_with_lock(lock_name=LOCK_NAME, expire=TaskExpiration.TTS_URL_TRANSCRIPTS, query=query,
+                                       num_vids=num_vids)
 
 
-def pull_tts_url_transcripts_with_lock(lock_name: str, *args, **kwargs):
+def pull_tts_url_transcripts_with_lock(lock_name: str, expire: int, *args, **kwargs):
     """
     calls the pull_tts_url_transcripts_with_query function and locks
     :param lock_name: name of the lock to use for the task
+    :param expire: lock expiration time, in seconds
     :param args:
     :param kwargs:
     :return:
     """
-    lock(lock_name=lock_name, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+    lock(lock_name=lock_name, max_retries=1, expire=expire)
     try:
         pull_tts_url_transcripts(*args, **kwargs)
     except Retry:
@@ -159,12 +161,14 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
             # we want to save the raw response to PG so that if we ever need to re-process
             # a transcript from the response, then we'll have it on hand
             raw_response = transcripts_scraper.successful_vids[vid_id].captions_url_response
-            language = transcripts_scraper.successful_vids[vid_id].captions_language
-            AuditVideoTranscript.get_or_create(video_id=vid_id, language=language, transcript=raw_response)
+            lang_code = transcripts_scraper.successful_vids[vid_id].captions_language
+            AuditVideoTranscript.update_or_create_with_parent(video_id=vid_id, lang_code=lang_code,
+                                                              defaults={"source": SourceTypeEnum.TTS_URL.value,
+                                                                        "transcript": raw_response})
             # we'll store the processed transcript in ES for display
             processed_transcript = transcripts_scraper.successful_vids[vid_id].captions
-            populate_video_custom_captions(vid_obj, [processed_transcript], [language], source="tts_url",
-                                           asr_lang=language)
+            populate_video_custom_captions(vid_obj, [processed_transcript], [lang_code], source="tts_url",
+                                           asr_lang=lang_code)
             updated_videos.append(vid_obj)
             if "task_us_data" not in vid_obj:
                 vid_ids_to_rescore.append(vid_id)
@@ -230,6 +234,22 @@ def notify_if_no_successes():
     )
 
 
+def notify_daily_total(counter: APIScriptTracker):
+    """
+    notify number of successful new transcripts pulled
+    :param counter:
+    :return:
+    """
+    send_email(
+        subject=(f"Transcripts: {counter.cursor} transcripts pulled in the last {TRANSCRIPTS_SUCCESS_COUNTER_DAYS} "
+                 f"day(s)"),
+        from_email=settings.SENDER_EMAIL_ADDRESS,
+        recipient_list=["andrew.wong@channelfactory.com"],
+        message=(f"There have been {counter.cursor} transcripts pulled successfully in the last "
+                 f"{TRANSCRIPTS_SUCCESS_COUNTER_DAYS} day(s)")
+    )
+
+
 def update_successes_count(count: int):
     """
     increment daily success count by `count`, or set to `count` and reset timestamp to now if monitoring period is over
@@ -245,9 +265,10 @@ def update_successes_count(count: int):
     if created:
         return
 
-    # if monitoring period has elapsed, reset the timestamp and count
+    # if monitoring period has elapsed, notify, and reset the timestamp and count
     delta = now - counter.timestamp
     if abs(delta.days) >= TRANSCRIPTS_SUCCESS_COUNTER_DAYS:
+        notify_daily_total(counter)
         counter.timestamp = now
         counter.cursor = count
         counter.save(update_fields=["cursor", "timestamp"])

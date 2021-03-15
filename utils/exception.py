@@ -18,7 +18,7 @@ def wrap_exception(args, kwargs, cause):
         return ex
 
 
-def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None):
+def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None, failed_kwargs=None):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -31,7 +31,8 @@ def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None):
                 except exceptions as ex:
                     last_exception = ex
             if failed_callback is not None:
-                failed_callback(*args, **kwargs)
+                all_kwargs = {**kwargs, **(failed_kwargs or {})}
+                failed_callback(*args, **all_kwargs)
             raise last_exception
 
         return wrapper

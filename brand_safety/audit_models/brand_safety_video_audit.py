@@ -137,6 +137,8 @@ class BrandSafetyVideoAudit(object):
         video = self.doc
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_data = {
+            "created_at": video.brand_safety.created_at,
+            "updated_at": video.brand_safety.updated_at,
             "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
             "transcript_language": self.doc.transcript_language,
             "categories": {
@@ -163,11 +165,4 @@ class BrandSafetyVideoAudit(object):
                 continue
 
         video.brand_safety = brand_safety_data
-        video.populate_channel(id=self.doc.channel.id, title=self.doc.channel.title)
         return video
-
-    @staticmethod
-    def instantiate_blocklist(item_id: str) -> Video:
-        blocklist_item = Video(item_id)
-        blocklist_item.populate_brand_safety(overall_score=0)
-        return blocklist_item

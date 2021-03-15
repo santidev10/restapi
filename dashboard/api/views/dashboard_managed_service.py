@@ -13,7 +13,6 @@ from aw_reporting.models.ad_words.account import Account
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from dashboard.api.serializers.dashboard_managed_service import DashboardManagedServiceSerializer
-from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from userprofile.constants import StaticPermissions
@@ -38,7 +37,7 @@ class DashboardManagedServiceAPIView(ListAPIView):
         user_settings = self.request.user.get_aw_settings()
         visibility_filter = Q() \
             if self.request.user.has_permission(StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS) \
-            else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
+            else Q(account__id__in=self.request.user.get_visible_accounts_list())
         queryset = AccountCreation.objects \
             .filter(
                 Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS)

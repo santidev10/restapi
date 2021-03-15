@@ -10,14 +10,13 @@ from rest_framework.status import HTTP_200_OK
 
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
+from segment.api.serializers.video_exclusion_params_serializer import VideoExclusionParamsSerializer
 from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoExclusion
 from segment.models.utils.segment_action import segment_action
-from segment.utils.utils import CustomSegmentChannelCreatePermission
-from segment.utils.utils import CustomSegmentVideoCreatePermission
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes
@@ -51,7 +50,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment task through CTLSerializer
         """
         request, data = self._prep_request(request)
-        validated_params = self._validate_params(request.user, data)
+        validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
@@ -65,15 +64,17 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         """
         request, data = self._prep_request(request)
         segment = get_object(CustomSegment, id=data.get("id"))
-        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
+                                            segment=segment)
         # Keep track of data.keys as CTLParamsSerializer sets default values for some fields during creation.
         # validated_params will need to be cleaned of these default values and only the keys send for updating should
         # be included in context
         data_keys = set(data.keys())
-        validated_params = self._validate_params(request.user, data, partial=True)
+        validated_params = self._validate_params(data, partial=True)
+        validated_video_exclusion_params = self._validate_video_exclusion(segment, request.user, data)
         cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
-        serializer = self.serializer_class(segment, data=data, context=self._get_context(cleaned_params),
-                                           partial=True)
+        serializer = self.serializer_class(segment, data=data,
+                                           context=self._get_context(cleaned_params, validated_video_exclusion_params), partial=True)
         res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_200_OK, data=res)
 
@@ -89,25 +90,42 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         serializer.data.update(validated_ctl_params)
         return serializer.data
 
-    def _validate_params(self, user, data, partial=False):
+    def _validate_params(self, data, partial=False):
         """
         Validate request data
         :param data: dict
         :return: dict
         """
-        if data.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
-                and not user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
-            raise PermissionDenied
         params_serializer = CTLParamsSerializer(data=data, partial=partial)
         params_serializer.is_valid(raise_exception=True)
         validated_data = params_serializer.validated_data
         return validated_data
 
-    def _get_context(self, data):
+    def _validate_video_exclusion(self, ctl, user, data):
+        """
+        Validate permissions and serializer values for creating video exclusion for ctl. If exclusion params is
+            provided, then it is assumed that the ctl is a channel ctl and only a video exclusion list should be
+            created for it.
+        :param user: UserProfile
+        :param data: dict
+        :return:
+        """
+        if data.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+            if not user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
+                raise PermissionDenied
+            video_exclusion_serializer = VideoExclusionParamsSerializer(data=data, context={"source_ctl": ctl})
+            video_exclusion_serializer.is_valid(raise_exception=True)
+            exclusion_params = video_exclusion_serializer.validated_data
+        else:
+            exclusion_params = {}
+        return exclusion_params
+
+    def _get_context(self, data, video_exclusion_params=None):
         context = {
             "request": self.request,
             "ctl_params": data,
-            "files": self.request.FILES
+            "files": self.request.FILES,
+            "video_exclusion_params": video_exclusion_params
         }
         return context
 

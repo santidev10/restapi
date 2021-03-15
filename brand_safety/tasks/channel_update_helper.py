@@ -20,7 +20,7 @@ def channel_update_helper(scheduler, query: Q, queue: str, sort=("-stats.subscri
     :param rescore: Boolean to determine if current query is retrieving rescore=True items. If True,
         then this will update items processed to be rescore=False
     """
-    channel_manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
+    channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(queue)
     limit = scheduler.get_items_limit(queue_size)
     channels = channel_manager.search(query, limit=min(limit, 10000), sort=sort).execute()
@@ -33,9 +33,7 @@ def channel_update_helper(scheduler, query: Q, queue: str, sort=("-stats.subscri
 
     if rescore is True:
         # Update channels rescore values that are rescored
-        update_rescore_channels = []
+        update_rescore_channels = channel_manager.get(channel_ids, skip_none=True)
         for channel in channels:
-            rescored = Channel(channel.main.id)
-            rescored.populate_brand_safety(rescore=False)
-            update_rescore_channels.append(rescored)
+            channel.brand_safety.rescore = False
         channel_manager.upsert(update_rescore_channels)
