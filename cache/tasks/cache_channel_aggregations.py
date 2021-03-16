@@ -4,6 +4,7 @@ from audit_tool.models import IASHistory
 from cache.constants import ADMIN_CHANNEL_AGGREGATIONS_KEY
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
+from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.channel import VettingAdminChannelManager
@@ -39,7 +40,8 @@ def cache_channel_aggregations():
 
             logger.info(f"Collecting channel aggregations for key, '{key}'.")
             manager = manager_class(sections, context={
-                "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp()
+                "ias_last_ingested_timestamp": IASHistory.get_last_ingested_timestamp(),
+                "auth_channel_ids": AuthChannel.get_auth_channel_ids(),
             })
             aggregations = manager.get_aggregation(
                 search=manager.search(filters=manager.forced_filters()),
