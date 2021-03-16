@@ -26,7 +26,3 @@ class PerformS3Exporter(S3Exporter):
             Filename=filename,
             ExtraArgs=extra_args,
         )
-
-    def get_content_disposition(self, filename):
-        content_disposition = 'attachment;filename="{filename}"'.format(filename=filename)
-        return content_disposition

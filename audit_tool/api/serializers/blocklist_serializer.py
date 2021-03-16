@@ -20,7 +20,7 @@ class BlocklistSerializer(serializers.Serializer):
                            "values in serializer context.")
 
     def get_updated_at(self,  obj):
-        updated_at = obj.custom_properties.updated_at
+        updated_at = self._get(obj.main.id, "updated_at")
         try:
             updated_at = updated_at.date()
         except AttributeError:

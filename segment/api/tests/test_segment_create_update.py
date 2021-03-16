@@ -27,6 +27,7 @@ from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import VideoExclusion
 from segment.models.constants import SegmentTypeEnum
+from segment.models.constants import SegmentVettingStatusEnum
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -430,14 +431,15 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(file.name, source.name)
 
     @mock_s3
-    def test_create_with_source_limit(self, mock_generate):
-        """ Test that source list is limited to size """
+    def test_create_with_source_limit_success(self, mock_generate):
+        """ Test that source list is limited to size, also test permissions on non-admin user"""
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
-        self.create_admin_user()
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
+                                     StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST: True})
         payload = {
             "title": "test_create_with_source_success_limit",
-            "segment_type": 1,
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
         }
         payload = self.get_params(**payload)
         file = BytesIO()
@@ -458,6 +460,34 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         exported_soure_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
             .get()["Body"].read().decode('utf-8').split()
         self.assertEqual(len(exported_soure_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
+
+    @mock_s3
+    def test_source_file_permission_denied(self, mock_generate):
+        """
+        test that access is denied if the user creates a CTL from source list without the proper permission
+        :param mock_generate:
+        :return:
+        """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST: False})
+        payload = {
+            "title": "test_create_with_source_success_limit",
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.write(b"\n".join([f"https://www.youtube.com/channel/{str(i).zfill(24)}".encode("utf-8")
+                               for i in range(30)]))
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
 
     def test_user_not_admin_has_permission_success(self, mock_generate):
         """ User should ctl create permission but is not admin should still be able to create a list """
@@ -618,9 +648,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         created = CustomSegment.objects.get(id=response.data["id"])
         old_params = created.export.query["params"]
-
         updated_payload = self.get_params(id=created.id, minimum_views=1, segment_type=1)
-        updated_payload[VideoExclusion.WITH_VIDEO_EXCLUSION] = True
 
         with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate:
             response2 = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
@@ -1102,7 +1130,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment.refresh_from_db()
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
-        self.assertFalse(segment.params)
+        self.assertFalse(segment.params.get("meta_audit_id"))
 
     def test_regneration_deletes_records(self, mock_generate):
         """
@@ -1142,25 +1170,59 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertFalse(hasattr(segment, "export"))
         self.assertFalse(hasattr(segment, "vetted_export"))
 
-    def test_create_regular_user_vetted_safe_only(self, mock_generate):
-        """ Test that if a user is not an admin nor a vetting admin, lists should be created with vetted safe only """
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
+    def test_any_vetting_status_permission(self, mock_generate):
+        """
+        the BUILD__CTL_CUSTOM_VETTING_DATA permission should allow all vetting statuses
+        :param mock_generate:
+        :return:
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
+                                     StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA: True})
+        all_vetting_statuses = [SegmentVettingStatusEnum.NOT_VETTED.value, SegmentVettingStatusEnum.VETTED_SAFE.value,
+                                SegmentVettingStatusEnum.VETTED_RISKY.value]
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
             "segment_type": SegmentTypeEnum.VIDEO.value,
             "title": "test vetted safe only",
-            "vetting_status": [],
+            "vetting_status": all_vetting_statuses,
         }
         params = self.get_params(**payload)
         response = self.client.post(self._get_url(), dict(data=json.dumps(params)))
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         ctl = CustomSegment.objects.get(title=payload["title"])
         export = ctl.export
-        self.assertEqual(export.query["params"]["vetting_status"], [1])
+        for status in all_vetting_statuses:
+            with self.subTest(status):
+                self.assertIn(status, export.query["params"]["vetting_status"])
+
+    def test_create_regular_user_vetted_safe_only(self, mock_generate):
+        """
+        Test that if a user does not have the BUILD__CTL_CUSTOM_VETTING_DATA permission, that lists should be created
+        with results that are vetted safe only
+        """
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True})
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+            "title": "test vetted safe only",
+            "vetting_status": [SegmentVettingStatusEnum.VETTED_RISKY.value, SegmentVettingStatusEnum.NOT_VETTED.value],
+        }
+        params = self.get_params(**payload)
+        response = self.client.post(self._get_url(), dict(data=json.dumps(params)))
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        ctl = CustomSegment.objects.get(title=payload["title"])
+        export = ctl.export
+        self.assertEqual(export.query["params"]["vetting_status"], [SegmentVettingStatusEnum.VETTED_SAFE.value])
 
     def test_update_regular_user_vetted_safe_only(self, mock_generate):
-        """ Test that if a user is not an admin nor a vetting admin, lists should be updated with vetted safe only """
+        """
+        Test that if a user does not have the BUILD__CTL_CUSTOM_VETTING_DATA permission, that lists should be updated
+        with results that are vetted safe only
+        :param mock_generate:
+        :return:
+        """
         user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True})
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
@@ -1171,7 +1233,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         payload = dict(
             id=segment.id,
             languages=["es"],
-            vetting_status=[0]
+            vetting_status=[SegmentVettingStatusEnum.NOT_VETTED.value]
         )
         params = self.get_params(**payload)
         with patch.object(CTLSerializer, "_start_segment_export_task") as mock_start_export:
@@ -1179,7 +1241,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         segment.refresh_from_db()
         export = segment.export
-        self.assertEqual(export.query["params"]["vetting_status"], [1])
+        self.assertEqual(export.query["params"]["vetting_status"], [SegmentVettingStatusEnum.VETTED_SAFE.value])
 
     def test_empty_channel_source_urls_deletes(self, mock_generate):
         """ Test that channel CTL being created during validation without valid source urls is deleted """
@@ -1225,46 +1287,82 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_with_video_exclusion(self, mock_generate):
         self.create_admin_user()
-        with self.subTest("Test success creating video exclusion with channel ctl"):
-            payload = {
-                "title": "test_with_video_exclusion_success",
-                "segment_type": 1,
-                "with_video_exclusion": True,
-            }
-            payload = self.get_params(**payload)
-            form = dict(
-                data=json.dumps(payload)
-            )
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
+        channel_ctl = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion_channel",
+            segment_type=SegmentTypeEnum.CHANNEL.value
+        )
+        video_ctl = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion_video",
+            segment_type=SegmentTypeEnum.VIDEO.value
+        )
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay"):
+            with self.subTest("Test success creating video exclusion with channel ctl"):
+                payload = {
+                    "id": channel_ctl.id,
+                    "with_video_exclusion": True,
+                    "video_exclusion_score_threshold": 1,
+                }
+                form = dict(
+                    data=json.dumps(payload)
+                )
+                response = self.client.patch(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_200_OK)
 
-        with self.subTest("Test fail creating video exclusion with video ctl"):
-            payload = {
-                "title": "test_with_video_exclusion_fail",
-                "segment_type": 1,
-                "with_video_exclusion": True,
-            }
-            form = dict(
-                data=json.dumps(payload)
-            )
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            with self.subTest("Test fail creating video exclusion with video ctl"):
+                payload = {
+                    "id": video_ctl.id,
+                    "with_video_exclusion": True,
+                    "video_exclusion_score_threshold": 1,
+                }
+                form = dict(
+                    data=json.dumps(payload)
+                )
+                response = self.client.patch(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_video_exclusion_permission(self, mock_generate):
         user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,})
-        payload = {
-            "title": "test_video_exclusion_permission",
-            "segment_type": 1,
-            "with_video_exclusion": True,
-        }
-        payload = self.get_params(**payload)
-        form = dict(
-            data=json.dumps(payload)
+        segment = CustomSegment.objects.create(
+            title=f"test_with_video_exclusion",
+            segment_type=SegmentTypeEnum.CHANNEL.value
         )
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        payload = {
+            "id": segment.id,
+            "with_video_exclusion": True,
+            "video_exclusion_score_threshold": 2,
+        }
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay"):
+            form = dict(
+                data=json.dumps(payload)
+            )
+            response = self.client.patch(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-        user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
-        user.save(update_fields=["perms"])
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
+            user.perms.update({StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True})
+            user.save(update_fields=["perms"])
+            response = self.client.patch(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_video_exclusion_update(self, mock_generate):
+        """ Test updating channel ctl to create video ctl simply creates video ctl and does not update params """
+        user = self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
+            StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION: True,
+        })
+        params = self.get_params()
+        channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, owner=user)
+        CustomSegmentFileUpload.objects.create(segment=channel_ctl, query={
+            "params": params,
+        })
+        payload = {
+            "id": channel_ctl.id,
+            "with_video_exclusion": True,
+            "video_exclusion_score_threshold": 3,
+        }
+        with patch("segment.api.serializers.ctl_serializer.generate_video_exclusion.delay", return_value="testfile.csv") as mock_exclusion_generate:
+            response = self.client.patch(self._get_url(), dict(data=json.dumps(payload)))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        channel_ctl.refresh_from_db()
+        self.assertEqual(channel_ctl.export.query["params"], params)
+        self.assertEqual(channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION], True)
+        mock_exclusion_generate.assert_called_once()

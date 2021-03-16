@@ -73,21 +73,30 @@ class SegmentDeleteApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("segment.models.utils.segment_exporter.SegmentExporter.delete_export")
     def test_delete_permission_success(self, mock_delete_export):
         """
-        allow deletes only if the user has the delete permission for that segment type
+        allow deletes only if the user has the delete permission for that segment type or if they are the owner
         :return:
         """
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
-        CustomSegment.objects.create(uuid=uuid.uuid4(), id=1, segment_type=SegmentTypeEnum.VIDEO.value, title="test_1")
+        user = self.create_test_user()
+        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, segment_type=SegmentTypeEnum.VIDEO.value,
+                                     title="test_owner")
         response = self.client.delete(
             self._get_url("video", "1")
         )
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
-        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST: True})
-        CustomSegment.objects.create(uuid=uuid.uuid4(), id=2, segment_type=SegmentTypeEnum.CHANNEL.value,
-                                     title="test_2")
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_VIDEO_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=2, segment_type=SegmentTypeEnum.VIDEO.value,
+                                     title="test_video")
         response = self.client.delete(
             self._get_url("video", "2")
+        )
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
+        self.create_test_user(perms={StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST: True})
+        CustomSegment.objects.create(uuid=uuid.uuid4(), id=3, segment_type=SegmentTypeEnum.CHANNEL.value,
+                                     title="test_channel")
+        response = self.client.delete(
+            self._get_url("video", "3")
         )
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 

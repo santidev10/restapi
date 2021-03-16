@@ -2,6 +2,8 @@ from functools import wraps
 from random import randint
 from time import sleep
 
+from elasticsearch.helpers.errors import BulkIndexError
+
 
 class ExceptionWithArgs(Exception):
     def __init__(self, args, kwargs):
@@ -16,7 +18,7 @@ def wrap_exception(args, kwargs, cause):
         return ex
 
 
-def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None):
+def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None, failed_kwargs=None):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -29,7 +31,8 @@ def retry(count=3, delay=1, exceptions=(Exception,), failed_callback=None):
                 except exceptions as ex:
                     last_exception = ex
             if failed_callback is not None:
-                failed_callback(*args, **kwargs)
+                all_kwargs = {**kwargs, **(failed_kwargs or {})}
+                failed_callback(*args, **all_kwargs)
             raise last_exception
 
         return wrapper
@@ -62,3 +65,28 @@ def backoff(max_backoff: int = 3600, exceptions: tuple = (Exception,)):
             raise errors
         return wrapper
     return decorator
+
+
+def upsert_retry(manager, docs: list, max_tries=5, delay=2, **params) -> None:
+    """
+    Function to retry bulk upsert documents in case of BulkIndexError
+        Not all documents given to upsert will fail, so extract failed doc ids from exception and retry
+        with only failed docs
+    :param manager: VideoManager | ChannelManager
+    :param docs: list of documents to upsert
+    :param max_tries: Max number of tries
+    :param delay: Time to sleep between tries
+    :param params: kwargs to pass to manager.upsert method
+    :return: None
+    """
+    for _ in range(max_tries):
+        if not docs:
+            return
+        try:
+            manager.upsert(docs, **params)
+        except BulkIndexError as e:
+            sleep(delay)
+            doc_ids = {err["update"]["_id"] for err in e.errors}
+            docs = [doc for doc in docs if doc.main.id in doc_ids]
+        else:
+            docs.clear()

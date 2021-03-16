@@ -15,3 +15,14 @@ class AuthChannel(Timestampable):
 
     class Meta:
         db_table = "auth_channel"
+
+    @staticmethod
+    def get_auth_channel_ids() -> list:
+        """
+        returns list of channel ids with active tokens in AuthChannel
+        """
+        try:
+            auth_channels = AuthChannel.objects.filter(token_revocation=None)
+            return [item.channel_id for item in auth_channels]
+        except AuthChannel.DoesNotExist:
+            return None

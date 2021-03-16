@@ -9,7 +9,6 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.views import APIView
 
 from audit_tool.api.serializers.audit_processor_serializer import AuditProcessorSerializer
@@ -23,14 +22,11 @@ from utils.aws.s3_exporter import S3Exporter
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE, method="post")
-        | StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET_ADMIN, method="patch"),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE__CREATE),
     )
     LANGUAGES_REVERSE = {}
 
     def post(self, request):
-        if not request.user.has_permission(StaticPermissions.AUDIT_QUEUE):
-            raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         query_params = request.query_params
         user_id = request.user.id
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
@@ -312,8 +308,6 @@ class AuditSaveApiView(APIView):
         data = request.data
         audit_id = data.get("audit_id")
         segment_id = data.get("segment_id")
-        if not request.user.has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
-            raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         if not audit_id and not segment_id:
             raise ValidationError("You must provide a segment_id or audit_id.")
         try:

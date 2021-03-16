@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from elasticapm.transport.exceptions import TransportException
 from elasticsearch.exceptions import TransportError
 from elasticsearch.helpers.errors import BulkIndexError
 from es_components.constants import Sections
@@ -186,7 +187,7 @@ class IASChannelIngestor:
         return channel_ids
 
     # exp. backoff w/ noise, intended to catch ES query queue limit exceeded exception
-    @backoff(max_backoff=60, exceptions=(TransportError, BulkIndexError))
+    @backoff(max_backoff=60, exceptions=(TransportError, TransportException, BulkIndexError))
     def _upsert_es_channels(self, channel_ids: list):
         """
         given a list of channel ids, add missing channel records in elasticsearch. Update ALL given ids' ias_verified

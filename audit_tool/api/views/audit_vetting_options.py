@@ -7,11 +7,7 @@ from userprofile.constants import StaticPermissions
 
 class AuditVettingOptionsAPIView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(
-            StaticPermissions.BUILD__CTL_VET,
-            StaticPermissions.BUILD__CTL_VET_ADMIN,
-            StaticPermissions.RESEARCH__VETTING,
-        ),
+        StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET, StaticPermissions.RESEARCH__VETTING),
     )
 
     def get(self, request, *args, **kwargs):

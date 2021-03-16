@@ -306,7 +306,7 @@ class AuditVetBaseSerializer(Serializer):
         If task_us_data contains brand_safety data, then vetter has determined not safe by saving brand_safety
         categories.
 
-        If the vetter is a vetting admin, accept vetting result as final
+        If the vetter has "resolve limbo state" perm, accept vetting result as final
         :param task_us_data: dict -> Submitted vetted data
         :param overall_score: int -> Current brand_safety.overall_score of current vetting item
         :param pre_limbo_score: int -> brand_safety.pre_limbo_score value
@@ -314,8 +314,8 @@ class AuditVetBaseSerializer(Serializer):
         """
         limbo_data = {}
         try:
-            # If vetting admin, accept vetting result as final
-            if self.context["user"].has_permission(StaticPermissions.BUILD__CTL_VET_ADMIN):
+            # If user has "resolve limbo state" perm, accept vetting result as final
+            if self.context["user"].has_permission(StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE):
                 limbo_data["limbo_status"] = False
                 return limbo_data
         except (KeyError, AttributeError):

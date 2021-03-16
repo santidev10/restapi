@@ -32,6 +32,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "analytics.gender_male:min",
     "analytics.gender_other:max",
     "analytics.gender_other:min",
+    "auth_channel",
     "brand_safety",
     "brand_safety.limbo_status",
     "custom_properties.is_tracked",

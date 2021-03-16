@@ -1,4 +1,6 @@
 from .base_auditor import BaseAuditor
+from .constants import CHANNEL_SOURCE
+from .constants import VIDEO_SOURCE
 from brand_safety.auditors.serializers import BrandSafetyVideo
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from brand_safety.constants import BRAND_SAFETY_SCORE
@@ -67,7 +69,7 @@ class VideoAuditor(BaseAuditor):
         :param channel_mapping: dict -> dict of channel id to channel
         :return: tuple
         """
-        videos = self.video_manager.get(video_ids, skip_none=True)
+        videos = self.video_manager.get(video_ids, skip_none=True, source=VIDEO_SOURCE)
         channel_mapping = channel_mapping or self._get_channel_mapping({v.channel.id for v in videos if v.channel.id is not None})
         with_data = BrandSafetyVideo(videos, many=True, context=dict(channels=channel_mapping)).data
         return with_data, channel_mapping
@@ -121,7 +123,7 @@ class VideoAuditor(BaseAuditor):
         :param channel_ids: list [str, ...]
         :return: dict
         """
-        channels = self.channel_manager.get(channel_ids, skip_none=True)
+        channels = self.channel_manager.get(channel_ids, skip_none=True, source=CHANNEL_SOURCE)
         channel_map = {
             channel.main.id: channel
             for channel in channels

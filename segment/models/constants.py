@@ -66,6 +66,8 @@ class SegmentVettingStatusEnum(enum.Enum):
 
 
 class VideoExclusion:
-    VIDEO_EXCLUSION_ID = "video_exclusion_id"
     WITH_VIDEO_EXCLUSION = "with_video_exclusion"
-    CHANNEL_SOURCE_ID = "channel_source_id"
+    VIDEO_EXCLUSION_FILENAME = "video_exclusion_filename"
+    VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
+
+

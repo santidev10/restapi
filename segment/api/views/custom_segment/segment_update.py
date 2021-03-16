@@ -40,7 +40,8 @@ class CustomSegmentUpdateApiView(UpdateAPIView, SegmentTypePermissionMixin):
         :return:
         """
         segment = self.get_object()
-        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type)
+        self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
+                                            segment=segment)
         return super().patch(request, *args, **kwargs)
 
     def get_serializer(self, instance, *args, **kwargs):
