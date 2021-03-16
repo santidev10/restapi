@@ -93,13 +93,16 @@ class SegmentListApiView(ListAPIView):
         """
         # Filter queryset depending on permission level
         user = self.request.user
+        queryset = None
         if user.has_permission(StaticPermissions.BUILD__CTL_SEE_ALL):
             base_filters = {}
         elif user.has_permission(StaticPermissions.BUILD__CTL_VET):
-            base_filters = {"audit_id__isnull": False}
+            queryset = super().get_queryset().filter(Q(audit_id__isnull=False) | Q(owner=self.request.user))
         else:
             base_filters = {"owner": self.request.user}
-        queryset = super().get_queryset().filter(**base_filters)
+        if not queryset:
+            queryset = super().get_queryset().filter(**base_filters)
+
         segment_type = self.request.query_params.get("segment_type", "")
         # Only filter for segment type if not sending both
         if ("channel" in segment_type and "video" in segment_type) is False and segment_type:
