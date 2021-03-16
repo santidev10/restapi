@@ -28,6 +28,7 @@ from segment.models.constants import SegmentActionEnum
 from segment.models.constants import VideoExclusion
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
+from segment.models.utils.segment_exporter import SegmentExporter
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -1366,3 +1367,57 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(channel_ctl.export.query["params"], params)
         self.assertEqual(channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION], True)
         mock_exclusion_generate.assert_called_once()
+
+    def test_creation_error(self, mock_generate):
+        """ Test errors during different parts of creating ctl saves error """
+        self.create_admin_user()
+
+        with self.subTest("Error creating related CustomSegmentFileUpload deletes ctl"):
+            payload = self.get_params(**{
+                "title": "test_creation_error_related_obj",
+                "segment_type": 1,
+            })
+            form = dict(
+                data=json.dumps(payload)
+            )
+            with patch.object(CustomSegmentFileUpload.objects, "get_or_create", side_effect=Exception):
+                response = self.client.post(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+                self.assertFalse(CustomSegment.objects.filter(title=payload["title"]).exists())
+
+        with self.subTest("Error creating source file raises ValidationError and saves error"):
+            file = BytesIO()
+            file.name = payload["title"]
+            file.write(f"https://www.youtube.com/watch?v={'test'.zfill(11)}\n".encode("utf-8"))
+            file.seek(0)
+            payload = self.get_params(**{
+                "title": "test_creation_error_source",
+                "segment_type": 0,
+            })
+            form = dict(
+                data=json.dumps(payload),
+                source_file=file,
+            )
+            with patch.object(SegmentExporter, "export_file_to_s3", side_effect=Exception):
+                response = self.client.post(self._get_url(), form)
+                self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+                ctl = CustomSegment.objects.get(title=payload["title"])
+                self.assertTrue(ctl.statistics["error"])
+
+        with self.subTest("Error creating related audit object"):
+            # Inclusion file has no lines and will throw exception during processing
+            file = BytesIO()
+            file.name = payload["title"]
+            file.seek(0)
+            payload = self.get_params(**{
+                "title": "test_creation_error_audit",
+                "segment_type": 0,
+            })
+            form = dict(
+                data=json.dumps(payload),
+                inclusion_file=file
+            )
+            response = self.client.post(self._get_url(), form)
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            ctl = CustomSegment.objects.get(title=payload["title"])
+            self.assertTrue(ctl.statistics["error"])
