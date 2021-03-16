@@ -117,8 +117,10 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
-        self.assertEqual(response.data["items"][0], str(seg_1_params["owner"].id))
-        self.assertEqual(response.data["items"][1], str(seg_3_params["owner"].id))
+        items = response.data.get("items")
+        for item in items:
+            with self.subTest(item):
+                self.assertEqual(str(item.get("owner_id")), str(user.id))
 
     def test_list_type_filter_list(self):
         user = self.create_test_user(perms={
