@@ -61,13 +61,49 @@ from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.xlsx import get_sheet_from_response
 
 
-class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
+class BaseDashboardPerformanceExportTestCase(ExtendedAPITestCase, ESTestCase):
+    def _get_url(self, account_creation_id):
+        return reverse(Name.Dashboard.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+                       args=(account_creation_id,))
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        recreate_test_demo_data()
+    def _request(self, account_creation_id, **kwargs):
+        url = self._get_url(account_creation_id)
+        return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
 
+    def _create_stats(self, account, statistic_date=None):
+        campaign1 = Campaign.objects.create(id=1, name="#1", account=account, video_views=1)
+        ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
+        campaign2 = Campaign.objects.create(id=2, name="#2", account=account, video_views=1)
+        ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
+        statistic_date = statistic_date or (datetime.now().date() - timedelta(days=1))
+        base_stats = dict(date=statistic_date, impressions=100, video_views=10, cost=1)
+        topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
+        audience, _ = Audience.objects.get_or_create(id=1,
+                                                     defaults=dict(name="boo",
+                                                                   type="A"))
+        remark, _ = RemarkList.objects.get_or_create(name="test")
+        creative, _ = VideoCreative.objects.get_or_create(id=1)
+        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="Babruysk"))
+        ad = Ad.objects.create(id=1, ad_group=ad_group1)
+        CampaignStatistic.objects.create(campaign=campaign1, clicks_website=1, **base_stats)
+        AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
+
+        for ad_group in (ad_group1, ad_group2):
+            stats = dict(ad_group=ad_group, **base_stats)
+            AdGroupStatistic.objects.create(average_position=1, **stats)
+            GenderStatistic.objects.create(**stats)
+            AgeRangeStatistic.objects.create(**stats)
+            TopicStatistic.objects.create(topic=topic, **stats)
+            AudienceStatistic.objects.create(audience=audience, **stats)
+            VideoCreativeStatistic.objects.create(creative=creative, **stats)
+            YTChannelStatistic.objects.create(yt_id="123", **stats)
+            YTVideoStatistic.objects.create(yt_id="123", **stats)
+            KeywordStatistic.objects.create(keyword="123", **stats)
+            CityStatistic.objects.create(city=city, **stats)
+            RemarkStatistic.objects.create(remark=remark, **stats)
+
+
+class DashboardPerformanceExportAPITestCase(BaseDashboardPerformanceExportTestCase):
     def _get_url(self, account_creation_id):
         return reverse(Name.Dashboard.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id,))
@@ -777,44 +813,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         impressions_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
 
-    def test_success_for_demo_account(self):
-        self.create_test_user(perms={
-            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
-            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
-            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
-        })
-        response = self._request(DEMO_ACCOUNT_ID)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_demo_header(self):
-        self.create_test_user(perms={
-            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
-            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
-            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
-        })
-        account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
-        campaigns = account.campaigns.all().order_by("name")
-        statistic_dates = CampaignStatistic.objects.filter(campaign__in=campaigns).values_list("date", flat=True)
-        start = min(statistic_dates)
-        end = max(statistic_dates)
-        ad_groups = AdGroup.objects.filter(campaign__in=campaigns).order_by("name")
-        expected_header = "\n".join([
-            "Date: {start} - {end}",
-            "Group By: None",
-            "Campaigns: {campaigns}",
-            "Ad Groups: {ad_groups}",
-        ]).format(
-            start=start,
-            end=end,
-            campaigns=", ".join([campaign.name for campaign in campaigns]),
-            ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
-        )
-        response = self._request(DEMO_ACCOUNT_ID)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        header = get_custom_header(sheet)
-        self.assertEqual(header, expected_header)
-
     def test_metric_overview_grouped(self):
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
@@ -882,41 +880,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         view_rate = float(sheet[SUMMARY_ROW_INDEX][view_rate_index].value)
         self.assertGreater(view_rate, 0)
 
-    def test_demo_account_campaigns(self):
-        self.create_test_user(perms={
-            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
-            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
-            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
-        })
-        campaigns = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID)
-        expected_campaigns_names = {campaign.name for campaign in campaigns}
-        response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
-        name_index = get_column_index(headers, DashboardPerformanceReportColumn.NAME)
-        campaigns_names = {row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
-        self.assertEqual(campaigns_names, expected_campaigns_names)
-
-    def test_campaigns_cta(self):
-        self.create_test_user(perms={
-            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
-            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
-            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
-        })
-        account = Account.objects.create(id=next(int_iterator))
-        self._create_stats(account)
-        response = self._request(account.account_creation.id, metric=Metric.CAMPAIGN.value)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
-        cta_website_index = get_column_index(headers, DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE)
-        cta_website = [row[cta_website_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]]
-        self.assertGreater(len(cta_website), 0)
-        self.assertFalse(any([cta is None for cta in cta_website]))
-        self.assertTrue(any([cta > 0 for cta in cta_website]))
-
     def test_overview_is_always_visible(self):
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
@@ -960,6 +923,86 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
         impressions_column_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
 
+
+class DemoDashboardPerformanceExportAPITestCase(BaseDashboardPerformanceExportTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        recreate_test_demo_data()
+
+    def test_success_for_demo_account(self):
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_demo_header(self):
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
+        account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
+        campaigns = account.campaigns.all().order_by("name")
+        statistic_dates = CampaignStatistic.objects.filter(campaign__in=campaigns).values_list("date", flat=True)
+        start = min(statistic_dates)
+        end = max(statistic_dates)
+        ad_groups = AdGroup.objects.filter(campaign__in=campaigns).order_by("name")
+        expected_header = "\n".join([
+            "Date: {start} - {end}",
+            "Group By: None",
+            "Campaigns: {campaigns}",
+            "Ad Groups: {ad_groups}",
+        ]).format(
+            start=start,
+            end=end,
+            campaigns=", ".join([campaign.name for campaign in campaigns]),
+            ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
+        )
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertEqual(header, expected_header)
+
+    def test_demo_account_campaigns(self):
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
+        campaigns = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID)
+        expected_campaigns_names = {campaign.name for campaign in campaigns}
+        response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        name_index = get_column_index(headers, DashboardPerformanceReportColumn.NAME)
+        campaigns_names = {row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]}
+        self.assertEqual(campaigns_names, expected_campaigns_names)
+
+    def test_campaigns_cta(self):
+        self.create_test_user(perms={
+            StaticPermissions.MANAGED_SERVICE__EXPORT: True,
+            StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
+            StaticPermissions.MANAGED_SERVICE__CAMPAIGNS_SEGMENTED: True,
+        })
+        account = Account.objects.create(id=next(int_iterator))
+        self._create_stats(account)
+        response = self._request(account.account_creation.id, metric=Metric.CAMPAIGN.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        cta_website_index = get_column_index(headers, DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE)
+        cta_website = [row[cta_website_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]]
+        self.assertGreater(len(cta_website), 0)
+        self.assertFalse(any([cta is None for cta in cta_website]))
+        self.assertTrue(any([cta > 0 for cta in cta_website]))
+
     def test_demo_cta(self):
         self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__EXPORT: True,
@@ -983,6 +1026,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
 
                 summary_cta = sheet[SUMMARY_ROW_INDEX][cta_column_index].value
                 self.assertGreater(summary_cta, 0)
+
 
 
 def get_headers(sheet):

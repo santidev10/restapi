@@ -13,12 +13,14 @@ from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Device
 from aw_reporting.models import Opportunity
 from aw_reporting.models import device_str
 from utils.unittests.csv import build_csv_byte_stream
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.patch_now import patch_now
+from utils.unittests.patch_bulk_create import patch_safe_bulk_create
 
 
 class UpdateAwAccountsHourlyStatsTestCase(TestCase):
@@ -81,7 +83,8 @@ class UpdateAwAccountsHourlyStatsTestCase(TestCase):
 
         downloader_mock.DownloadReportAsStream.side_effect = mock_download
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock),\
+            patch.object(CampaignStatistic.objects, "safe_bulk_create", patch_safe_bulk_create):
             GoogleAdsUpdater(account).update_campaigns()
 
         self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
