@@ -39,6 +39,15 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
+    mock_s3 = mock_s3()
+
+    def setUp(self):
+        super().setUp()
+        self.mock_s3.start()
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.mock_s3.stop()
 
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
@@ -401,11 +410,11 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         ctl = CustomSegment.objects.get(title=payload["title"])
         self.assertTrue("empty inclusion" in ctl.statistics["error"])
 
-    def test_create_with_source_success(self, mock_generate):
+    def test_create_with_video_source_success(self, mock_generate):
         """ Test creates source with success with at least one valid url"""
         self.create_admin_user()
         payload = {
-            "title": "test_create_with_source_success",
+            "title": "test_create_with_video_source_success",
             "score_threshold": 0,
             "content_categories": [],
             "languages": [],
@@ -431,7 +440,36 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
 
-    @mock_s3
+    def test_create_with_channel_source_success(self, mock_generate):
+        """ Test creates channel source with success with at least one valid url"""
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_with_channel_source_success",
+            "score_threshold": 0,
+            "content_categories": [],
+            "languages": [],
+            "severity_counts": {},
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}\n".encode("utf-8"))
+        file.write("bad_url".encode("utf-8"))
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data["id"]).source
+        self.assertEqual(file.name, source.name)
+
     def test_create_with_source_limit_success(self, mock_generate):
         """ Test that source list is limited to size, also test permissions on non-admin user"""
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -458,11 +496,10 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
 
-        exported_soure_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
+        exported_source_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
             .get()["Body"].read().decode('utf-8').split()
-        self.assertEqual(len(exported_soure_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
+        self.assertEqual(len(exported_source_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
 
-    @mock_s3
     def test_source_file_permission_denied(self, mock_generate):
         """
         test that access is denied if the user creates a CTL from source list without the proper permission
@@ -1421,3 +1458,31 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             ctl = CustomSegment.objects.get(title=payload["title"])
             self.assertTrue(ctl.statistics["error"])
+
+    def test_create_with_video_source_url_format(self, mock_generate):
+        """ Test creates video source with success different formats """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_with_source_success",
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.write(f"https://www.youtube.com/watch?v={str(next(int_iterator)).zfill(11)}\n".encode("utf-8"))
+        file.write(f"https://www.youtube.com/video/{str(next(int_iterator)).zfill(11)}\n".encode("utf-8"))
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data["id"]).source
+        self.assertEqual(file.name, source.name)
+        exported_source_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename) \
+            .get()["Body"].read().decode('utf-8').split()
+        self.assertEqual(len(exported_source_list), 2)
