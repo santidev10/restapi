@@ -17,7 +17,6 @@ from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import StaticPermissions
-from userprofile.constants import UserSettingsKey
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
 from utils.unittests.int_iterator import int_iterator
 
