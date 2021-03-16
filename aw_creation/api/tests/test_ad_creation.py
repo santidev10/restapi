@@ -14,7 +14,6 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Ad
 from es_components.tests.utils import ESTestCase
-from userprofile.constants import UserSettingsKey
 from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
 from utils.demo.recreate_test_demo_data import recreate_test_demo_data
@@ -23,6 +22,11 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        recreate_test_demo_data()
+
     def setUp(self):
         super(AdGroupAPITestCase, self).setUp()
         self.user = self.create_test_user(perms={
@@ -148,7 +152,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
             )
 
     def test_success_get_demo(self):
-        recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
@@ -160,7 +163,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.save()
         ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
@@ -281,7 +283,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_failed_delete_demo(self):
-        recreate_test_demo_data()
         ad = AdCreation.objects.filter(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))

@@ -41,6 +41,12 @@ from utils.unittests.str_iterator import str_iterator
 
 
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        recreate_test_demo_data()
+
     details_keys = {
         "account",
         "all_conversions",
@@ -153,7 +159,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         )
 
     def test_properties_demo(self):
-        recreate_test_demo_data()
         self.user.perms.update({
             StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS: True,
             StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT: True,
@@ -181,7 +186,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_get_chf_account_creation_list_queryset(self):
-        recreate_test_demo_data()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         expected_account_id = 1
@@ -218,7 +222,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[managed_account.account_creation.id]["brand"], test_brand)
 
     def test_sf_account(self):
-        sf_account = SFAccount.objects.create(name="test name")
+        sf_account = SFAccount.objects.get_or_create(id="test name")[0]
         opportunity = Opportunity.objects.create(account=sf_account)
         placement = OpPlacement.objects.create(id=next(str_iterator), opportunity=opportunity)
         chf_account = Account.objects.create(
@@ -365,7 +369,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertAlmostEqual(acc_data["cost"], expected_cost)
 
     def test_demo_brand(self):
-        recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
@@ -376,7 +379,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
 
     def test_demo_cost_type(self):
-        recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
@@ -387,7 +389,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"], DEMO_COST_METHOD)
 
     def test_demo_agency(self):
-        recreate_test_demo_data()
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
@@ -503,7 +504,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = True
         self.user.save()
-        recreate_test_demo_data()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create()
         account.managers.add(chf_mcc_account)
@@ -518,7 +518,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_ALL_ACCOUNTS] = True
         self.user.perms[StaticPermissions.MANAGED_SERVICE__VISIBLE_DEMO_ACCOUNT] = False
         self.user.save()
-        recreate_test_demo_data()
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create()
         account.managers.add(chf_mcc_account)
