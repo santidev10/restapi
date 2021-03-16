@@ -93,7 +93,6 @@ class Command(BaseCommand):
     def process_audit(self, num=500):
         self.load_inclusion_list()
         self.load_exclusion_list()
-        self.force_data_refresh = self.audit.params.get("force_data_refresh")
         self.exclusion_hit_count = self.audit.params.get("exclusion_hit_count")
         self.inclusion_hit_count = self.audit.params.get("inclusion_hit_count")
         if not self.exclusion_hit_count:
