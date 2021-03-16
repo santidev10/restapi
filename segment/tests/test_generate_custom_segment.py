@@ -46,3 +46,17 @@ class GenerateCustomSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             generate_custom_segment(segment.id)
         segment.refresh_from_db()
         self.assertTrue("source" in segment.statistics["error"])
+
+    @mock_s3
+    def test_uncaught_exception(self):
+        user = self.create_test_user()
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, owner=user, uuid=uuid4(), list_type=0,
+        )
+        with patch("segment.tasks.generate_custom_segment.generate_segment", side_effect=Exception):
+            generate_custom_segment(segment.id)
+        segment.refresh_from_db()
+        self.assertTrue("Unable" in segment.statistics["error"])
