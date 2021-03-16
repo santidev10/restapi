@@ -64,4 +64,4 @@ def regenerate_custom_segments():
         export.save()
 
         if segment.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
-            generate_video_exclusion(segment)
+            generate_video_exclusion(segment.id)

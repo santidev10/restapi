@@ -67,7 +67,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
             curr_blocklist = []
             curr_videos = []
             # Split chunk of channel ids for get_videos_for_channels func
-            channel_id_args = [list(ids) for ids in chunks_generator(chunk, size=5)]
+            channel_id_args = [list(ids) for ids in chunks_generator(chunk, size=2)]
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 futures = [executor.submit(get_videos_for_channels, channel_ids, mapped_score_threshold) for channel_ids in channel_id_args]
                 for future in concurrent.futures.as_completed(futures):
