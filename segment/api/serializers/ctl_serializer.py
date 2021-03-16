@@ -420,9 +420,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             )
         except CTLEmptySourceUrlException:
             raise
-        except Exception as err:
-            logger.exception("Error creating CTL source file")
-            raise ValidationError(err)
+        except Exception:
+            message = "Error creating CTL source file"
+            logger.exception(message)
+            raise ValidationError(message)
         finally:
             os.remove(final_source_file)
 
