@@ -102,18 +102,25 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_owner_filter_list_vetted(self):
         """ Users should be able to see and download their own lists, even if vetted """
+        user = self.create_test_user(perms={StaticPermissions.BUILD__CTL_VET: True})
         audit = AuditProcessor.objects.create(source=0)
-        seg_1_params = dict(uuid=uuid.uuid4(), owner=self.user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
+        audit_2 = AuditProcessor.objects.create(source=0)
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1", audit_id=audit.id)
         seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
+        seg_3_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="3", audit_id=audit_2.id)
         segment, export = self._create_segment(segment_params=seg_1_params,
                                                export_params=dict(query={}, download_url="test"))
+        segment_3, export_3 = self._create_segment(segment_params=seg_3_params,
+                                                   export_params=dict(query={}, download_url="test3"))
         self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
-        expected_segments_count = 1
+        expected_segments_count = 2
         response = self.client.get(self._get_url("video"))
-        data = response.data["items"][0]
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
-        self.assertEqual(data["owner_id"], str(seg_1_params["owner"].id))
+        items = response.data.get("items")
+        for item in items:
+            with self.subTest(item):
+                self.assertEqual(str(item.get("owner_id")), str(user.id))
 
     def test_list_type_filter_list(self):
         user = self.create_test_user(perms={
