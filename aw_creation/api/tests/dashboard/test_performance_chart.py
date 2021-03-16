@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from itertools import product
+from unittest import skip
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -79,6 +80,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @skip("Skip hanging test")
     def test_success_tabs(self):
         user = self.create_test_user(perms={
             StaticPermissions.MANAGED_SERVICE__SERVICE_COSTS: True,
