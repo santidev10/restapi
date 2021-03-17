@@ -813,7 +813,7 @@ class APIViewMixin:
     def is_default_page(self):
         query_params = self.request.query_params
         is_default_page = False
-        if query_params.get("page") == "1" and set(query_params.keys()) == {"page", "sort", "fields"}:
+        if query_params.get("page") == "1" and set(query_params.keys()).issubset({"page", "sort", "fields", "size"}):
             is_default_page = True
         return is_default_page
 
