@@ -283,7 +283,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_EXPORT_ADMIN,         False,  "Export (all data)"],
         [StaticPermissions.BUILD__CTL_SEE_ALL,              False,  "See all Lists"],
         [StaticPermissions.BUILD__CTL_VET,                  False,  "Vet Stuff"],
-        [StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA,  False,  "Use CTL Vet Status Filters, See CTL Vetting Status"],
+        [StaticPermissions.BUILD__CTL_CUSTOM_VETTING_DATA,  False,  "Filter / View Custom Vetting Data"],
         [StaticPermissions.BUILD__CTL_REPORT_VETTING_ISSUE, False,  "Report CTL Vetting issue"],
         [StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE,  False,  "Resolve Limbo State"],
         [StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST,     False,  "Create CTL From a Custom List"],
