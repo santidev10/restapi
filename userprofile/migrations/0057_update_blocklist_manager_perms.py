@@ -22,7 +22,10 @@ def update_blocklist_manager_perms(apps, schema_editor):
                 user.perms[base_perm + action + "_video"] = False
                 user.perms[base_perm + action + "_channel"] = False
 
-        user.save()
+            # remove old permission
+            user.perms.pop(base_perm + action, None)
+
+        user.save(updated_fields=["perms"])
 
 
 class Migration(migrations.Migration):
