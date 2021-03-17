@@ -15,7 +15,12 @@ def update_blocklist_manager_perms(apps, schema_editor):
 
         # enable new video and channel perms if user already had access
         for action in actions:
-            if user.has_permission(base_perm + action):
+            try:
+                user_has_perm = user.has_permission(base_perm + action)
+            except KeyError:
+                user_has_perm = False
+
+            if user_has_perm:
                 user.perms[base_perm + action + "_video"] = True
                 user.perms[base_perm + action + "_channel"] = True
             else:
