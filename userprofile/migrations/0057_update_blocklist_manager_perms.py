@@ -17,7 +17,7 @@ def update_blocklist_manager_perms(apps, schema_editor):
         for action in actions:
             try:
                 user_has_perm = user.has_permission(base_perm + action)
-            except KeyError:
+            except:
                 user_has_perm = False
 
             if user_has_perm:
