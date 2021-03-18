@@ -1,6 +1,6 @@
 import datetime
 
-from performiq.models import OAuthAccount
+from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.tasks.update_campaigns import update_campaigns_task
 from saas import celery_app

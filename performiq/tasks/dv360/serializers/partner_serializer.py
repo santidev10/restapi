@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from performiq.models.models import DV360Partner
+from oauth.models import DV360Partner
 
 
 class PartnerSerializer(serializers.Serializer):

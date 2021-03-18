@@ -5,9 +5,9 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
-from performiq.models import Account
-from performiq.models import Campaign
-from performiq.models import OAuthAccount
+from oauth.models import Account
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.utils.adwords_report import get_campaign_report
 from performiq.utils.adwords_report import get_accounts

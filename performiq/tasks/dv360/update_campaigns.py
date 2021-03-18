@@ -1,14 +1,10 @@
-import random
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from itertools import cycle
-from typing import Callable
 
-from django.utils import timezone
 from googleapiclient.discovery import Resource
 
-from performiq.models.models import DV360Advertiser
-from performiq.models.models import OAuthAccount
+from oauth.models import DV360Advertiser
+from oauth.models import OAuthAccount
 from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerializer
 from performiq.utils.dv360 import CampaignAdapter
 from performiq.utils.dv360 import get_discovery_resource
@@ -19,8 +15,6 @@ from performiq.utils.dv360 import serialize_dv360_list_response_items
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
 THREAD_CEILING = 5
-
-
 
 
 def update_campaigns():

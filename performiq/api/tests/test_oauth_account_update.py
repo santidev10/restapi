@@ -2,8 +2,8 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from oauth.models import OAuthAccount
 from performiq.api.urls.names import PerformIQPathName
-from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from saas.urls.namespaces import Namespace
 from utils.unittests.test_case import ExtendedAPITestCase

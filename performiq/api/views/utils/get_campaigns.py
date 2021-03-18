@@ -1,6 +1,6 @@
 from performiq.api.serializers import CampaignSerializer
-from performiq.models import Campaign
-from performiq.models import OAuthAccount
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from utils.views import get_object
 

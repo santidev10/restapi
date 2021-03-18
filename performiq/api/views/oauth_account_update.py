@@ -2,8 +2,8 @@ from rest_framework.exceptions import NotFound
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
 
+from oauth.models import OAuthAccount
 from performiq.api.serializers import OAuthAccountSerializer
-from performiq.models import OAuthAccount
 from userprofile.constants import StaticPermissions
 
 

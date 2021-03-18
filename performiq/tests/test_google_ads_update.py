@@ -3,7 +3,7 @@ from unittest import mock
 
 from django.utils import timezone
 
-from performiq.models import OAuthAccount
+from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.tasks.google_ads_update import google_ads_update_task
 from performiq.tasks.google_ads_update import UPDATE_THRESHOLD

@@ -1,10 +1,9 @@
 import datetime
 from unittest.mock import patch
-from types import SimpleNamespace
 
 from googleapiclient.errors import HttpError
 
-from performiq.models import OAuthAccount
+from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.tasks.dv360.sync_dv_records import CREATED_THRESHOLD_MINUTES
 from performiq.tasks.dv360.sync_dv_records import sync_dv_partners

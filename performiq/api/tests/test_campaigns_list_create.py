@@ -5,14 +5,14 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from oauth.models import Account
+from oauth.models import DV360Advertiser
+from oauth.models import DV360Partner
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from performiq.analyzers.constants import DataSourceType
 from performiq.api.urls.names import PerformIQPathName
-from performiq.models import Account
-from performiq.models import DV360Advertiser
-from performiq.models import DV360Partner
-from performiq.models import Campaign
 from performiq.models import IQCampaign
-from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 from performiq.utils.constants import CSVFieldTypeEnum
 from saas.urls.namespaces import Namespace

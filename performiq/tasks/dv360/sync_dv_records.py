@@ -10,11 +10,11 @@ from googleapiclient.errors import HttpError
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from oauth.models import DV360Advertiser
+from oauth.models import DV360Partner
+from oauth.models import OAuthAccount
 from performiq.models.constants import EntityStatusType
 from performiq.models.constants import OAuthType
-from performiq.models.models import DV360Advertiser
-from performiq.models.models import DV360Partner
-from performiq.models.models import OAuthAccount
 from performiq.tasks.dv360.serializers.advertiser_serializer import AdvertiserSerializer
 from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerializer
 from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer

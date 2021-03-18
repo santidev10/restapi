@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer
 
-from performiq.models import OAuthAccount
+from oauth.models import OAuthAccount
 
 
 class AWAuthSerializer(ModelSerializer):

@@ -22,7 +22,7 @@ class DV360Base(Timestampable):
 
 
 class DV360SharedFieldsMixin(models.Model):
-    display_name = models.CharField(max_length=250, default='')
+    display_name = models.CharField(max_length=250, default="")
     update_time = models.DateTimeField(null=True, default=None)
     entity_status = models.SmallIntegerField(db_index=True, choices=ENTITY_STATUS_CHOICES, default=None, null=True)
 
@@ -32,7 +32,7 @@ class DV360SharedFieldsMixin(models.Model):
 
 class OAuthAccount(OAuthBase):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name="test")
     name = models.CharField(max_length=255, null=True, db_index=True)
     email = models.EmailField(max_length=255, null=True, db_index=True)
     token = models.CharField(null=True, max_length=255)
@@ -42,7 +42,7 @@ class OAuthAccount(OAuthBase):
     synced = models.BooleanField(default=False, db_index=True)
 
 
-class GadsAccount(models.Model):
+class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True)
@@ -59,7 +59,7 @@ class DV360Advertiser(DV360Base, DV360SharedFieldsMixin):
 
 class Campaign(OAuthBase, DV360SharedFieldsMixin):
     id = models.BigAutoField(primary_key=True)
-    account = models.ForeignKey(GadsAccount, related_name="campaigns", on_delete=models.CASCADE, null=True)
+    account = models.ForeignKey(Account, related_name="campaigns", on_delete=models.CASCADE, null=True)
     advertiser = models.ForeignKey(DV360Advertiser, on_delete=models.CASCADE, related_name="campaigns", null=True,
                                    default=None)
     name = models.CharField(max_length=255, null=True, db_index=True)
@@ -74,19 +74,18 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
 
     def to_dict(self):
         d = {
-            'campaign_type': OAUTH_CHOICES[self.oauth_type],
-            'campaign_id': self.id,
-            'campaign_name': self.name,
-            'metrics': {
-                'impressions': self.impressions,
-                'video_views': self.video_views,
-                'cost': self.cost,
-                'cpm': self.cpm,
-                'cpv': self.cpv,
-                'ctr': self.ctr,
-                'active_view_viewability': self.active_view_viewability,
-                'video_quartile_100_rate': self.video_quartile_100_rate,
+            "campaign_type": OAUTH_CHOICES[self.oauth_type],
+            "campaign_id": self.id,
+            "campaign_name": self.name,
+            "metrics": {
+                "impressions": self.impressions,
+                "video_views": self.video_views,
+                "cost": self.cost,
+                "cpm": self.cpm,
+                "cpv": self.cpv,
+                "ctr": self.ctr,
+                "active_view_viewability": self.active_view_viewability,
+                "video_quartile_100_rate": self.video_quartile_100_rate,
             }
         }
         return d
-

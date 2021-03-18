@@ -3,16 +3,16 @@ from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.views import APIView
 from suds import WebFault
 
+from oauth.api.views import BaseGoogleAuthApiView
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.oauth_utils import load_client_settings
 from performiq.tasks.update_campaigns import update_campaigns_task
 from performiq.utils.adwords_report import get_accounts
 
 
-class GoogleAuthApiView(APIView):
+class AdWordsAuthApiView(BaseGoogleAuthApiView):
     """
     API View for Granting AdWords OAuth Access to PerformIQ
     GET method gives a URL to go and grant access to our app
