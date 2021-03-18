@@ -8,7 +8,7 @@ from oauth.constants import OAuthType
 from oauth.utils.client import get_google_access_token_info
 
 
-class BaseGoogleOAuthApiView(BaseOAuthAPIView):
+class BaseGoogleAuthApiView(BaseOAuthAPIView):
     """
     API View for Granting AdWords OAuth Access to PerformIQ
     GET method gives a URL to go and grant access to our app
@@ -46,7 +46,7 @@ class BaseGoogleOAuthApiView(BaseOAuthAPIView):
                 data=dict(error="Required: 'code'")
             )
 
-        flow = self.get_flow()
+        flow = self.get_flow(self.get_client_settings())
         try:
             credential = flow.step2_exchange(code)
         except client.FlowExchangeError as e:

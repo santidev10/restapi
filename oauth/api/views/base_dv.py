@@ -3,26 +3,16 @@ from urllib.parse import unquote
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
-from rest_framework.views import APIView
-
 from .base import BaseOAuthAPIView
-from oauth.utils.client import get_flow
-from aw_reporting.utils import get_google_access_token_info
-from performiq.api.views.adwords_auth import AdWordsAuthApiView
-from performiq.api.views.utils.performiq_permission import PerformIQPermission
-from performiq.models import OAuthAccount
-from performiq.models.constants import OAuthType
-from performiq.oauth_utils import load_client_settings
+from oauth.models import OAuthAccount
+from oauth.constants import OAuthType
+from oauth.utils.client import get_google_access_token_info
 from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
 
 
 class BaseDV360AuthApiView(BaseOAuthAPIView):
-    permission_classes = (PerformIQPermission,)
-
     scopes = (
         "https://www.googleapis.com/auth/display-video",
-        # "https://www.googleapis.com/auth/display-video-media-planning",
-        # "https://www.googleapis.com/auth/display-video-user-management",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/userinfo.email",
     )
@@ -38,7 +28,7 @@ class BaseDV360AuthApiView(BaseOAuthAPIView):
             )
         code = unquote(code)
 
-        flow = self.get_flow()
+        flow = self.get_flow(self.get_client_settings())
         try:
             credential = flow.step2_exchange(code)
         except client.FlowExchangeError as e:
@@ -76,24 +66,3 @@ class BaseDV360AuthApiView(BaseOAuthAPIView):
             # get user's  partners and advertisers relations
             sync_dv_partners.delay(oauth_account_ids=[oauth_account.id], sync_advertisers=True)
         return Response(status=204)
-
-    def get_flow(self):
-        aw_settings = load_client_settings()
-        flow = get_flow(aw_settings, self.scopes)
-        return flow
-
-    @staticmethod
-    def delete(request, email, **_):
-        try:
-            oauth_account = OAuthAccount.objects.get(
-                user=request.user,
-                email=email
-            )
-            oauth_account.delete()
-        except OAuthAccount.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        return Response(data=f"Deleted OAuth for email: {email}.")
-
-    def handler(self, *args, **kwargs):
-        raise NotImplementedError
