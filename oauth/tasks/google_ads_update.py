@@ -1,14 +1,14 @@
 import datetime
 
+from oauth.constants import OAuthType
 from oauth.models import OAuthAccount
-from performiq.models.constants import OAuthType
-from performiq.tasks.update_campaigns import update_campaigns_task
+from oauth.tasks.update_campaigns import update_campaigns_task
 from saas import celery_app
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 from utils.datetime import now_in_default_tz
 
-LOCK_PREFIX = "performiq_google_ads_update_"
+LOCK_PREFIX = "oauth_google_ads_update_"
 UPDATE_THRESHOLD = 3600 * 2
 
 

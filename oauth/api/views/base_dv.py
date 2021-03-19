@@ -7,7 +7,7 @@ from .base import BaseOAuthAPIView
 from oauth.models import OAuthAccount
 from oauth.constants import OAuthType
 from oauth.utils.client import get_google_access_token_info
-from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
+from oauth.tasks.dv360 import sync_dv_partners
 
 
 class BaseDV360AuthApiView(BaseOAuthAPIView):

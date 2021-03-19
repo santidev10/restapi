@@ -5,14 +5,14 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
+from oauth.constants import OAuthType
 from oauth.models import Account
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
-from performiq.models.constants import OAuthType
+from oauth.utils.client import get_client
 from performiq.utils.adwords_report import get_campaign_report
 from performiq.utils.adwords_report import get_accounts
 from performiq.utils.update import prepare_items
-from performiq.oauth_utils import get_client
 from saas import celery_app
 from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator

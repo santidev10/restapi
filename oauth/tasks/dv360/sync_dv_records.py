@@ -15,9 +15,9 @@ from oauth.models import DV360Partner
 from oauth.models import OAuthAccount
 from performiq.models.constants import EntityStatusType
 from performiq.models.constants import OAuthType
-from performiq.tasks.dv360.serializers.advertiser_serializer import AdvertiserSerializer
-from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerializer
-from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer
+from oauth.tasks.dv360.serializers import AdvertiserSerializer
+from oauth.tasks.dv360.serializers import CampaignSerializer
+from oauth.tasks.dv360.serializers import PartnerSerializer
 from performiq.utils.dv360 import AdvertiserAdapter
 from performiq.utils.dv360 import CampaignAdapter
 from performiq.utils.dv360 import PartnerAdapter
