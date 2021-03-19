@@ -14,7 +14,7 @@ from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from segment.models import CustomSegment
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
 from utils.exception import retry
@@ -62,7 +62,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=30):
             curr_blocklist = []
             curr_videos = []
@@ -88,7 +88,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         # Raise for retry decorator
         raise
     else:
-        channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
+        channel_ctl.statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
         channel_ctl.save(update_fields=["statistics"])
         return video_exclusion_s3_key
     finally:

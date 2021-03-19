@@ -16,7 +16,7 @@ from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentVettedFileUpload
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from userprofile.constants import StaticPermissions
 from utils.aws.s3_exporter import S3Exporter
 from utils.datetime import now_in_default_tz
@@ -135,7 +135,7 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         })
         test_user = self._create_user()
         data = {
-            VideoExclusion.VIDEO_EXCLUSION_FILENAME: "test_video_exclusion_export"
+            Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME: "test_video_exclusion_export"
         }
         segment, _ = self._create_segment(segment_params=dict(owner=test_user, statistics=data))
         with patch.object(S3Exporter, "exists", return_value=True):

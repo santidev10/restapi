@@ -25,6 +25,7 @@ from segment.api.export_serializers import CustomSegmentChannelVettedExportSeria
 from segment.api.export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
+from segment.models.constants import Params
 from segment.models.constants import VideoConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.segment_mixin import SegmentMixin
@@ -71,7 +72,9 @@ class CustomSegment(SegmentMixin, Timestampable):
     params = models.JSONField(default=dict)
 
     def remove_meta_audit_params(self):
-        remove_keys = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        remove_keys = {
+            Params.AuditTool.META_AUDIT_ID, Params.AuditTool.INCLUSION_FILE, Params.AuditTool.EXCLUSION_FILE,
+        }
         [self.params.pop(key, None) for key in remove_keys]
         self.save(update_fields=["params"])
 
@@ -226,7 +229,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             except AuditProcessor.DoesNotExist:
                 pass
         _delete_audit(self.audit_id)
-        _delete_audit(self.params.get("meta_audit_id"))
+        _delete_audit(self.params.get(Params.AuditTool.META_AUDIT_ID))
         self.delete()
 
 

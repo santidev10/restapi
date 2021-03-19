@@ -9,8 +9,8 @@ from moto import mock_s3
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from segment.models import CustomSegment
+from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import VideoExclusion
 from segment.models.utils.segment_exporter import SegmentExporter
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
@@ -22,8 +22,8 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
         self.channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, params={
-            VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
-            VideoExclusion.WITH_VIDEO_EXCLUSION: True,
+            Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
+            Params.VideoExclusion.WITH_VIDEO_EXCLUSION: True,
         })
         CustomSegmentFileUpload.objects.create(segment=self.channel_ctl, query=dict(params={"score_threshold": 4}))
 
@@ -71,7 +71,7 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_ctl.refresh_from_db()
         lines = self._get_lines(conn, video_exclusion_filename)
         self.assertTrue(len(lines) > 1)
-        self.assertTrue(self.channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME])
+        self.assertTrue(self.channel_ctl.statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME])
 
     @mock_s3
     def test_results_truncated(self):

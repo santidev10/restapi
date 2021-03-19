@@ -9,7 +9,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.utils.segment_action import segment_action
 from segment.models.constants import SegmentActionEnum
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from segment.utils.utils import AdminCustomSegmentOwnerPermission
 from utils.permissions import or_permission_classes
@@ -47,7 +47,7 @@ class SegmentExport(APIView):
                 if not request.user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
                     raise PermissionDenied
                 try:
-                    s3_key = segment.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME]
+                    s3_key = segment.statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME]
                 except KeyError:
                     raise Http404
                 response["download_url"] = segment.s3.generate_temporary_url(s3_key)

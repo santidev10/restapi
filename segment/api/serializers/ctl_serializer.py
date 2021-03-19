@@ -27,7 +27,7 @@ from segment.models import CustomSegmentSourceFileUpload
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from segment.utils.query_builder import SegmentQueryBuilder
@@ -142,16 +142,16 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     def get_statistics(self, obj: CustomSegment) -> dict:
         statistics = obj.statistics
         if obj.segment_type == SegmentTypeEnum.CHANNEL.value:
-            video_exclusion_filename = statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME, False)
+            video_exclusion_filename = statistics.get(Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME, False)
             # If params set but filename is unavailable, video exclusion ctl is being generated so
             # serialize as None to represent "pending"
-            if obj.params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
+            if obj.params.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
                     and not video_exclusion_filename:
-                statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = None
+                statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME] = None
             else:
                 # Simply serialize with result of get call. If filename was set, then it is available for export.
                 # If not, then video_exclusion_filename will be False, which represents it is available for creation.
-                statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_filename
+                statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_filename
         return statistics
 
     def validate_owner(self, owner_id: int) -> UserProfile:
@@ -218,7 +218,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         # Check only creating video exclusion ctl
         video_exclusion_params = self.context.get("video_exclusion_params")
-        if video_exclusion_params.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+        if video_exclusion_params.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
             instance.params.update(video_exclusion_params)
             instance.save(update_fields=["params"])
             generate_video_exclusion.delay(instance.id)
@@ -229,7 +229,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             old_params = {}
         new_params = self.context["ctl_params"]
         should_regenerate = self._check_should_regenerate(instance, old_params, new_params)
-        old_meta_audit_id = instance.params.get("meta_audit_id")
+        old_meta_audit_id = instance.params.get(Params.AuditTool.META_AUDIT_ID)
         # always save updated title
         title = validated_data.get("title", instance.title)
         if title != instance.title:
@@ -292,7 +292,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                 should_regenerate = True
                 return should_regenerate
         try:
-            audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+            audit = AuditProcessor.objects.get(id=segment.params[Params.AuditTool.META_AUDIT_ID])
 
             # Check inclusion / exclusion keywords
             inclusion_filename, inclusion_rows = self._get_inclusion_keywords(audit.params)
@@ -333,8 +333,8 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         """
         extra_kwargs = {}
         files = self.context["files"]
-        if files.get("inclusion_file") or files.get("exclusion_file") \
-                or AuditProcessor.objects.filter(id=segment.params.get("meta_audit_id")).exists():
+        if files.get(Params.AuditTool.INCLUSION_FILE) or files.get(Params.AuditTool.EXCLUSION_FILE) \
+                or AuditProcessor.objects.filter(id=segment.params.get(Params.AuditTool.META_AUDIT_ID)).exists():
             audit = self._create_audit(segment)
             # If an audit was created, then create CTL with audit. Audits however will not always be created. For
             # example, if updating a CTl that has inclusion / exclusion keywords but is being removed during the update,
@@ -437,7 +437,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             export for the list in the audit_tool.management.commands.audit_video_meta.Command.update_ctl method
         """
         try:
-            old_params = AuditProcessor.objects.get(id=segment.params.get("meta_audit_id")).params
+            old_params = AuditProcessor.objects.get(id=segment.params.get(Params.AuditTool.META_AUDIT_ID)).params
         except AuditProcessor.DoesNotExist:
             old_params = {}
         request = self.context["request"]
@@ -485,9 +485,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, temp_stop=True,
                                               name=segment.title.lower(), params=params)
         segment.params.update({
-            "inclusion_file": inclusion_filename,
-            "exclusion_file": exclusion_filename,
-            "meta_audit_id": audit.id,
+            Params.AuditTool.INCLUSION_FILE: inclusion_filename,
+            Params.AuditTool.EXCLUSION_FILE: exclusion_filename,
+            Params.AuditTool.META_AUDIT_ID: audit.id,
         })
         segment.save(update_fields=["params"])
         return audit
@@ -578,7 +578,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         [setattr(segment, key, False) for key in set_false]
         segment.audit_id = None
         segment.statistics = {}
-        segment.params[VideoExclusion.WITH_VIDEO_EXCLUSION] = False
+        segment.params[Params.VideoExclusion.WITH_VIDEO_EXCLUSION] = False
         if hasattr(segment, "export"):
             segment.export.delete()
         if hasattr(segment, "vetted_export"):
