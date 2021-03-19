@@ -203,9 +203,11 @@ class Queue:
     SCHEDULERS = "schedulers"
     IAS = "ias"
     PERFORMIQ = "performiq"
+    CTL_VIDEO_EXCLUSION = "ctl_video_exclusion"
 
 
 CELERY_ROUTES_PREPARED = [
+    {"segment.tasks.generate_video_exclusion.generate_video_exclusion", {"queue": Queue.CTL_VIDEO_EXCLUSION}},
     ("transcripts.tasks.*", {"queue": Queue.TRANSCRIPTS}),
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
