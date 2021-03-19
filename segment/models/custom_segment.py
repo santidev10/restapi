@@ -70,6 +70,10 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
     params = models.JSONField(default=dict)
+    # If CustomSegment is marked for Google Ads Placements sync.
+    # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
+    # Sync params are stored in params field
+    gads_synced = models.NullBooleanField(default=None)
 
     def remove_meta_audit_params(self):
         remove_keys = {
