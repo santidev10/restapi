@@ -73,9 +73,9 @@ class Params:
         VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
 
     class GoogleAds:
-        GADS_SYNC = "gads_sync"
+        GADS_SYNC_DATA = "gads_sync_data"
         CID = "cid"
-        AD_GROUPS = "ad_groups"
+        AD_GROUP_IDS = "ad_group_ids"
 
     # DV360
     class DV360:
