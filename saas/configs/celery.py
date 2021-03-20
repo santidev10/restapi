@@ -207,7 +207,6 @@ class Queue:
 
 
 CELERY_ROUTES_PREPARED = [
-    ("segment.tasks.generate_video_exclusion.generate_video_exclusion", {"queue": Queue.CTL_VIDEO_EXCLUSION}),
     ("transcripts.tasks.*", {"queue": Queue.TRANSCRIPTS}),
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
@@ -220,6 +219,7 @@ CELERY_ROUTES_PREPARED = [
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
     ("channel.tasks.ingest_ias_channels_v2.*", {"queue": Queue.IAS}),
     ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
+    ("segment.tasks.generate_video_exclusion.generate_video_exclusion", {"queue": Queue.CTL_VIDEO_EXCLUSION}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
