@@ -55,7 +55,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         objects = BlacklistItem.objects.filter(item_type=data_type, blocklist=True).order_by(F("updated_at").desc(nulls_last=True))
         ordered_ids = [item.item_id for item in objects]
         sections = (Sections.GENERAL_DATA,)
-        queryset = es_manager_class(sections=sections).get(ordered_ids)
+        queryset = es_manager_class(sections=sections).get(ordered_ids, skip_none=True)
         return queryset
 
     def _validate(self):
