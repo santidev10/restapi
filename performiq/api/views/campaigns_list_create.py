@@ -50,5 +50,5 @@ class PerformIQCampaignListCreateAPIView(APIView):
         request = self.request
         prefix = get_request_prefix(request)
         host = request.get_host()
-        link = f"{prefix}{host}/analytics/perform_iq/{iq_campaign.id}"
+        link = f"{prefix}{host}/review/{iq_campaign.id}"
         return link
