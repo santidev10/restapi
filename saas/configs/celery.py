@@ -215,7 +215,7 @@ CELERY_ROUTES_PREPARED = [
     ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
-    ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
+    ("segment.tasks.*segment*", {"queue": Queue.SEGMENTS}),
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
     ("channel.tasks.ingest_ias_channels_v2.*", {"queue": Queue.IAS}),
     ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
