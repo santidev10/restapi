@@ -41,7 +41,7 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
     iq_campaign.completed = now_in_default_tz()
     iq_campaign.save(update_fields=["started", "results", "completed"])
 
-    if not iq_campaign.results.get("error"):
+    if not iq_campaign.results.get("error") and not iq_campaign.results.get("no_placement_analyzed"):
         _send_completion_email(email, iq_campaign, completion_link)
 
 
