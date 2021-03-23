@@ -24,6 +24,12 @@ class CTLOAuthTestCase(ExtendedAPITestCase):
 
     _url = reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_OAUTH)
 
+    def _mock_data(self, oauth_account):
+        account = Account.objects.create(oauth_account=oauth_account)
+        campaign = Campaign.objects.create(account=account, oauth_type=oauth_account.oauth_type if oauth_account else None)
+        ad_groups = [AdGroup.objects.create(campaign=campaign)]
+        return account, campaign, ad_groups
+
     def setUp(self):
         super().setUp()
         self.user = self.create_test_user()
@@ -46,31 +52,8 @@ class CTLOAuthTestCase(ExtendedAPITestCase):
 
     def test_get_adgroups(self):
         """ Test successfully get AdGroup ids with oauthed user for Account id """
-        account = Account.objects.create(oauth_account=self.oauth_account)
-        campaign = Campaign.objects.create(account=account, oauth_type=OAuthType.GOOGLE_ADS.value)
-        ad_groups = [AdGroup.objects.create(campaign=campaign)]
-
-        account2 = Account.objects.create()
-        campaign2 = Campaign.objects.create(account=account2)
-        AdGroup.objects.create(campaign=campaign2)
-
+        account, campaign, ad_groups = self._mock_data(self.oauth_account)
+        account2 , campaign2, _ = self._mock_data(None)
         response = self.client.get(self._url + f"?cid={account.id}")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data, [ag.id for ag in ad_groups])
-
-    def test_patch(self):
-        """ Test updating CTL with sync data and marks for update with Google Ads """
-        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
-        with self.subTest("Must provide valid Account id"):
-            paylod = {}
-
-        with self.subTest("Must provide valid Adgroup Id's"):
-            payload = {
-                "pk": ctl.id,
-                Params.GoogleAds.CID: next(int_iterator),
-                Params.GoogleAds.AD_GROUP_IDS: [],
-            }
-            response = self.client.patch(self._url, data=json.dumps(payload), content_type="application/json")
-            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-

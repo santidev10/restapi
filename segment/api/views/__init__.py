@@ -10,4 +10,4 @@ from .custom_segment.segment_preview import SegmentPreviewAPIView
 from .custom_segment.segment_update import CustomSegmentUpdateApiView
 from .custom_segment.segment_create_update import SegmentCreateUpdateApiView
 from .custom_segment.segment_oauth import SegmentOAuthAPIView
-from .custom_segment.segment_sync import SegmentGoogleAdsSyncAPIView
+from .custom_segment.segment_sync import SegmentSyncAPIView

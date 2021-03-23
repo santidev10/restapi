@@ -2,10 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
+from performiq.api.serializers import AdGroupSerializer
+from performiq.api.serializers import OAuthAccountSerializer
 from segment.models import CustomSegment
 from segment.models.constants import Params
-from oauth.models import Account
-from oauth.models import OAuthAccount
+from performiq.models import Account
+from performiq.models import OAuthAccount
 from utils.views import get_object
 
 
@@ -18,21 +20,13 @@ class SegmentOAuthAPIView(APIView):
             qs = AdGroup.objects.filter(campaign__account=cid)
         else:
             qs = oauth_account.gads_accounts.all()
-        data = qs.values_list("id", flat=True)
+        data = self._get_data(qs)
         return Response(dict(data=data))
 
-    def patch(self, request, *args, **kwargs):
-        """ Update ctl for gads sync """
-        data = request.data
-        ctl = get_object(CustomSegment, id=kwargs["pk"])
-        cid = get_object(Account, id=data.get(Params.GoogleAds.CID))
-        ad_group_ids = request.data.get(Params.GoogleAds.AD_GROUP_IDS)
-        if not ad_group_ids or not isinstance(ad_group_ids, list):
-            raise ValidationError("You must provide a list of AdGroup id's to update.")
-        sync_data = {
-            Params.GoogleAds.CID: cid.id,
-            Params.GoogleAds.AD_GROUP_IDS: ad_group_ids
-        }
-        ctl.params[Params.GoogleAds.GADS_SYNC_DATA] = sync_data
-        ctl.save(update_fields=["params"])
-        return Response()
+    def _get_data(self, qs):
+        if isinstance(qs.model, OAuthAccount):
+            serializer = OAuthAccountSerializer
+        else:
+            serializer = AdGroupSerializer
+        data = serializer(qs, many=True).data
+        return data
