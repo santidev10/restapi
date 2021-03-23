@@ -4,6 +4,7 @@ import os
 from django.conf import settings
 from uuid import uuid4
 
+from segment.models.constants import Results
 from segment.models import CustomSegment
 from performiq.models import OAuthAccount
 from utils.dv360_api import DV360Connector
@@ -56,7 +57,7 @@ def generate_sdf(ctl_id):
     content_disposition = ctl.s3.get_content_disposition(f"{ctl.title}_{ctl.params('The line item')}_SDF_AdGroups.csv")
     s3_key = f"{uuid4()}.csv"
     ctl.s3.export_file_to_s3(output_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
-    ctl.statistics[""] = s3_key
+    ctl.update_statistics(Results.DV360, Results.EXPORT_FILENAME, s3_key)
 
 
 def _remove_error_fields(row, idx):

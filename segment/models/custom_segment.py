@@ -32,6 +32,7 @@ from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.models import Timestampable
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # If CustomSegment is marked for Google Ads Placements sync.
     # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
     # Sync params are stored in params field
-    gads_synced = models.NullBooleanField(default=None)
+    gads_synced = models.BooleanField(null=True, default=None, db_index=True)
 
     def remove_meta_audit_params(self):
         remove_keys = {
@@ -235,6 +236,20 @@ class CustomSegment(SegmentMixin, Timestampable):
         _delete_audit(self.audit_id)
         _delete_audit(self.params.get(Params.AuditTool.META_AUDIT_ID))
         self.delete()
+
+    def update_statistics(self, sub_key, data, data_key=None, save=False):
+        sub_data = self.statistics.get(sub_key, {})
+        if not data_key:
+            sub_data.update(data)
+        else:
+            sub_data[data_key] = data
+        if save:
+            self.save(update_fields=["statistics"])
+
+    def update_sync_history(self, account_name, sync_type):
+        date_str = now_in_default_tz().strftime("%H:%M, %B %d, %Y")
+        message = f"{account_name} - at {date_str}"
+        self.statistics[sync_type][Params.HISTORY] = self.statistics[sync_type].get(Params.HISTORY, []).extend([message])
 
 
 class CustomSegmentRelated(models.Model):
