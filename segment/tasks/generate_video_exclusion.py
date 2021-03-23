@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
+def failed_callback(channel_ctl_id, *_, **__):
+    """
+    Reset state of channel ctl video exclusion creation if task fails
+    :param channel_ctl_id: Channel CustomSegment
+    :return:
+    """
+    ctl = CustomSegment.objects.get(id=channel_ctl_id)
+    ctl.statistics.update({
+        VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
+    })
+    ctl.params.update({
+        VideoExclusion.WITH_VIDEO_EXCLUSION: False
+    })
+    ctl.save(update_fields=["params", "statistics"])
+
+
 @celery_app.task
 def generate_video_exclusion(channel_ctl_id: int) -> str:
     """
@@ -37,7 +53,7 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
     return video_exclusion_s3_key
 
 
-@retry(count=5, delay=10)
+@retry(count=5, delay=10, failed_callback=failed_callback)
 def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
@@ -59,6 +75,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         channel_ids = channel_ctl.s3.get_extract_export_ids()
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
+        failed_callback(channel_ctl_id)
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
@@ -155,3 +172,4 @@ def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Vi
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
                          extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
+
