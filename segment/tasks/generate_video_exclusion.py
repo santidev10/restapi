@@ -80,7 +80,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
-        for chunk in chunks_generator(channel_ids, size=30):
+        for chunk in chunks_generator(channel_ids, size=20):
             curr_blocklist = []
             curr_videos = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -122,14 +122,14 @@ def get_videos_for_channels(channel_id: str, bs_score_limit: int) -> iter:
     :return:
     """
     overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
-    video_source = (Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", Sections.CUSTOM_PROPERTIES)
+    video_source = (Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", f"{Sections.CUSTOM_PROPERTIES}.blocklist")
     query = (
         QueryBuilder().build().must().term().field("channel.id").value(channel_id).get()
         & QueryBuilder().build().must().exists().field(overall_score_field).get()
         & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
         & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
     )
-    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=2000, source=video_source)
+    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=1500, source=video_source)
 
 
 def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
