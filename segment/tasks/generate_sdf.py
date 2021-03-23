@@ -9,6 +9,13 @@ from performiq.models import OAuthAccount
 from utils.dv360_api import DV360Connector
 
 
+# DV360 API AdGroup SDF downloads contain these columns which actually break uploading SDFs in the DV360 UI.
+REMOVE_COLUMNS = [
+    "Placement Targeting - Popular Content - Include"
+]
+PLACEMENTS_INCLUSION_KEY = "Placement Targeting - YouTube Channels - Include"
+
+
 def generate_sdf(ctl_id):
     ctl = CustomSegment.objects.get(id=ctl_id)
     oauth_account = OAuthAccount.objects.get(email="kenneth.oh@channelfactory.com", oauth_type=1)
@@ -25,13 +32,33 @@ def generate_sdf(ctl_id):
             open(output_fp, "w") as dest:
         reader = csv.reader(source)
         writer = csv.writer(dest)
-        try:
-            header = next(reader)
-            writer.writerow(header)
-        except StopIteration:
-            pass
-        else:
-            placement_inclusion_index = header.index("Placement Targeting - YouTube Channels - Include")
-            for row in reader:
-                row[placement_inclusion_index] = urls
-                writer.writerow(row)
+
+        header = next(reader)
+        placements_idx = header.index(PLACEMENTS_INCLUSION_KEY)
+        remove_idx = []
+        # Find indexes of erroneous columns to remove from data rows
+        for col in REMOVE_COLUMNS:
+            try:
+                i = header.index(col)
+                header.pop(i)
+                remove_idx.append(i)
+            except ValueError:
+                pass
+
+        writer.writerow(header)
+        for row in reader:
+            # First update placements with ctl results
+            row[placements_idx] = urls
+            # Remove columns that SDF upload will not accept
+            _remove_error_fields(row, remove_idx)
+            writer.writerow(row)
+
+    content_disposition = ctl.s3.get_content_disposition(f"{ctl.title}_{ctl.params('The line item')}_SDF_AdGroups.csv")
+    s3_key = f"{uuid4()}.csv"
+    ctl.s3.export_file_to_s3(output_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
+    ctl.statistics[""] = s3_key
+
+
+def _remove_error_fields(row, idx):
+    for i in idx:
+        row.pop(i)
