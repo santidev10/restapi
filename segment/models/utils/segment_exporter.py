@@ -56,7 +56,7 @@ class SegmentExporter(S3Exporter):
             row = byte.decode("utf-8").split(",")
             yield row
 
-    def get_extract_export_ids(self, s3_key=None, as_id=True):
+    def get_extract_export_ids(self, s3_key=None, as_url=False):
         """
         Parse and extract Channel or video ids from csv export
         :return:
@@ -76,7 +76,7 @@ class SegmentExporter(S3Exporter):
                 except ValueError:
                     url_index = 0
             val = row[url_index]
-            if as_id is True:
+            if as_url is False:
                 val = self.parse_url(row[url_index], self.segment.segment_type)
             yield val
 
