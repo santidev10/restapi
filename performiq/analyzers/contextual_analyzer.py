@@ -213,7 +213,9 @@ class ContextualAnalyzer(BaseAnalyzer):
         if placement_content_categories is None:
             return False
         elif isinstance(placement_content_categories, str):
-            placement_content_categories = [placement_content_categories]
+            placement_content_categories = {placement_content_categories}
+        else:
+            placement_content_categories = set(placement_content_categories)
         # Increment category occurrences
         for category in placement_content_categories:
             if (category or "").lower() in IGNORE_CONTENT_CATEGORIES:
@@ -252,4 +254,3 @@ class ContextualAnalyzer(BaseAnalyzer):
             )
         }
         return result
-

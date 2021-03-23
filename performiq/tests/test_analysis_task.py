@@ -78,7 +78,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         self.assertTrue(iq_campaign.results["no_placement_analyzed"], True)
-        mock_email.assert_called_once()
+        mock_email.assert_not_called()
 
     @mock_s3
     def test_no_filters_null_results(self):
