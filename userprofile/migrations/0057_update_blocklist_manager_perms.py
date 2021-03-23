@@ -30,7 +30,7 @@ def update_blocklist_manager_perms(apps, schema_editor):
             # remove old permission
             user.perms.pop(base_perm + action, None)
 
-        user.save(updated_fields=["perms"])
+        user.save(update_fields=["perms"])
 
 
 class Migration(migrations.Migration):
