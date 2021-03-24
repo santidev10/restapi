@@ -5,8 +5,8 @@ from django.utils import timezone
 
 from oauth.models import OAuthAccount
 from performiq.models.constants import OAuthType
-from performiq.tasks.google_ads_update import google_ads_update_task
-from performiq.tasks.google_ads_update import UPDATE_THRESHOLD
+from oauth.tasks.google_ads_update import google_ads_update_task
+from oauth.tasks.google_ads_update import UPDATE_THRESHOLD
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -16,8 +16,8 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
             i.e. get_lock returns False """
         user = self.create_test_user()
         OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
-        with mock.patch("performiq.tasks.google_ads_update.get_lock", return_value=("", False)), \
-             mock.patch("performiq.tasks.google_ads_update.update_campaigns_task.delay") as mock_task:
+        with mock.patch("oauth.tasks.google_ads_update.get_lock", return_value=("", False)), \
+             mock.patch("oauth.tasks.google_ads_update.update_campaigns_task.delay") as mock_task:
                 google_ads_update_task.run()
                 mock_task.assert_not_called()
 
@@ -25,9 +25,9 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         """ Test scheduler successfully schedules update task"""
         user = self.create_test_user()
         OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
-        with mock.patch("performiq.tasks.google_ads_update.get_lock", return_value=("", True)), \
-             mock.patch("performiq.tasks.google_ads_update.UPDATE_THRESHOLD", 0), \
-             mock.patch("performiq.tasks.google_ads_update.update_campaigns_task") as mock_task:
+        with mock.patch("oauth.tasks.google_ads_update.get_lock", return_value=("", True)), \
+             mock.patch("oauth.tasks.google_ads_update.UPDATE_THRESHOLD", 0), \
+             mock.patch("oauth.tasks.google_ads_update.update_campaigns_task") as mock_task:
                 google_ads_update_task.run()
                 mock_task.assert_called_once()
 
@@ -39,8 +39,8 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         should_update = OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
         OAuthAccount.objects.filter(id=should_update.id).update(updated_at=expired)
         should_not_update = OAuthAccount.objects.create(oauth_type=OAuthType.GOOGLE_ADS.value, user=user)
-        with mock.patch("performiq.tasks.google_ads_update.update_campaigns_task") as mock_task, \
-                mock.patch("performiq.tasks.google_ads_update.get_lock", return_value=("", True)):
+        with mock.patch("oauth.tasks.google_ads_update.update_campaigns_task") as mock_task, \
+                mock.patch("oauth.tasks.google_ads_update.get_lock", return_value=("", True)):
             google_ads_update_task.run()
         should_update.refresh_from_db()
         should_not_update.refresh_from_db()
