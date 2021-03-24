@@ -5,6 +5,27 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+NAME_MAPPING = {
+    "performiq_dv360advertiser_oauth_accounts": "oauth_dv360advertiser_oauth_accounts",
+    "performiq_dv360partner_oauth_accounts": "oauth_dv360partner_oauth_accounts"
+}
+
+
+def update_many_to_many(apps, schema_editor):
+    for prev, updated in NAME_MAPPING.items():
+        schema_editor.execute(
+            f"ALTER TABLE IF EXISTS {prev} RENAME TO {updated};"
+        )
+
+
+def reverse_many_to_many(apps, schema_editor):
+    # Undo update_many_to_many
+    for prev, updated in NAME_MAPPING.items():
+        schema_editor.execute(
+            f"ALTER TABLE IF EXISTS {updated} RENAME TO {prev};"
+        )
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -153,4 +174,6 @@ class Migration(migrations.Migration):
             ],
             database_operations=[]
         ),
+
+        migrations.RunPython(update_many_to_many, reverse_code=reverse_many_to_many)
     ]

@@ -1,9 +1,9 @@
 from rest_framework.response import Response
 
+from oauth.api.views import BaseDV360AuthApiView
+from oauth.tasks.dv360.sync_dv_records import sync_dv_partners
 from performiq.api.views.utils.performiq_permission import PerformIQPermission
 from performiq.oauth_utils import load_client_settings
-from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
-from oauth.api.views import BaseDV360AuthApiView
 
 
 class DV360AuthApiView(BaseDV360AuthApiView):

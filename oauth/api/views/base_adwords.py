@@ -8,7 +8,7 @@ from oauth.constants import OAuthType
 from oauth.utils.client import get_google_access_token_info
 
 
-class BaseGoogleAuthApiView(BaseOAuthAPIView):
+class BaseAdwordsAuthApiView(BaseOAuthAPIView):
     """
     API View for Granting AdWords OAuth Access to PerformIQ
     GET method gives a URL to go and grant access to our app
