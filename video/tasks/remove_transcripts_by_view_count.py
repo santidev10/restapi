@@ -10,7 +10,7 @@ from utils.utils import chunks_generator
 
 # 10M
 VIEW_COUNT_THRESHOLD = 10000000
-CHUNK_SIZE = 500
+CHUNK_SIZE = 2000
 MAX_RETRIES = 100
 
 
