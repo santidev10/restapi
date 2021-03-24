@@ -10,9 +10,9 @@ from oauth.models import Account
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from oauth.utils.client import get_client
-from performiq.utils.adwords_report import get_campaign_report
-from performiq.utils.adwords_report import get_accounts
-from performiq.utils.update import prepare_items
+from oauth.utils.adwords import get_campaign_report
+from oauth.utils.adwords import get_accounts
+from oauth.utils.adwords import prepare_items
 from saas import celery_app
 from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator

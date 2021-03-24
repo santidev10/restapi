@@ -4,11 +4,11 @@ from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS, COMPLETED_FIELD
 from aw_reporting.adwords_reports import placement_performance_report
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
+from oauth.utils.client import get_client
 from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import ADWORDS_COERCE_FIELD_FUNCS
 from performiq.models import IQCampaign
 from performiq.models.constants import AnalysisFields
-from performiq.oauth_utils import get_client
 
 
 ADWORDS_API_FIELD_MAPPING = {

@@ -89,9 +89,3 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
             }
         }
         return d
-
-
-class AdGroup(OAuthBase, DV360SharedFieldsMixin):
-    id = models.BigAutoField(primary_key=True)
-    campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
-    name = models.CharField(max_length=255, null=True, db_index=True)

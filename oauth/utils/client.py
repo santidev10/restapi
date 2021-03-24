@@ -14,7 +14,7 @@ API_VERSION = "v201809"
 
 
 def get_adwords_client(developer_token, client_id, client_secret, user_agent,
-                refresh_token, client_customer_id=None, **_):
+                       refresh_token, client_customer_id=None, **_):
     oauth2_client = oauth2.GoogleRefreshTokenClient(
         client_id, client_secret, refresh_token
     )
@@ -61,11 +61,11 @@ def load_client_settings():
 
 
 def get_customers(refresh_token):
-    config = load_client_settings()
+    client_settings = load_client_settings()
     aw_client = get_client(
         client_customer_id=None,
         refresh_token=refresh_token,
-        **config
+        **client_settings
     )
     customer_service = aw_client.GetService(
         "CustomerService", version=API_VERSION

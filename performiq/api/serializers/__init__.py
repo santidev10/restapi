@@ -1,3 +1,1 @@
-from .campaign_serializer import CampaignSerializer
 from .iqcampaign_serializer import IQCampaignSerializer
-from .oauth_account_serializer import OAuthAccountSerializer

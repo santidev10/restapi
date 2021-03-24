@@ -1,2 +1,2 @@
-from .base_adwords import BaseAdwordsAuthApiView
-from .base_dv import BaseDV360AuthApiView
+from .base_google import GoogleOAuthBaseAPIView
+from .oauth_account_update import OAuthAccountUpdateAPIView
