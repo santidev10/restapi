@@ -13,6 +13,7 @@ CHUNK_SIZE = 500
 class TranscriptsTrimmer:
     """
     clear transcripts from videos that have transcripts, and whose view count is less than some threshold
+    process by views desc. with the idea that vids with higher view counts are less likely to be deleted
     """
 
     def __init__(self):
