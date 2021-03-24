@@ -1,6 +1,9 @@
+from time import sleep
+
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
+from elasticsearch.exceptions import ConnectionTimeout
 
 from utils.utils import chunks_generator
 
@@ -8,6 +11,29 @@ from utils.utils import chunks_generator
 # 10M
 VIEW_COUNT_THRESHOLD = 10000000
 CHUNK_SIZE = 500
+MAX_RETRIES = 100
+
+
+def run_with_retries(max_retries=MAX_RETRIES):
+    """
+    catches connection timeout and retries max_retries times
+    :param max_retries:
+    :return:
+    """
+    tries = 0
+    instance = TranscriptsTrimmer()
+    while True:
+        tries += 1
+        print(f"tries: {tries}")
+        try:
+            instance.run()
+        except ConnectionTimeout:
+            pass
+
+        if tries > max_retries:
+            break
+
+        sleep(60)
 
 
 class TranscriptsTrimmer:
