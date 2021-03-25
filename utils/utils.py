@@ -95,8 +95,21 @@ def prune_iab_categories(iab_categories):
 
 
 def remove_tags_punctuation(s):
-    return s.translate(str.maketrans("", "", string.punctuation.replace("@", "").replace("$", "").replace("#", "")
-                                     .replace("*", "")))
+    """
+    This function replaces any Punctuation Character (except @$#*) from the passed string with a white space:
+    Punctuation Characters: !\"%&\'()+,-./:;<=>?[\\]^_`{|}~
+    """
+    result = ''
+    if isinstance(s, str) and len(s) > 0:
+        result = s
+        # Get the punctuation characters list except: @$#*
+        punctuation_str = string.punctuation.replace("@", "").replace("$", "").replace("#", "").replace("*", "")
+        if len(punctuation_str) > 0:
+            # Create a string of white spaces with the same exact length as punctuation characters string
+            white_spaces_str = ' ' * len(punctuation_str)
+            # Replace any punctuation character (except @$#*) with a white space
+            result = s.translate(str.maketrans(punctuation_str, white_spaces_str)).strip()
+    return result
 
 
 def slice_generator(data_generator, limit):

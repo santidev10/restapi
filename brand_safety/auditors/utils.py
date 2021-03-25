@@ -109,11 +109,13 @@ class AuditUtils(object):
         :param keyword_processor: flashtext module KeywordProcessor instance
         :return:
         """
+        hits = []
         text = remove_tags_punctuation(str(text).lower())
-        hits = [
-            KeywordHit(name=hit, location=location)
-            for hit in keyword_processor.extract_keywords(text)
-        ]
+        if len(text) > 0:
+            hits = [
+                KeywordHit(name=hit, location=location)
+                for hit in keyword_processor.extract_keywords(text)
+            ]
         return hits
 
     @pickled_data(f"{settings.TEMPDIR}/pickled_language_processors_{current_process().pid}", 1800)
