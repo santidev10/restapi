@@ -34,10 +34,10 @@ def failed_callback(channel_ctl_id, *_, **__):
     """
     ctl = CustomSegment.objects.get(id=channel_ctl_id)
     ctl.statistics.update({
-        VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
+        Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
     })
     ctl.params.update({
-        VideoExclusion.WITH_VIDEO_EXCLUSION: False
+        Params.VideoExclusion.WITH_VIDEO_EXCLUSION: False
     })
     ctl.save(update_fields=["params", "statistics"])
 
