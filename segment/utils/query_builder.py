@@ -378,23 +378,27 @@ class SegmentQueryBuilder:
         """
         video_channels_subscribers_query = Q("bool")
         if self._params.get("segment_type") == SegmentTypeEnum.VIDEO.value and self._params.get("minimum_subscribers"):
-            video_manager = VideoManager(sections=(Sections.MAIN, Sections.CHANNEL))
-            channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.STATS))
-
             # Get the list of unique channel Ids using the current query
-            current_channel_ids = list(set(video_manager.get_all_video_channel_ids_generator(current_query)))
-            if len(current_channel_ids) > 0:
+            video_manager = VideoManager(sections=(Sections.MAIN, Sections.CHANNEL))
+            current_channel_ids_set = set()
+            for video in video_manager.scan(filters=current_query):
+                current_channel_ids_set.add(video.channel.id)
+
+            if len(current_channel_ids_set) > 0:
+                # Get the list of channel Ids that satisfy the subscribers count from the channel Ids we found above
+                channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.STATS))
+                current_channel_ids_list = list(current_channel_ids_set)
                 min_subs_ct_queries = self.get_numeric_include_na_queries(
                     attr_name="minimum_subscribers",
                     flag_name="minimum_subscribers_include_na",
                     field_name="stats.subscribers"
                 )
-                min_subs_ct_queries &= QueryBuilder().build().must().terms().field(
-                                            MAIN_ID_FIELD).value(current_channel_ids).get()
-                # Get the list of channel Ids that satisfy the subscribers count from the channel Ids we found above
-                filtered_channel_ids = list(channel_manager.get_all_channel_ids_generator(min_subs_ct_queries))
+                min_subs_ct_queries &= channel_manager.ids_query(ids=current_channel_ids_list)
+                filtered_channel_ids_list = []
+                for channel in channel_manager.scan(filters=min_subs_ct_queries):
+                    filtered_channel_ids_list.append(channel.main.id)
                 video_channels_subscribers_query = QueryBuilder().build().must().terms().field(
-                                                        VIDEO_CHANNEL_ID_FIELD).value(filtered_channel_ids).get()
+                                                        VIDEO_CHANNEL_ID_FIELD).value(filtered_channel_ids_list).get()
         return video_channels_subscribers_query
 
     @staticmethod
