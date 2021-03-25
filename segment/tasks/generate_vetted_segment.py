@@ -6,7 +6,7 @@ from django.utils import timezone
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
-from segment.tasks.generate_segment import generate_segment
+from segment.utils.generate_segment import generate_segment
 from segment.utils.send_export_email import send_export_email
 
 logger = logging.getLogger(__name__)

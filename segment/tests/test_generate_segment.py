@@ -31,7 +31,7 @@ from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
-from segment.tasks.generate_segment import generate_segment
+from segment.utils.generate_segment import generate_segment
 from utils.brand_safety import map_brand_safety_score
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase

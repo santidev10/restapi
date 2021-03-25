@@ -9,7 +9,7 @@ from es_components.tests.utils import ESTestCase
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
-from segment.tasks.generate_segment import CTLGenerateException
+from segment.utils.generate_segment import CTLGenerateException
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
