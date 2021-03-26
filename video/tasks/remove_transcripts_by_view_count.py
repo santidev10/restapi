@@ -1,11 +1,12 @@
 from time import sleep
 
+from elasticsearch.exceptions import ConnectionTimeout
+from elasticsearch.exceptions import NotFoundError
+from elasticsearch.helpers.errors import ScanError
+
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
-from elasticsearch.exceptions import ConnectionTimeout
-from elasticsearch.helpers.errors import ScanError
-
 from utils.utils import chunks_generator
 
 
@@ -29,7 +30,7 @@ def run_with_retries(max_retries=MAX_RETRIES):
         print(f"tries: {tries}")
         try:
             instance.run()
-        except (ConnectionTimeout, ScanError) as e:
+        except (ConnectionTimeout, ScanError, NotFoundError) as e:
             print(f"caught: {type(e).__module__}.{type(e).__qualname__}")
             pass
 
