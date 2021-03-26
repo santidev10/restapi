@@ -15,6 +15,7 @@ from dashboard.api.urls import urls as dashboard_urls
 from email_reports import urls as email_reports_api_urls
 from healthcheck.api.urls import urls as healthcheck_api_urls
 from keywords.api import urls as keyword_api_urls
+from oauth.api.urls import urlpatterns as oauth_urls
 from performiq.api.urls.urls import urlpatterns as performiq_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
@@ -42,6 +43,9 @@ urlpatterns = [
 
     # Keyword api urls
     url(r"^api/v1/", include((keyword_api_urls, APP_NAME), namespace=Namespace.KEYWORD)),
+
+    # OAuth api urls
+    url(r"^api/v1/", include((oauth_urls, APP_NAME), namespace=Namespace.OAUTH)),
 
     # Segment api urls
     url(r"^api/v1/", include((segment_v1_url_patterns, APP_NAME), namespace=Namespace.SEGMENT)),

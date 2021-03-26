@@ -10,12 +10,12 @@ from .constants import DataSourceType
 from .constants import ESFieldMapping
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
+from oauth.models import OAuthAccount
 from performiq.analyzers import PerformanceAnalyzer
 from performiq.analyzers import SuitabilityAnalyzer
 from performiq.analyzers import ContextualAnalyzer
 from performiq.models import IQCampaign
 from performiq.models import IQCampaignChannel
-from performiq.models import OAuthAccount
 from performiq.models.constants import AnalysisFields
 from performiq.tasks.utils.get_csv_data import get_csv_data
 from performiq.tasks.utils.get_google_ads_data import get_google_ads_data

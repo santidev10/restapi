@@ -1,14 +1,13 @@
 import datetime
 from unittest.mock import patch
-from types import SimpleNamespace
 
 from googleapiclient.errors import HttpError
 
-from performiq.models import OAuthAccount
-from performiq.models.constants import OAuthType
-from performiq.tasks.dv360.sync_dv_records import CREATED_THRESHOLD_MINUTES
-from performiq.tasks.dv360.sync_dv_records import sync_dv_partners
-from performiq.tasks.dv360.sync_dv_records import UPDATED_THRESHOLD_MINUTES
+from oauth.constants import OAuthType
+from oauth.models import OAuthAccount
+from oauth.tasks.dv360.sync_dv_records import CREATED_THRESHOLD_MINUTES
+from oauth.tasks.dv360.sync_dv_records import sync_dv_partners
+from oauth.tasks.dv360.sync_dv_records import UPDATED_THRESHOLD_MINUTES
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -29,7 +28,7 @@ class DV360SyncTestCase(ExtendedAPITestCase):
         )
         err = HttpError(resp="resp", content="content".encode("utf-8"))
         err.args = [{"status": "403"}]
-        with patch("performiq.tasks.dv360.sync_dv_records.request_partners", side_effect=err):
+        with patch("oauth.tasks.dv360.sync_dv_records.request_partners", side_effect=err):
             sync_dv_partners()
         revoked.refresh_from_db()
         self.assertEqual(revoked.revoked_access, True)

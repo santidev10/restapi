@@ -1,9 +1,7 @@
-# from oauth.models import AdGroup
-from performiq.api.serializers import AdGroupSerializer
-from performiq.api.serializers import CampaignSerializer
-from performiq.models import Campaign
-from performiq.models import OAuthAccount
-from performiq.models.constants import OAuthType
+from oauth.api.serializers import CampaignSerializer
+from oauth.constants import OAuthType
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from utils.views import get_object
 
 

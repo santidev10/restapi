@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from performiq.models import Campaign
+from oauth.models import Campaign
 
 
 class CampaignSerializer(serializers.ModelSerializer):

@@ -1,11 +1,6 @@
 import enum
 
 
-CAMPAIGN_REPORT_FIELDS = (
-    "CampaignId", "ServingStatus"
-)
-
-
 class CSVFieldTypeEnum(enum.Enum):
     URL = "URL"
     IMPRESSIONS = "Impressions"

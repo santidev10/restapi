@@ -10,6 +10,8 @@ from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
+from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
@@ -293,6 +295,10 @@ class SegmentQueryBuilder:
         # Extend should queries last as combining queries with other queries (i.e. combining with forced_filters)
         # with operators (e.g. &, |) does not properly combine should queries
         query._params["should"].extend(should_queries)
+
+        if segment_type == SegmentTypeEnum.VIDEO.value and self._params.get("minimum_subscribers"):
+            query &= self._get_video_channels_subscribers_query(current_query=query)
+
         return query
 
     @staticmethod
@@ -363,6 +369,37 @@ class SegmentQueryBuilder:
     def _get_terms_query(self, terms, field, operator="must"):
         terms_query = getattr(QueryBuilder().build(), operator)().terms().field(field).value(terms).get()
         return terms_query
+
+    def _get_video_channels_subscribers_query(self, current_query):
+        """
+        This function creates an empty query or a query to filter out the videos whose channels have less number of
+        subscribers than the desired one in the filters parameters.
+        it should be only applied to Video Segments when the number of channel-subscribers is provided.
+        """
+        video_channels_subscribers_query = Q("bool")
+        if self._params.get("segment_type") == SegmentTypeEnum.VIDEO.value and self._params.get("minimum_subscribers"):
+            # Get the list of unique channel Ids using the current query
+            video_manager = VideoManager(sections=(Sections.MAIN, Sections.CHANNEL))
+            current_channel_ids_set = set()
+            for video in video_manager.scan(filters=current_query):
+                current_channel_ids_set.add(video.channel.id)
+
+            if len(current_channel_ids_set) > 0:
+                # Get the list of channel Ids that satisfy the subscribers count from the channel Ids we found above
+                channel_manager = ChannelManager(sections=(Sections.MAIN, Sections.STATS))
+                current_channel_ids_list = list(current_channel_ids_set)
+                min_subs_ct_queries = self.get_numeric_include_na_queries(
+                    attr_name="minimum_subscribers",
+                    flag_name="minimum_subscribers_include_na",
+                    field_name="stats.subscribers"
+                )
+                min_subs_ct_queries &= channel_manager.ids_query(ids=current_channel_ids_list)
+                filtered_channel_ids_list = []
+                for channel in channel_manager.scan(filters=min_subs_ct_queries):
+                    filtered_channel_ids_list.append(channel.main.id)
+                video_channels_subscribers_query = QueryBuilder().build().must().terms().field(
+                                                        VIDEO_CHANNEL_ID_FIELD).value(filtered_channel_ids_list).get()
+        return video_channels_subscribers_query
 
     @staticmethod
     def map_content_categories(content_category_ids: list):
