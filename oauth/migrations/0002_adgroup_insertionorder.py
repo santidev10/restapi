@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('oauth', '0001_initial'),
+        ('performiq', '0017_auto_20210318_2120')
     ]
 
     operations = [
