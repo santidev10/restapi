@@ -5,9 +5,9 @@ import tempfile
 
 from django.conf import settings
 
+from oauth.models import OAuthAccount
 from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
-from performiq.models import OAuthAccount
 from performiq.models import IQCampaign
 from performiq.models.constants import AnalysisFields
 from utils.dv360_api import DV360Connector

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from performiq.models.models import DV360Advertiser
+from oauth.models import DV360Advertiser
 
 
 class AdvertiserSerializer(serializers.Serializer):
