@@ -80,9 +80,12 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         response = self.client.post(self.url, data={})
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_reject_permission(self):
-        """ Users must have audit_queue.create permission """
-        user = self.create_test_user(perms={StaticPermissions.AUDIT_QUEUE__CREATE: False})
+    def test_enable_vetting_forbidden(self):
+        """
+        Users must have the vet_enable permission on PATCH
+        :return:
+        """
+        user = self.create_test_user(perms={StaticPermissions.AUDIT_QUEUE__CREATE: True})
         segment = self.custom_segment_model.objects.create(uuid=uuid4(), owner=user, title="test", segment_type=0,
                                                            list_type=0)
         params = {"segment_id": segment.id, }
@@ -90,9 +93,12 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_enable_vetting_creates_audit(self):
-        """ Saving audit instructions for the first time should create audit and vetting items """
+        """
+        Saving audit instructions for the first time should create audit and vetting items
+        test that the ctl_vet_enable permission yields success
+        """
         user = self.create_test_user(perms={
-            StaticPermissions.AUDIT_QUEUE__CREATE: True,
+            StaticPermissions.BUILD__CTL_VET_ENABLE: True,
         })
         segment = self.custom_segment_model.objects.create(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4(),

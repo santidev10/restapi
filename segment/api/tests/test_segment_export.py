@@ -1,8 +1,10 @@
 import uuid
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from mock import patch
+
+from moto import mock_s3
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -25,6 +27,16 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
+    mock_s3 = mock_s3()
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.mock_s3.start()
+
+    def tearDown(self):
+        super().tearDown()
+        self.mock_s3.stop()
+
     def _get_url(self, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_EXPORT, kwargs=dict(pk=pk))
 

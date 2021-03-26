@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
+def failed_callback(channel_ctl_id, *_, **__):
+    """
+    Reset state of channel ctl video exclusion creation if task fails
+    :param channel_ctl_id: Channel CustomSegment
+    :return:
+    """
+    ctl = CustomSegment.objects.get(id=channel_ctl_id)
+    ctl.statistics.update({
+        VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
+    })
+    ctl.params.update({
+        VideoExclusion.WITH_VIDEO_EXCLUSION: False
+    })
+    ctl.save(update_fields=["params", "statistics"])
+
+
 @celery_app.task
 def generate_video_exclusion(channel_ctl_id: int) -> str:
     """
@@ -37,7 +53,7 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
     return video_exclusion_s3_key
 
 
-@retry(count=5, delay=10)
+@retry(count=5, delay=10, failed_callback=failed_callback)
 def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
@@ -59,17 +75,16 @@ def _generate_video_exclusion(channel_ctl_id: int):
         channel_ids = channel_ctl.s3.get_extract_export_ids()
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
+        failed_callback(channel_ctl_id)
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
-        for chunk in chunks_generator(channel_ids, size=30):
+        for chunk in chunks_generator(channel_ids, size=20):
             curr_blocklist = []
             curr_videos = []
-            # Split chunk of channel ids for get_videos_for_channels func
-            channel_id_args = [list(ids) for ids in chunks_generator(chunk, size=2)]
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(get_videos_for_channels, channel_ids, mapped_score_threshold) for channel_ids in channel_id_args]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(get_videos_for_channels, channel_id, mapped_score_threshold) for channel_id in chunk]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)
@@ -97,24 +112,24 @@ def _generate_video_exclusion(channel_ctl_id: int):
         os.remove(video_exclusion_fp)
 
 
-def get_videos_for_channels(channel_ids: List[str], bs_score_limit: int) -> iter:
+def get_videos_for_channels(channel_id: str, bs_score_limit: int) -> iter:
     """
     Retrieve videos using channel_ids
-    :param channel_ids: list of channel ids to retrieve videos for
+    :param channel_id: Channel id to retrieve videos for
     :param bs_score_limit: Filter brand_safety.overall_score using bs_score_limit
         bs_score_limit is the original score_threshold the channel ctl was created for, and the resulting video
         brand safety scores should be <= the bs_score_limit
     :return:
     """
     overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
-    video_source = (Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", Sections.CUSTOM_PROPERTIES)
+    video_source = (Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", f"{Sections.CUSTOM_PROPERTIES}.blocklist")
     query = (
-        QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
+        QueryBuilder().build().must().term().field("channel.id").value(channel_id).get()
         & QueryBuilder().build().must().exists().field(overall_score_field).get()
         & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
         & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
     )
-    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=2000, source=video_source)
+    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=1500, source=video_source)
 
 
 def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
@@ -157,3 +172,4 @@ def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Vi
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
                          extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
+
