@@ -89,3 +89,13 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
             }
         }
         return d
+
+
+class InsertionOrder(DV360Base, DV360SharedFieldsMixin):
+    campaign = models.ForeignKey(Campaign, related_name="insertion_orders", on_delete=models.CASCADE)
+
+
+class AdGroup(OAuthBase):
+    id = models.BigAutoField(primary_key=True)
+    campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, null=True, db_index=True)
