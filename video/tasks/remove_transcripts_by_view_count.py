@@ -4,14 +4,16 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.query_builder import QueryBuilder
 from elasticsearch.exceptions import ConnectionTimeout
+from elasticsearch.helpers.errors import ScanError
 
 from utils.utils import chunks_generator
 
 
 # 10M
 VIEW_COUNT_THRESHOLD = 10000000
-CHUNK_SIZE = 2000
+CHUNK_SIZE = 1200
 MAX_RETRIES = 100
+SLEEP_SECONDS = 30
 
 
 def run_with_retries(max_retries=MAX_RETRIES):
@@ -27,7 +29,8 @@ def run_with_retries(max_retries=MAX_RETRIES):
         print(f"tries: {tries}")
         try:
             instance.run()
-        except ConnectionTimeout:
+        except (ConnectionTimeout, ScanError) as e:
+            print(f"caught: {type(e).__module__}.{type(e).__qualname__}")
             pass
 
         if tries > max_retries:
@@ -64,6 +67,8 @@ class TranscriptsTrimmer:
         for chunk in chunks_generator(search.scan(), size=CHUNK_SIZE):
             self._handle_chunk(chunk)
             print(f"processed: {self.processed_count:,} videos")
+            print(f"sleeping for {SLEEP_SECONDS} seconds")
+            sleep(SLEEP_SECONDS)
 
     def _handle_chunk(self, chunk):
         """
