@@ -8,19 +8,17 @@ from typing import List
 from django.conf import settings
 from uuid import uuid4
 
-from es_components.constants import MAIN_ID_FIELD
+from es_components.managers import VideoManager
 from es_components.constants import Sections
 from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.models.constants import VideoExclusion
-from segment.utils.bulk_search import bulk_search
 from utils.lang import merge
 from utils.exception import retry
 from utils.utils import chunks_generator
 from utils.brand_safety import map_score_threshold
-
 
 logger = logging.getLogger(__name__)
 LIMIT = 125000
@@ -64,27 +62,32 @@ def _generate_video_exclusion(channel_ctl_id: int):
         e.g. channel_ctl was created with Suitable filter, all videos should have a score of less than Suitable
     Lower brand safety scores have priority of being on the list over higher brand safety scores
 
-    Lastly saves video exlcusion filename on channel_ctl statistics dict
+    Lastly saves video exclusion filename on channel_ctl statistics dict
     :param channel_ctl_id: Channel CTL that will be used as source channels to retrieve videos
     :return:
     """
     all_blocklist = []
     all_videos = []
+    video_manager = VideoManager(sections=[Sections.BRAND_SAFETY, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES])
     try:
         channel_ctl = CustomSegment.objects.get(id=channel_ctl_id)
         channel_ids = channel_ctl.s3.get_extract_export_ids()
     except Exception:
-        logger.exception(f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
+        logger.exception(
+            f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
         failed_callback(channel_ctl_id)
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
-        for chunk in chunks_generator(channel_ids, size=20):
+        for chunk in chunks_generator(channel_ids, size=100):
             curr_blocklist = []
             curr_videos = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                futures = [executor.submit(get_videos_for_channels, channel_id, mapped_score_threshold) for channel_id in chunk]
+            channels = list(chunk)
+            max_slices = 20
+            query = _get_query(channels, mapped_score_threshold)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_slices) as executor:
+                futures = [executor.submit(_process, query, video_manager, i, max_slices) for i in range(max_slices)]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)
@@ -112,24 +115,65 @@ def _generate_video_exclusion(channel_ctl_id: int):
         os.remove(video_exclusion_fp)
 
 
-def get_videos_for_channels(channel_id: str, bs_score_limit: int) -> iter:
+@retry(10, delay=5)
+def _process(query: QueryBuilder, video_manager: VideoManager, slice_index: int, max_slice:int):
+    """
+    Retrieve and process videos together to allow for retry decorator to catch exceptions.
+    scan method is a generator and may raise different exceptions:
+        ScanError(Scroll request has only succeeded on 'a' shards out of 'b' shards)
+        TransportError(Trying to create too many scroll contexts)
+    The generator must be yielded in a retry decorated function to avoid the exceptions bubbling up to main
+        _generate_video_exclusion function and losing all progress
+
+    This function uses the sliced scroll api to be more performant requesting large amounts of videos
+    :param slice_index: The current slice value being requested
+    :param max_slice: The max number of slices being processed
+    :return:
+    """
+    results = []
+    slice_params = dict(
+        id=slice_index,
+        max=max_slice,
+        field="main.created_at",
+    )
+    video_generator = video_manager.search(filters=query).params(scroll="10m").extra(
+        slice=slice_params
+    ).scan()
+    for videos_chunk in chunks_generator(video_generator, size=2000):
+        results.extend(list(videos_chunk))
+    return results
+
+
+def _get_query(channel_ids, bs_score_limit):
+    overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
+    query = (
+        QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
+        & QueryBuilder().build().must().exists().field(overall_score_field).get()
+        & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
+        & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
+    )
+    return query
+
+
+def get_videos_for_channels(channel_ids: list, bs_score_limit: int, video_manager) -> iter:
     """
     Retrieve videos using channel_ids
-    :param channel_id: Channel id to retrieve videos for
+    :param channel_ids: Channel ids to retrieve videos for
     :param bs_score_limit: Filter brand_safety.overall_score using bs_score_limit
         bs_score_limit is the original score_threshold the channel ctl was created for, and the resulting video
         brand safety scores should be <= the bs_score_limit
     :return:
     """
     overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
-    video_source = (Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", f"{Sections.CUSTOM_PROPERTIES}.blocklist")
+    video_source = (
+    Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", f"{Sections.CUSTOM_PROPERTIES}.blocklist")
     query = (
-        QueryBuilder().build().must().term().field("channel.id").value(channel_id).get()
-        & QueryBuilder().build().must().exists().field(overall_score_field).get()
-        & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
-        & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
+            QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
+            & QueryBuilder().build().must().exists().field(overall_score_field).get()
+            & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
+            & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
     )
-    yield from bulk_search(Video, query, [{MAIN_ID_FIELD: {"order": "desc"}}], MAIN_ID_FIELD, batch_size=1500, source=video_source)
+    yield from video_manager.search(filters=query).source(video_source).params(scroll="15m").scan()
 
 
 def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
@@ -137,17 +181,16 @@ def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> N
     Separate videos into either blocklist or videos list
     blocklisted videos are prioritized on final list but nonblocklisted videos must be sorted with all videos
     :param videos: List[list] -> Generator result from bulk_search. Each videos yield is a list itself
-    :param blocklist_list: list container to hold blocklisted videos
-    :param videos_list: list container to hold nonblocklisted videos
+    :param blocklist_list: List object to contain current batch of blocklist videos
+    :param videos_list: List object to contain current batch of non blocklisted videos
     :return: None
     """
-    for batch in videos:
-        for video in batch:
-            if video.custom_properties.blocklist is True:
-                container = blocklist_list
-            else:
-                container = videos_list
-            container.append(video)
+    for video in videos:
+        if video.custom_properties.blocklist is True:
+            container = blocklist_list
+        else:
+            container = videos_list
+        container.append(video)
 
 
 def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Video]) -> str:
@@ -172,4 +215,3 @@ def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Vi
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
                          extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
-

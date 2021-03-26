@@ -3,6 +3,7 @@ import random
 
 import boto3
 from django.conf import settings
+from elasticsearch.helpers.errors import ScanError
 from elasticsearch.exceptions import ConnectionError
 from moto import mock_s3
 
@@ -28,6 +29,12 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
             VideoExclusion.WITH_VIDEO_EXCLUSION: True,
         })
         CustomSegmentFileUpload.objects.create(segment=self.channel_ctl, query=dict(params={"score_threshold": 4}))
+
+    def _video(self, blocklist=False):
+        video = Video(f"video_{next(int_iterator)}")
+        video.populate_brand_safety(overall_score=random.randint(0, 100))
+        video.populate_custom_properties(blocklist=blocklist)
+        return video
 
     def _create_bucket(self):
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -115,8 +122,13 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertFalse(self.channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME])
         self.assertFalse(self.channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION])
 
-    def _video(self, blocklist=False):
-        video = Video(f"video_{next(int_iterator)}")
-        video.populate_brand_safety(overall_score=random.randint(0, 100))
-        video.populate_custom_properties(blocklist=blocklist)
-        return video
+    def test_retry_keeps_progress(self):
+        """ Test that retrying retrieving videos does not retry the entire task """
+        mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
+        with patch("segment.tasks.generate_video_exclusion._process",
+                   side_effect=[ScanError, mock_return_values]) as mock_get, \
+                patch.object(SegmentExporter, "get_extract_export_ids", return_value=mock_channel_ids) as mock_get_ids,\
+                patch("segment.tasks.generate_video_exclusion._export_results"):
+            generate_video_exclusion(self.channel_ctl.id)
+            # get_extract_export_ids should only be called once as _process function should be retried
+            mock_get_ids.assert_called_once()
