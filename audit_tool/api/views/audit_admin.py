@@ -8,6 +8,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
 from userprofile.constants import StaticPermissions
 from utils.views import get_object
+from utils.utils import validate_youtube_url
 
 
 class AuditAdminAPIView(APIView):
@@ -50,25 +51,20 @@ class AuditAdminAPIView(APIView):
         """
         filters = {}
         err = None
-        split_seq = None
-        filter_prefix = None
-        id_validator = None
         if audit_type == 1:
-            split_seq = "/watch?v="
+            data_type = "video"
             filter_prefix = "video__video_id__in"
-            id_validator = lambda x: type(x) is not str or len(x) != 11
+            format_err = " or ".join(f"https://www.youtube.com{split}VIDEO_ID" for split in ["?v=", "/video/"])
         elif audit_type == 2:
-            split_seq = "/channel/"
+            data_type = "channel"
             filter_prefix = "channel__channel_id__in"
-            id_validator = lambda x: type(x) is not str or len(x) != 24
+            format_err = "https://www.youtube.com/channel/CHANNEL_ID"
         else:
-            err = f"Invalid audit_type: {audit_type}"
-
+            raise ValidationError(f"Invalid audit_type: {audit_type}")
         try:
-            item_ids = [_id.strip().split(split_seq)[-1] for _id in item_ids.split("\n") if _id]
-            invalid = any(id_validator(item) for item in item_ids)
-            if invalid:
-                err = f"Invalid urls. Please check that urls match this format: https://www.youtube.com{split_seq}YOUTUBE_ID"
+            item_ids = [validate_youtube_url(url, data_type) for url in item_ids.split("\n")]
+            if not all(item_ids):
+                err = f"Invalid urls. Please check that urls match this format: {format_err}"
         except (AttributeError, TypeError):
             err = "Each row must contain one item."
 

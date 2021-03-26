@@ -203,6 +203,18 @@ class BlocklistListCreateTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated_video.brand_safety.rescore, False)
         self.assertEqual(updated_channel.brand_safety.rescore, False)
 
+        with self.subTest("Test blocking videos with /videos/ resource url"):
+            video = self._create_doc("video")
+            video.populate_brand_safety(overall_score=100)
+            payload = json.dumps(dict(item_urls=[f"https://www.youtube.com/video/{video.main.id}"]))
+            with patch("audit_tool.api.views.blocklist.blocklist_list_create.safe_bulk_create", new=patch_bulk_create):
+                res = self.client.post(self._get_url("video") + "?block=true", data=payload,
+                                        content_type="application/json")
+            self.assertEqual(res.status_code, HTTP_200_OK)
+            updated_video = self.video_manager.get([video.main.id], skip_none=True)[0]
+            self.assertEqual(updated_video.brand_safety.overall_score, 0)
+            self.assertEqual(updated_video.brand_safety.rescore, False)
+
     def test_list_search(self):
         """ Test search by id and title """
         user = self.user

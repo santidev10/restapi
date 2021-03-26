@@ -120,3 +120,23 @@ def slice_generator(data_generator, limit):
 
         yield item
         counter += 1
+
+
+def validate_youtube_url(url, url_type) -> str:
+    """
+    Return string youtube id if url is valid
+    Otherwise return None if unable to extract id
+    :param url: str
+    :param url_type: int
+    :return:
+    """
+    if url_type in {0, "video"}:
+        splits = ["?v=", "/video/"]
+        target = 11
+    else:
+        splits = ["/channel/"]
+        target = 24
+    for split in splits:
+        val = url.split(split)[-1]
+        if len(val) == target:
+            return val
