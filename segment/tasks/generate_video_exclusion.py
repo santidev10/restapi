@@ -79,7 +79,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=20):
             curr_blocklist = []
             curr_videos = []

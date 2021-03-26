@@ -112,8 +112,8 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         except Exception:
             pass
         self.channel_ctl.refresh_from_db()
-        self.assertFalse(self.channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME])
-        self.assertFalse(self.channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION])
+        self.assertFalse(self.channel_ctl.statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME])
+        self.assertFalse(self.channel_ctl.params[Params.VideoExclusion.WITH_VIDEO_EXCLUSION])
 
     def _video(self, blocklist=False):
         video = Video(f"video_{next(int_iterator)}")
