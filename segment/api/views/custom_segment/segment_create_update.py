@@ -1,6 +1,7 @@
 import json
 
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
+from django.core.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import CreateAPIView
 from rest_framework.parsers import MultiPartParser
@@ -17,6 +18,7 @@ from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import VideoExclusion
+from segment.models.constants import ParamsTemplate
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
@@ -111,11 +113,12 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         return serializer.data
 
     def _validate_template_title(self, title):
+        max_len = ParamsTemplate.MAX_TITLE_LENGTH
         if title is None:
-            return None
-        if isinstance(title, str):
             return title
-        raise TypeError("Template title must be a valid string.")
+        if isinstance(title, str) and len(title) <= max_len:
+            return title
+        raise ValidationError(f"Template title must be a string of {max_len} characters or less.")
 
     def _validate_params(self, data, partial=False):
         """

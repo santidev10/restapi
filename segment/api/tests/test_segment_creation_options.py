@@ -58,7 +58,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "segment_type": 0
         }
         payload = self._get_params(**payload)
-        response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
+        response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(payload), content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
@@ -77,7 +77,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "segment_type": 1,
         }
         payload = self._get_params(**payload)
-        response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
+        response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(payload), content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
@@ -87,7 +87,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
 
     def test_that_content_categories_are_iab_categories(self, es_mock):
         self.create_test_user()
-        response = self.client.post(self._get_url(), None, content_type="application/json")
+        response = self.client.get(self._get_url(), None)
         self.assertEqual(
             response.data["options"]["content_categories"],
             AuditUtils.get_iab_categories()
@@ -97,7 +97,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.create_test_user()
         bad_word_unvettable = BadWordCategory.objects.create(name="unvettable", vettable=False)
         bad_word_vettable = BadWordCategory.objects.create(name="vettable", vettable=True)
-        response = self.client.post(self._get_url(), None, content_type="application/json")
+        response = self.client.get(self._get_url(), None)
         brand_safety_categories = response.data["options"]["brand_safety_categories"]
         names = [category["name"] for category in brand_safety_categories]
         self.assertIn(bad_word_vettable.name, names)
@@ -106,9 +106,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
     def test_success_params_empty(self, es_mock):
         self.create_test_user()
         payload = self._get_params()
-        response = self.client.post(
-            self._get_url(), json.dumps(payload), content_type="application/json"
-        )
+        response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(payload), content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
@@ -130,9 +128,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             ]}
         }
         cache.save()
-        response = self.client.post(
-            self._get_url(), {}, content_type="application/json"
-        )
+        response = self.client.get(self._get_url(), {})
         self.assertEqual(response.status_code, HTTP_200_OK)
         for i, country_code in enumerate(cache.value["general_data.country_code"]["buckets"]):
             self.assertEqual(response.data["options"]["countries"][i]["id"], country_code["key"])
@@ -152,7 +148,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = self._get_params(**payload)
         with patch("segment.api.views.custom_segment.segment_create_options.SegmentQueryBuilder") as mock_query_builder:
             mock_query_builder.return_value.execute.return_value = self._get_mock_data()
-            response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
+            response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(payload),
+                                           content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         params = mock_query_builder.call_args[0][0]
         self.assertEqual(params["vetting_status"], [1])

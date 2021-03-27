@@ -71,3 +71,5 @@ class VideoExclusion:
     VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
 
 
+class ParamsTemplate:
+    MAX_TITLE_LENGTH = 100

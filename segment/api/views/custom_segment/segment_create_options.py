@@ -53,8 +53,9 @@ class SegmentCreateOptionsApiView(APIView):
             validator.is_valid(raise_exception=True)
             params = validator.validated_data
             query_builder = SegmentQueryBuilder(params)
+            result = query_builder.execute()
             str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
-            res_data[f"{str_type}_items"] = query_builder.count() or 0
+            res_data[f"{str_type}_items"] = result.hits.total.value or 0
         return Response(status=HTTP_200_OK, data=res_data)
 
     def delete(self, request, *args, **kwargs):
