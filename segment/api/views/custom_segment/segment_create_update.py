@@ -62,7 +62,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment task through CTLSerializer
         """
         request, data = self._prep_request(request)
-        template_title = data.pop("template_title", None)
+        template_title = self._validate_template_title(data.pop("template_title", None))
         validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         self.check_source_file_permissions(request=request)
@@ -79,6 +79,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
             be regenerated with updated values
         """
         request, data = self._prep_request(request)
+        template_title = self._validate_template_title(data.pop("template_title", None))
         segment = get_object(CustomSegment, id=data.get("id"))
         self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
                                             segment=segment)
@@ -90,6 +91,8 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         validated_params = self._validate_params(data, partial=True)
         validated_video_exclusion_params = self._validate_video_exclusion(segment, request.user, data)
         cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
+        if self.check_params_template_permissions(request=request) and isinstance(template_title, str):
+            self.create_update_params_template(request.user, template_title, validated_params)
         serializer = self.serializer_class(segment, data=data,
                                            context=self._get_context(cleaned_params, validated_video_exclusion_params), partial=True)
         res = self._finalize(serializer, validated_params)
@@ -106,6 +109,13 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         serializer.save()
         serializer.data.update(validated_ctl_params)
         return serializer.data
+
+    def _validate_template_title(self, title):
+        if title is None:
+            return None
+        if isinstance(title, str):
+            return title
+        raise TypeError("Template title must be a valid string.")
 
     def _validate_params(self, data, partial=False):
         """

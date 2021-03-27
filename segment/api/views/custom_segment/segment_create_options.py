@@ -62,10 +62,10 @@ class SegmentCreateOptionsApiView(APIView):
         deletes CTL ParamsTemplate object for a given id
         """
         if request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
-            id = request.data.get("id", None)
-            if not isinstance(id, int):
+            template_id = request.data.get("id", None)
+            if not isinstance(template_id, int):
                 raise TypeError("id value must be an integer")
-            params_template = get_object(ParamsTemplate, id=id)
+            params_template = get_object(ParamsTemplate, id=template_id)
             params_template.delete()
             return Response(status=HTTP_200_OK)
         raise PermissionDenied
