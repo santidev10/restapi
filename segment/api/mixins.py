@@ -1,9 +1,13 @@
+import hashlib
+
 from django.core.exceptions import PermissionDenied
 
 from segment.models import CustomSegment
+from segment.models import ParamsTemplate
 from segment.utils.utils import get_persistent_segment_model_by_type
 from segment.utils.utils import validate_segment_type
-
+from userprofile.constants import StaticPermissions
+from utils.utils import get_hash
 
 class DynamicPersistentModelViewMixin:
     def dispatch(self, request, segment_type, **kwargs):
@@ -44,3 +48,52 @@ class SegmentTypePermissionMixin:
         required_permission = self.permission_by_segment_type.get(segment_type)
         if required_permission is None or not request.user.has_permission(required_permission):
             raise PermissionDenied
+
+
+class ParamsTemplateMixin:
+    """
+    Mixin for checking params template permission,
+    creating new param templates,
+    updating existing param templates,
+    and implementing hashing method
+    """
+
+    @staticmethod
+    def check_params_template_permissions(request):
+        """
+        ensure user has permission to update or create params template
+        :param request:
+        :return:
+        """
+        if not request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
+            raise PermissionDenied
+        return True
+
+    @staticmethod
+    def create_update_params_template(user, template_title, params):
+        """
+        Creates new params template for user if title does not exist for segment type,
+        otherwise updates with new params
+        :user: userprofile.UserProfile type
+        :template_title: str
+        :params: dict
+        :return:
+        """
+        title_hash = get_hash(template_title.lower().strip())
+        segment_type = params.get("segment_type", None)
+        if segment_type is not None and isinstance(segment_type, int):
+            filter_args = dict((
+                ("title_hash", title_hash),
+                ("segment_type", segment_type),
+            ))
+            create_update_args = filter_args | dict((
+                ("owner", user),
+                ("title", template_title),
+            ))
+            object = ParamsTemplate.objects.filter(
+                **filter_args
+            ).get_or_create(**create_update_args)[0]
+            object.params = params
+            object.save()
+            return
+        raise TypeError("Valid segment type must be provided.")

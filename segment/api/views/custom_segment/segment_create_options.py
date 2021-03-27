@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -18,22 +19,33 @@ from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.serializers import CTLParamsSerializer
+from segment.api.serializers import ParamsTemplateSerializer
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
+from segment.models import ParamsTemplate
 from segment.utils.query_builder import SegmentQueryBuilder
 from segment.utils.utils import set_user_perm_params
 from segment.utils.utils import with_unknown
+from userprofile.constants import StaticPermissions
+from utils.views import get_object
 
 
 class SegmentCreateOptionsApiView(APIView):
-    def post(self, request, *args, **kwargs):
+
+    def get(self, request, *args, **kwargs):
         """
         Generate segment creation options
+        If user has params template permission, respond with existing templates owned by user
         If segment_type in request, will respond with items count in request body filters
         """
         res_data = {
             "options": self._get_options()
         }
+
+        if self.request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
+            res_data["channel_templates"] = self._get_templates(SegmentTypeEnum.CHANNEL.value)
+            res_data["video_templates"] = self._get_templates(SegmentTypeEnum.VIDEO.value)
+
         get_estimate = request.data.get("segment_type") is not None
         if get_estimate:
             data = set_user_perm_params(request, request.data)
@@ -41,10 +53,27 @@ class SegmentCreateOptionsApiView(APIView):
             validator.is_valid(raise_exception=True)
             params = validator.validated_data
             query_builder = SegmentQueryBuilder(params)
-            result = query_builder.execute()
             str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
-            res_data[f"{str_type}_items"] = result.hits.total.value or 0
+            res_data[f"{str_type}_items"] = query_builder.count() or 0
         return Response(status=HTTP_200_OK, data=res_data)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        deletes CTL ParamsTemplate object for a given id
+        """
+        if request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
+            id = request.data.get("id", None)
+            if not isinstance(id, int):
+                raise TypeError("id value must be an integer")
+            params_template = get_object(ParamsTemplate, id=id)
+            params_template.delete()
+            return Response(status=HTTP_200_OK)
+        raise PermissionDenied
+
+    def _get_templates(self, segment_type):
+        templates = ParamsTemplate.objects.filter(owner=self.request.user, segment_type=segment_type)
+        serializer = ParamsTemplateSerializer(templates, many=True)
+        return serializer.data
 
     @staticmethod
     def _get_options():

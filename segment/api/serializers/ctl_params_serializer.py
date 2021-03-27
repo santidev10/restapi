@@ -6,7 +6,7 @@ from rest_framework.serializers import empty
 from rest_framework.exceptions import ValidationError
 
 from es_components.iab_categories import IAB_TIER2_SET
-from segment.models.constants import SegmentTypeEnum
+from segment.models import ParamsTemplate
 from segment.utils.utils import validate_all_in
 from segment.utils.utils import validate_segment_type
 from audit_tool.models import AuditContentQuality
@@ -214,3 +214,12 @@ class CTLParamsSerializer(serializers.Serializer):
             if bad_content_categories:
                 comma_separated = ", ".join(str(item) for item in bad_content_categories)
                 raise ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'")
+
+
+class ParamsTemplateSerializer(serializers.ModelSerializer):
+    """
+    Returns serialized ParamsTemplate data
+    """
+    class Meta:
+        model = ParamsTemplate
+        fields = ("id", "segment_type", "title", "owner", "params", "created_at", "updated_at")

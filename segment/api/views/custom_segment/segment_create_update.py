@@ -12,6 +12,7 @@ from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers.video_exclusion_params_serializer import VideoExclusionParamsSerializer
 from segment.api.mixins import SegmentTypePermissionMixin
+from segment.api.mixins import ParamsTemplateMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
@@ -23,7 +24,7 @@ from utils.permissions import or_permission_classes
 from utils.views import get_object
 
 
-class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
+class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, ParamsTemplateMixin):
     serializer_class = CTLSerializer
     permission_classes = (
         or_permission_classes(
@@ -61,9 +62,12 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment task through CTLSerializer
         """
         request, data = self._prep_request(request)
+        template_title = data.pop("template_title", None)
         validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         self.check_source_file_permissions(request=request)
+        if self.check_params_template_permissions(request=request) and isinstance(template_title, str):
+            self.create_update_params_template(request.user, template_title, validated_params)
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_201_CREATED, data=res)
