@@ -19,6 +19,8 @@ from utils.lang import merge
 from utils.exception import retry
 from utils.utils import chunks_generator
 from utils.brand_safety import map_score_threshold
+from utils.search_after import search_after
+
 
 logger = logging.getLogger(__name__)
 LIMIT = 125000
@@ -78,16 +80,17 @@ def _generate_video_exclusion(channel_ctl_id: int):
         failed_callback(channel_ctl_id)
         return
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+
+    channels_seen = 0
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
-        for chunk in chunks_generator(channel_ids, size=100):
+        for chunk in chunks_generator(channel_ids, size=200):
             curr_blocklist = []
             curr_videos = []
             channels = list(chunk)
-            max_slices = 20
-            query = _get_query(channels, mapped_score_threshold)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_slices) as executor:
-                futures = [executor.submit(_process, query, video_manager, i, max_slices) for i in range(max_slices)]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(get_videos_for_channels, ids, mapped_score_threshold, video_manager)
+                           for ids in chunks_generator(channels, size=10)]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)
@@ -95,6 +98,9 @@ def _generate_video_exclusion(channel_ctl_id: int):
             curr_videos.sort(key=lambda doc: doc.brand_safety.overall_score)
             all_videos = merge(all_videos, curr_videos, lambda doc: doc.brand_safety.overall_score)
             all_blocklist.extend(curr_blocklist)
+
+            channels_seen += len(channels)
+            print(f"Channels seen: {channels_seen}, blocklist: {len(all_blocklist)}, videos: {len(all_videos)}")
 
             all_videos = all_videos[:LIMIT]
             # If blocklist videos exceeds limit, then list should only consist of blocklist videos
@@ -115,46 +121,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         os.remove(video_exclusion_fp)
 
 
-@retry(10, delay=5)
-def _process(query: QueryBuilder, video_manager: VideoManager, slice_index: int, max_slice:int):
-    """
-    Retrieve and process videos together to allow for retry decorator to catch exceptions.
-    scan method is a generator and may raise different exceptions:
-        ScanError(Scroll request has only succeeded on 'a' shards out of 'b' shards)
-        TransportError(Trying to create too many scroll contexts)
-    The generator must be yielded in a retry decorated function to avoid the exceptions bubbling up to main
-        _generate_video_exclusion function and losing all progress
-
-    This function uses the sliced scroll api to be more performant requesting large amounts of videos
-    :param slice_index: The current slice value being requested
-    :param max_slice: The max number of slices being processed
-    :return:
-    """
-    results = []
-    slice_params = dict(
-        id=slice_index,
-        max=max_slice,
-        field="main.created_at",
-    )
-    video_generator = video_manager.search(filters=query).params(scroll="10m").extra(
-        slice=slice_params
-    ).scan()
-    for videos_chunk in chunks_generator(video_generator, size=2000):
-        results.extend(list(videos_chunk))
-    return results
-
-
-def _get_query(channel_ids, bs_score_limit):
-    overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
-    query = (
-        QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
-        & QueryBuilder().build().must().exists().field(overall_score_field).get()
-        & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
-        & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
-    )
-    return query
-
-
+@retry(10, 2)
 def get_videos_for_channels(channel_ids: list, bs_score_limit: int, video_manager) -> iter:
     """
     Retrieve videos using channel_ids
@@ -164,16 +131,19 @@ def get_videos_for_channels(channel_ids: list, bs_score_limit: int, video_manage
         brand safety scores should be <= the bs_score_limit
     :return:
     """
+    results = []
     overall_score_field = f"{Sections.BRAND_SAFETY}.overall_score"
     video_source = (
     Sections.MAIN, overall_score_field, f"{Sections.GENERAL_DATA}.title", f"{Sections.CUSTOM_PROPERTIES}.blocklist")
     query = (
-            QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
-            & QueryBuilder().build().must().exists().field(overall_score_field).get()
-            & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
-            & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
+        QueryBuilder().build().must().terms().field("channel.id").value(channel_ids).get()
+        & QueryBuilder().build().must().exists().field(overall_score_field).get()
+        & QueryBuilder().build().must().range().field(overall_score_field).lt(bs_score_limit).get()
+        & QueryBuilder().build().must_not().exists().field(Sections.DELETED).get()
     )
-    yield from video_manager.search(filters=query).source(video_source).params(scroll="15m").scan()
+    for batch in search_after(query, video_manager, source=video_source, size=500):
+        results.extend(batch)
+    return results
 
 
 def _separate_videos(videos: iter, blocklist_list: list, videos_list: list) -> None:
