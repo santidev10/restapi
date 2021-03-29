@@ -6,6 +6,7 @@ from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
+from oauth.constants import OAuthType
 from oauth.utils.client import load_client_settings
 from oauth.utils.client import get_client
 from oauth.utils.client import API_VERSION
@@ -39,6 +40,16 @@ def get_campaign_report(client, fields, predicates: list = None, date_range: dic
         date_range_type = "CUSTOM_DATE"
         selector["dateRange"] = date_range
     report = _get_report(client, "CAMPAIGN_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
+                         use_raw_enum_values=True, skip_column_header=True)
+    rows = _output_to_rows(report, fields)
+    return rows
+
+
+def get_adgroup_report(client, fields, predicates: list = None):
+    predicates = predicates or [{"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]}]
+    selector = {"fields": fields, "predicates": predicates}
+    date_range_type = "ALL_TIME"
+    report = _get_report(client, "ADGROUP_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
                          use_raw_enum_values=True, skip_column_header=True)
     rows = _output_to_rows(report, fields)
     return rows
@@ -84,8 +95,7 @@ def get_customers(refresh_token):
     return customer_service.getCustomers()
 
 
-def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str],
-                  ouath_type: int, defaults: Dict[str, int] = None) -> tuple:
+def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str], defaults: Dict[str, int] = None) -> tuple:
     """
     Prepare items to be updated or created for PerformIQ models. Metric numerical fields returned as string values
         from the API will be coerced using COERCE_FIELD_FUNCS
@@ -101,7 +111,6 @@ def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str
     :param report: iter -> Iterable that contains report rows
     :param model: Model objects to instantiate from report values
     :param fields_mapping: dict -> Mapping of model field to report fields e.g. id: CampaignId
-    :param ouath_type: OAuthType enum value
     :param defaults: dict -> Additional attributes to be set on all Model objects
     :return: tuple
     """
@@ -109,7 +118,7 @@ def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str
     exists_mapping = {
         item.id: item
         for item in model.objects.filter(
-            oauth_type=0,
+            oauth_type=OAuthType.GOOGLE_ADS.value,
             id__in={*[getattr(item, fields_mapping["id"]) for item in report]}
         )
     }
@@ -120,7 +129,7 @@ def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str
             obj = exists_mapping[int(getattr(row, fields_mapping["id"]))]
             container = to_update
         except KeyError:
-            default = {"oauth_type": ouath_type}
+            default = {"oauth_type": OAuthType.GoogleAds.value}
             obj = model(**default)
             container = to_create
         # Set attributes that should be set defined in defaults
@@ -132,3 +141,9 @@ def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str
             setattr(obj, model_field, mapped_value)
         container.append(obj)
     return to_update, to_create
+
+
+def clean_update_fields(fields, ignore_fields: set = None):
+    ignore_fields = ignore_fields or set()
+    ignore_fields.add("id")
+    return [field for field in fields if field not in ignore_fields]

@@ -5,14 +5,15 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
-from oauth.constants import OAuthType
 from oauth.models import Account
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from oauth.utils.client import get_client
+from oauth.utils.adwords import clean_update_fields
 from oauth.utils.adwords import get_campaign_report
 from oauth.utils.adwords import get_accounts
 from oauth.utils.adwords import prepare_items
+from oauth.tasks.update_ad_groups import update_adgroups_task
 from saas import celery_app
 from utils.db.functions import safe_bulk_create
 from utils.utils import chunks_generator
@@ -67,6 +68,9 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
         for cid in cid_accounts:
             update_cid_campaigns(cid["customerId"], oauth_account)
 
+    for account in (mcc_accounts or []) + (cid_accounts or []):
+        update_adgroups_task(account["customerId"], oauth_account.refresh_token)
+
     oauth_account.synced = True
     oauth_account.save(update_fields=["synced"])
 
@@ -117,9 +121,7 @@ def update_create_campaigns(report, account_id):
     """ Update or create campaigns from Adwords API Campaign Report """
     account, _ = Account.objects.get_or_create(id=account_id)
     to_update, to_create = prepare_items(
-        report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, OAuthType.GOOGLE_ADS.value,
-        defaults={"account_id": account.id}
+        report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, defaults={"account_id": account.id}
     )
     safe_bulk_create(Campaign, to_create)
-    update_fields = [val for val in CAMPAIGN_REPORT_FIELDS_MAPPING.keys() if val not in {"id"}]
-    Campaign.objects.bulk_update(to_update, fields=update_fields)
+    Campaign.objects.bulk_update(to_update, fields=clean_update_fields(CAMPAIGN_REPORT_FIELDS_MAPPING.keys()))
