@@ -59,13 +59,16 @@ class ParamsTemplateMixin:
     """
 
     @staticmethod
-    def check_params_template_permissions(request):
+    def check_params_template_permissions(user, template_title):
         """
-        ensure user has permission to update or create params template
-        :param request:
+        ensure user has permission to update or create params template if template_title in request
+        :param user: UserProfile
+        :param template_title: str or None
         :return:
         """
-        if not request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
+        if template_title is None:
+            return False
+        if not user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
             raise PermissionDenied
         return True
 

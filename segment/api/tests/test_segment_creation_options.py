@@ -15,6 +15,7 @@ from cache.models import CacheItem
 from es_components.countries import COUNTRIES
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.models import ParamsTemplate
 from utils.unittests.test_case import ExtendedAPITestCase
 from .test_segment_create_update import SegmentCreateUpdateApiViewTestCase
 
@@ -153,3 +154,44 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         params = mock_query_builder.call_args[0][0]
         self.assertEqual(params["vetting_status"], [1])
+
+    def test_get_param_templates(self, es_mock):
+        user = self.create_admin_user()
+        data = self._get_mock_data(hits_total=602411)
+        es_mock.return_value = data
+        params = self._get_params()
+        # create channel params template
+        ParamsTemplate(
+            title="Test",
+            owner=user,
+            title_hash=0,
+            params=params,
+            segment_type=1
+        ).save()
+        # create video params template
+        ParamsTemplate(
+            title="Test",
+            owner=user,
+            title_hash=0,
+            params=params,
+            segment_type=0
+        ).save()
+        channel_template = ParamsTemplate.objects.get(title="Test", segment_type=1)
+        video_template = ParamsTemplate.objects.get(title="Test", segment_type=0)
+        response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(params), content_type='application/json')
+        self.assertEqual(response.data["channel_templates"][0]["params"], channel_template.params)
+        self.assertEqual(response.data["video_templates"][0]["params"], video_template.params)
+
+    def test_delete_params_template(self, es_mock):
+        user = self.create_admin_user()
+        video_template = ParamsTemplate.objects.create(
+            title="Test",
+            owner=user,
+            segment_type=0
+        )
+        video_template.save()
+        data = {"id": video_template.id}
+        response = self.client.generic(method="DELETE", path=self._get_url(), data=json.dumps(data),
+                                       content_type='application/json')
+
+        self.assertEqual(HTTP_200_OK, response.status_code)

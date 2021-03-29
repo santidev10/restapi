@@ -68,7 +68,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         self.check_source_file_permissions(request=request)
-        if self.check_params_template_permissions(request=request) and isinstance(template_title, str):
+        if self.check_params_template_permissions(request.user, template_title):
             self.create_update_params_template(request.user, template_title, validated_params)
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
@@ -93,7 +93,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
         validated_params = self._validate_params(data, partial=True)
         validated_video_exclusion_params = self._validate_video_exclusion(segment, request.user, data)
         cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
-        if self.check_params_template_permissions(request=request) and isinstance(template_title, str):
+        if self.check_params_template_permissions(request.user, template_title):
             self.create_update_params_template(request.user, template_title, validated_params)
         serializer = self.serializer_class(segment, data=data,
                                            context=self._get_context(cleaned_params, validated_video_exclusion_params), partial=True)
@@ -115,7 +115,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Para
     def _validate_template_title(self, title):
         max_len = ParamsTemplate.MAX_TITLE_LENGTH
         if title is None:
-            return title
+            return None
         if isinstance(title, str) and len(title) <= max_len:
             return title
         raise ValidationError(f"Template title must be a string of {max_len} characters or less.")
