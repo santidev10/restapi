@@ -12,9 +12,9 @@ from utils.utils import chunks_generator
 
 # 10M
 VIEW_COUNT_THRESHOLD = 10000000
-CHUNK_SIZE = 400
+CHUNK_SIZE = 1200
 MAX_RETRIES = 100
-SLEEP_SECONDS = 20
+SLEEP_SECONDS = 30
 
 
 def run_with_retries(max_retries=MAX_RETRIES):
