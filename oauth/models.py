@@ -98,4 +98,4 @@ class InsertionOrder(DV360Base, DV360SharedFieldsMixin):
 class AdGroup(OAuthBase):
     id = models.BigAutoField(primary_key=True)
     campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
-    name = models.CharField(max_length=255, null=True, db_index=True)
+    name = models.CharField(max_length=256, null=True, db_index=True)

@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('oauth_type', models.IntegerField(choices=[(0, 'Google Ads Oauth'), (1, 'Google DV360 Oauth')], db_index=True)),
                 ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('name', models.CharField(db_index=True, max_length=255, null=True)),
+                ('name', models.CharField(db_index=True, max_length=256, null=True)),
                 ('campaign', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ad_groups', to='oauth.campaign')),
             ],
             options={
