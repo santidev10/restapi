@@ -6,6 +6,7 @@ from performiq.analyzers.constants import COERCE_FIELD_FUNCS
 from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
+from oauth.models import Account
 from oauth.constants import OAuthType
 from oauth.utils.client import load_client_settings
 from oauth.utils.client import get_client
@@ -69,8 +70,8 @@ def get_report(client, report_query, fields, addl_fields=None):
     return result
 
 
-def get_accounts(refresh_token):
-    gads_accounts = get_customers(refresh_token)
+def get_accounts(oauth_account):
+    gads_accounts = get_customers(oauth_account)
     mcc_accounts = []
     cid_accounts = []
     for account in gads_accounts:
@@ -80,6 +81,28 @@ def get_accounts(refresh_token):
             container = cid_accounts
         container.append(account)
     return mcc_accounts, cid_accounts
+
+
+def update_accounts(oauth_account, account_data):
+    """
+    Update Google CID account objects
+    :param oauth_account: OAuthAccount used to query get_customers
+    :param account_data: get_customers function response
+    :return:
+    """
+    ids = [a["customerId"] for a in account_data]
+    exists = set(Account.objects.filter(id__in=ids).values_list("id", flat=True))
+    to_update = []
+    to_create = []
+    for account in account_data:
+        if account["customerId"] in exists:
+            container = to_update
+        else:
+            container = to_create
+        container.append(Account(id=account["customerId"], name=account["descriptiveName"]))
+    Account.objects.bulk_create(to_create)
+    Account.objects.bulk_update(to_update, fields=["name"])
+    oauth_account.gads_accounts.add(*ids)
 
 
 def get_customers(refresh_token):

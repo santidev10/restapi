@@ -5,7 +5,6 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
-from oauth.models import Account
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from oauth.utils.client import get_client
@@ -13,6 +12,7 @@ from oauth.utils.adwords import clean_update_fields
 from oauth.utils.adwords import get_campaign_report
 from oauth.utils.adwords import get_accounts
 from oauth.utils.adwords import prepare_items
+from oauth.utils.adwords import update_accounts
 from oauth.tasks.update_ad_groups import update_adgroups_task
 from saas import celery_app
 from utils.db.functions import safe_bulk_create
@@ -61,6 +61,7 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
             logger.exception(f"Unexpected Exception updating campaigns for OAuthAccount id: {oauth_account_id}")
             return
 
+    update_accounts(oauth_account, mcc_accounts or [] + cid_accounts or [])
     if mcc_accounts:
         for mcc in mcc_accounts:
             update_mcc_campaigns(mcc["customerId"], oauth_account)
@@ -84,7 +85,6 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
     """
     client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
     all_cids = [int(cid["customerId"]) for cid in get_all_customers(client)]
-    existing = oauth_account.gads_accounts.values_list("id", flat=True)
 
     for batch in chunks_generator(all_cids, size=20):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
@@ -93,8 +93,6 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
             update_create_campaigns(report, account_id)
-
-    oauth_account.gads_accounts.add(*set(all_cids) - set(existing))
 
 
 def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
@@ -119,9 +117,8 @@ def get_report(account_id: int, refresh_token: str):
 
 def update_create_campaigns(report, account_id):
     """ Update or create campaigns from Adwords API Campaign Report """
-    account, _ = Account.objects.get_or_create(id=account_id)
     to_update, to_create = prepare_items(
-        report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, defaults={"account_id": account.id}
+        report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, defaults={"account_id": account_id}
     )
     safe_bulk_create(Campaign, to_create)
     Campaign.objects.bulk_update(to_update, fields=clean_update_fields(CAMPAIGN_REPORT_FIELDS_MAPPING.keys()))
