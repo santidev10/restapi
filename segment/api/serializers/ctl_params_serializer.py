@@ -218,7 +218,8 @@ class CTLParamsSerializer(serializers.Serializer):
 
 class ParamsTemplateSerializer(serializers.ModelSerializer):
     """
-    Returns serialized ParamsTemplate data
+    Serializer for ParamsTemplate model
+    serializes all fields except for title_hash
     """
     class Meta:
         model = ParamsTemplate
