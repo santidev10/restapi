@@ -5,6 +5,7 @@ import os
 import tempfile
 from typing import List
 
+from botocore.exceptions import ClientError
 from django.conf import settings
 from uuid import uuid4
 
@@ -26,22 +27,6 @@ logger = logging.getLogger(__name__)
 LIMIT = 125000
 
 
-def failed_callback(channel_ctl_id, *_, **__):
-    """
-    Reset state of channel ctl video exclusion creation if task fails
-    :param channel_ctl_id: Channel CustomSegment
-    :return:
-    """
-    ctl = CustomSegment.objects.get(id=channel_ctl_id)
-    ctl.statistics.update({
-        VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
-    })
-    ctl.params.update({
-        VideoExclusion.WITH_VIDEO_EXCLUSION: False
-    })
-    ctl.save(update_fields=["params", "statistics"])
-
-
 @celery_app.task
 def generate_video_exclusion(channel_ctl_id: int) -> str:
     """
@@ -53,7 +38,7 @@ def generate_video_exclusion(channel_ctl_id: int) -> str:
     return video_exclusion_s3_key
 
 
-@retry(count=5, delay=10, failed_callback=failed_callback)
+@retry(count=5, delay=10)
 def _generate_video_exclusion(channel_ctl_id: int):
     """
     Generate video exclusion list using channels from Channel CTL
@@ -71,26 +56,32 @@ def _generate_video_exclusion(channel_ctl_id: int):
     all_blocklist = []
     all_videos = []
     video_manager = VideoManager(sections=[Sections.BRAND_SAFETY, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES])
+    channel_ctl = CustomSegment.objects.get(id=channel_ctl_id)
     try:
-        channel_ctl = CustomSegment.objects.get(id=channel_ctl_id)
-        channel_ids = channel_ctl.s3.get_extract_export_ids()
+        channel_ids = list(channel_ctl.s3.get_extract_export_ids())[:2]
     except Exception:
         logger.exception(
             f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
-        failed_callback(channel_ctl_id)
+        channel_ctl.statistics.update({
+            VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
+        })
+        channel_ctl.params.update({
+            VideoExclusion.WITH_VIDEO_EXCLUSION: False
+        })
+        channel_ctl.save(update_fields=["params", "statistics"])
         return
-    video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
 
+    video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     channels_seen = 0
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=200):
             curr_blocklist = []
             curr_videos = []
-            channels = list(chunk)
+            chunk = list(chunk)
             with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                futures = [executor.submit(get_videos_for_channels, ids, mapped_score_threshold, video_manager)
-                           for ids in chunks_generator(channels, size=10)]
+                futures = [executor.submit(get_videos_for_channels, list(ids), mapped_score_threshold, video_manager)
+                           for ids in chunks_generator(chunk, size=10)]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     _separate_videos(result, curr_blocklist, curr_videos)
@@ -99,8 +90,10 @@ def _generate_video_exclusion(channel_ctl_id: int):
             all_videos = merge(all_videos, curr_videos, lambda doc: doc.brand_safety.overall_score)
             all_blocklist.extend(curr_blocklist)
 
-            channels_seen += len(channels)
+            channels_seen += len(chunk)
             print(f"Channels seen: {channels_seen}, blocklist: {len(all_blocklist)}, videos: {len(all_videos)}")
+            if len(curr_videos) > 5:
+                raise Exception
 
             all_videos = all_videos[:LIMIT]
             # If blocklist videos exceeds limit, then list should only consist of blocklist videos
@@ -111,6 +104,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, all_results)
     except Exception:
         logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
+        _save_partial_results(channel_ctl, (all_blocklist + all_videos)[:LIMIT])
         # Raise for retry decorator
         raise
     else:
@@ -185,3 +179,24 @@ def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Vi
     s3.export_file_to_s3(export_fp, video_exclusion_s3_key,
                          extra_args=dict(ContentDisposition=content_disposition))
     return video_exclusion_s3_key
+
+
+def _save_partial_results(channel_ctl: CustomSegment, partial_results: list):
+    """
+    Save partial results as generation task is retried
+    Will save new filename if partial results file is larger than previous file
+    :param channel_ctl: CustomSegment being processed
+    :param partial_results: Results at the time of exception being raised
+    :return:
+    """
+    video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    try:
+        prev_file = channel_ctl.statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME)
+        video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, partial_results)
+        if not prev_file or channel_ctl.ctl.check_key_size(prev_file) < channel_ctl.ctl.check_key_size(video_exclusion_s3_key):
+            channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
+            channel_ctl.save(update_fields=["statistics"])
+    except ClientError:
+        pass
+    finally:
+        os.remove(video_exclusion_fp)
