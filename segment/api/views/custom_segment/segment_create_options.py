@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 
 from django.core.exceptions import PermissionDenied
@@ -203,11 +202,6 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         params_serializer.is_valid(raise_exception=True)
         validated_data = params_serializer.validated_data
         return validated_data
-
-    def _prep_request(self, request):
-        data = json.loads(request.data["data"])
-        data = set_user_perm_params(request, data)
-        return request, data
 
     def _validate_field(self, field, data_type):
         if not isinstance(field, data_type):

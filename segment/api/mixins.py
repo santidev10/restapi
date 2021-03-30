@@ -61,8 +61,7 @@ class ParamsTemplateMixin:
     def _check_params_template_permissions(user):
         """
         checks if user has permission to update, delete, or create params template
-        :param user: userprofile.UserProfile
-        :param template_title: str or None
+        :param user:
         :return:
         """
         if not user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
@@ -73,7 +72,7 @@ class ParamsTemplateMixin:
         """
         updates ParamsTemplate instance for a given id and new params
         :user: userprofile.UserProfile type
-        :template_title: str
+        :template_id: int
         :params: dict
         :return:
         """
@@ -88,9 +87,9 @@ class ParamsTemplateMixin:
     def _create_params_template(user, template_title, params):
         """
         Creates new ParamsTemplate instance
-        :user: userprofile.UserProfile type
+        :user:
         :template_title: str
-        :params: dict, should contain segment type equal to either 0 or 1
+        :params: dict
         :return:
         """
         title_hash = get_hash(template_title.lower().strip())
