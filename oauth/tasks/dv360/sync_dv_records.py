@@ -17,16 +17,20 @@ from oauth.constants import EntityStatusType
 from oauth.constants import OAuthType
 from oauth.tasks.dv360.serializers import AdvertiserSerializer
 from oauth.tasks.dv360.serializers import CampaignSerializer
+from oauth.tasks.dv360.serializers import InsertionOrderSerializer
 from oauth.tasks.dv360.serializers import PartnerSerializer
 from oauth.utils.dv360 import AdvertiserAdapter
 from oauth.utils.dv360 import CampaignAdapter
+from oauth.utils.dv360 import InsertionOrderAdapter
 from oauth.utils.dv360 import PartnerAdapter
 from oauth.utils.dv360 import get_discovery_resource
 from oauth.utils.dv360 import load_credentials
 from oauth.utils.dv360 import request_advertiser_campaigns
 from oauth.utils.dv360 import request_partner_advertisers
 from oauth.utils.dv360 import request_partners
+from oauth.utils.dv360 import request_insertion_orders
 from oauth.utils.dv360 import serialize_dv360_list_response_items
+from utils.db.functions import safe_bulk_create
 from saas import celery_app
 
 
@@ -136,6 +140,11 @@ def sync_dv_campaigns():
     :return:
     """
     DVCampaignSynchronizer().run()
+
+
+@celery_app.task
+def sync_insertion_orders():
+    DVInsertionOrderSynchronizer().run()
 
 
 class AbstractThreadedDVSynchronizer:
@@ -322,3 +331,23 @@ class DVCampaignSynchronizer(AbstractThreadedDVSynchronizer):
     @staticmethod
     def get_request_function():
         return request_advertiser_campaigns
+
+
+class DVInsertionOrderSynchronizer(AbstractThreadedDVSynchronizer):
+    model_id_filter = "dv360_advertisers__id__in"
+    response_items_key = "insertionOrders"
+    adapter_class = InsertionOrderAdapter
+    serializer_class = InsertionOrderSerializer
+
+
+    def __init__(self):
+        super().__init__()
+        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
+
+    def run(self):
+        logger.info(f"starting dv campaign sync...")
+        super().run()
+
+    @staticmethod
+    def get_request_function():
+        return request_insertion_orders
