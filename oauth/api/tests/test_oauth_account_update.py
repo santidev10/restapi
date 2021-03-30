@@ -14,11 +14,6 @@ class OAuthAccountUpdateAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_id):
         return reverse(Namespace.OAUTH + ":" + OAuthPathName.OAUTH_ACCOUNT_UPDATE, kwargs={"pk": account_id})
 
-    def test_permission(self):
-        self.create_test_user()
-        response = self.client.get(self._get_url(0))
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
     def test_oauth_account_is_updated(self):
         """test that an OAuthAccount is modified successfully"""
         user = self.create_admin_user()

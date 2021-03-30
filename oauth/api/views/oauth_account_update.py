@@ -1,15 +1,15 @@
 from rest_framework.exceptions import NotFound
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
+from rest_framework.permissions import IsAuthenticated
 
 from oauth.api.serializers import OAuthAccountSerializer
 from oauth.models import OAuthAccount
-from userprofile.constants import StaticPermissions
 
 
 class OAuthAccountUpdateAPIView(UpdateAPIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
+        IsAuthenticated,
     )
     serializer_class = OAuthAccountSerializer
 
