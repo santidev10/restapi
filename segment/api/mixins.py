@@ -10,6 +10,7 @@ from userprofile.constants import StaticPermissions
 from utils.utils import get_hash
 from utils.views import get_object
 
+
 class DynamicPersistentModelViewMixin:
     def dispatch(self, request, segment_type, **kwargs):
         self.model = get_persistent_segment_model_by_type(segment_type)
@@ -59,8 +60,8 @@ class ParamsTemplateMixin:
     @staticmethod
     def _check_params_template_permissions(user):
         """
-        ensure user has permission to update or create params template if template_title in request
-        :param user: UserProfile
+        checks if user has permission to update, delete, or create params template
+        :param user: userprofile.UserProfile
         :param template_title: str or None
         :return:
         """
@@ -70,8 +71,7 @@ class ParamsTemplateMixin:
     @staticmethod
     def _update_params_template(user, template_id, params):
         """
-        Creates new params template for user if title does not exist for segment type,
-        otherwise updates with new params
+        updates ParamsTemplate instance for a given id and new params
         :user: userprofile.UserProfile type
         :template_title: str
         :params: dict
@@ -87,7 +87,7 @@ class ParamsTemplateMixin:
     @staticmethod
     def _create_params_template(user, template_title, params):
         """
-        Creates new params template for user for a given segment type,
+        Creates new ParamsTemplate instance
         :user: userprofile.UserProfile type
         :template_title: str
         :params: dict, should contain segment type equal to either 0 or 1
