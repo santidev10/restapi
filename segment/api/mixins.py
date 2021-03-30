@@ -60,7 +60,6 @@ class ParamsTemplateMixin:
     @staticmethod
     def _check_params_template_permissions(user):
         """
-        checks if user has permission to update, delete, or create params template
         :param user:
         :return:
         """
