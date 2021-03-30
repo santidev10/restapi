@@ -8,13 +8,13 @@ from oauth.models import InsertionOrder
 class InsertionOrderListAPIView(ListAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = InsertionOrderSerializer
+    queryset = InsertionOrder.objects.all()
 
-    def get_queryset(self):
+    def filter_queryset(self, queryset):
         filters = {
             "campaign__advertiser__oauth_accounts__user": self.request.user
         }
         parent_id = self.request.query_params.get("parent_id")
         if parent_id:
             filters["campaign_id"] = parent_id
-        qs = InsertionOrder.objects.filter(**filters)
-        return qs
+        return queryset.filter(**filters)

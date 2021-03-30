@@ -10,9 +10,10 @@ class GAdsAccountListAPIView(ListAPIView):
         IsAuthenticated,
     )
     serializer_class = AccountSerializer
+    queryset = Account.objects.all()
 
-    def get_queryset(self):
+    def filter_queryset(self, queryset):
         filters = {
             "oauth_accounts__user": self.request.user
         }
-        return Account.objects.filter(**filters)
+        return queryset.filter(**filters)

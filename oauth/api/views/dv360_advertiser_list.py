@@ -10,6 +10,8 @@ class OAuthDV360AdvertiserListAPIView(ListAPIView):
         IsAuthenticated,
     )
     serializer_class = AdvertiserSerializer
+    queryset = DV360Advertiser.objects.all()
 
-    def get_queryset(self):
-        return DV360Advertiser.objects.filter(oauth_accounts__user=self.request.user)
+    def filter_queryset(self, queryset):
+        return queryset.filter(oauth_accounts__user=self.request.user)
+

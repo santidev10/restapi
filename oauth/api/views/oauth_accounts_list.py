@@ -20,7 +20,11 @@ class OAuthAccountListPIView(APIView):
                                         oauth_type=OAuthType.DV360.value)
 
         data = {
-            "gads": gads_oauth_account.email if gads_oauth_account else None,
-            "dv360": dv360_oauth_account.email if dv360_oauth_account else None
+            "gads": {
+                "email": gads_oauth_account.email if gads_oauth_account else None,
+            },
+            "dv360": {
+                "email": dv360_oauth_account.email if dv360_oauth_account else None
+            }
         }
         return Response(data)

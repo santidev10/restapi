@@ -11,8 +11,9 @@ class OAuthAdGroupListAPIView(ListAPIView):
         IsAuthenticated,
     )
     serializer_class = AdGroupSerializer
+    queryset = AdGroup.objects.all()
 
-    def get_queryset(self):
+    def filter_queryset(self, queryset):
         oauth_type = validate_oath_type(self.request)
         parent_id = self.request.query_params.get("parent_id")
         filters = {
@@ -21,5 +22,7 @@ class OAuthAdGroupListAPIView(ListAPIView):
         }
         if parent_id is not None:
             filters["campaign_id"] = parent_id
-        qs = AdGroup.objects.filter(**filters)
+        qs = queryset.filter(**filters)
         return qs
+
+

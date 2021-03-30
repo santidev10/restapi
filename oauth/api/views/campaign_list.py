@@ -13,8 +13,9 @@ class OAuthCampaignListAPIView(ListAPIView):
 
     )
     serializer_class = CampaignSerializer
+    queryset = Campaign.objects.all()
 
-    def get_queryset(self):
+    def filter_queryset(self, queryset):
         request = self.request
         query_params = self.request.query_params
         oauth_type = validate_oath_type(request)
@@ -23,10 +24,11 @@ class OAuthCampaignListAPIView(ListAPIView):
         filter_config = self._get_filter_config(oauth_type)
         filters = {
             filter_config["user"]: request.user,
+            "oauth_type": oauth_type,
         }
         if parent_id:
             filters[filter_config["parent"]] = parent_id
-        qs = Campaign.objects.filter(**filters)
+        qs = queryset.filter(**filters)
         return qs
 
     def _get_filter_config(self, oauth_type):
