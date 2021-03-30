@@ -1,13 +1,14 @@
-import hashlib
-
 from django.core.exceptions import PermissionDenied
 
+from segment.api.serializers import ParamsTemplateSerializer
+from segment.models.constants import SegmentTypeEnum
 from segment.models import CustomSegment
 from segment.models import ParamsTemplate
 from segment.utils.utils import get_persistent_segment_model_by_type
 from segment.utils.utils import validate_segment_type
 from userprofile.constants import StaticPermissions
 from utils.utils import get_hash
+from utils.views import get_object
 
 class DynamicPersistentModelViewMixin:
     def dispatch(self, request, segment_type, **kwargs):
@@ -52,28 +53,22 @@ class SegmentTypePermissionMixin:
 
 class ParamsTemplateMixin:
     """
-    Mixin for checking params template permission,
-    creating new param templates,
-    updating existing param templates,
-    and implementing hashing method
+    Mixin for parameter templates
     """
 
     @staticmethod
-    def check_params_template_permissions(user, template_title):
+    def _check_params_template_permissions(user):
         """
         ensure user has permission to update or create params template if template_title in request
         :param user: UserProfile
         :param template_title: str or None
         :return:
         """
-        if template_title is None:
-            return False
         if not user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
             raise PermissionDenied
-        return True
 
     @staticmethod
-    def create_update_params_template(user, template_title, params):
+    def _update_params_template(user, template_id, params):
         """
         Creates new params template for user if title does not exist for segment type,
         otherwise updates with new params
@@ -82,21 +77,44 @@ class ParamsTemplateMixin:
         :params: dict
         :return:
         """
+        params_template = get_object(ParamsTemplate, id=template_id)
+        if user.id == params_template.owner.id:
+            params_template.params = params
+            params_template.save()
+            return params_template
+        raise PermissionDenied("Cannot update a template owned by another user.")
+
+    @staticmethod
+    def _create_params_template(user, template_title, params):
+        """
+        Creates new params template for user for a given segment type,
+        :user: userprofile.UserProfile type
+        :template_title: str
+        :params: dict, should contain segment type equal to either 0 or 1
+        :return:
+        """
         title_hash = get_hash(template_title.lower().strip())
         segment_type = params.get("segment_type", None)
-        if segment_type is not None and isinstance(segment_type, int):
-            filter_args = dict((
-                ("title_hash", title_hash),
-                ("segment_type", segment_type),
-            ))
-            create_update_args = filter_args | dict((
-                ("owner", user),
-                ("title", template_title),
-            ))
-            object = ParamsTemplate.objects.filter(
-                **filter_args
-            ).get_or_create(**create_update_args)[0]
-            object.params = params
-            object.save()
-            return
-        raise TypeError("Valid segment type must be provided.")
+        if segment_type is not None and segment_type in \
+                (SegmentTypeEnum.VIDEO.value, SegmentTypeEnum.CHANNEL.value):
+            params_template = ParamsTemplate.objects.create(
+                owner=user,
+                segment_type=segment_type,
+                title=template_title,
+                title_hash=title_hash,
+                params=params
+            )
+            params_template.save()
+            return params_template
+        raise TypeError("Must provide a valid segment type.")
+
+    @staticmethod
+    def _get_templates_by_owner(user, segment_type):
+        """
+        returns serialized data of ParamsTemplate objects owned by a given user
+        :user: userprofile.UserProfile
+        :segment_type: int
+        """
+        templates = ParamsTemplate.objects.filter(owner=user, segment_type=segment_type)
+        serializer = ParamsTemplateSerializer(templates, many=True)
+        return serializer.data

@@ -23,7 +23,6 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models import CustomSegmentVettedFileUpload
-from segment.models import ParamsTemplate
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import VideoExclusion
@@ -1422,76 +1421,3 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             ctl = CustomSegment.objects.get(title=payload["title"])
             self.assertTrue(ctl.statistics["error"])
-
-    def test_params_template_create(self, mock_generate):
-        """
-        Tests that params template is created during segment creation if user has permission
-        and template_title is passed in payload
-        """
-        user = self.create_admin_user()
-        payload = {
-            "languages": ["pt"],
-            "score_threshold": 1,
-            "content_categories": [],
-            "minimum_option": 0,
-            "vetted_after": "2020-01-01",
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        payload = self.get_params(**payload)
-        payload["title"] = "video"
-        payload["template_title"] = "video template"
-        payload["segment_type"] = 0
-        form = dict(data=json.dumps(payload))
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertTrue(ParamsTemplate.objects.filter(
-            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
-        ).exists())
-        mock_generate.delay.assert_called_once()
-
-        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment") as mock_generate:
-            payload["title"] = f"test_segment_creation_channel_{next(int_iterator)}"
-            payload["template_title"] = f"test_segment_creation_channel_template_{next(int_iterator)}"
-            payload["segment_type"] = 1
-            form = dict(data=json.dumps(payload))
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
-            self.assertTrue(ParamsTemplate.objects.filter(
-                title=payload["template_title"], segment_type=payload["segment_type"], owner=user
-            ).exists())
-            mock_generate.delay.assert_called_once()
-
-
-    def test_params_template_perm(self, mock_generate):
-        """
-        Tests params template permission if template_title is passed into
-        payload.
-        """
-        user = self.create_test_user()
-        user.perms[StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE] = False
-        user.save()
-        payload = {
-            "languages": ["pt"],
-            "score_threshold": 1,
-            "content_categories": [],
-            "minimum_option": 0,
-            "vetted_after": "2020-01-01",
-            "content_type": 0,
-            "content_quality": 0,
-        }
-        payload = self.get_params(**payload)
-        payload["title"] = "video"
-        payload["template_title"] = "video template"
-        payload["segment_type"] = 0
-        form = dict(data=json.dumps(payload))
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment") as mock_generate:
-            payload["title"] = f"test_segment_creation_channel_{next(int_iterator)}"
-            payload["template_title"] = f"test_segment_creation_channel_template_{next(int_iterator)}"
-            payload["segment_type"] = 1
-            form = dict(data=json.dumps(payload))
-            response = self.client.post(self._get_url(), form)
-            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

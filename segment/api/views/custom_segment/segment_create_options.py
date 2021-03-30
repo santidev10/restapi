@@ -1,9 +1,12 @@
+import json
 from datetime import timedelta
 
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditAgeGroup
@@ -18,8 +21,10 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
-from segment.api.serializers import CTLParamsSerializer
+from segment.api.mixins import ParamsTemplateMixin
 from segment.api.serializers import ParamsTemplateSerializer
+from segment.api.serializers import CTLParamsSerializer
+from segment.models.constants import ParamsTemplate
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from segment.models import ParamsTemplate
@@ -30,22 +35,15 @@ from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
-class SegmentCreateOptionsApiView(APIView):
+class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
 
     def get(self, request, *args, **kwargs):
         """
-        Generate segment creation options
-        If user has params template permission, respond with existing templates owned by user
-        If segment_type in request, will respond with items count in request body filters
+        Generate segment creation options.
+        If user has params template permission, respond with existing templates owned by user.
+        If segment_type in request data, will respond with items count only.
         """
-        res_data = {
-            "options": self._get_options()
-        }
-
-        if self.request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
-            res_data["channel_templates"] = self._get_templates(SegmentTypeEnum.CHANNEL.value)
-            res_data["video_templates"] = self._get_templates(SegmentTypeEnum.VIDEO.value)
-
+        res_data = {}
         get_estimate = request.data.get("segment_type") is not None
         if get_estimate:
             data = set_user_perm_params(request, request.data)
@@ -56,16 +54,24 @@ class SegmentCreateOptionsApiView(APIView):
             result = query_builder.execute()
             str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
             res_data[f"{str_type}_items"] = result.hits.total.value or 0
+            return Response(status=HTTP_200_OK, data=res_data)
+
+        res_data["options"] = self._get_options()
+        if self.request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
+            res_data["channel_templates"] = \
+                self._get_templates_by_owner(self.request.user, SegmentTypeEnum.CHANNEL.value)
+            res_data["video_templates"] = \
+                self._get_templates_by_owner(self.request.user, SegmentTypeEnum.VIDEO.value)
+
         return Response(status=HTTP_200_OK, data=res_data)
 
     def delete(self, request, *args, **kwargs):
         """
-        deletes CTL ParamsTemplate object for a given id if user is owner
+        deletes ParamsTemplate object for a given id if user is owner
         """
         if request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
             template_id = request.data.get("id", None)
-            if not isinstance(template_id, int):
-                raise TypeError("Template id value must be an integer.")
+            self._validate_field(template_id, int)
             params_template = get_object(ParamsTemplate, id=template_id)
             if params_template.owner.id == request.user.id:
                 params_template.delete()
@@ -73,10 +79,31 @@ class SegmentCreateOptionsApiView(APIView):
             raise PermissionDenied("Cannot delete a template owned by another user.")
         raise PermissionDenied
 
-    def _get_templates(self, segment_type):
-        templates = ParamsTemplate.objects.filter(owner=self.request.user, segment_type=segment_type)
-        serializer = ParamsTemplateSerializer(templates, many=True)
-        return serializer.data
+    def post(self, request):
+        """
+        Creates a new ParamsTemplate object
+        """
+        self._check_params_template_permissions(request.user)
+        template_title = request.data.get("title", None)
+        self._validate_field(template_title, str)
+        data = set_user_perm_params(request, request.data)
+        validated_params = self._validate_params(data)
+        template = self._create_params_template(request.user, template_title, validated_params)
+        serializer = ParamsTemplateSerializer(template)
+        return Response(status=HTTP_201_CREATED, data=serializer.data)
+
+    def patch(self, request):
+        """
+        Updates ParamsTemplate params field for a given id
+        """
+        self._check_params_template_permissions(request.user)
+        template_id = request.data.get("id", None)
+        self._validate_field(template_id, int)
+        data = set_user_perm_params(request, request.data)
+        validated_params = self._validate_params(data)
+        template = self._update_params_template(request.user, template_id, validated_params)
+        serializer = ParamsTemplateSerializer(template)
+        return Response(status=HTTP_200_OK, data=serializer.data)
 
     @staticmethod
     def _get_options():
@@ -166,3 +193,23 @@ class SegmentCreateOptionsApiView(APIView):
             ]
         }
         return options
+
+    def _validate_params(self, data, partial=False):
+        """
+        Validate request data
+        :param data: dict
+        :return: dict
+        """
+        params_serializer = CTLParamsSerializer(data=data, partial=partial)
+        params_serializer.is_valid(raise_exception=True)
+        validated_data = params_serializer.validated_data
+        return validated_data
+
+    def _prep_request(self, request):
+        data = json.loads(request.data["data"])
+        data = set_user_perm_params(request, data)
+        return request, data
+
+    def _validate_field(self, field, data_type):
+        if not isinstance(field, data_type):
+            raise ValidationError(f"{field} must be of type {data_type}.")
