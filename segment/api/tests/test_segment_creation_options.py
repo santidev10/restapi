@@ -253,7 +253,6 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         )
         payload["content_type"] = 1
         payload["id"] = template_object.id
-        print(payload["id"])
         response = self.client.generic(method="PATCH", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
         template_object = ParamsTemplate.objects.get(
