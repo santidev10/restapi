@@ -1,7 +1,7 @@
 from aw_reporting.adwords_reports import _get_report
 from aw_reporting.adwords_reports import _output_to_rows
 from aw_reporting.adwords_reports import stream_iterator
-from performiq.oauth_utils import get_customers
+from oauth.utils.adwords import get_customers
 
 
 def get_campaign_report(client, fields, predicates: list = None, date_range: dict = None) -> list:

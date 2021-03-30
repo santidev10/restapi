@@ -4,10 +4,10 @@ from googleapiclient.discovery import build, Resource
 from oauth2client.client import GoogleCredentials
 from rest_framework.serializers import Serializer
 
+from oauth.models import DV360Advertiser
+from oauth.models import DV360Partner
+from oauth.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
-from performiq.models.models import DV360Advertiser
-from performiq.models.models import DV360Partner
-from performiq.models.models import OAuthAccount
 
 from typing import Type
 

@@ -60,6 +60,7 @@ PROJECT_APPS = (
     "ftux",
     "healthcheck",
     "keyword_tool",
+    "oauth",
     "performiq",
     "related_tool",
     "segment",

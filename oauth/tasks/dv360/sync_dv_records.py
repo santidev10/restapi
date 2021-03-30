@@ -10,29 +10,36 @@ from googleapiclient.errors import HttpError
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from performiq.models.constants import EntityStatusType
-from performiq.models.constants import OAuthType
-from performiq.models.models import DV360Advertiser
-from performiq.models.models import DV360Partner
-from performiq.models.models import OAuthAccount
-from performiq.tasks.dv360.serializers.advertiser_serializer import AdvertiserSerializer
-from performiq.tasks.dv360.serializers.campaign_serializer import CampaignSerializer
-from performiq.tasks.dv360.serializers.partner_serializer import PartnerSerializer
-from performiq.utils.dv360 import AdvertiserAdapter
-from performiq.utils.dv360 import CampaignAdapter
-from performiq.utils.dv360 import PartnerAdapter
-from performiq.utils.dv360 import get_discovery_resource
-from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import request_advertiser_campaigns
-from performiq.utils.dv360 import request_partner_advertisers
-from performiq.utils.dv360 import request_partners
-from performiq.utils.dv360 import serialize_dv360_list_response_items
+from oauth.models import DV360Advertiser
+from oauth.models import DV360Partner
+from oauth.models import OAuthAccount
+from oauth.constants import EntityStatusType
+from oauth.constants import OAuthType
+from oauth.tasks.dv360.serializers import AdvertiserSerializer
+from oauth.tasks.dv360.serializers import CampaignSerializer
+from oauth.tasks.dv360.serializers import PartnerSerializer
+from oauth.utils.dv360 import AdvertiserAdapter
+from oauth.utils.dv360 import CampaignAdapter
+from oauth.utils.dv360 import PartnerAdapter
+from oauth.utils.dv360 import get_discovery_resource
+from oauth.utils.dv360 import load_credentials
+from oauth.utils.dv360 import request_advertiser_campaigns
+from oauth.utils.dv360 import request_partner_advertisers
+from oauth.utils.dv360 import request_partners
+from oauth.utils.dv360 import serialize_dv360_list_response_items
 from saas import celery_app
 
 
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
 logger = logging.getLogger(__name__)
+
+
+def _revoked(oauth_account):
+    oauth_account.revoked_access = True
+    oauth_account.save(update_fields=["revoked_access"])
+    message = f"DV360 OAuth access lost for OAuthAccount: {oauth_account.id}"
+    logger.warning(message)
 
 
 @celery_app.task
@@ -71,11 +78,14 @@ def sync_dv_partners(oauth_account_ids: list = False, force_all=False, sync_adve
                 if status == "503":
                     continue
                 elif status == "403":
-                    account.revoked_access = True
-                    account.save(update_fields=["revoked_access"])
+                    _revoked(account)
                     continue
                 else:
                     raise
+            else:
+                # HttpAccessTokenRefreshError lost access
+                _revoked(account)
+                continue
         partner_serializers = serialize_dv360_list_response_items(
             response=partners_response,
             items_key="partners",

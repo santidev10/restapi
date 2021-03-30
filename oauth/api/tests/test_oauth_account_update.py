@@ -2,18 +2,17 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from performiq.api.urls.names import PerformIQPathName
-from performiq.models import OAuthAccount
-from performiq.models.constants import OAuthType
+from oauth.api.urls.names import OAuthPathName
+from oauth.constants import OAuthType
+from oauth.models import OAuthAccount
 from saas.urls.namespaces import Namespace
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
 
 
 class OAuthAccountUpdateAPITestCase(ExtendedAPITestCase):
-
     def _get_url(self, account_id):
-        return reverse(Namespace.PERFORMIQ + ":" + PerformIQPathName.OAUTH_ACCOUNTS, kwargs={"pk": account_id})
+        return reverse(Namespace.OAUTH + ":" + OAuthPathName.OAUTH_ACCOUNT_UPDATE, kwargs={"pk": account_id})
 
     def test_permission(self):
         self.create_test_user()

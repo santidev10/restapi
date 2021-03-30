@@ -2,12 +2,12 @@ from rest_framework.exceptions import NotFound
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
 
-from performiq.api.serializers import OAuthAccountSerializer
-from performiq.models import OAuthAccount
+from oauth.api.serializers import OAuthAccountSerializer
+from oauth.models import OAuthAccount
 from userprofile.constants import StaticPermissions
 
 
-class PerformIQOAuthAccountUpdateAPIView(UpdateAPIView):
+class OAuthAccountUpdateAPIView(UpdateAPIView):
     permission_classes = (
         StaticPermissions.has_perms(StaticPermissions.PERFORMIQ),
     )
@@ -19,8 +19,6 @@ class PerformIQOAuthAccountUpdateAPIView(UpdateAPIView):
             oauth_account = OAuthAccount.objects.get(id=oauth_account_id)
         except OAuthAccount.DoesNotExist:
             raise NotFound
-
         if oauth_account.user != self.request.user:
             raise PermissionDenied("You do not have permission to modify this resource!")
-
         return oauth_account

@@ -25,6 +25,8 @@ MIGRATION_MODULES = {
     "contenttypes": None,
     "email_reports": None,
     "keyword_tool": None,
+    "oauth": None,
+    "performiq": None,
     "segment": None,
     "sessions": None,
     "transcripts": None,
