@@ -66,10 +66,6 @@ class SegmentQueryBuilder:
         results = self.es_manager.search(self.query_body, limit=limit).extra(track_total_hits=True).execute()
         return results
 
-    def count(self, limit=5):
-        count = self.es_manager.search(self.query_body, limit=limit).count()
-        return count
-
     def _get_query_params(self):
         """ Get params used to construct query """
         query_params = self._params.copy()
