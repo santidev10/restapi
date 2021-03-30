@@ -24,7 +24,6 @@ from es_components.countries import COUNTRIES
 from segment.api.mixins import ParamsTemplateMixin
 from segment.api.serializers import ParamsTemplateSerializer
 from segment.api.serializers import CTLParamsSerializer
-from segment.models.constants import ParamsTemplate
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from segment.models import ParamsTemplate
