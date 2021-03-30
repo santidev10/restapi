@@ -1,4 +1,5 @@
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 
 from segment.api.serializers import ParamsTemplateSerializer
 from segment.models.constants import SegmentTypeEnum
@@ -104,7 +105,7 @@ class ParamsTemplateMixin:
             )
             params_template.save()
             return params_template
-        raise TypeError("Must provide a valid segment type.")
+        raise ValidationError("Must provide a valid segment type.")
 
     @staticmethod
     def _get_templates_by_owner(user, segment_type):
