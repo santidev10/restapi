@@ -45,7 +45,7 @@ CAMPAIGN_REPORT_PREDICATES = [
 def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts=None):
     """
     Updates campaigns depending if OAuthAccount is MCC or regular cid
-    :param oauth_account_id:
+    :param oauth_account_id: OAuthAccount id
     :param mcc_accounts: list -> Adwords API CustomerService response
     :param cid_accounts: list -> Adwords API CustomerService response
     :return:
