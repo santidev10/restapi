@@ -15,7 +15,7 @@ from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from segment.models.utils.segment_action import segment_action
 from segment.utils.utils import set_user_perm_params
 from userprofile.constants import StaticPermissions
@@ -123,7 +123,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         :param data: dict
         :return:
         """
-        if data.get(VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+        if data.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
             if not user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
                 raise PermissionDenied
             video_exclusion_serializer = VideoExclusionParamsSerializer(data=data, context={"source_ctl": ctl})

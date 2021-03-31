@@ -15,7 +15,8 @@ from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from segment.models import CustomSegment
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
+from segment.models.constants import Results
 from utils.lang import merge
 from utils.exception import retry
 from utils.utils import chunks_generator
@@ -64,17 +65,17 @@ def _generate_video_exclusion(channel_ctl_id: int):
             f"Uncaught exception for generate_videos_exclusion in "
             f"get_extract_export_ids: {channel_ctl.title}: {channel_ctl.id}", exc_info=True)
         channel_ctl.statistics.update({
-            VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
+            Results.VIDEO_EXCLUSION_FILENAME: False,
         })
         channel_ctl.params.update({
-            VideoExclusion.WITH_VIDEO_EXCLUSION: False
+            Params.VideoExclusion.WITH_VIDEO_EXCLUSION: False
         })
         channel_ctl.save(update_fields=["params", "statistics"])
         return
 
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=200):
             curr_blocklist = []
             curr_videos = []
@@ -103,7 +104,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         # Raise for retry decorator
         raise
     else:
-        channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
+        channel_ctl.statistics[Results.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
         channel_ctl.save(update_fields=["statistics"])
         return video_exclusion_s3_key
 
@@ -183,10 +184,10 @@ def _save_partial_results(channel_ctl: CustomSegment, partial_results: list, vid
     :return:
     """
     try:
-        prev_file = channel_ctl.statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME)
+        prev_file = channel_ctl.statistics.get(Results.VIDEO_EXCLUSION_FILENAME)
         video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, partial_results)
         if not prev_file or channel_ctl.s3.check_key_size(prev_file) < channel_ctl.s3.check_key_size(video_exclusion_s3_key):
-            channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
+            channel_ctl.statistics[Results.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
             channel_ctl.save(update_fields=["statistics"])
     except ClientError:
         pass

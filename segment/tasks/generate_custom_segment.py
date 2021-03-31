@@ -6,8 +6,9 @@ from django.utils import timezone
 
 from saas import celery_app
 from segment.models import CustomSegment
-from segment.tasks.generate_segment import generate_segment
-from segment.tasks.generate_segment import CTLGenerateException
+from segment.models.constants import Results
+from segment.utils.generate_segment import generate_segment
+from segment.utils.generate_segment import CTLGenerateException
 from segment.utils.send_export_email import send_export_email
 from userprofile.constants import StaticPermissions
 
@@ -23,10 +24,7 @@ def generate_custom_segment(segment_id, results=None, tries=0, with_audit=False)
         size = segment.config.ADMIN_LIST_SIZE
         args = (segment, export.query["body"], size)
         results = generate_segment(*args, with_audit=with_audit)
-        segment.statistics = {
-            **(segment.statistics or {}),
-            **results.get("statistics", {}),
-        }
+        segment.update_statistics(Results.CTL_STATISTICS, results.get("statistics", {}))
         export.download_url = results.get("download_url")
         export.completed_at = timezone.now()
         export.filename = results.get("s3_key")

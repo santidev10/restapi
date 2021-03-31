@@ -65,7 +65,36 @@ class SegmentVettingStatusEnum(enum.Enum):
     VETTED_RISKY = 2
 
 
-class VideoExclusion:
-    WITH_VIDEO_EXCLUSION = "with_video_exclusion"
+# All current param keys for CustomSegment.params column
+class Params:
+    HISTORY = "history"
+
+    class VideoExclusion:
+        WITH_VIDEO_EXCLUSION = "with_video_exclusion"
+        VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
+
+    class GoogleAds:
+        GADS_SYNC_DATA = "gads_sync_data"
+        CID = "cid"
+        AD_GROUP_IDS = "ad_group_ids"
+
+    # DV360
+    class DV360:
+        DV360_SYNC = "dv360_sync"
+
+    class AuditTool:
+        # AuditProcessor PK used to run audit against CTL results
+        META_AUDIT_ID = "meta_audit_id"
+        INCLUSION_FILE = "inclusion_file"
+        EXCLUSION_FILE = "exclusion_file"
+        SOURCE_FILE = "source_file"
+
+
+class Results:
+    HISTORY = "history"
+    CTL_STATISTICS = "ctl_statistics"
+    SYNC = "sync"
+    GADS = "gads"
+    DV360 = "dv360"
+    EXPORT_FILENAME = "export_filename"
     VIDEO_EXCLUSION_FILENAME = "video_exclusion_filename"
-    VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
