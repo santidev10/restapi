@@ -98,4 +98,3 @@ class Results:
     GADS = "gads"
     DV360 = "dv360"
     EXPORT_FILENAME = "export_filename"
-

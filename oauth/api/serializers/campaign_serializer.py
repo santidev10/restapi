@@ -9,7 +9,7 @@ class CampaignSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Campaign
-        fields = ["id", "account", "name"]
+        fields = ["id", "account", "advertiser", "name"]
 
     def get_name(self, instance):
         # dv360 campaigns should use display_name instead of name

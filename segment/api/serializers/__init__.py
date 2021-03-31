@@ -1,4 +1,5 @@
 from .ctl_params_serializer import CTLParamsSerializer
+from .ctl_params_serializer import ParamsTemplateSerializer
 from .ctl_serializer import CTLWithoutDownloadUrlSerializer
 from .custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
 from .custom_segment_update_serializers import CustomSegmentUpdateSerializer

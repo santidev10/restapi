@@ -1,3 +1,4 @@
+import hashlib
 import string
 from collections import Counter
 from django.db.models.query import QuerySet
@@ -120,3 +121,10 @@ def slice_generator(data_generator, limit):
 
         yield item
         counter += 1
+
+def get_hash(s):
+    """
+    :s: str
+    :return: int, hashed string
+    """
+    return int(hashlib.sha256(s.encode("utf-8")).hexdigest(), 16) % 10 ** 8

@@ -155,6 +155,17 @@ class CampaignAdapter(DV360BaseAdapter):
     }
 
 
+class InsertionOrderAdapter(DV360BaseAdapter):
+    field_name_mapping = {
+        "name": "name",
+        "campaignId": "campaign_id",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+        "updateTime": "update_time",
+        "insertionOrderId": "id"
+    }
+
+
 def request_partners(resource: Resource) -> dict:
     """
     given a Discovery Resource, request
@@ -189,3 +200,7 @@ def request_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource
     :return response:
     """
     return resource.advertisers().campaigns().list(advertiserId=str(advertiser.id)).execute()
+
+
+def request_insertion_orders(advertiser: DV360Advertiser, resource):
+    return resource.advertisers().insertionOrders().list(advertiserId=str(advertiser.id)).execute()

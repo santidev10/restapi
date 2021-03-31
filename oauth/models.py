@@ -46,6 +46,7 @@ class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now_add=True, null=True)
+    name = models.CharField(max_length=255, db_index=True, null=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):
@@ -89,3 +90,13 @@ class Campaign(OAuthBase, DV360SharedFieldsMixin):
             }
         }
         return d
+
+
+class InsertionOrder(DV360Base, DV360SharedFieldsMixin):
+    campaign = models.ForeignKey(Campaign, related_name="insertion_orders", on_delete=models.CASCADE)
+
+
+class AdGroup(OAuthBase):
+    id = models.BigAutoField(primary_key=True)
+    campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
+    name = models.CharField(max_length=256, null=True, db_index=True)
