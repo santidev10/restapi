@@ -106,20 +106,6 @@ class GenerateVideoExclusionCTLTestCase(TransactionTestCase, ESTestCase):
         self.assertTrue(mock_export.call_count > 1)
 
     @mock_s3
-    def test_resets_creation_status(self):
-        """ Test that ctl video exclusion status resets if task fails """
-        @retry(count=0, failed_callback=failed_callback)
-        def mock_generate(ctl_id):
-            # ctl_id used by failed_callback to reset status
-            raise Exception
-        try:
-            mock_generate(self.channel_ctl.id)
-        except Exception:
-            pass
-        self.channel_ctl.refresh_from_db()
-        self.assertFalse(self.channel_ctl.statistics[Results.VIDEO_EXCLUSION_FILENAME])
-        self.assertFalse(self.channel_ctl.params[Params.VideoExclusion.WITH_VIDEO_EXCLUSION])
-
     def test_retry_keeps_progress(self):
         """ Test that retrying retrieving videos does not retry the entire task """
         mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
