@@ -21,6 +21,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 
 CHANNEL_PREFIX = "https://www.youtube.com/channel/"
 VIDEO_PREFIX = "https://www.youtube.com/watch?v="
+VIDEO_PREFIX2 = "https://www.youtube.com/video/"
 
 
 class AuditAdminTestCase(ExtendedAPITestCase):
@@ -78,7 +79,10 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         AuditVideoVet.objects.bulk_create(test_video_vets)
         data = {
             "audit_id": audit.id,
-            "items_ids": "\n".join([VIDEO_PREFIX + item.video_id for item in test_video_audits])
+            "items_ids": "\n".join([
+                VIDEO_PREFIX + item.video_id if i % 2 == 0 else VIDEO_PREFIX2 + item.video_id
+                for i, item in enumerate(test_video_audits)
+            ])
         }
         CustomSegmentVettedFileUpload.objects.create(segment=segment)
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
