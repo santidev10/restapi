@@ -59,7 +59,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
-    # Store general statistics / results data
+    # Store general statistics / results data. This should never be reset, always updated
     statistics = models.JSONField(default=dict)
     list_type = models.IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE)
@@ -70,6 +70,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
+    # Store general ctl generation params. This should never be reset, always updated
     params = models.JSONField(default=dict)
     # If CustomSegment is marked for Google Ads Placements sync.
     # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.

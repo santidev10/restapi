@@ -58,9 +58,5 @@ urlpatterns_v2 = [
     url(r"^segments/sync/(?P<pk>.+)/$".format(segment_types),
         views.SegmentSyncAPIView.as_view(),
         name=Name.SEGMENT_SYNC),
-
-    url(r"^segments/oauth/$".format(segment_types),
-        views.SegmentOAuthAPIView.as_view(),
-        name=Name.SEGMENT_OAUTH),
 ]
 

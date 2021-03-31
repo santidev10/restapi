@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from performiq.models import Account
+from oauth.models import Account
 from segment.models.constants import SegmentTypeEnum
 from segment.models import CustomSegment
 from segment.models.constants import Params
