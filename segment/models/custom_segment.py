@@ -26,6 +26,7 @@ from segment.api.export_serializers import CustomSegmentVideoVettedExportSeriali
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
 from segment.models.constants import Params
+from segment.models.constants import Results
 from segment.models.constants import VideoConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.segment_mixin import SegmentMixin
@@ -247,10 +248,15 @@ class CustomSegment(SegmentMixin, Timestampable):
         if save:
             self.save(update_fields=["statistics"])
 
-    def update_sync_history(self, account_name, sync_type):
+    def update_sync_history(self, account_name, sync_type) -> None:
+        """
+        Add date to ctl sync history
+        :param account_name: str -> Name of external resource entity e.g. GAds cid Account name
+        :param sync_type: str -> Name of external resource e.g. gads or dv360
+        """
         date_str = now_in_default_tz().strftime("%H:%M, %B %d, %Y")
         message = f"{account_name} - at {date_str}"
-        self.statistics[sync_type][Params.HISTORY] = self.statistics[sync_type].get(Params.HISTORY, []).extend([message])
+        self.statistics[sync_type][Results.HISTORY] = self.statistics[sync_type].get(Results.HISTORY, []).extend([message])
 
 
 class CustomSegmentRelated(models.Model):

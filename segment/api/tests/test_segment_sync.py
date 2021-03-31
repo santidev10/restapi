@@ -4,19 +4,19 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
-from utils.unittests.test_case import ExtendedAPITestCase
-from segment.api.urls.names import Name
-from segment.models.constants import SegmentTypeEnum
+from oauth.constants import OAuthType
+from oauth.models import Account
+from oauth.models import AdGroup
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from saas.urls.namespaces import Namespace
+from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models.constants import Params
-
-from oauth.constants import OAuthType
-from oauth.models import OAuthAccount
-from oauth.models import Account
-from oauth.models import Campaign
-from oauth.models import AdGroup
+from segment.models.constants import Results
+from segment.models.constants import SegmentTypeEnum
 from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class CTLSyncTestCase(ExtendedAPITestCase):
@@ -69,4 +69,14 @@ class CTLSyncTestCase(ExtendedAPITestCase):
 
     def test_update_sync_history(self):
         """ Test patch updates sync history """
-        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
+        account = Account.objects.create(name="Test Gads Account")
+        params = {
+            Params.GoogleAds.GADS_SYNC_DATA: {
+                Params.GoogleAds.CID: account.id
+            }
+        }
+        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value, params=params)
+        response = self.client.patch(self._get_url(ctl.id), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ctl.refresh_from_db()
+        self.assertTrue(len(ctl.statistics[Results.GADS][Results.HISTORY]) > 1)

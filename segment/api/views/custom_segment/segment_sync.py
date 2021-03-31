@@ -1,7 +1,6 @@
 import json
 
 from django.conf import settings
-from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -10,6 +9,7 @@ from oauth.models import Account
 from segment.models.constants import SegmentTypeEnum
 from segment.models import CustomSegment
 from segment.models.constants import Params
+from segment.models.constants import Results
 from utils.views import get_object
 
 
@@ -19,16 +19,10 @@ class SegmentSyncAPIView(APIView):
         Get data from ViewIQ to update placements on GoogleAds
         """
         cid = kwargs.get("pk")
-        try:
-            ctl = CustomSegment.objects.filter(gads_is_synced=False,
-                                               params__contains={Params.GoogleAds.CID: cid}).first()
-        except CustomSegment.DoesNotExist:
-            raise Http404
-        else:
-            data = {
-                "code": self._get_code(ctl)
-            }
-            return Response(data)
+        # ctl = get_object(CustomSegment, gads_is_synced=False, params__contains={Params.GoogleAds.CID: cid})
+        ctl = get_object(CustomSegment, gads_is_synced=False, params__contains={Params.GoogleAds.CID: cid})
+        data = {"code": self._get_code(ctl)}
+        return Response(data)
 
     def post(self, request, *args, **kwargs):
         """
@@ -53,8 +47,9 @@ class SegmentSyncAPIView(APIView):
         Update Google Ads CTL sync status
         """
         ctl = get_object(CustomSegment, id=kwargs.get("pk"))
+        account = get_object(Account, id=ctl.params.get(Params.GoogleAds.CID))
         ctl.gads_is_synced = True
-        ctl.update_sync_history(request.data["name"], Params.GoogleAds)
+        ctl.update_sync_history(account.name, Results.GADS)
         ctl.save(update_fields=["gads_is_synced", "statistics"])
         return Response()
 
@@ -65,11 +60,11 @@ class SegmentSyncAPIView(APIView):
         placement_type = SegmentTypeEnum(ctl.segment_type).name.capitalize()
         placement_ids = ctl.s3.get_extract_export_ids()
         ad_group_ids = ctl.params[Params.GoogleAds.AD_GROUP_IDS]
-        func = func\
+        code = func\
             .replace("{DOMAIN}", settings.HOST)\
             .replace("{adGroupIds}", json.dumps(ad_group_ids))\
             .replace("{placementIds}", json.dumps(placement_ids))\
             .replace("{placementBuilderType}", f"newYouTube{placement_type}Builder")\
             .replace("{placementIdType}", f"with{placement_type}Id") \
             .replace("{placementRemovalType}", f"youTube{placement_type}s")
-        return func
+        return code

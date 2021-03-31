@@ -1,26 +1,29 @@
 var SYNC_ENDPOINT = '{DOMAIN}' + '/api/v2/segments/sync/'
 
-function main() {
-  // get code from viewiq to eval here
-  // var code = UrlFetchApp.fetch();
-  // var data = getData();
-  // var adGroupIds = {adGroupIds}
-  // var placementIds = {placementIds}
-  var adGroupIds = [97595304713];
-  var placementIds = ["UCJ5v_MCY6GNUBTO8-D3XoAg"]
 
-  var adGroupIterator = getAdGroups(adGroupIds);
-  //var ag = adGroupIterator.next();
-  //removeExistingPlacements(ag, false);
-  createPlacements(adGroupIterator, placementIds, config);
+function main() {
+  var code = getCode();
+  eval(code)
 }
 
-function getData() {
-  var cid = AdsApp.currentAccount().getCustomerId().split("-").join("");
-  var url = SYNC_ENDPOINT + "?cid=" + cid;
+function getCode() {
+  var url = getSyncUrl();
   var response = UrlFetchApp.fetch(url);
   var data = JSON.parse(response.getContentText());
   return data
+}
+
+
+function main() {
+  var adGroupIds = {adGroupIds}
+  var placementIds = {placementIds}
+
+  var adGroupIterator = getAdGroups(adGroupIds);
+  while (adGroupIterator.hasNext()) {
+    var adGroup = adGroupIterator.next();
+    removeExistingPlacements(adGroup);
+    createPlacements(adGroup, placementIds);
+  }
 }
 
 
@@ -28,20 +31,17 @@ function getAdGroups(adGroupIds) {
     return AdsApp.videoAdGroups().withIds(adGroupIds).get();
 }
 
-function createPlacements(adGroupIterator, placementIds) {
-  while (adGroupIterator.hasNext()) {
-    var adGroup = adGroupIterator.next();
-    var placementBuilder = adGroup.videoTargeting()['{placementBuilderType}']();
+function createPlacements(adGroup, placementIds) {
+  var placementBuilder = adGroup.videoTargeting()['newYouTubeChannelBuilder']();
 
-    placementIds.forEach(function(id) {
-      placementBuilder['{placementIdType}'](id).build();
-    });
-  }
+  placementIds.forEach(function(id) {
+    placementBuilder['withChannelId'](id).build();
+  });
 }
 
 function removeExistingPlacements(adGroup) {
   // Remove all existing placements before adding new ones
-  var placementsIterator = adGroup.videoTargeting()['{placementRemovalType}']().get();
+  var placementsIterator = adGroup.videoTargeting()['youTubeChannels']().get();
   while (placementsIterator.hasNext()) {
     placementsIterator.next().remove();
   }
@@ -54,8 +54,8 @@ function updateSyncStatus(ctl_id) {
     'payload': JSON.stringify({ ctl_id: ctl_id }),
    	'contentType': 'application/json'
   };
-
-  var resp = UrlFetchApp.fetch(SYNC_ENDPOINT, options);
+  var url = getSyncUrl()
+  var resp = UrlFetchApp.fetch(url, options);
   var message;
 
   if (resp.getResponseCode() == 200) {
@@ -67,4 +67,11 @@ function updateSyncStatus(ctl_id) {
     };
   }
   return message;
+}
+
+
+function getSyncUrl() {
+  var cid = AdsApp.currentAccount().getCustomerId().split("-").join("");
+  var url = SYNC_ENDPOINT + '/' + cid;
+  return url
 }
