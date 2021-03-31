@@ -3,7 +3,7 @@ from distutils.util import strtobool
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .utils.get_campaigns import get_campaigns
+from oauth.utils.view import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
 from performiq.api.views.utils.paginator import PerformIQPaginatior
 from performiq.models import IQCampaign

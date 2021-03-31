@@ -35,3 +35,6 @@ class ParamsTemplate(Timestampable):
     title_hash = models.BigIntegerField(default=0, db_index=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     params = models.JSONField(default=dict)
+
+    class Meta:
+        unique_together = ("title", "owner", "segment_type")

@@ -5,8 +5,8 @@ from six.moves.urllib.request import urlopen
 from contextlib import closing
 
 
-from performiq.utils.dv360 import load_credentials
-from performiq.utils.dv360 import get_discovery_resource
+from oauth.utils.dv360 import load_credentials
+from oauth.utils.dv360 import get_discovery_resource
 from utils.exception import backoff
 
 

@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from audit_tool.models import AuditContentQuality
 from audit_tool.models import AuditContentType
+from oauth.models import Campaign
 from performiq.analyzers.constants import DataSourceType
-from performiq.models import Campaign
 from performiq.models import IQCampaign
 from segment.api.serializers.ctl_params_serializer import NullableListField
 from segment.api.serializers.ctl_params_serializer import CoerceListMemberField

@@ -1,3 +1,4 @@
+import hashlib
 import string
 from collections import Counter
 from django.db.models.query import QuerySet
@@ -140,3 +141,11 @@ def validate_youtube_url(url, url_type) -> str:
         val = url.split(split)[-1]
         if len(val) == target:
             return val
+
+
+def get_hash(s):
+    """
+    :s: str
+    :return: int, hashed string
+    """
+    return int(hashlib.sha256(s.encode("utf-8")).hexdigest(), 16) % 10 ** 8

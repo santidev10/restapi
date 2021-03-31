@@ -168,20 +168,36 @@ CELERY_BEAT_SCHEDULE = {
         # defaults to twice per day, 0500, 1700 PST
         "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
+    # "sync_dv_partners": {
+    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
+    #     "schedule": crontab(minute="*/10"),
+    # },
+    # "sync_dv_advertisers": {
+    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
+    #     "schedule": crontab(minute="*/10"),
+    # },
+    # "sync_dv_campaigns": {
+    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
+    #     "schedule": crontab(minute="*/10"),
+    # },
+    # "performiq_google_ads_update": {
+    #     "task": "performiq.tasks.google_ads_update.google_ads_update_task",
+    #     "schedule": crontab(minute="*/10")
+    # },
     "sync_dv_partners": {
-        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
+        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_partners",
         "schedule": crontab(minute="*/10"),
     },
     "sync_dv_advertisers": {
-        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
+        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_advertisers",
         "schedule": crontab(minute="*/10"),
     },
     "sync_dv_campaigns": {
-        "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
+        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_campaigns",
         "schedule": crontab(minute="*/10"),
     },
-    "performiq_google_ads_update": {
-        "task": "performiq.tasks.google_ads_update.google_ads_update_task",
+    "oauth_google_ads_update": {
+        "task": "oauth.tasks.google_ads_update.google_ads_update_task",
         "schedule": crontab(minute="*/10")
     },
 }
@@ -204,6 +220,7 @@ class Queue:
     IAS = "ias"
     PERFORMIQ = "performiq"
     CTL_VIDEO_EXCLUSION = "ctl_video_exclusion"
+    OAUTH = "oauth"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -219,6 +236,7 @@ CELERY_ROUTES_PREPARED = [
     ("*_scheduler", {"queue": Queue.SCHEDULERS}),
     ("channel.tasks.ingest_ias_channels_v2.*", {"queue": Queue.IAS}),
     ("performiq.tasks.*", {"queue": Queue.PERFORMIQ}),
+    ("oauth.tasks.*", {"queue": Queue.OAUTH}),
     ("segment.tasks.generate_video_exclusion.generate_video_exclusion", {"queue": Queue.CTL_VIDEO_EXCLUSION}),
     ("*", {"queue": Queue.DEFAULT}),
 ]

@@ -1486,3 +1486,4 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         exported_source_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename) \
             .get()["Body"].read().decode('utf-8').split()
         self.assertEqual(len(exported_source_list), 2)
+
