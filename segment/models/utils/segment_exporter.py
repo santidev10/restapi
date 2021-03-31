@@ -104,3 +104,8 @@ class SegmentExporter(S3Exporter):
     def get_export_file(self, s3_key):
         export_content = self.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
+
+    def check_key_size(self, s3_key):
+        response = self._s3().head_object(Bucket=self.bucket_name, Key=s3_key)
+        size = response["ContentLength"]
+        return size

@@ -71,7 +71,6 @@ class Params:
 
     class VideoExclusion:
         WITH_VIDEO_EXCLUSION = "with_video_exclusion"
-        VIDEO_EXCLUSION_FILENAME = "video_exclusion_filename"
         VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
 
     class GoogleAds:
@@ -98,3 +97,4 @@ class Results:
     GADS = "gads"
     DV360 = "dv360"
     EXPORT_FILENAME = "export_filename"
+    VIDEO_EXCLUSION_FILENAME = "video_exclusion_filename"

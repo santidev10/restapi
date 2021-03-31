@@ -28,6 +28,7 @@ from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
 from segment.models.constants import Params
+from segment.models.constants import Results
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from segment.utils.query_builder import SegmentQueryBuilder
@@ -142,16 +143,16 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     def get_statistics(self, obj: CustomSegment) -> dict:
         statistics = obj.statistics
         if obj.segment_type == SegmentTypeEnum.CHANNEL.value:
-            video_exclusion_filename = statistics.get(Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME, False)
+            video_exclusion_filename = statistics.get(Results.VIDEO_EXCLUSION_FILENAME, False)
             # If params set but filename is unavailable, video exclusion ctl is being generated so
             # serialize as None to represent "pending"
             if obj.params.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True \
                     and not video_exclusion_filename:
-                statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME] = None
+                statistics[Results.VIDEO_EXCLUSION_FILENAME] = None
             else:
                 # Simply serialize with result of get call. If filename was set, then it is available for export.
                 # If not, then video_exclusion_filename will be False, which represents it is available for creation.
-                statistics[Params.VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_filename
+                statistics[Results.VIDEO_EXCLUSION_FILENAME] = video_exclusion_filename
         return statistics
 
     def validate_owner(self, owner_id: int) -> UserProfile:
