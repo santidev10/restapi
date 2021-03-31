@@ -3,7 +3,7 @@ import random
 
 import boto3
 from django.conf import settings
-from elasticsearch.exceptions import ConnectionError
+from django.test.testcases import TransactionTestCase
 from moto import mock_s3
 
 from es_components.models import Video
@@ -15,10 +15,9 @@ from segment.models.utils.segment_exporter import SegmentExporter
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_video_exclusion import generate_video_exclusion
 from utils.unittests.int_iterator import int_iterator
-from utils.unittests.test_case import ExtendedAPITestCase
 
 
-class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
+class GenerateVideoExclusionCTLTestCase(TransactionTestCase, ESTestCase):
     def setUp(self):
         self.channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, params={
             VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
@@ -96,10 +95,13 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         mock_return_values = [
             self._video()
         ]
-        with patch.object(SegmentExporter, "get_extract_export_ids", return_value=[f"yt_channel_{next(int_iterator)}"]),\
+        with patch.object(SegmentExporter, "get_extract_export_ids", return_value=[f"yt_channel_{next(int_iterator)}"]) as mock_get_ids,\
                 patch("segment.tasks.generate_video_exclusion.get_videos_for_channels", return_value=mock_return_values), \
-                patch("segment.tasks.generate_video_exclusion._export_results", side_effect=[ConnectionError, None]) as mock_export:
+                patch("segment.tasks.generate_video_exclusion._save_partial_results") as mock_save_partial,\
+                patch("segment.tasks.generate_video_exclusion._export_results", side_effect=[ConnectionError, "test_key", "test_key"]) as mock_export:
             generate_video_exclusion(self.channel_ctl.id)
+        self.assertTrue(mock_save_partial.call_count == 1)
+        self.assertTrue(mock_get_ids.call_count > 1)
         self.assertTrue(mock_export.call_count > 1)
 
     @mock_s3
@@ -108,9 +110,8 @@ class GenerateVideoExclusionCTLTestCase(ExtendedAPITestCase, ESTestCase):
         mock_channel_ids, mock_return_values = self._create_mock_args(randomize=True)
         with patch("segment.tasks.generate_video_exclusion.search_after",
                    side_effect=[ConnectionError, mock_return_values]) as mock_search_after, \
-                patch.object(SegmentExporter, "get_extract_export_ids", return_value=mock_channel_ids) as mock_get_ids,\
-                patch.object(CustomSegment, "save"),\
-                patch("segment.tasks.generate_video_exclusion._export_results"):
+                patch.object(SegmentExporter, "get_extract_export_ids", return_value=mock_channel_ids) as mock_get_ids, \
+                patch("segment.tasks.generate_video_exclusion._export_results", return_value="test_key"):
             generate_video_exclusion(self.channel_ctl.id)
             # get_extract_export_ids should only be called once as _process function should be retried
             mock_get_ids.assert_called_once()

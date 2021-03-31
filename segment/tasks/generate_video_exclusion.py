@@ -61,7 +61,8 @@ def _generate_video_exclusion(channel_ctl_id: int):
         channel_ids = channel_ctl.s3.get_extract_export_ids()
     except Exception:
         logger.exception(
-            f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
+            f"Uncaught exception for generate_videos_exclusion in "
+            f"get_extract_export_ids: {channel_ctl.title}: {channel_ctl.id}", exc_info=True)
         channel_ctl.statistics.update({
             VideoExclusion.VIDEO_EXCLUSION_FILENAME: False,
         })
@@ -96,16 +97,15 @@ def _generate_video_exclusion(channel_ctl_id: int):
         all_results = (all_blocklist + all_videos)[:LIMIT]
         video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, all_results)
     except Exception:
-        logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl, channel_ids})")
-        _save_partial_results(channel_ctl, (all_blocklist + all_videos)[:LIMIT])
+        partial_results = (all_blocklist + all_videos)[:LIMIT]
+        _save_partial_results(channel_ctl, partial_results, video_exclusion_fp)
+        logger.exception(f"Uncaught exception for generate_videos_exclusion({channel_ctl.title}: {channel_ctl.id})")
         # Raise for retry decorator
         raise
     else:
         channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
         channel_ctl.save(update_fields=["statistics"])
         return video_exclusion_s3_key
-    finally:
-        os.remove(video_exclusion_fp)
 
 
 @retry(20, 2)
@@ -174,7 +174,7 @@ def _export_results(channel_ctl: CustomSegment, export_fp: str, results: List[Vi
     return video_exclusion_s3_key
 
 
-def _save_partial_results(channel_ctl: CustomSegment, partial_results: list):
+def _save_partial_results(channel_ctl: CustomSegment, partial_results: list, video_exclusion_fp: str):
     """
     Save partial results as generation task is retried
     Will save new filename if partial results file is larger than previous file
@@ -182,7 +182,6 @@ def _save_partial_results(channel_ctl: CustomSegment, partial_results: list):
     :param partial_results: Results at the time of exception being raised
     :return:
     """
-    video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
         prev_file = channel_ctl.statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME)
         video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, partial_results)
@@ -191,5 +190,7 @@ def _save_partial_results(channel_ctl: CustomSegment, partial_results: list):
             channel_ctl.save(update_fields=["statistics"])
     except ClientError:
         pass
-    finally:
+    try:
         os.remove(video_exclusion_fp)
+    except OSError:
+        pass
