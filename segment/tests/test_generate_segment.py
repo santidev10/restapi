@@ -644,7 +644,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         CustomSegmentSourceFileUpload.objects.create(
             segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
             generate_segment(segment, Q(), len(docs))
         export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
@@ -670,7 +670,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         segment.save()
         doc = Channel(f"yt_channel_{next(int_iterator)}")
         self.channel_manager.upsert([doc])
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[doc]]):
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[[doc]]):
             generate_segment(segment, Q(), 1, with_audit=True)
 
         # Audit params should be updated after generate_segment is complete
@@ -700,7 +700,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
                                                         defaults=dict(params=dict(segment_id=segment.id)))
         segment.params[Params.AuditTool.META_AUDIT_ID] = audit.id
         segment.save()
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[]),\
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[]),\
                 patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
             result = generate_segment(segment, Q(), 1, with_audit=True)
         segment.refresh_from_db()
@@ -857,7 +857,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             title=f"title_{next(int_iterator)}",
             segment_type=1, owner=user, uuid=uuid4(), list_type=0,
         )
-        with patch("segment.tasks.generate_segment.GenerateSegmentUtils",
+        with patch("segment.utils.generate_segment.GenerateSegmentUtils",
                    side_effect=[ConnectionError, IncompleteRead(""), GenerateSegmentUtils(segment)]):
             results = generate_segment(segment, Q(), 1)
         self.assertTrue(results)

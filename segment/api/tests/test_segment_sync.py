@@ -3,7 +3,6 @@ import json
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
 
 from utils.unittests.test_case import ExtendedAPITestCase
 from segment.api.urls.names import Name
@@ -12,10 +11,10 @@ from saas.urls.namespaces import Namespace
 from segment.models import CustomSegment
 from segment.models.constants import Params
 
-from oauth.models import OAuthAccount
 from oauth.constants import OAuthType
+from oauth.models import OAuthAccount
 from oauth.models import Account
-from ouath.models import Campaign
+from oauth.models import Campaign
 from oauth.models import AdGroup
 from utils.unittests.int_iterator import int_iterator
 
