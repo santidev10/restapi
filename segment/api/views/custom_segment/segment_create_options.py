@@ -72,15 +72,13 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         If get_estimate in request data, will respond with estimated items count only,
         Otherwise creates a new ParamsTemplate object
         """
+        data = set_user_perm_params(request, request.data)
+        validated_params = self._validate_params(data)
         if request.data.get("get_estimate", None):
             res_data = {}
-            data = set_user_perm_params(request, request.data)
-            validator = CTLParamsSerializer(data=data)
-            validator.is_valid(raise_exception=True)
-            params = validator.validated_data
-            query_builder = SegmentQueryBuilder(params)
+            query_builder = SegmentQueryBuilder(validated_params)
             result = query_builder.execute()
-            str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
+            str_type = SegmentTypeEnum(validated_params["segment_type"]).name.lower()
             res_data[f"{str_type}_items"] = result.hits.total.value or 0
             return Response(status=HTTP_200_OK, data=res_data)
         else:
@@ -88,8 +86,6 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
                 self._check_params_template_permissions(request.user)
                 template_title = request.data.get("title", None)
                 self._validate_field(template_title, str)
-                data = set_user_perm_params(request, request.data)
-                validated_params = self._validate_params(data)
                 template = self._create_params_template(request.user, template_title, validated_params)
                 serializer = ParamsTemplateSerializer(template)
                 return Response(status=HTTP_201_CREATED, data=serializer.data)
