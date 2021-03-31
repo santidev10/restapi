@@ -80,7 +80,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     def remove_meta_audit_params(self):
         remove_keys = {
-            Params.AuditTool.META_AUDIT_ID, Params.AuditTool.INCLUSION_FILE, Params.AuditTool.EXCLUSION_FILE,
+            Params.META_AUDIT_ID, Params.INCLUSION_FILE, Params.EXCLUSION_FILE,
         }
         [self.params.pop(key, None) for key in remove_keys]
         self.save(update_fields=["params"])
@@ -236,7 +236,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             except AuditProcessor.DoesNotExist:
                 pass
         _delete_audit(self.audit_id)
-        _delete_audit(self.params.get(Params.AuditTool.META_AUDIT_ID))
+        _delete_audit(self.params.get(Params.META_AUDIT_ID))
         self.delete()
 
     def update_statistics(self, sub_key, data, data_key=None, save=False):

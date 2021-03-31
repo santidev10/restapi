@@ -123,7 +123,7 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         :param data: dict
         :return:
         """
-        if data.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+        if data.get(Params.WITH_VIDEO_EXCLUSION) is True:
             if not user.has_permission(StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION):
                 raise PermissionDenied
             video_exclusion_serializer = VideoExclusionParamsSerializer(data=data, context={"source_ctl": ctl})

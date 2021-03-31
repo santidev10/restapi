@@ -65,36 +65,39 @@ class SegmentVettingStatusEnum(enum.Enum):
     VETTED_RISKY = 2
 
 
+GADS = "gads"
+DV360 = "dv360"
+
+
 # All current param keys for CustomSegment.params column
 class Params:
     HISTORY = "history"
+    # Channel CTL VideoExclusion
+    WITH_VIDEO_EXCLUSION = "with_video_exclusion"
+    VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
 
-    class VideoExclusion:
-        WITH_VIDEO_EXCLUSION = "with_video_exclusion"
-        VIDEO_EXCLUSION_SCORE_THRESHOLD = "video_exclusion_score_threshold"
+    # CTL Google Ads Sync
+    GADS = GADS
+    GADS_SYNC_DATA = "gads_sync_data"
+    CID = "cid"
+    AD_GROUP_IDS = "ad_group_ids"
 
-    class GoogleAds:
-        GADS_SYNC_DATA = "gads_sync_data"
-        CID = "cid"
-        AD_GROUP_IDS = "ad_group_ids"
+    # DV360 Sync
+    DV360 = DV360
+    DV360_SYNC = "dv360_sync"
 
-    # DV360
-    class DV360:
-        DV360_SYNC = "dv360_sync"
-
-    class AuditTool:
-        # AuditProcessor PK used to run audit against CTL results
-        META_AUDIT_ID = "meta_audit_id"
-        INCLUSION_FILE = "inclusion_file"
-        EXCLUSION_FILE = "exclusion_file"
-        SOURCE_FILE = "source_file"
+    # CTL with Keyword audit
+    META_AUDIT_ID = "meta_audit_id" # AuditProcessor PK used to run audit against CTL results
+    INCLUSION_FILE = "inclusion_file"
+    EXCLUSION_FILE = "exclusion_file"
+    SOURCE_FILE = "source_file"
 
 
 class Results:
+    GADS = GADS
+    DV360 = DV360
     HISTORY = "history"
     CTL_STATISTICS = "ctl_statistics"
     SYNC = "sync"
-    GADS = "gads"
-    DV360 = "dv360"
     EXPORT_FILENAME = "export_filename"
     VIDEO_EXCLUSION_FILENAME = "video_exclusion_filename"

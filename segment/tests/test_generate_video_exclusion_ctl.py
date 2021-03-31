@@ -21,8 +21,8 @@ from utils.unittests.int_iterator import int_iterator
 class GenerateVideoExclusionCTLTestCase(TransactionTestCase, ESTestCase):
     def setUp(self):
         self.channel_ctl = CustomSegment.objects.create(segment_type=SegmentTypeEnum.CHANNEL.value, params={
-            Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
-            Params.VideoExclusion.WITH_VIDEO_EXCLUSION: True,
+            Params.VIDEO_EXCLUSION_SCORE_THRESHOLD: 2,
+            Params.WITH_VIDEO_EXCLUSION: True,
         })
         CustomSegmentFileUpload.objects.create(segment=self.channel_ctl, query=dict(params={"score_threshold": 4}))
 

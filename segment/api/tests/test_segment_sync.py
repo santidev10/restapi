@@ -43,16 +43,16 @@ class CTLSyncTestCase(ExtendedAPITestCase):
         ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
         with self.subTest("Must provide valid GAds Account id"):
             payload = {
-                Params.GoogleAds.CID: 1,
-                Params.GoogleAds.AD_GROUP_IDS: next(int_iterator),
+                Params.CID: 1,
+                Params.AD_GROUP_IDS: next(int_iterator),
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
         with self.subTest("Must provide valid Adgroup Id's"):
             payload = {
-                Params.GoogleAds.CID: next(int_iterator),
-                Params.GoogleAds.AD_GROUP_IDS: [],
+                Params.CID: next(int_iterator),
+                Params.AD_GROUP_IDS: [],
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -61,8 +61,8 @@ class CTLSyncTestCase(ExtendedAPITestCase):
             account, campaign, ad_groups = self._mock_data(self.oauth_account)
             payload = {
                 "pk": ctl.id,
-                Params.GoogleAds.CID: account.id,
-                Params.GoogleAds.AD_GROUP_IDS: [ag.id for ag in ad_groups],
+                Params.CID: account.id,
+                Params.AD_GROUP_IDS: [ag.id for ag in ad_groups],
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -71,8 +71,8 @@ class CTLSyncTestCase(ExtendedAPITestCase):
         """ Test patch updates sync history """
         account = Account.objects.create(name="Test Gads Account")
         params = {
-            Params.GoogleAds.GADS_SYNC_DATA: {
-                Params.GoogleAds.CID: account.id
+            Params.GADS_SYNC_DATA: {
+                Params.CID: account.id
             }
         }
         ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value, params=params)

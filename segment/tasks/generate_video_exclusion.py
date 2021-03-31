@@ -68,14 +68,14 @@ def _generate_video_exclusion(channel_ctl_id: int):
             Results.VIDEO_EXCLUSION_FILENAME: False,
         })
         channel_ctl.params.update({
-            Params.VideoExclusion.WITH_VIDEO_EXCLUSION: False
+            Params.WITH_VIDEO_EXCLUSION: False
         })
         channel_ctl.save(update_fields=["params", "statistics"])
         return
 
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        mapped_score_threshold = map_score_threshold(channel_ctl.params[Params.VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
+        mapped_score_threshold = map_score_threshold(channel_ctl.params[Params.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=200):
             curr_blocklist = []
             curr_videos = []

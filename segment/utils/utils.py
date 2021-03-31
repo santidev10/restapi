@@ -207,7 +207,7 @@ def delete_related(segment, *_, delete_ctl=True, **__):
         except CustomSegment.DoesNotExist:
             return
     _delete_audit(segment.audit_id)
-    _delete_audit(segment.params.get(Params.AuditTool.META_AUDIT_ID))
+    _delete_audit(segment.params.get(Params.META_AUDIT_ID))
     if delete_ctl:
         segment.delete()
 
