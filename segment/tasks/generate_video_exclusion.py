@@ -58,7 +58,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
     video_manager = VideoManager(sections=[Sections.BRAND_SAFETY, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES])
     channel_ctl = CustomSegment.objects.get(id=channel_ctl_id)
     try:
-        channel_ids = list(channel_ctl.s3.get_extract_export_ids())[:2]
+        channel_ids = channel_ctl.s3.get_extract_export_ids()
     except Exception:
         logger.exception(
             f"Uncaught exception for generate_videos_exclusion in get_extract_export_ids: {channel_ctl_id}")
@@ -72,7 +72,6 @@ def _generate_video_exclusion(channel_ctl_id: int):
         return
 
     video_exclusion_fp = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-    channels_seen = 0
     try:
         mapped_score_threshold = map_score_threshold(channel_ctl.params[VideoExclusion.VIDEO_EXCLUSION_SCORE_THRESHOLD])
         for chunk in chunks_generator(channel_ids, size=200):
@@ -89,12 +88,6 @@ def _generate_video_exclusion(channel_ctl_id: int):
             curr_videos.sort(key=lambda doc: doc.brand_safety.overall_score)
             all_videos = merge(all_videos, curr_videos, lambda doc: doc.brand_safety.overall_score)
             all_blocklist.extend(curr_blocklist)
-
-            channels_seen += len(chunk)
-            print(f"Channels seen: {channels_seen}, blocklist: {len(all_blocklist)}, videos: {len(all_videos)}")
-            if len(curr_videos) > 5:
-                raise Exception
-
             all_videos = all_videos[:LIMIT]
             # If blocklist videos exceeds limit, then list should only consist of blocklist videos
             if len(all_blocklist) >= LIMIT:
@@ -115,7 +108,7 @@ def _generate_video_exclusion(channel_ctl_id: int):
         os.remove(video_exclusion_fp)
 
 
-@retry(10, 2)
+@retry(20, 2)
 def get_videos_for_channels(channel_ids: list, bs_score_limit: int, video_manager) -> iter:
     """
     Retrieve videos using channel_ids
@@ -193,7 +186,7 @@ def _save_partial_results(channel_ctl: CustomSegment, partial_results: list):
     try:
         prev_file = channel_ctl.statistics.get(VideoExclusion.VIDEO_EXCLUSION_FILENAME)
         video_exclusion_s3_key = _export_results(channel_ctl, video_exclusion_fp, partial_results)
-        if not prev_file or channel_ctl.ctl.check_key_size(prev_file) < channel_ctl.ctl.check_key_size(video_exclusion_s3_key):
+        if not prev_file or channel_ctl.s3.check_key_size(prev_file) < channel_ctl.s3.check_key_size(video_exclusion_s3_key):
             channel_ctl.statistics[VideoExclusion.VIDEO_EXCLUSION_FILENAME] = video_exclusion_s3_key
             channel_ctl.save(update_fields=["statistics"])
     except ClientError:
