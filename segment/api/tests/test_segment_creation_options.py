@@ -60,10 +60,11 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
-            "segment_type": 0
+            "segment_type": 0,
+            "get_estimate": True,
         }
         payload = self._get_params(**payload)
-        response = self.client.generic(method="GET", path=self._get_url(),
+        response = self.client.generic(method="POST", path=self._get_url(),
                                        data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["video_items"], data.hits.total.value)
@@ -77,9 +78,10 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "languages": ["es"],
             "score_threshold": 1,
             "segment_type": 1,
+            "get_estimate": True,
         }
         payload = self._get_params(**payload)
-        response = self.client.generic(method="GET", path=self._get_url(),
+        response = self.client.generic(method="POST", path=self._get_url(),
                                        data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["channel_items"], data.hits.total.value)
@@ -144,11 +146,12 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "languages": ["es"],
             "score_threshold": 1,
             "segment_type": 1,
+            "get_estimate": True,
         }
         payload = self._get_params(**payload)
         with patch("segment.api.views.custom_segment.segment_create_options.SegmentQueryBuilder") as mock_query_builder:
             mock_query_builder.return_value.execute.return_value = self._get_mock_data()
-            response = self.client.generic(method="GET", path=self._get_url(), data=json.dumps(payload),
+            response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                            content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         params = mock_query_builder.call_args[0][0]

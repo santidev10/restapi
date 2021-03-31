@@ -2,10 +2,12 @@ from datetime import timedelta
 
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditAgeGroup
@@ -38,23 +40,12 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
     def get(self, request, *args, **kwargs):
         """
         Generate segment creation options.
-        If user has params template permission, respond with existing templates owned by user.
-        If segment_type in request data, will respond with items count only.
+        If user has params template permission, respond with existing templates owned by user
+        separated by segment type.
         """
-        res_data = {}
-        get_estimate = request.data.get("segment_type") is not None
-        if get_estimate:
-            data = set_user_perm_params(request, request.data)
-            validator = CTLParamsSerializer(data=data)
-            validator.is_valid(raise_exception=True)
-            params = validator.validated_data
-            query_builder = SegmentQueryBuilder(params)
-            result = query_builder.execute()
-            str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
-            res_data[f"{str_type}_items"] = result.hits.total.value or 0
-            return Response(status=HTTP_200_OK, data=res_data)
-
-        res_data["options"] = self._get_options()
+        res_data = {
+            "options": self._get_options()
+        }
         if self.request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
             res_data["channel_templates"] = \
                 self._get_templates_by_owner(self.request.user, SegmentTypeEnum.CHANNEL.value)
@@ -67,28 +58,44 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         """
         deletes ParamsTemplate object for a given id if user is owner
         """
-        if request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
-            template_id = request.data.get("id", None)
-            self._validate_field(template_id, int)
-            params_template = get_object(ParamsTemplate, id=template_id)
-            if params_template.owner.id == request.user.id:
-                params_template.delete()
-                return Response(status=HTTP_200_OK)
-            raise PermissionDenied("Cannot delete a template owned by another user.")
-        raise PermissionDenied
+        self._check_params_template_permissions(request.user)
+        template_id = request.data.get("id", None)
+        self._validate_field(template_id, int)
+        params_template = get_object(ParamsTemplate, id=template_id)
+        if params_template.owner.id == request.user.id:
+            params_template.delete()
+            return Response(status=HTTP_200_OK)
+        raise PermissionDenied("Cannot delete a template owned by another user.")
 
     def post(self, request):
         """
-        Creates a new ParamsTemplate object
+        If get_estimate in request data, will respond with estimated items count only,
+        Otherwise creates a new ParamsTemplate object
         """
-        self._check_params_template_permissions(request.user)
-        template_title = request.data.get("title", None)
-        self._validate_field(template_title, str)
-        data = set_user_perm_params(request, request.data)
-        validated_params = self._validate_params(data)
-        template = self._create_params_template(request.user, template_title, validated_params)
-        serializer = ParamsTemplateSerializer(template)
-        return Response(status=HTTP_201_CREATED, data=serializer.data)
+        if request.data.get("get_estimate", None):
+            res_data = {}
+            data = set_user_perm_params(request, request.data)
+            validator = CTLParamsSerializer(data=data)
+            validator.is_valid(raise_exception=True)
+            params = validator.validated_data
+            query_builder = SegmentQueryBuilder(params)
+            result = query_builder.execute()
+            str_type = SegmentTypeEnum(params["segment_type"]).name.lower()
+            res_data[f"{str_type}_items"] = result.hits.total.value or 0
+            return Response(status=HTTP_200_OK, data=res_data)
+        else:
+            try:
+                self._check_params_template_permissions(request.user)
+                template_title = request.data.get("title", None)
+                self._validate_field(template_title, str)
+                data = set_user_perm_params(request, request.data)
+                validated_params = self._validate_params(data)
+                template = self._create_params_template(request.user, template_title, validated_params)
+                serializer = ParamsTemplateSerializer(template)
+                return Response(status=HTTP_201_CREATED, data=serializer.data)
+            except IntegrityError:
+                message = {"Error": "Template with that title and CTL type already exists."}
+                return Response(message, status=HTTP_405_METHOD_NOT_ALLOWED)
 
     def patch(self, request):
         """
