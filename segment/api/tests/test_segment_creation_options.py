@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.models import IASHistory
@@ -291,3 +292,31 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_recreate_params_template_title_type_owner(self, mock_generate):
+        """
+        Tests recreating a ParamsTemplate instance with same title, segment_type, and owner.
+        Should return 400 status code error.
+        """
+        user = self.create_admin_user()
+        video_template = ParamsTemplate.objects.create(
+            title="Test",
+            owner=user,
+            segment_type=0
+        )
+        video_template.save()
+        payload = {
+            "languages": ["pt"],
+            "score_threshold": 1,
+            "content_categories": [],
+            "minimum_option": 0,
+            "vetted_after": "2020-01-01",
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        payload = self._get_params(**payload)
+        payload["title"] = "Test"
+        payload["segment_type"] = 0
+        response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
