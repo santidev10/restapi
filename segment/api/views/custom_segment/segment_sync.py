@@ -18,7 +18,7 @@ class SegmentSyncAPIView(APIView):
         """
         Get data from ViewIQ to update placements on GoogleAds
         """
-        cid = request.query_params.get("cid")
+        cid = kwargs.get("pk")
         try:
             ctl = CustomSegment.objects.filter(gads_synced=False,
                                                params__contains={Params.GoogleAds.CID: cid}).first()
