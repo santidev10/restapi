@@ -1,3 +1,4 @@
+from rest_framework.exceptions import ValidationError
 
 from oauth.api.serializers import CampaignSerializer
 from oauth.constants import OAuthType
@@ -35,3 +36,12 @@ def _get_serialized(qs, account):
         "campaigns": campaigns,
     }
     return data
+
+
+def validate_oath_type(request):
+    oauth_type = request.query_params.get("oauth_type")
+    try:
+        oauth_type = OAuthType(int(oauth_type)).value
+    except (TypeError, ValueError):
+        raise ValidationError(f"Invalid oauth_type: {oauth_type}")
+    return oauth_type

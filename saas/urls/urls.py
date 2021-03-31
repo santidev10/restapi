@@ -45,7 +45,7 @@ urlpatterns = [
     url(r"^api/v1/", include((keyword_api_urls, APP_NAME), namespace=Namespace.KEYWORD)),
 
     # OAuth api urls
-    url(r"^api/v1/", include((oauth_urls, APP_NAME), namespace=Namespace.OAUTH)),
+    url(r"^api/v1/oauth/", include((oauth_urls, APP_NAME), namespace=Namespace.OAUTH)),
 
     # Segment api urls
     url(r"^api/v1/", include((segment_v1_url_patterns, APP_NAME), namespace=Namespace.SEGMENT)),
