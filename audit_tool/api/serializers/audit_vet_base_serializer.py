@@ -14,6 +14,7 @@ from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from userprofile.constants import StaticPermissions
+from utils.exception import upsert_retry
 
 
 class AuditVetBaseSerializer(Serializer):
@@ -282,7 +283,7 @@ class AuditVetBaseSerializer(Serializer):
             **brand_safety_limbo
         )
         doc.populate_general_data(**general_data)
-        self.es_manager.upsert([doc], refresh=False)
+        upsert_retry(self.es_manager, [doc], refresh=False)
         return doc
 
     def _get_general_data(self, task_us_data):
