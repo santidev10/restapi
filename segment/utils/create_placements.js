@@ -1,20 +1,4 @@
-var SYNC_ENDPOINT = '{DOMAIN}' + '/api/v2/segments/sync/'
-
-
-function main() {
-  var code = getCode();
-  eval(code)
-}
-
-function getCode() {
-  var url = getSyncUrl();
-  var response = UrlFetchApp.fetch(url);
-  var data = JSON.parse(response.getContentText());
-  return data
-}
-
-
-function main() {
+function run() {
   var adGroupIds = {adGroupIds}
   var placementIds = {placementIds}
 
@@ -71,7 +55,8 @@ function updateSyncStatus(ctl_id) {
 
 
 function getSyncUrl() {
-  var cid = AdsApp.currentAccount().getCustomerId().split("-").join("");
-  var url = SYNC_ENDPOINT + '/' + cid;
+  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/'
+  var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
+  var url = SYNC_ENDPOINT + cid + '/';
   return url
 }

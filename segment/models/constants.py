@@ -80,7 +80,7 @@ class Params:
     GADS = GADS
     GADS_SYNC_DATA = "gads_sync_data"
     CID = "cid"
-    AD_GROUP_IDS = "ad_group_ids"
+    ADGROUP_IDS = "adgroup_ids"
 
     # DV360 Sync
     DV360 = DV360

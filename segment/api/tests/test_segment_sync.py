@@ -44,7 +44,7 @@ class CTLSyncTestCase(ExtendedAPITestCase):
         with self.subTest("Must provide valid GAds Account id"):
             payload = {
                 Params.CID: 1,
-                Params.AD_GROUP_IDS: next(int_iterator),
+                Params.ADGROUP_IDS: next(int_iterator),
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -52,7 +52,7 @@ class CTLSyncTestCase(ExtendedAPITestCase):
         with self.subTest("Must provide valid Adgroup Id's"):
             payload = {
                 Params.CID: next(int_iterator),
-                Params.AD_GROUP_IDS: [],
+                Params.ADGROUP_IDS: [],
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -62,7 +62,7 @@ class CTLSyncTestCase(ExtendedAPITestCase):
             payload = {
                 "pk": ctl.id,
                 Params.CID: account.id,
-                Params.AD_GROUP_IDS: [ag.id for ag in ad_groups],
+                Params.ADGROUP_IDS: [ag.id for ag in ad_groups],
             }
             response = self.client.post(self._get_url(ctl.id), data=json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_200_OK)
