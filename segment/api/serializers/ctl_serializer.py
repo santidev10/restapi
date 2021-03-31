@@ -384,10 +384,10 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
 
         final_source_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
         if segment.segment_type == 0:
-            split_seq = "?v="
+            split_seq = ["?v=", "/video/"]
             url_is_valid = lambda x: type(x) is str and len(x) == 11
         else:
-            split_seq = "/channel/"
+            split_seq = ["/channel/"]
             url_is_valid = lambda x: type(x) is str and len(x) == 24
         try:
             # Limit source file
@@ -396,12 +396,17 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
                 for row in reader:
-                    try:
-                        if url_is_valid(row[0].split(split_seq)[-1]):
-                            rows.append(row)
-                    # Catch empty rows at end of csv
-                    except IndexError:
-                        continue
+                    valid_url = False
+                    # Try each split to get id
+                    for seq in split_seq:
+                        try:
+                            valid = url_is_valid(row[0].split(seq)[-1])
+                            valid_url = valid if valid is True else valid_url
+                        # Catch empty rows at end of csv
+                        except IndexError:
+                            pass
+                    if valid_url:
+                        rows.append(row)
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:
                         break
                 if not rows:
