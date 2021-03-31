@@ -54,7 +54,7 @@ class AuditAdminAPIView(APIView):
         if audit_type == 1:
             data_type = "video"
             filter_prefix = "video__video_id__in"
-            format_err = " or ".join(f"https://www.youtube.com{split}VIDEO_ID" for split in ["?v=", "/video/"])
+            format_err = " or ".join(f"https://www.youtube.com{split}VIDEO_ID" for split in ["/watch?v=", "/video/"])
         elif audit_type == 2:
             data_type = "channel"
             filter_prefix = "channel__channel_id__in"
