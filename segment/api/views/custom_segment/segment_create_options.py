@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
-from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditAgeGroup
@@ -91,7 +91,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
                 return Response(status=HTTP_201_CREATED, data=serializer.data)
             except IntegrityError:
                 message = {"Error": "Template with that title and CTL type already exists."}
-                return Response(message, status=HTTP_405_METHOD_NOT_ALLOWED)
+                return Response(message, status=HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         """
