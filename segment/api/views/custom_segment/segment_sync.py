@@ -20,7 +20,7 @@ class SegmentSyncAPIView(APIView):
         """
         cid = kwargs.get("pk")
         try:
-            ctl = CustomSegment.objects.filter(gads_synced=False,
+            ctl = CustomSegment.objects.filter(gads_is_synced=False,
                                                params__contains={Params.GoogleAds.CID: cid}).first()
         except CustomSegment.DoesNotExist:
             raise Http404
@@ -53,9 +53,9 @@ class SegmentSyncAPIView(APIView):
         Update Google Ads CTL sync status
         """
         ctl = get_object(CustomSegment, id=kwargs.get("pk"))
-        ctl.gads_synced = True
+        ctl.gads_is_synced = True
         ctl.update_sync_history(request.data["name"], Params.GoogleAds)
-        ctl.save(update_fields=["gads_synced", "statistics"])
+        ctl.save(update_fields=["gads_is_synced", "statistics"])
         return Response()
 
     def _get_code(self, ctl):

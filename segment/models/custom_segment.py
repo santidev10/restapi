@@ -75,7 +75,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # If CustomSegment is marked for Google Ads Placements sync.
     # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
     # Sync params are stored in params field
-    gads_synced = models.BooleanField(null=True, default=None, db_index=True)
+    gads_is_synced = models.BooleanField(null=True, default=None, db_index=True)
 
     def remove_meta_audit_params(self):
         remove_keys = {
