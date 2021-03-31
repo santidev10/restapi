@@ -5,7 +5,6 @@ from brand_safety.tasks.constants import Schedulers
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from es_components.models import Video
 from es_components.query_builder import QueryBuilder
 from saas import celery_app
 from saas.configs.celery import Queue
@@ -13,7 +12,6 @@ from saas.configs.celery import TaskExpiration
 from utils.celery.tasks import celery_lock
 from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
-from utils.exception import upsert_retry
 
 
 @celery_app.task(bind=True)
@@ -33,8 +31,7 @@ def video_discovery_scheduler():
 
     if queue_size <= Schedulers.VideoDiscovery.get_minimum_threshold():
         base_query = video_manager.forced_filters()
-        rescore_ids = get_rescore_ids(video_manager, base_query)
-        video_update.apply_async(args=[rescore_ids], kwargs=dict(rescore=True), queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY)
+        _create_rescore_tasks(video_manager, base_query)
 
         batch_limit = (Schedulers.VideoDiscovery.MAX_QUEUE_SIZE - queue_size)
         batch_count = 0
@@ -55,7 +52,7 @@ def video_update(video_ids, rescore=False):
     if isinstance(video_ids, str):
         video_ids = [video_ids]
     auditor = VideoAuditor()
-    scored_videos = auditor.process(video_ids)
+    auditor.process(video_ids, as_rescore=rescore)
     to_rescore = auditor.channels_to_rescore
     # Add rescore flag for channels that should be rescored by channel discovery task as newly scored videos under this
     # channel may have scored low, and may largely affect how a channel would score
@@ -64,17 +61,15 @@ def video_update(video_ids, rescore=False):
         channel.brand_safety.rescore = True
     auditor.channel_manager.upsert(rescore_channels)
 
-    # Update video rescore batch to False
-    if rescore is True:
-        reset_rescore_videos = []
-        for audit in scored_videos:
-            video = audit.doc
-            video.brand_safety.rescore = False
-            reset_rescore_videos.append(video)
-        upsert_retry(auditor.video_manager, reset_rescore_videos)
 
-
-def get_rescore_ids(manager, base_query):
-    with_rescore = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
-    ids = [v.main.id for v in manager.search(with_rescore).execute()]
-    return ids
+def _create_rescore_tasks(video_manager, base_query):
+    """
+    Create group of tasks to prioritize rescoring videos
+    :param base_query: forced filters query shared by rescore tasks and general discovery in video_discovery_scheduler
+    """
+    task_signatures = []
+    rescore_query = base_query & QueryBuilder().build().must().term().field(f"{Sections.BRAND_SAFETY}.rescore").value(True).get()
+    rescore_ids = [v.main.id for v in video_manager.search(rescore_query).execute()]
+    for chunk in chunks_generator(rescore_ids, size=Schedulers.VideoDiscovery.TASK_BATCH_SIZE):
+        task_signatures.append(video_update.si(list(chunk), rescore=True).set(queue=Queue.BRAND_SAFETY_VIDEO_PRIORITY))
+    group(task_signatures).apply_async()
