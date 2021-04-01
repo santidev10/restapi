@@ -59,7 +59,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         deletes ParamsTemplate object for a given id if user is owner
         """
         self._check_params_template_permissions(request.user)
-        template_id = request.data.get("id", None)
+        template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         params_template = get_object(ParamsTemplate, id=template_id)
         if params_template.owner.id == request.user.id:
@@ -84,7 +84,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         else:
             try:
                 self._check_params_template_permissions(request.user)
-                template_title = request.data.get("title", None)
+                template_title = request.data.get("template_title", None)
                 self._validate_field(template_title, str)
                 template = self._create_params_template(request.user, template_title, validated_params)
                 serializer = ParamsTemplateSerializer(template)
@@ -98,7 +98,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         Updates ParamsTemplate params field for a given id
         """
         self._check_params_template_permissions(request.user)
-        template_id = request.data.get("id", None)
+        template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)

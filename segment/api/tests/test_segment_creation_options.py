@@ -194,7 +194,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             segment_type=0
         )
         video_template.save()
-        data = {"id": video_template.id}
+        data = {"template_id": video_template.id}
         response = self.client.generic(method="DELETE", path=self._get_url(), data=json.dumps(data),
                                        content_type="application/json")
         self.assertFalse(ParamsTemplate.objects.filter(id=video_template.id).exists())
@@ -213,22 +213,22 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         payload = self._get_params(**payload)
-        payload["title"] = "video template"
+        payload["template_title"] = "video template"
         payload["segment_type"] = 0
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(ParamsTemplate.objects.filter(
-            title=payload["title"], segment_type=payload["segment_type"], owner=user
+            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
         ).exists())
 
-        payload["title"] = f"test_segment_creation_channel_template_{next(int_iterator)}"
+        payload["template_title"] = "channel template"
         payload["segment_type"] = 1
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(ParamsTemplate.objects.filter(
-            title=payload["title"], segment_type=payload["segment_type"], owner=user
+            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
         ).exists())
 
     def test_params_template_update(self, mock_generate):
@@ -244,23 +244,23 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         payload = self._get_params(**payload)
-        payload["title"] = "video template"
+        payload["template_title"] = "video template"
         payload["segment_type"] = 0
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertTrue(ParamsTemplate.objects.filter(
-            title=payload["title"], segment_type=payload["segment_type"], owner=user
+            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
         ).exists())
         template_object = ParamsTemplate.objects.get(
-            title=payload["title"], segment_type=payload["segment_type"], owner=user
+            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
         )
         payload["content_type"] = 1
-        payload["id"] = template_object.id
+        payload["template_id"] = template_object.id
         response = self.client.generic(method="PATCH", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
         template_object = ParamsTemplate.objects.get(
-            title=payload["title"], segment_type=payload["segment_type"], owner=user
+            title=payload["template_title"], segment_type=payload["segment_type"], owner=user
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(template_object.params["content_type"][0], 1)
@@ -281,13 +281,13 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         payload = self._get_params(**payload)
-        payload["title"] = "video template"
+        payload["template_title"] = "video template"
         payload["segment_type"] = 0
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-        payload["title"] = "channel template"
+        payload["template_title"] = "channel template"
         payload["segment_type"] = 1
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                    content_type="application/json")
@@ -315,7 +315,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "content_quality": 0,
         }
         payload = self._get_params(**payload)
-        payload["title"] = "Test"
+        payload["template_title"] = "Test"
         payload["segment_type"] = 0
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                        content_type="application/json")
