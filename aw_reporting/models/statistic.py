@@ -52,13 +52,13 @@ class AdGroupGeoViewStatistic(models.Model):
     """
     adgroup stats segmented from geographic view on google ads report api
     """
-    ad_group = models.ForeignKey(AdGroup, related_name="geo_view_stats", on_delete=models.CASCADE)
     # segments
+    ad_group = models.ForeignKey(AdGroup, related_name="geo_view_stats", on_delete=models.CASCADE)
     date = models.DateField(db_index=True)
     device_id = models.SmallIntegerField(default=Device.COMPUTER, db_index=True)
-    country_id = models.ForeignKey(GeoTarget, on_delete=models.CASCADE)
-    region_id = models.ForeignKey(GeoTarget, on_delete=models.CASCADE)
-    metro_id = models.ForeignKey(GeoTarget, on_delete=models.CASCADE)
+    country_id = models.ForeignKey(GeoTarget, related_name="country_geo_view_stats", on_delete=models.CASCADE)
+    region_id = models.ForeignKey(GeoTarget, related_name="region_geo_view_stats", on_delete=models.CASCADE)
+    metro_id = models.ForeignKey(GeoTarget, related_name="metro_geo_view_stats", on_delete=models.CASCADE)
     # metrics
     impressions = models.IntegerField(default=0, db_index=True)
     video_views = models.IntegerField(default=0, db_index=True)
