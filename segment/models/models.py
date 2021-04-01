@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
+from .custom_segment import CustomSegment
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from segment.models.constants import SegmentTypeEnum
@@ -38,3 +39,14 @@ class ParamsTemplate(Timestampable):
 
     class Meta:
         unique_together = ("title", "owner", "segment_type")
+
+
+class SegmentSync(Timestampable):
+    segment = models.OneToOneField(CustomSegment, related_name="sync", on_delete=models.CASCADE)
+    account = models.OneToOneField("oauth.Account", related_name="sync", on_delete=models.CASCADE)
+    data = models.JSONField(default=dict)
+    # If CustomSegment is marked for Google Ads Placements sync.
+    # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
+    # Sync params are stored in data field
+    is_synced = models.BooleanField(null=True, default=None, db_index=True)
+

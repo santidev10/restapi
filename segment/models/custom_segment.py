@@ -73,10 +73,6 @@ class CustomSegment(SegmentMixin, Timestampable):
     featured_image_url = models.TextField(default="")
     # Store general ctl generation params. This should never be reset, always updated
     params = models.JSONField(default=dict)
-    # If CustomSegment is marked for Google Ads Placements sync.
-    # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
-    # Sync params are stored in params field
-    gads_is_synced = models.BooleanField(null=True, default=None, db_index=True)
 
     def remove_meta_audit_params(self):
         remove_keys = {
@@ -256,7 +252,9 @@ class CustomSegment(SegmentMixin, Timestampable):
         """
         date_str = now_in_default_tz().strftime("%H:%M, %B %d, %Y")
         message = f"{account_name} - at {date_str}"
-        self.statistics[sync_type][Results.HISTORY] = self.statistics[sync_type].get(Results.HISTORY, []).extend([message])
+        self.statistics[sync_type] = self.statistics.get(sync_type, {})
+        prev_history = self.statistics[sync_type].get(Results.HISTORY, [])
+        self.statistics[sync_type][Results.HISTORY] = [*prev_history, message]
 
 
 class CustomSegmentRelated(models.Model):
