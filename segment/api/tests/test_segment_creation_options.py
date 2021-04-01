@@ -182,8 +182,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         video_template.save()
         response = self.client.generic(method="GET", path=self._get_url(),
                                        data=json.dumps(params), content_type="application/json")
-        self.assertEqual(response.data["channel_templates"][0]["params"], channel_template.params)
-        self.assertEqual(response.data["video_templates"][0]["params"], video_template.params)
+        self.assertEqual(response.data["channel_templates"][0]["ctl_params"], channel_template.params)
+        self.assertEqual(response.data["video_templates"][0]["ctl_params"], video_template.params)
 
     def test_delete_params_template(self, es_mock):
         """ tests parameter templates delete api """

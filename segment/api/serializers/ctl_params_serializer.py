@@ -221,6 +221,10 @@ class ParamsTemplateSerializer(serializers.ModelSerializer):
     Serializer for ParamsTemplate model
     serializes all fields except for title_hash
     """
+    template_id = serializers.IntegerField(source="id")
+    template_title = serializers.CharField(source="title")
+    ctl_params = serializers.JSONField(source="params")
+
     class Meta:
         model = ParamsTemplate
-        fields = ("id", "segment_type", "title", "owner", "params", "created_at", "updated_at")
+        fields = ("template_id", "segment_type", "template_title", "owner", "ctl_params", "created_at", "updated_at")
