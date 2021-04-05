@@ -29,13 +29,13 @@ class Migration(migrations.Migration):
                 ('conversions', models.FloatField(db_index=True, default=0)),
                 ('all_conversions', models.FloatField(db_index=True, default=0)),
                 ('ad_group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='geo_view_stats', to='aw_reporting.adgroup')),
-                ('country_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='country_geo_view_stats', to='aw_reporting.geotarget')),
-                ('metro_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='metro_geo_view_stats', to='aw_reporting.geotarget')),
-                ('region_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='region_geo_view_stats', to='aw_reporting.geotarget')),
+                ('country', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='country_geo_view_stats', to='aw_reporting.geotarget')),
+                ('metro', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='metro_geo_view_stats', to='aw_reporting.geotarget')),
+                ('region', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='region_geo_view_stats', to='aw_reporting.geotarget')),
             ],
             options={
                 'ordering': ['ad_group', 'date', 'device_id'],
-                'unique_together': {('ad_group', 'date', 'device_id', 'metro_id')},
+                'unique_together': {('ad_group', 'date', 'device_id', 'country', 'region', 'metro')},
             },
         ),
     ]
