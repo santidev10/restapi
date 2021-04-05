@@ -327,18 +327,16 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         """
         user = self.create_admin_user()
         params = self._get_params()
-        video_template_1 = ParamsTemplate.objects.create(
+        ParamsTemplate.objects.create(
             title="Test_1",
             owner=user,
             segment_type=0
         )
-        video_template_1.save()
-        video_template_2 = ParamsTemplate.objects.create(
+        ParamsTemplate.objects.create(
             title="Test_2",
             owner=user,
             segment_type=0
         )
-        video_template_2.save()
         response = self.client.generic(method="GET", path=self._get_url(),
                                        data=json.dumps(params), content_type="application/json")
         self.assertEqual(HTTP_200_OK, response.status_code)
