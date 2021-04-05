@@ -56,9 +56,9 @@ class AdGroupGeoViewStatistic(models.Model):
     ad_group = models.ForeignKey(AdGroup, related_name="geo_view_stats", on_delete=models.CASCADE)
     date = models.DateField(db_index=True)
     device_id = models.SmallIntegerField(default=Device.COMPUTER, db_index=True)
-    country_id = models.ForeignKey(GeoTarget, related_name="country_geo_view_stats", on_delete=models.CASCADE)
-    region_id = models.ForeignKey(GeoTarget, related_name="region_geo_view_stats", on_delete=models.CASCADE)
-    metro_id = models.ForeignKey(GeoTarget, related_name="metro_geo_view_stats", on_delete=models.CASCADE)
+    country = models.ForeignKey(GeoTarget, related_name="country_geo_view_stats", on_delete=models.CASCADE)
+    region = models.ForeignKey(GeoTarget, related_name="region_geo_view_stats", on_delete=models.CASCADE)
+    metro = models.ForeignKey(GeoTarget, related_name="metro_geo_view_stats", on_delete=models.CASCADE)
     # metrics
     impressions = models.IntegerField(default=0, db_index=True)
     video_views = models.IntegerField(default=0, db_index=True)
@@ -69,7 +69,7 @@ class AdGroupGeoViewStatistic(models.Model):
 
     class Meta:
         unique_together = (
-            ("ad_group", "date", "device_id", "metro_id"),
+            ("ad_group", "date", "device_id", "country", "region", "metro"),
         )
         ordering = ["ad_group", "date", "device_id"]
 
