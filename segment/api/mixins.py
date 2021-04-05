@@ -114,6 +114,8 @@ class ParamsTemplateMixin:
         :user: userprofile.UserProfile
         :segment_type: int
         """
-        templates = ParamsTemplate.objects.filter(owner=user, segment_type=segment_type)
+        templates = ParamsTemplate.objects.filter(
+            owner=user, segment_type=segment_type
+        ).order_by("title")
         serializer = ParamsTemplateSerializer(templates, many=True)
         return serializer.data

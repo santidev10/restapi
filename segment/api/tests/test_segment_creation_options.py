@@ -320,3 +320,27 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         response = self.client.generic(method="POST", path=self._get_url(), data=json.dumps(payload),
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_params_template_sort(self, mock_generate):
+        """
+        Tests that params templates are correctly sorted by title
+        """
+        user = self.create_admin_user()
+        params = self._get_params()
+        video_template_1 = ParamsTemplate.objects.create(
+            title="Test_1",
+            owner=user,
+            segment_type=0
+        )
+        video_template_1.save()
+        video_template_2 = ParamsTemplate.objects.create(
+            title="Test_2",
+            owner=user,
+            segment_type=0
+        )
+        video_template_2.save()
+        response = self.client.generic(method="GET", path=self._get_url(),
+                                       data=json.dumps(params), content_type="application/json")
+        self.assertEqual(HTTP_200_OK, response.status_code)
+        self.assertEqual(response.data["video_templates"][0]["template_title"], "Test_1")
+        self.assertEqual(response.data["video_templates"][1]["template_title"], "Test_2")
