@@ -9,12 +9,6 @@ class Migration(migrations.Migration):
     dependencies = [
         ('oauth', '0003_account_name'),
         ('segment', '0061_customsegment_gads_is_synced'),
-        # ('oauth', '0001_initial'),
-
-        #
-
-        #
-
     ]
 
     operations = [
