@@ -1,8 +1,10 @@
+from collections import defaultdict
+from datetime import datetime
 import json
 import time
-from datetime import datetime
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 
@@ -10,7 +12,9 @@ from audit_tool.models import AuditProcessor
 from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
+from oauth.models import Account
 from segment.models import CustomSegment
+from segment.models import SegmentAdGroupSync
 from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
@@ -210,6 +214,35 @@ def delete_related(segment, *_, delete_ctl=True, **__):
     _delete_audit(segment.params.get(Params.META_AUDIT_ID))
     if delete_ctl:
         segment.delete()
+
+
+def get_gads_sync_code(account: Account):
+    syncs = SegmentAdGroupSync.objects.filter(adgroup__campaign__account=account, is_synced=False)
+    if not syncs:
+        return
+
+    data = defaultdict(list)
+    for sync in syncs:
+        data[sync.segment_id].append(sync.adgroup_id)
+    sync_data = {}
+    for segment_id in data:
+        segment = CustomSegment.objects.get(id=segment_id)
+        placement_type = SegmentTypeEnum(segment.segment_type).name.capitalize()
+        placement_ids = list(segment.s3.get_extract_export_ids())
+        sync_data[segment_id] = {
+            "adgroupIds": data[segment_id],
+            "placementIds": placement_ids,
+            "placementType": placement_type,
+        }
+
+    script_fp = "segment/utils/create_placements.js"
+    with open(script_fp, mode="r") as file:
+        func = file.read()
+    # Replace placeholders in placement script with data to be evaluated and executed on Google Ads scripts
+    code = func \
+        .replace("{DOMAIN}", settings.HOST) \
+        .replace("{CTL_DATA}", json.dumps(sync_data))
+    return code
 
 
 class AdminCustomSegmentOwnerPermission(permissions.BasePermission):

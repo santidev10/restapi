@@ -4,9 +4,10 @@ import os
 from django.conf import settings
 from uuid import uuid4
 
+from saas import celery_app
 from segment.models.constants import Results
 from segment.models import CustomSegment
-from performiq.models import OAuthAccount
+from oauth.models import OAuthAccount
 from utils.dv360_api import DV360Connector
 
 
@@ -17,7 +18,8 @@ REMOVE_COLUMNS = [
 PLACEMENTS_INCLUSION_KEY = "Placement Targeting - YouTube Channels - Include"
 
 
-def generate_sdf(ctl_id):
+@celery_app.task
+def generate_sdf(ctl_id, advertiser_id, io_ids):
     ctl = CustomSegment.objects.get(id=ctl_id)
     oauth_account = OAuthAccount.objects.get(email="kenneth.oh@channelfactory.com", oauth_type=1)
     dv = DV360Connector(oauth_account.token, oauth_account.refresh_token)

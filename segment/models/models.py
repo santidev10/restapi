@@ -41,12 +41,10 @@ class ParamsTemplate(Timestampable):
         unique_together = ("title", "owner", "segment_type")
 
 
-class SegmentSync(Timestampable):
+class SegmentAdGroupSync(Timestampable):
     segment = models.OneToOneField(CustomSegment, related_name="sync", on_delete=models.CASCADE)
-    account = models.OneToOneField("oauth.Account", related_name="sync", on_delete=models.CASCADE)
-    data = models.JSONField(default=dict)
-    # If CustomSegment is marked for Google Ads Placements sync.
-    # None = Not marked for sync, False = Marked for sync, True = Synced Successfully.
-    # Sync params are stored in data field
-    is_synced = models.BooleanField(null=True, default=None, db_index=True)
+    adgroup = models.OneToOneField("oauth.AdGroup", related_name="gads_sync", on_delete=models.CASCADE)
+    is_synced = models.BooleanField(default=False, db_index=True)
 
+    class Meta:
+        unique_together = ("segment", "adgroup")

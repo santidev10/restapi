@@ -1,13 +1,17 @@
 function run() {
-  var adGroupIds = {adGroupIds}
-  var placementIds = {placementIds}
+  var ctlData = {CTL_DATA}
+  ctlData.Object.keys(function(ctlId) {
+    var adgroupIds = ctlData[ctlId].adGroupIds;
+    var placementIds = ctlData[ctlId].placementIds;
+    var placementType = ctlData[ctlId].placementType;
 
-  var adGroupIterator = getAdGroups(adGroupIds);
-  while (adGroupIterator.hasNext()) {
-    var adGroup = adGroupIterator.next();
-    removeExistingPlacements(adGroup);
-    createPlacements(adGroup, placementIds);
-  }
+    var adGroupIterator = getAdGroups(adgroupIds);
+    while (adGroupIterator.hasNext()) {
+      var adGroup = adGroupIterator.next();
+      removeExistingPlacements(adGroup, placementType);
+      createPlacements(adGroup, placementIds, placementType);
+    }
+  })
 }
 
 
@@ -15,17 +19,20 @@ function getAdGroups(adGroupIds) {
     return AdsApp.videoAdGroups().withIds(adGroupIds).get();
 }
 
-function createPlacements(adGroup, placementIds) {
-  var placementBuilder = adGroup.videoTargeting()['newYouTubeChannelBuilder']();
+function createPlacements(adGroup, placementIds, placementType) {
+  var builderName = 'newYouTube' + placementType + 'Builder';
+  var builderIdName = 'with' + placementType + 'Id';
+  var placementBuilder = adGroup.videoTargeting()[builderName]();
 
   placementIds.forEach(function(id) {
-    placementBuilder['withChannelId'](id).build();
+    placementBuilder[builderIdName](id).build();
   });
 }
 
-function removeExistingPlacements(adGroup) {
+function removeExistingPlacements(adGroup, placementType) {
   // Remove all existing placements before adding new ones
-  var placementsIterator = adGroup.videoTargeting()['youTubeChannels']().get();
+  var targetingName = 'youTube' + placementType + 's';
+  var placementsIterator = adGroup.videoTargeting()[targetingName]().get();
   while (placementsIterator.hasNext()) {
     placementsIterator.next().remove();
   }
