@@ -240,6 +240,7 @@ class Command(BaseCommand):
         audit.machine = None
         audit.thread = None
         audit.save(update_fields=["seed_status", "machine", "thread"])
+        return vids
 
     def clone_audit(self):
         self.num_clones += 1
