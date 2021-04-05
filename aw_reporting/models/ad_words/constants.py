@@ -1,3 +1,4 @@
+import enum
 import logging
 
 from utils.lang import ExtendedEnum
@@ -179,6 +180,66 @@ CAMPAIGN_BIDDING_STRATEGY_TYPES = {
     "Target CPA": "cpa",
     "None": None,
 }
+
+
+class BiddingStrategyTypeEnum(enum.Enum):
+    """
+    bidding strategies enumeration for adgroups and campaigns based on:
+    @see https://developers.google.com/adwords/api/docs/appendix/reports/adgroup-performance-report#biddingstrategytype
+    This is used w/ adgroup type to create our internal "Product Type"
+    """
+    MANUAL_CPC = "cpc"
+    MANUAL_CPV = "cpv"
+    MANUAL_CPM = "cpm"
+    PAGE_ONE_PROMOTED = "Target search page location"
+    TARGET_SPEND = "Maximize clicks"
+    TARGET_CPA = "Target CPA"
+    TARGET_ROAS = "Target ROAS"
+    MAXIMIZE_CONVERSIONS = "Maximize Conversions"
+    MAXIMIZE_CONVERSION_VALUE = "Maximize Conversion Value"
+    TARGET_OUTRANK_SHARE = "Target Outranking Share"
+    NONE = "None"
+    UNKNOWN = "unknown"
+    # DOUBLE_DASH = " --"
+
+
+bidding_strategy_type_id_mapping = {
+    BiddingStrategyTypeEnum.MANUAL_CPC.value: 0,
+    BiddingStrategyTypeEnum.MANUAL_CPV.value: 1,
+    BiddingStrategyTypeEnum.MANUAL_CPM.value: 2,
+    BiddingStrategyTypeEnum.PAGE_ONE_PROMOTED.value: 3,
+    BiddingStrategyTypeEnum.TARGET_SPEND.value: 4,
+    BiddingStrategyTypeEnum.TARGET_CPA.value: 5,
+    BiddingStrategyTypeEnum.TARGET_ROAS.value: 6,
+    BiddingStrategyTypeEnum.MAXIMIZE_CONVERSIONS.value: 7,
+    BiddingStrategyTypeEnum.MAXIMIZE_CONVERSION_VALUE.value: 8,
+    BiddingStrategyTypeEnum.TARGET_OUTRANK_SHARE.value: 9,
+    BiddingStrategyTypeEnum.UNKNOWN.value: 10,
+    BiddingStrategyTypeEnum.NONE.value: None,
+    "--": None,
+    " --": None,
+}
+
+
+class AdGroupTypeEnum(enum.Enum):
+    """
+    AdGroupType enum from:
+    @see https://developers.google.com/adwords/api/docs/appendix/reports/adgroup-performance-report#adgrouptype
+    this is used in combination with BiddingStrategyType to create our internal "ProductType"
+    """
+    UNKNOWN = "Unknown"
+    SEARCH_STANDARD = "Standard"
+    SEARCH_DYNAMIC_ADS = "Search Dynamic Ads"
+    DISPLAY_STANDARD = "Display"
+    DISPLAY_ENGAGEMENT = "Display engagement"
+    SHOPPING_PRODUCT_ADS = "Shopping - Product"
+    SHOPPING_SHOWCASE_ADS = "Shopping - Showcase"
+    SHOPPING_GOAL_OPTIMIZED_ADS = "Shopping - Goal - optimized"
+    VIDEO_TRUE_VIEW_IN_STREAM = "In - stream"
+    VIDEO_TRUE_VIEW_IN_DISPLAY = "Video discovery"
+    VIDEO_BUMPER = "Bumper"
+    VIDEO_NON_SKIPPABLE_IN_STREAM = "Standard"
+    HOTEL_ADS = "Hotel"
 
 
 def get_bidding_strategy_type(strategy_type):
