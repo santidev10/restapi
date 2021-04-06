@@ -608,8 +608,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         segment = CustomSegment.objects.get(id=response.data["id"])
         expected_params = {
-            Params.AuditTool.INCLUSION_FILE: inclusion_file.name,
-            Params.AuditTool.EXCLUSION_FILE: exclusion_file.name,
+            Params.INCLUSION_FILE: inclusion_file.name,
+            Params.EXCLUSION_FILE: exclusion_file.name,
         }
         saved_params = {
             key: segment.params.get(key, None) for key in expected_params.keys()
@@ -712,7 +712,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
-        old_audit = AuditProcessor.objects.get(id=created.params[Params.AuditTool.META_AUDIT_ID])
+        old_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
 
         updated_exclusion_file = BytesIO()
         updated_exclusion_file.name = "test_exclusion.csv"
@@ -728,7 +728,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response2.status_code, HTTP_200_OK)
 
         created.refresh_from_db()
-        new_audit = AuditProcessor.objects.get(id=created.params[Params.AuditTool.META_AUDIT_ID])
+        new_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
         self.assertNotEqual(old_audit.params["exclusion"], new_audit.params["exclusion"])
         self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
@@ -749,7 +749,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
-        old_audit = AuditProcessor.objects.get(id=created.params[Params.AuditTool.META_AUDIT_ID])
+        old_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
 
         updated_inclusion_file = BytesIO()
         updated_inclusion_file.name = "test_new_inclusion.csv"
@@ -765,7 +765,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response2.status_code, HTTP_200_OK)
 
         created.refresh_from_db()
-        new_audit = AuditProcessor.objects.get(id=created.params[Params.AuditTool.META_AUDIT_ID])
+        new_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
         self.assertNotEqual(old_audit.params["inclusion"], new_audit.params["inclusion"])
         self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
@@ -841,7 +841,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             )
         )
         audit = AuditProcessor.objects.create(source=2, params=audit_params)
-        segment.params.update({Params.AuditTool.META_AUDIT_ID: audit.id})
+        segment.params.update({Params.META_AUDIT_ID: audit.id})
         segment.save()
         payload.update(dict(
             id=segment.id, segment_type=segment.segment_type, title="updated_title",
@@ -954,7 +954,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(audit.pause, 0)
         self.assertEqual(audit.params["stopped"], True)
 
-        new_audit = AuditProcessor.objects.get(id=segment.params[Params.AuditTool.META_AUDIT_ID])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         updated_exclusion_file.seek(0)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.params, new_audit.params)
@@ -1061,7 +1061,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         # A new audit should have been created, but since inclusion / exclusion words were not changed in the update
         # request, the new audit should have same inclusion / exclusion params as old audit
-        new_audit = AuditProcessor.objects.get(id=segment.params[Params.AuditTool.META_AUDIT_ID])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         self.assertEqual(audit.params["stopped"], True)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.name, new_audit.name)
@@ -1113,7 +1113,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         # A new audit should have been created, and since inclusion_hit_threshold was sent as
         # None, it is considered removed and a new audit should be created without the old inclusion keywords
-        new_audit = AuditProcessor.objects.get(id=segment.params[Params.AuditTool.META_AUDIT_ID])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         self.assertEqual(audit.params["stopped"], True)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.name, new_audit.name)
@@ -1168,7 +1168,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment.refresh_from_db()
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
-        self.assertFalse(segment.params.get(Params.AuditTool.META_AUDIT_ID))
+        self.assertFalse(segment.params.get(Params.META_AUDIT_ID))
 
     def test_regneration_deletes_records(self, mock_generate):
         """
@@ -1182,7 +1182,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=1, owner=user, audit_id=audit.id,
-            statistics={"items_count": 1}, params={Params.AuditTool.META_AUDIT_ID: None},
+            statistics={"items_count": 1}, params={Params.META_AUDIT_ID: None},
             is_vetting_complete=True,
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
@@ -1265,7 +1265,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=SegmentTypeEnum.CHANNEL.value, owner=user,
-            statistics={"items_count": 1}, params={Params.AuditTool.META_AUDIT_ID: None},
+            statistics={"items_count": 1}, params={Params.META_AUDIT_ID: None},
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         payload = dict(
@@ -1402,7 +1402,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         channel_ctl.refresh_from_db()
         self.assertEqual(channel_ctl.export.query["params"], params)
-        self.assertEqual(channel_ctl.params[Params.VideoExclusion.WITH_VIDEO_EXCLUSION], True)
+        self.assertEqual(channel_ctl.params[Params.WITH_VIDEO_EXCLUSION], True)
         mock_exclusion_generate.assert_called_once()
 
     def test_creation_error(self, mock_generate):

@@ -666,7 +666,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         segment = CustomSegment(title=f"title_{next(int_iterator)}", segment_type=1, owner=user)
         audit = AuditProcessor.objects.create(source=2, params=dict(segment_id=segment.id))
-        segment.params[Params.AuditTool.META_AUDIT_ID] = audit.id
+        segment.params[Params.META_AUDIT_ID] = audit.id
         segment.save()
         doc = Channel(f"yt_channel_{next(int_iterator)}")
         self.channel_manager.upsert([doc])
@@ -698,14 +698,14 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         audit_id = next(int_iterator)
         audit, _ = AuditProcessor.objects.get_or_create(id=audit_id, source=2,
                                                         defaults=dict(params=dict(segment_id=segment.id)))
-        segment.params[Params.AuditTool.META_AUDIT_ID] = audit.id
+        segment.params[Params.META_AUDIT_ID] = audit.id
         segment.save()
         with patch("segment.utils.generate_segment.bulk_search", return_value=[]),\
                 patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
             result = generate_segment(segment, Q(), 1, with_audit=True)
         segment.refresh_from_db()
-        expected_removed_ctl_params = {Params.AuditTool.META_AUDIT_ID, Params.AuditTool.INCLUSION_FILE,
-                                       Params.AuditTool.EXCLUSION_FILE}
+        expected_removed_ctl_params = {Params.META_AUDIT_ID, Params.INCLUSION_FILE,
+                                       Params.EXCLUSION_FILE}
         # Audit should be deleted as no items on ctl for audit to process
         self.assertFalse(AuditProcessor.objects.filter(id=audit_id).exists())
         for key in expected_removed_ctl_params:

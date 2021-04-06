@@ -144,7 +144,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             }
         else:
             # Delete audit as it is no longer required since export has 0 items
-            AuditProcessor.objects.filter(id=segment.params.get(Params.AuditTool.META_AUDIT_ID)).delete()
+            AuditProcessor.objects.filter(id=segment.params.get(Params.META_AUDIT_ID)).delete()
             segment.remove_meta_audit_params()
             content_disposition = get_content_disposition(segment, is_vetting=getattr(segment, "is_vetting", False))
             segment.s3.export_file_to_s3(admin_filename, admin_s3_key, extra_args={"ContentDisposition": content_disposition})

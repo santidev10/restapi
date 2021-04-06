@@ -63,5 +63,5 @@ def regenerate_custom_segments():
             export.admin_filename = results["admin_s3_key"]
         export.save()
 
-        if segment.params.get(Params.VideoExclusion.WITH_VIDEO_EXCLUSION) is True:
+        if segment.params.get(Params.WITH_VIDEO_EXCLUSION) is True:
             generate_video_exclusion(segment.id)

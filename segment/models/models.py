@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
+from .custom_segment import CustomSegment
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from segment.models.constants import SegmentTypeEnum
@@ -38,3 +39,12 @@ class ParamsTemplate(Timestampable):
 
     class Meta:
         unique_together = ("title", "owner", "segment_type")
+
+
+class SegmentAdGroupSync(Timestampable):
+    segment = models.OneToOneField(CustomSegment, related_name="sync", on_delete=models.CASCADE)
+    adgroup = models.OneToOneField("oauth.AdGroup", related_name="gads_sync", on_delete=models.CASCADE)
+    is_synced = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        unique_together = ("segment", "adgroup")
