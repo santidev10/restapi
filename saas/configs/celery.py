@@ -168,22 +168,6 @@ CELERY_BEAT_SCHEDULE = {
         # defaults to twice per day, 0500, 1700 PST
         "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
-    # "sync_dv_partners": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "sync_dv_advertisers": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "sync_dv_campaigns": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "performiq_google_ads_update": {
-    #     "task": "performiq.tasks.google_ads_update.google_ads_update_task",
-    #     "schedule": crontab(minute="*/10")
-    # },
     "sync_dv_partners": {
         "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_partners",
         "schedule": crontab(minute="*/10"),

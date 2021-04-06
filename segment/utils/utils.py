@@ -221,16 +221,16 @@ def get_gads_sync_code(account: Account):
     if not syncs:
         return
 
-    data = defaultdict(list)
+    ctl_to_adgroups = defaultdict(list)
     for sync in syncs:
-        data[sync.segment_id].append(sync.adgroup_id)
+        ctl_to_adgroups[sync.segment_id].append(sync.adgroup_id)
     sync_data = {}
-    for segment_id in data:
+    for segment_id in ctl_to_adgroups:
         segment = CustomSegment.objects.get(id=segment_id)
         placement_type = SegmentTypeEnum(segment.segment_type).name.capitalize()
         placement_ids = list(segment.s3.get_extract_export_ids())
         sync_data[segment_id] = {
-            "adgroupIds": data[segment_id],
+            "adgroupIds": ctl_to_adgroups[segment_id],
             "placementIds": placement_ids,
             "placementType": placement_type,
         }

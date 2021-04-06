@@ -1,6 +1,5 @@
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from oauth.constants import OAuthType
@@ -8,8 +7,6 @@ from oauth.models import Account
 from oauth.models import OAuthAccount
 from segment.models.models import SegmentAdGroupSync
 from segment.api.serializers.gads_sync_serializer import GadsSyncSerializer
-from segment.models import CustomSegment
-from segment.models.constants import Params
 from segment.models.constants import Results
 from segment.utils.utils import get_gads_sync_code
 from utils.views import get_object
