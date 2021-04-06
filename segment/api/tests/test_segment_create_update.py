@@ -696,6 +696,25 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotEqual(old_params, updated_params)
         mock_generate.assert_called_once()
 
+    def test_regenerates_not_reset_audit_status(self, mock_generate):
+        """ Test that meta AuditProcessor completed timestamp is not reset if it has already completed """
+        self.create_admin_user()
+        now = timezone.now()
+        audit = AuditProcessor.objects.create(completed=now)
+        segment = CustomSegment.objects.create(title="test_regenerates_not_reset_audit_status", segment_type=1, params={
+            Params.AuditTool.META_AUDIT_ID: audit.id,
+        })
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict())
+        updated_payload = self.get_params(id=segment.id, minimum_views=1, segment_type=1)
+
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate,\
+                patch.object(CTLSerializer, "_check_should_regenerate", return_value=True):
+            response = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        audit.refresh_from_db()
+        # Completed timestamp should be overwritten
+        self.assertEqual(audit.completed, now)
+
     def test_regenerate_exclusion_keywords_changed(self, mock_generate):
         """ Test that CTL is regenerated if exclusion keywords have changed """
         self.create_admin_user()

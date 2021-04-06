@@ -250,9 +250,11 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         try:
             # If regenerating, update audit to pause for new audit to process. Else, update name with segment name
             audit = AuditProcessor.objects.get(id=old_meta_audit_id)
-            [setattr(audit, key, value) for key, value in updated_attrs.items()]
-            audit.params.update(updated_params)
-            audit.save()
+            # Only update audit completion and stopped attributes if audit has not finished
+            if not audit.completed:
+                [setattr(audit, key, value) for key, value in updated_attrs.items()]
+                audit.params.update(updated_params)
+                audit.save()
         except AuditProcessor.DoesNotExist:
             pass
         return instance
