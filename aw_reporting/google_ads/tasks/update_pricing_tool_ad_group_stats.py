@@ -56,7 +56,8 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
         # the login_customer_id is partially used to determine if access for the request is granted or denied
         # @see https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid
         self.clients = [get_client(login_customer_id=manager.id) for manager in account.managers.all()]
-        self.clients.insert(0, get_client())
+        # standard channelfactory mcc login_customer_id
+        self.clients.append(get_client())
         self.stats_to_create = []
         self.query_start_date = None
         self.query_end_date = None
@@ -116,10 +117,13 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
                     raise e
 
                 print(f"caught {e.__class__} exception. Errors codes: {','.join(error_codes)}")
+                # retry with a different client if we get an expected permission denied exception
+                continue
 
-            if len(self.stats_to_create):
-                break
+            # stop trying report requests on the first successful response, even if no items in the report
+            break
 
+        # only drop/create stats if there are stats to create
         self._drop_stats()
         self._create_stats()
 
