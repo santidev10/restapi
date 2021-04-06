@@ -5,7 +5,6 @@ from datetime import timedelta
 from django.utils import timezone
 
 import brand_safety.constants as constants
-from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent import PersistentSegmentChannel
@@ -14,7 +13,7 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from segment.tasks.generate_segment import generate_segment
+from segment.utils.generate_segment import generate_segment
 from userprofile.constants import StaticPermissions
 from utils.utils import chunks_generator
 

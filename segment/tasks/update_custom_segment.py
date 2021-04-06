@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from saas import celery_app
 from segment.models import CustomSegmentFileUpload
-from segment.tasks.generate_segment import generate_segment
+from segment.utils.generate_segment import generate_segment
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 

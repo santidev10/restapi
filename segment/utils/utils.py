@@ -11,6 +11,7 @@ from audit_tool.constants import CHOICE_UNKNOWN_KEY
 from audit_tool.constants import CHOICE_UNKNOWN_NAME
 import brand_safety.constants as constants
 from segment.models import CustomSegment
+from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from segment.models.persistent.base import BasePersistentSegment
@@ -206,7 +207,7 @@ def delete_related(segment, *_, delete_ctl=True, **__):
         except CustomSegment.DoesNotExist:
             return
     _delete_audit(segment.audit_id)
-    _delete_audit(segment.params.get("meta_audit_id"))
+    _delete_audit(segment.params.get(Params.AuditTool.META_AUDIT_ID))
     if delete_ctl:
         segment.delete()
 

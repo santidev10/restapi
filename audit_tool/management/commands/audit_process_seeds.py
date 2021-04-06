@@ -77,7 +77,8 @@ class Command(BaseCommand):
             self.audit.machine = self.machine_number
             self.audit.thread = self.thread_id
             self.audit.save(update_fields=["seed_status", "machine", "thread"])
-            self.process_seed()
+            vids = self.process_seed()
+            raise Exception("Seed File processing for audit {} done: {} items".format(self.audit.id, len(vids)))
 
     # pylint: disable=too-many-statements
     def process_seed(self):
@@ -239,6 +240,7 @@ class Command(BaseCommand):
         audit.machine = None
         audit.thread = None
         audit.save(update_fields=["seed_status", "machine", "thread"])
+        return vids
 
     def clone_audit(self):
         self.num_clones += 1

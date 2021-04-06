@@ -763,11 +763,11 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         }
         mock_doc = self._create_mock_document(Channel, audit_item.channel_id)
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch.object(ChannelManager, "upsert") as mock_upsert,\
+        with patch("audit_tool.api.serializers.audit_vet_base_serializer.upsert_retry") as mock_upsert_retry,\
                 patch.object(ChannelManager, "get", return_value=[mock_doc]):
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        upserted_doc = mock_upsert.call_args[0][0][0]
+        upserted_doc = mock_upsert_retry.call_args_list[0].args[1][0]
         self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
         self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
 
@@ -794,11 +794,11 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         }
         mock_doc = self._create_mock_document(Video, audit_item.channel_id)
         url = self._get_url(kwargs=dict(pk=audit.id))
-        with patch.object(VideoManager, "upsert") as mock_upsert,\
+        with patch("audit_tool.api.serializers.audit_vet_base_serializer.upsert_retry") as mock_upsert_retry,\
                 patch.object(VideoManager, "get", return_value=[mock_doc]):
             response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        upserted_doc = mock_upsert.call_args[0][0][0]
+        upserted_doc = mock_upsert_retry.call_args_list[0].args[1][0]
         self.assertTrue(payload["primary_category"] in upserted_doc.general_data.iab_categories)
         self.assertTrue(payload["primary_category"] in upserted_doc.task_us_data.iab_categories)
 
