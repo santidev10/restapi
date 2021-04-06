@@ -23,7 +23,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.patch_bulk_create import patch_bulk_create
 
 
-@mock.patch("segment.api.serializers.ctl_gads_sync_serializer.safe_bulk_create", patch_bulk_create)
+@mock.patch("segment.api.serializers.gads_sync_serializer.safe_bulk_create", patch_bulk_create)
 class CTLGadsSyncTestCase(ExtendedAPITestCase):
 
     def _get_url(self, pk):
