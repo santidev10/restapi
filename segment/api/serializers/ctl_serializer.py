@@ -277,16 +277,16 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
             should_regenerate = True
             return should_regenerate
 
-        # Check source file for changes
+        # Check source file for changes. Only filter for valid ids returned from validate_youtube_url
         if source_file is not None:
             try:
-                old_ids = [validate_youtube_url(url, segment.segment_type).upper()
-                           for url in segment.s3.get_extract_export_ids(segment.source.filename)]
+                old_ids = list(filter(lambda _id: _id, [validate_youtube_url(url, segment.segment_type, default="").upper()
+                                                   for url in segment.s3.get_extract_export_ids(segment.source.filename)]))
             except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
                 old_ids = []
             try:
-                new_ids = [validate_youtube_url(url, segment.segment_type).upper()
-                           for url in self._get_source_file_data(source_file)]
+                new_ids = list(filter(lambda _id: _id, [validate_youtube_url(url, segment.segment_type, default="").upper()
+                                                   for url in self._get_source_file_data(source_file)]))
             except TypeError:
                 new_ids = []
             if set(old_ids) != set(new_ids):

@@ -812,7 +812,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             source_file=source_file
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids",
-                   return_value=["source_url"]),\
+                   return_value=[f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}"]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_file_to_s3"):
             response = self.client.patch(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_200_OK)
