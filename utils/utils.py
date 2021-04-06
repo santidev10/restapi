@@ -123,12 +123,13 @@ def slice_generator(data_generator, limit):
         counter += 1
 
 
-def validate_youtube_url(url, url_type) -> str:
+def validate_youtube_url(url, url_type, default=None) -> str:
     """
     Return string youtube id if url is valid
     Otherwise return None if unable to extract id
     :param url: str
     :param url_type: int
+    :param default: Default value to return if id could not be extracted
     :return:
     """
     if url_type in {0, "video"}:
@@ -141,7 +142,7 @@ def validate_youtube_url(url, url_type) -> str:
         val = url.split(split)[-1]
         if len(val) == target:
             return val
-
+    return default
 
 def get_hash(s):
     """

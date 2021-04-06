@@ -99,7 +99,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         # Prepare docs to build segment
         _id = next(int_iterator)
-        doc = ChannelManager.model(f"channel_id_{_id}")
+        doc = ChannelManager.model(f"channel_id_{_id}".zfill(24))
         doc.populate_general_data(title=f"channel_title_{_id}")
         doc.populate_task_us_data(
             age_group=1,
@@ -148,7 +148,8 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         # Prepare docs to build segment
         _id = next(int_iterator)
-        doc = VideoManager.model(f"video_id_{_id}")
+        # Create standard video id length of 11. Unsure of _id length due to iterator
+        doc = VideoManager.model(f"video_id_{_id}".zfill(11)[:11])
         doc.populate_general_data(title=f"video_title_{_id}")
         doc.populate_task_us_data(
             age_group=0,
@@ -157,7 +158,7 @@ class GenerateVettedSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             iab_categories=["Test"],
             last_vetted_at=datetime.now(timezone.utc)
         )
-        # Prepare inclusion source list of urls
+        # Prepare inclusion source list of urls that ctl will retrieve data for
         source_file = io.BytesIO()
         source_key = f"source_{next(int_iterator)}"
         inclusion_urls = [f"https://www.youtube.com/watch?v={doc.main.id}".encode("utf-8")]

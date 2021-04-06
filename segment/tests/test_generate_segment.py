@@ -470,7 +470,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for _ in range(5):
             _id = next(int_iterator)
-            doc = VideoManager.model(f"id_{_id}")
+            doc = VideoManager.model(f"id_{_id}".zfill(11))
             doc.populate_general_data(title=f"title_{_id}", age_restricted=False)
             docs.append(doc)
         # Prepare inclusion source list of urls
@@ -511,7 +511,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for i in range(10):
             _id = next(int_iterator)
-            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc = ChannelManager.model(f"channel_id_{_id}".zfill(24))
             doc.populate_general_data(title=f"channel_title_{_id}")
             if i % 2 == 0:
                 doc.populate_monetization(is_monetizable=True)
@@ -617,7 +617,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for i in range(5):
             _id = next(int_iterator)
-            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc = ChannelManager.model(f"channel_id_{_id}".zfill(24))
             doc.populate_general_data(title=f"channel_title_{_id}")
             if i % 2 == 0:
                 doc.populate_monetization(is_monetizable=True)
