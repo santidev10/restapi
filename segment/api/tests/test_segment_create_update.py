@@ -702,7 +702,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         now = timezone.now()
         audit = AuditProcessor.objects.create(completed=now)
         segment = CustomSegment.objects.create(title="test_regenerates_not_reset_audit_status", segment_type=1, params={
-            Params.AuditTool.META_AUDIT_ID: audit.id,
+            Params.META_AUDIT_ID: audit.id,
         })
         CustomSegmentFileUpload.objects.create(segment=segment, query=dict())
         updated_payload = self.get_params(id=segment.id, minimum_views=1, segment_type=1)
