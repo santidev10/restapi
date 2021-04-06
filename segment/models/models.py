@@ -42,7 +42,7 @@ class ParamsTemplate(Timestampable):
 
 
 class SegmentAdGroupSync(Timestampable):
-    segment = models.OneToOneField(CustomSegment, related_name="sync", on_delete=models.CASCADE)
+    segment = models.ForeignKey(CustomSegment, related_name="gads_sync", on_delete=models.CASCADE)
     adgroup = models.OneToOneField("oauth.AdGroup", related_name="gads_sync", on_delete=models.CASCADE)
     is_synced = models.BooleanField(default=False, db_index=True)
 
