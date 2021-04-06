@@ -98,14 +98,16 @@ class DV360Connector:
         self._download(report_fp, report_download_url)
         return response
 
-    def get_ad_group_sdf_report(self, advertiser_id, insertion_order_id, target_dir):
+    def get_ad_group_sdf_report(self, advertiser_id, insertion_order_ids, target_dir):
+        if isinstance(insertion_order_ids, str):
+            insertion_order_ids = [insertion_order_ids]
         report_filter = {
             "version": self.SDF_VERSION,
             "advertiserId": advertiser_id,
             "parentEntityFilter": {
                 "fileType": "FILE_TYPE_AD_GROUP",
                 "filterType": "FILTER_TYPE_INSERTION_ORDER_ID",
-                "filterIds": [insertion_order_id],
+                "filterIds": insertion_order_ids,
             }
         }
         self.get_sdf_report(report_filter, target_dir)
