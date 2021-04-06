@@ -4,7 +4,7 @@ from administration.notifications import send_html_email
 
 
 def send_export_email(recipients, export_title, download_url):
-    subject = "ViewIQ: {}".format(export_title)
+    subject = "{}".format(export_title)
     text_header = "Your {} list is ready".format(export_title)
     text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
     send_html_email(
