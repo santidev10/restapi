@@ -55,8 +55,12 @@ urlpatterns_v2 = [
         views.SegmentPreviewAPIView.as_view(),
         name=Name.SEGMENT_PREVIEW),
 
-    url(r"^segments/sync/(?P<pk>.+)/$".format(segment_types),
-        views.SegmentSyncAPIView.as_view(),
-        name=Name.SEGMENT_SYNC),
+    url(r"^segments/sync/gads/(?P<pk>.+)/$",
+        views.SegmentGadsSyncAPIView.as_view(),
+        name=Name.SEGMENT_SYNC_GADS),
+
+    url(r"^segments/sync/dv360/(?P<pk>.+)/$",
+        views.SegmentDV360SyncAPIView.as_view(),
+        name=Name.SEGMENT_SYNC_DV360),
 ]
 

@@ -67,7 +67,7 @@ function updateSyncStatus(adgroupIds) {
 
 
 function getSyncUrl() {
-  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/'
+  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/gads/'
   var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
   var url = SYNC_ENDPOINT + cid + '/';
   return url

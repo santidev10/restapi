@@ -12,7 +12,7 @@ from segment.utils.utils import get_gads_sync_code
 from utils.views import get_object
 
 
-class SegmentSyncAPIView(APIView):
+class SegmentGadsSyncAPIView(APIView):
     def get(self, request, *args, **kwargs):
         """
         Get data from ViewIQ to update placements on GoogleAds
