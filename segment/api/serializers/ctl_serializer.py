@@ -35,6 +35,7 @@ from segment.utils.utils import delete_related
 from userprofile.models import UserProfile
 from utils.aws.s3_exporter import ReportNotFoundException
 from utils.datetime import seconds_to_hhmmss
+from utils.utils import validate_youtube_url
 
 logger = logging.getLogger(__name__)
 
@@ -279,12 +280,12 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # Check source file for changes
         if source_file is not None:
             try:
-                old_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                old_ids = [validate_youtube_url(url, segment.segment_type).upper()
                            for url in segment.s3.get_extract_export_ids(segment.source.filename)]
             except (CustomSegmentSourceFileUpload.DoesNotExist, ReportNotFoundException):
                 old_ids = []
             try:
-                new_ids = [segment.s3.parse_url(url, item_type=segment.segment_type).upper()
+                new_ids = [validate_youtube_url(url, segment.segment_type).upper()
                            for url in self._get_source_file_data(source_file)]
             except TypeError:
                 new_ids = []
@@ -382,28 +383,17 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
 
         final_source_file = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
-        if segment.segment_type == 0:
-            split_seq = ["?v=", "/video/"]
-            url_is_valid = lambda x: type(x) is str and len(x) == 11
-        else:
-            split_seq = ["/channel/"]
-            url_is_valid = lambda x: type(x) is str and len(x) == 24
         try:
-            # Limit source file
             rows = []
             with io.TextIOWrapper(source_file, encoding="utf-8") as source_text,\
                     open(final_source_file, mode="w") as dest:
                 reader = csv.reader(source_text, delimiter=",")
                 for row in reader:
-                    valid_url = False
-                    # Try each split to get id
-                    for seq in split_seq:
-                        try:
-                            valid = url_is_valid(row[0].split(seq)[-1])
-                            valid_url = valid if valid is True else valid_url
+                    try:
+                        valid_url = validate_youtube_url(row[0], segment.segment_type)
+                    except IndexError:
                         # Catch empty rows at end of csv
-                        except IndexError:
-                            pass
+                        continue
                     if valid_url:
                         rows.append(row)
                     if len(rows) >= self.SOURCE_LIST_MAX_SIZE:

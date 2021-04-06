@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from segment.models.utils.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
+from utils.utils import validate_youtube_url
 
 
 class SegmentExporter(S3Exporter):
@@ -75,19 +76,8 @@ class SegmentExporter(S3Exporter):
                     continue
                 except ValueError:
                     url_index = 0
-            item_id = self.parse_url(row[url_index], self.segment.segment_type)
+            item_id = validate_youtube_url(row[url_index], self.segment.segment_type)
             yield item_id
-
-    def parse_url(self, url, item_type="0"):
-        item_type = str(item_type)
-        config = {
-            "0": "?v=",
-            "1": "/channel/",
-            "video": "?v=",
-            "channel": "/channel/",
-        }
-        item_id = url.split(config[item_type])[-1]
-        return item_id
 
     def delete_export(self, s3_key=None):
         """
