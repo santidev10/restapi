@@ -184,3 +184,15 @@ class RunningAverage:
         :return:
         """
         return self.count
+
+    @staticmethod
+    def running_average(count: int, value: float, average: float):
+        """
+        get a running average given count, value, average
+        :param count:
+        :param value:
+        :param average:
+        :return:
+        """
+        average += (value - average) / count
+        return average
