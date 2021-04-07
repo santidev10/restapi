@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from uuid import uuid4
 from .constants import ENTITY_STATUS_CHOICES
 from .constants import OAUTH_CHOICES
 from utils.models import Timestampable
@@ -100,3 +101,10 @@ class AdGroup(OAuthBase):
     id = models.BigAutoField(primary_key=True)
     campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
     name = models.CharField(max_length=256, null=True, db_index=True)
+
+
+class OAuthAccountData(models.Model):
+    oauth_account = models.OneToOneField(OAuthAccount, related_name="data", on_delete=models.CASCADE)
+    # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
+    api_key = models.UUIDField(default=uuid4)
+    data = models.JSONField(default=dict)
