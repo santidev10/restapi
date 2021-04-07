@@ -4,6 +4,7 @@ from collections import Counter
 from django.db.models.query import QuerySet
 from itertools import count
 from itertools import groupby
+from typing import Union
 
 from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from utils.lang import flatten
@@ -149,3 +150,37 @@ def get_hash(s):
     :return: int, hashed string
     """
     return int(hashlib.sha256(s.encode("utf-8")).hexdigest(), 16) % 10 ** 8
+
+
+class RunningAverage:
+
+    def __init__(self):
+        self.count = 0
+        self.average = 0.0
+
+    def update(self, value: Union[float, int]) -> Union[float, str]:
+        """
+        increment the average, returns new value
+        :param value:
+        :return:
+        """
+        self.count += 1
+        self.average += (value - self.average) / self.count
+        return self.get_average()
+
+    def get_average(self, pretty=True) -> Union[float, str]:
+        """
+        get the current running average
+        :return:
+        """
+        average = self.average
+        if pretty:
+            average = f"{round(average, 2):,}"
+        return average
+
+    def get_count(self) -> int:
+        """
+        return the number of iterations or samples
+        :return:
+        """
+        return self.count

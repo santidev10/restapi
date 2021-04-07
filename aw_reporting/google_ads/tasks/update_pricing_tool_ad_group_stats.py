@@ -1,10 +1,15 @@
+import logging
 from datetime import date
+from datetime import datetime
 from datetime import timedelta
 from typing import Tuple
 from typing import Union
 
+from django.conf import settings
 from django.db.models import Max
 from django.db.models import Min
+from google.ads.google_ads.errors import GoogleAdsException
+from google.ads.google_ads.v6.proto.services.google_ads_service_pb2 import GoogleAdsRow
 from google.api_core.page_iterator import GRPCIterator
 
 from aw_reporting.google_ads.google_ads_api import get_client
@@ -14,12 +19,15 @@ from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.models.ad_words.ad_group import AdGroup
 from aw_reporting.models.statistic import AdGroupGeoViewStatistic
-from google.ads.google_ads.errors import GoogleAdsException
 from performiq.analyzers.utils import Coercers
+from saas import celery_app
+from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
 from utils.datetime import now_in_default_tz
 from utils.db.functions import safe_bulk_create
 
 
+LOCK_NAME = "pricing_tool_ad_group_stats"
 DATE_FORMAT = "%Y-%m-%d"  # month and day are zero-padded
 PERMISSION_DENIED_ERROR_CODE = "authorization_error: USER_PERMISSION_DENIED"
 EXPECTED_ERROR_CODES = [
@@ -27,25 +35,41 @@ EXPECTED_ERROR_CODES = [
 ]
 
 
-def update(hourly_update=True, size=50):
+logger = logging.getLogger(__name__)
+
+
+@celery_app.task
+def update(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
     """
     this will update pricing tool ad group stats on a schedule
     will also support updating all as an option
     :return:
     """
+    lock(lock_name=LOCK_NAME, expires=timedelta(hours=1).total_seconds())
     accounts = GoogleAdsUpdater.get_accounts_to_update(hourly_update=hourly_update, size=size, as_obj=True)
+    try:
+        for account in accounts:
+            updater = PricingToolAccountAdGroupStatsUpdater(account=account)
+            updater.run()
+    finally:
+        unlock(lock_name=LOCK_NAME)
+
+
+def update_all():
+    accounts = Account.objects.filter(managers__isnull=False).distinct()
     for account in accounts:
-        print(f"processing account: {account.name} (id: {account.id})")
-        updater = PricingToolAdGroupStatsUpdater(account=account)
+        updater = PricingToolAccountAdGroupStatsUpdater(account=account)
         updater.run()
 
 
-class PricingToolAdGroupStatsUpdater(UpdateMixin):
+class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
     """
     Gets segmented adgroup stats using Google Ads' Geographic View Report. Saves those stats to the
     AdGroupGeoViewStatistic model. These stats will be used by PricingTool V2 to provide an segmented pricing history
     @see https://developers.google.com/google-ads/api/fields/v6/geographic_view
     """
+
+    CREATE_THRESHOLD = 10000
 
     def __init__(self, account: Account):
         self.account = account
@@ -58,10 +82,12 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
         self.clients = [get_client(login_customer_id=manager.id) for manager in account.managers.all()]
         # standard channelfactory mcc login_customer_id
         self.clients.append(get_client())
-        self.stats_to_create = []
+        self.create_queue = []
         self.query_start_date = None
         self.query_end_date = None
         self.missing_ad_group_ids = []
+        self.stats_dropped = False
+        self.created_count = 0
 
     @staticmethod
     def _get_query(*_, **substitutions) -> str:
@@ -80,7 +106,7 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
         """.format(**substitutions)
         return query
 
-    def run(self, start_date: date = None, end_date: date = None):
+    def run(self, start_date: date = None, end_date: date = None) -> None:
         """
         run the updater for an account, optionally specify a star/end date
         :param start_date:
@@ -96,11 +122,11 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
             now = now_in_default_tz()
             min_account_date, max_account_date = self.get_account_border_dates(self.account)
             self.query_start_date = max_account_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) \
-                if max_account_date else self.MIN_FETCH_DATE
+                if max_account_date else datetime.strptime(self.MIN_FETCH_DATE, DATE_FORMAT)
             # get the latest date depending on timezone of the account
             self.query_end_date = self.max_ready_date(now, tz_str=self.account.timezone)
 
-        # make the request
+        # get the GAQL query
         query = self._get_query(start_date=self.query_start_date.strftime(DATE_FORMAT),
                                 end_date=self.query_end_date.strftime(DATE_FORMAT))
         # use available clients until we get stats to save, or exhaust all clients
@@ -116,7 +142,6 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
                 if not intersection:
                     raise e
 
-                print(f"caught {e.__class__} exception. Errors codes: {','.join(error_codes)}")
                 # retry with a different client if we get an expected permission denied exception
                 continue
 
@@ -124,15 +149,21 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
             break
 
         # only drop/create stats if there are stats to create
-        self._drop_stats()
+        self._drop_stats_before_first_create()
         self._create_stats()
+        self._clear_create_queue()
 
+        if self.created_count:
+            created_count_message = (f"created {self.created_count:,} pricing tool ad group stats records for account"
+                                     f"{self.account}")
+            logger.info(created_count_message)
         if len(self.missing_ad_group_ids):
-            print(f"skipped stats for the following non-existant adgroup ids: {self.missing_ad_group_ids}")
+            logger.warning(f"skipped stats for the following non-existant adgroup ids: {self.missing_ad_group_ids}")
 
-    def _handle_response(self, response: GRPCIterator):
+    def _handle_response(self, response: GRPCIterator) -> None:
         """
-        Update or create stat records
+        queue up AdGroupGeoViewStatistic instances to create. create when threshold met. Continue until report rows
+        are exhausted
         :param response:
         :return:
         """
@@ -144,34 +175,65 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
                 continue
 
             stats = self._get_stats_from_row(row)
-            self.stats_to_create.append(AdGroupGeoViewStatistic(**stats))
+            self.create_queue.append(AdGroupGeoViewStatistic(**stats))
+            # create stats if threshold met/exceeded. we don't want a huge queue of stuff to create.
+            # not doing this could cause memory issues
+            self._create_stats_if_threshold_met()
 
-    def _drop_stats(self):
+    def _create_stats_if_threshold_met(self) -> None:
         """
-        drop stats here, after we know the response is good and we have stats records to create
+        create all stats in create queue if create queue exceeds threshold
         :return:
         """
-        if not len(self.stats_to_create):
+        if len(self.create_queue) < self.CREATE_THRESHOLD:
             return
-        print(f"dropping stats from {self.query_start_date} to {self.query_end_date}")
+
+        self._drop_stats_before_first_create()
+        self._create_stats()
+        self._clear_create_queue()
+
+    def _drop_stats_before_first_create(self) -> None:
+        """
+        drop stats here, after we know the response is good and we have stats records to create. Only drop once
+        per run, since we're creating records that would be deleted on a subsequent run of the drop query
+        :return:
+        """
+        if self.stats_dropped:
+            return
+
+        if not len(self.create_queue):
+            return
+
         queryset = AdGroupGeoViewStatistic.objects.filter(ad_group__campaign__account=self.account)
         self.drop_custom_stats(queryset=queryset, min_date=self.query_start_date, max_date=self.query_end_date)
+        # don't drop stats again, since we're filling in stats that would be deleted by this query if run again
+        self.stats_dropped = True
 
     def _create_stats(self) -> None:
         """
         persist the stats records
         :return:
         """
-        if not len(self.stats_to_create):
+        create_count = len(self.create_queue)
+        if not create_count:
             return
-        print(f"creating {len(self.stats_to_create)} stats record(s)")
-        safe_bulk_create(AdGroupGeoViewStatistic, self.stats_to_create)
+        safe_bulk_create(AdGroupGeoViewStatistic, self.create_queue)
+        # record the number of items created
+        self.created_count += len(self.create_queue)
 
-    def _get_stats_from_row(self, row) -> dict:
+    def _clear_create_queue(self) -> None:
+        """
+        clear the create queue (after having created all within)
+        :return:
+        """
+        self.create_queue = []
+
+    def _get_stats_from_row(self, row: GoogleAdsRow) -> dict:
         """
         given a row, get a dict of the data we want to keep
+        NOTE: metrics are never null
         :param row:
-        :return:
+        :return: dict
         """
         stats = {
             "ad_group_id": row.ad_group.id,
@@ -217,3 +279,10 @@ class PricingToolAdGroupStatsUpdater(UpdateMixin):
             max_date=Max("date"),
         )
         return dates["min_date"], dates["max_date"]
+
+    def get_created_count(self):
+        """
+        get the number of records that were queued for creation
+        :return:
+        """
+        return self.created_count
