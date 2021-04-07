@@ -245,13 +245,6 @@ class SegmentQueryBuilder:
                 .gte(self._params["ias_verified_date"]).get()
             must_queries.append(ias_verified_query)
 
-        if self._params.get("mismatched_language") is not None:
-            mismatched_language_queries = QueryBuilder().build().must().term().field(
-                "task_us_data.mismatched_language").value(self._params["mismatched_language"]).get()
-            mismatched_language_queries |= QueryBuilder().build().must_not().exists().field(
-                "task_us_data.mismatched_language").get()
-            must_queries.append(mismatched_language_queries)
-
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             vetting_status_queries = Q("bool")
             for status in self._params["vetting_status"]:
@@ -291,6 +284,13 @@ class SegmentQueryBuilder:
         if self._exclude_blocklist is True:
             query &= QueryBuilder().build().must_not().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist")\
                 .value(True).get()
+
+        if self._params.get("mismatched_language", None) is True:
+            """ if mistmached_langauge is True, exclude all docs where mismatched_language=True """
+            val = self._params["mismatched_language"]
+            mismatched_language_query = QueryBuilder().build().must_not().term().field(
+                "task_us_data.mismatched_language").value(val).get()
+            query &= mismatched_language_query
 
         # Extend should queries last as combining queries with other queries (i.e. combining with forced_filters)
         # with operators (e.g. &, |) does not properly combine should queries
