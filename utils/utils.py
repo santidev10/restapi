@@ -166,9 +166,9 @@ class RunningAverage:
         """
         self.count += 1
         self.average += (value - self.average) / self.count
-        return self.get_average()
+        return self.get()
 
-    def get_average(self, pretty=True) -> Union[float, str]:
+    def get(self, pretty=True) -> Union[float, str]:
         """
         get the current running average
         :return:

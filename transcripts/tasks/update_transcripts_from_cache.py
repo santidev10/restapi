@@ -28,6 +28,7 @@ from utils.celery.tasks import lock
 from utils.exception import backoff
 from utils.transform import populate_video_custom_captions
 from utils.utils import chunked_queryset
+from utils.utils import RunningAverage
 
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,9 @@ class TranscriptsFromCacheUpdater:
         # chunking
         self.chunks_count = 0
         self.latest_chunk_dur_seconds = 0
-        self.average_chunk_dur_seconds = 0
+        self.avg_chunk_dur_secs = RunningAverage()
         self.latest_chunk_video_count = 0
-        self.average_chunk_video_count = 0
+        self.avg_vids_per_chunk_count = RunningAverage()
         self.en_language = None
         self.start_datetime = None
         # self.manager = self._get_manager_instance()
@@ -91,12 +92,8 @@ class TranscriptsFromCacheUpdater:
             self._handle_videos_chunk(chunk)
             self.latest_chunk_dur_seconds = (timezone.now() - start).total_seconds()
             self.chunks_count += 1
-            self.average_chunk_dur_seconds = running_average(count=self.chunks_count,
-                                                             value=self.latest_chunk_dur_seconds,
-                                                             average=self.average_chunk_dur_seconds)
-            self.average_chunk_video_count = running_average(count=self.chunks_count,
-                                                             value=self.latest_chunk_video_count,
-                                                             average=self.average_chunk_video_count)
+            self.avg_chunk_dur_secs.update(self.latest_chunk_dur_seconds)
+            self.avg_vids_per_chunk_count.update(self.latest_chunk_video_count)
             self._report()
 
             if self.SLEEP_SECONDS:
@@ -188,15 +185,15 @@ class TranscriptsFromCacheUpdater:
                                          2)
 
         chunks_remaining_count = round((self.ceiling - self.cursor) / self.CHUNK_SIZE)
-        eta_seconds = round(self.average_chunk_dur_seconds * chunks_remaining_count)
+        eta_seconds = round(self.avg_chunk_dur_secs.get(pretty=False) * chunks_remaining_count)
         message = (
             "\n"
             f"total transcripts progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
             f"----- chunks processed this run: {self.chunks_count} \n"
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
-            f"----- average chunk duration: {timedelta(seconds=self.average_chunk_dur_seconds)} \n"
+            f"----- average chunk duration: {timedelta(seconds=self.avg_chunk_dur_secs.get(pretty=False))} \n"
             f"----- videos this chunk: {self.latest_chunk_video_count} \n"
-            f"----- average videos per chunk: {round(self.average_chunk_video_count, 2)} \n"
+            f"----- average videos per chunk: {round(self.avg_vids_per_chunk_count.get(pretty=False), 2)} \n"
             f"----- chunks to completion: {chunks_remaining_count} \n"
             f"----- runtime: {timezone.now() - self.start_datetime} \n"
             f"----- estimated time to completion: {timedelta(seconds=eta_seconds)} \n"
@@ -438,18 +435,6 @@ class TranscriptsFromCacheUpdater:
     @staticmethod
     def _get_manager_instance():
         return VideoManager(sections=(Sections.MAIN,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
-
-
-def running_average(count: int, value: float, average: float):
-    """
-    get a running average
-    :param count:
-    :param value:
-    :param average:
-    :return:
-    """
-    average += (value - average) / count
-    return average
 
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
