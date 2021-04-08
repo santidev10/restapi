@@ -122,7 +122,7 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
             now = now_in_default_tz()
             min_account_date, max_account_date = self.get_account_border_dates(self.account)
             self.query_start_date = max_account_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) \
-                if max_account_date else datetime.strptime(self.MIN_FETCH_DATE, DATE_FORMAT)
+                if max_account_date else self.MIN_FETCH_DATE
             # get the latest date depending on timezone of the account
             self.query_end_date = self.max_ready_date(now, tz_str=self.account.timezone)
 
