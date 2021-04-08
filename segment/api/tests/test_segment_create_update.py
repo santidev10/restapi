@@ -1508,6 +1508,9 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(len(exported_source_list), 2)
 
     def test_template_id_in_ctl_parms(self, mock_generate):
+        """
+        Tests that template_id is in ctl_params in response if passed in with request payload
+        """
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         user = self.create_admin_user()
