@@ -52,7 +52,7 @@ def update(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
             updater = PricingToolAccountAdGroupStatsUpdater(account=account)
             updater.run()
     finally:
-        unlock(lock_name=LOCK_NAME)
+        unlock(lock_name=LOCK_NAME, fail_silently=True)
 
 
 def update_all():
