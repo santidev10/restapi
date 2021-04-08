@@ -94,8 +94,9 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
                 message = {"Error": "Template with that title and CTL type already exists."}
                 return Response(message, status=HTTP_400_BAD_REQUEST)
             except DataError:
-                message = {"Error": "Template title must be 100 characters or less."}
-                return Response(message, status=HTTP_400_BAD_REQUEST)
+                if isinstance(template_title, str) and len(template_title) > 100:
+                    message = {"Error": "Template title must be 100 characters or less."}
+                    return Response(message, status=HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         """
