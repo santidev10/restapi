@@ -166,6 +166,28 @@ class InsertionOrderAdapter(DV360BaseAdapter):
     }
 
 
+class LineItemAdapter(DV360BaseAdapter):
+    field_name_mapping = {
+        "name": "name",
+        "lineItemId": "id",
+        "insertionOrderId": "insertion_order_id",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+        "updateTime": "update_time",
+    }
+
+
+class AdgroupAdapter(DV360BaseAdapter):
+    field_name_mapping = {
+        "name": "name",
+        "adGroupId": "id",
+        "lineItemId": "line_item_id",
+        "displayName": "display_name",
+        "entityStatus": "entity_status",
+        "updateTime": "update_time",
+    }
+
+
 def request_partners(resource: Resource) -> dict:
     """
     given a Discovery Resource, request
@@ -204,3 +226,11 @@ def request_advertiser_campaigns(advertiser: DV360Advertiser, resource: Resource
 
 def request_insertion_orders(advertiser: DV360Advertiser, resource):
     return resource.advertisers().insertionOrders().list(advertiserId=str(advertiser.id)).execute()
+
+
+def request_line_items(advertiser: DV360Advertiser, resource):
+    return resource.advertisers().lineItems().list(advertiserId=str(advertiser.id)).execute()
+
+
+def request_adgroups(advertiser: DV360Advertiser, resource):
+    return resource.advertisers().adGroups().list(advertiserId=str(advertiser.id)).execute()

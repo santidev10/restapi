@@ -1,23 +1,23 @@
-import abc
-
 from django.conf import settings
 from oauth2client import client
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.views import APIView
 from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.views import APIView
 
 from oauth.models import OAuthAccount
 from oauth.constants import OAuthType
 from oauth.utils.client import get_google_access_token_info
+from performiq.oauth_utils import load_client_settings
 
 
-class GoogleOAuthBaseAPIView(APIView):
+class BaseGoogleOAuthAPIView(APIView):
     """
     Base OAuth API view for Google APIs
     """
 
-    permission_classes = None
+    permission_classes = (IsAuthenticated,)
     lost_perm_error = "You have already provided access to your accounts" \
         " but we've lost it. Please, visit https://myaccount.google.com/permissions and" \
         " revoke our application's permission then try again"
@@ -39,14 +39,6 @@ class GoogleOAuthBaseAPIView(APIView):
         """ Return an OAuthType enum value """
         raise NotImplementedError
 
-    @property
-    def client_settings(self, *args, **kwargs) -> dict:
-        """
-        Return the appropriate OAuth client settings for the app.
-        Should contain keys: user_agent, client_id, client_secret, developer_token
-        """
-        raise NotImplementedError
-
     def handler(self, oauth_account: OAuthAccount) -> Response:
         """
         Method that is called if OAuth is successful in cls.post method.
@@ -60,6 +52,15 @@ class GoogleOAuthBaseAPIView(APIView):
         """ Return scopes required for API access. Override this property if different scopes are required
         other than in cls.SCOPES, """
         return self.SCOPES[self.oauth_type]
+
+    @property
+    def client_settings(self, *args, **kwargs) -> dict:
+        """
+        Return the appropriate OAuth client settings for the app.
+        Should contain keys: user_agent, client_id, client_secret, developer_token
+        Override if different client settings are required
+        """
+        return load_client_settings()
 
     def post(self, request, *args, **kwargs) -> Response:
         """

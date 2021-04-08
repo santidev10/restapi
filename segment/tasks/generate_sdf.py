@@ -24,7 +24,7 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
     ctl = CustomSegment.objects.get(id=ctl_id)
     oauth_account = OAuthAccount.objects.get(email="kenneth.oh@channelfactory.com", oauth_type=1)
     dv = DV360Connector(oauth_account.token, oauth_account.refresh_token)
-    target_dir = f"{settings.TEMPDIR}/sdf/{uuid4()}"
+    target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}/"
     os.mkdir(target_dir)
     ad_group_sdf_fp = dv.get_ad_group_sdf_report(advertiser_id, io_ids, target_dir)
 
@@ -58,11 +58,11 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
             _remove_error_fields(row, remove_idx)
             writer.writerow(row)
 
-    content_disposition = ctl.s3.get_content_disposition(f"{ctl.title}_{ctl.params('The line item')}_SDF_AdGroups.csv")
+    content_disposition = ctl.s3.get_content_disposition(f"{ctl.title}_SDF_AdGroups.csv")
     s3_key = f"{uuid4()}.csv"
     ctl.s3.export_file_to_s3(output_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
     ctl.update_statistics(Results.DV360_SYNC, Results.EXPORT_FILENAME, s3_key)
-    send_export_email(user_email, f"{ctl.title}: DV360 Adgroups Inclusion Placements SDF Download", ctl.s3.generate_temporary_url(s3_key))
+    send_export_email(user_email, f"{ctl.title}: DV360 SDF Download", ctl.s3.generate_temporary_url(s3_key))
 
 
 def _remove_error_fields(row, idx):

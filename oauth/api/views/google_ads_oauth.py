@@ -5,29 +5,28 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from suds import WebFault
 
-from oauth.api.views.base_google_oauth import BaseGoogleOAuthAPIView
+from .base_google_oauth import BaseGoogleOAuthAPIView
 from oauth.constants import OAuthType
 from oauth.tasks.update_campaigns import update_campaigns_task
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
-from performiq.oauth_utils import load_client_settings
 from performiq.utils.adwords_report import get_accounts
 
 
-class AdWordsAuthApiView(BaseGoogleOAuthAPIView):
+class GoogleAdsOAuthAPIView(BaseGoogleOAuthAPIView):
     """
-    API View for Granting AdWords OAuth Access to PerformIQ
-    GET method gives a URL to go and grant access to our app
-    then send the code you will get in the query in POST request
+        API View for Granting AdWords OAuth Access to PerformIQ
+        GET method gives a URL to go and grant access to our app
+        then send the code you will get in the query in POST request
 
-    POST body example:
-    {"code": "<INSERT YOUR CODE HERE>"}
+        POST body example:
+        {"code": "<INSERT YOUR CODE HERE>"}
 
-    success POST response example:
-    {"email": "your@email.com",
-    "mcc_accounts": [{"id": 1234, "name": "Test Acc", "currency_code": "UAH",
-     "timezone": "Ukraine/Kiev"}]
-    }
-    """
+        success POST response example:
+        {"email": "your@email.com",
+        "mcc_accounts": [{"id": 1234, "name": "Test Acc", "currency_code": "UAH",
+         "timezone": "Ukraine/Kiev"}]
+        }
+        """
     permission_classes = ()
     no_mcc_error = "MCC account wasn't found. Please check that you " \
                    "really have access to at least one."
@@ -35,11 +34,6 @@ class AdWordsAuthApiView(BaseGoogleOAuthAPIView):
     @property
     def oauth_type(self):
         return OAuthType.GOOGLE_ADS.value
-
-    @property
-    def client_settings(self, *args, **kwargs):
-        client_settings = load_client_settings()
-        return client_settings
 
     def handler(self, oauth_account):
         # Get Name of First MCC Account
@@ -83,3 +77,4 @@ class AdWordsAuthApiView(BaseGoogleOAuthAPIView):
                 status = HTTP_400_BAD_REQUEST
             update_campaigns_task.delay(oauth_account.id)
             return Response(data=response, status=status)
+

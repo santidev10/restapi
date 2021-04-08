@@ -34,5 +34,5 @@ def update_adgroups_task(account_id: int, refresh_token: str) -> None:
     client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
     report = get_adgroup_report(client, ADGROUP_REPORT_FIELDS_MAPPING.values(), predicates=ADGROUP_REPORT_PREDICATES)
     to_update, to_create = prepare_items(report, AdGroup, ADGROUP_REPORT_FIELDS_MAPPING)
-    safe_bulk_create(AdGroup, to_create, batch_size=50)
+    safe_bulk_create(AdGroup, to_create, batch_size=100)
     AdGroup.objects.bulk_update(to_update, fields=clean_update_fields(ADGROUP_REPORT_FIELDS_MAPPING.keys()))

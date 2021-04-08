@@ -27,7 +27,7 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 class CTLGadsSyncTestCase(ExtendedAPITestCase):
 
     def _get_url(self, pk):
-        url = reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC, kwargs=dict(pk=pk))
+        url = reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC_GADS, kwargs=dict(pk=pk))
         return url
 
     def setUp(self):
