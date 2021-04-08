@@ -193,6 +193,8 @@ class CTLParamsSerializer(serializers.Serializer):
     minimum_views_include_na = NonRequiredBooleanField()
     mismatched_language = NonRequiredBooleanField()
 
+    template_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+
     def validate(self, data: dict) -> dict:
         validated_data = super().validate(data)
         # Only validate if content_categories was passed in
