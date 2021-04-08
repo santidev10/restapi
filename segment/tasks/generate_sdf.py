@@ -11,8 +11,11 @@ from segment.models import CustomSegment
 from segment.utils.send_export_email import send_export_email
 from utils.dv360_api import DV360Connector
 
-
-# DV360 API AdGroup SDF downloads contain these columns which break uploading SDFs in the DV360 UI.
+"""
+DV360 API AdGroup SDF downloads contain these columns which break uploading SDFs in the DV360 UI.
+Unknown why downloading SDF through api contains these columns but does not accept them when uploading SDF with these 
+columns through the DV360 UI
+"""
 REMOVE_COLUMNS = [
     "Placement Targeting - Popular Content - Include"
 ]
@@ -24,7 +27,7 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
     ctl = CustomSegment.objects.get(id=ctl_id)
     oauth_account = OAuthAccount.objects.get(email="kenneth.oh@channelfactory.com", oauth_type=1)
     dv = DV360Connector(oauth_account.token, oauth_account.refresh_token)
-    target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}/"
+    target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}"
     os.mkdir(target_dir)
     ad_group_sdf_fp = dv.get_ad_group_sdf_report(advertiser_id, io_ids, target_dir)
 
@@ -38,6 +41,7 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
         writer = csv.writer(dest)
 
         header = next(reader)
+        # Detect the column where placements need to be added
         placements_idx = header.index(PLACEMENTS_INCLUSION_KEY)
         remove_idx = []
         # Find indexes of erroneous columns to remove from data rows. Unknown why downloading SDF through api contains
@@ -62,9 +66,15 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
     s3_key = f"{uuid4()}.csv"
     ctl.s3.export_file_to_s3(output_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
     ctl.update_statistics(Results.DV360_SYNC, Results.EXPORT_FILENAME, s3_key)
-    send_export_email(user_email, f"{ctl.title}: DV360 SDF Download", ctl.s3.generate_temporary_url(s3_key))
+    send_export_email(user_email, f"{ctl.title}: DV360 Adgroups Inclusion Placements SDF Download", ctl.s3.generate_temporary_url(s3_key))
 
 
 def _remove_error_fields(row, idx):
+    """
+    Helper function to pop erroneous columns defined in REMOVE_COLUMNS
+    :param row: list
+    :param idx: int
+    :return:
+    """
     for i in idx:
         row.pop(i)
