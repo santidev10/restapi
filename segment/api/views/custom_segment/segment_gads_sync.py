@@ -1,3 +1,5 @@
+from django.db.models import F
+from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -12,7 +14,20 @@ from segment.utils.utils import get_gads_sync_code
 from utils.views import get_object
 
 
+class OAuthAPITokenPermissionClass(BasePermission):
+    """ Check if oauth api key is valid """
+    def has_permission(self, request, view):
+        if request.method in {"get", "patch"}:
+            viq_key = request.query_params.get("viq_key")
+            has_permission = get_object(OAuthAccount, viq_key=viq_key)
+        else:
+            has_permission = request.user and request.user.is_authenticated
+        return has_permission
+
+
 class SegmentGadsSyncAPIView(APIView):
+    permission_classes = (OAuthAPITokenPermissionClass,)
+
     def get(self, request, *args, **kwargs):
         """
         Get data from ViewIQ to update placements on GoogleAds
@@ -20,10 +35,21 @@ class SegmentGadsSyncAPIView(APIView):
         the CTL. This is because the script that runs on Google Ads is unaware of ViewIQ data
         """
         account = self._get_account()
-        code = get_gads_sync_code(account)
-        res = {
-            "code": code,
-        }
+        query_params = request.query_params
+        if query_params.get("as_mcc"):
+            viq_key = query_params["viq_token"]
+            oauth_account = get_object(OAuthAccount, viq_key=viq_key)
+            # Get the cids
+            cid_ids = SegmentAdGroupSync.objects\
+                .filter(adgroup__campaign__account__oauth_accounts=oauth_account)\
+                .annotate(cid=F("adgroup__campaign__account_id"))\
+                .values_list("cid", flat=True)
+            res = cid_ids
+        else:
+            code = get_gads_sync_code(account)
+            res = {
+                "code": code,
+            }
         return Response(res)
 
     def post(self, request, *args, **kwargs):

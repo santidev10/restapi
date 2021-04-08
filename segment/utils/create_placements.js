@@ -12,11 +12,10 @@ function run() {
       removeExistingPlacements(adGroup, placementType);
       createPlacements(adGroup, placementIds, placementType);
     }
-    processedAdGroupIds += adgroupIds;
+    if (!AdsApp.getExecutionInfo().isPreview()) {
+      updateSyncStatus(processedAdGroupIds);
+    }
   });
-  if (!AdsApp.getExecutionInfo().isPreview()) {
-    updateSyncStatus(processedAdGroupIds);
-  }
 }
 
 
