@@ -189,3 +189,60 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         self.assertEqual(len(response), 2)
         self.assertEqual(response[0].main.id, video_doc2.main.id)
         self.assertEqual(response[1].main.id, video_doc3.main.id)
+
+    def test_mismatched_language_exclusion_filter(self):
+        """
+        Tests that documents with mismatch_language=True are excluded when
+        mismatched_language=True is in params for SegmentQueryBuilder
+        """
+        # Test mismatched_language=True channels excluded with filter
+        channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc1.populate_task_us_data(
+            mismatched_language=True
+        )
+        channel_doc2.populate_task_us_data(
+            mismatched_language=False
+        )
+        self.channel_manager.upsert([channel_doc1, channel_doc2])
+        params = dict(
+            segment_type=1,
+            mismatched_language=True,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(query_builder.count(), 1)
+        self.assertEqual(response[0].main.id, channel_doc2.main.id)
+
+        # Test mismatched_language=True videos excluded with filter
+        video_doc1 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc2 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc1.populate_channel(
+            id=channel_doc1.main.id
+        )
+        video_doc1.populate_task_us_data(
+            mismatched_language=True
+        )
+        video_doc2.populate_channel(
+            id=channel_doc2.main.id
+        )
+        video_doc2.populate_task_us_data(
+            mismatched_language=False
+        )
+        self.video_manager.upsert([video_doc1, video_doc2])
+        params = dict(
+            segment_type=0,
+            mismatched_language=True,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(query_builder.count(), 1)
+        self.assertEqual(response[0].main.id, video_doc2.main.id)
+
+        # Test mismatched_language=False does not exclude docs
+        params = dict(
+            segment_type=0,
+            mismatched_language=False,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        self.assertEqual(query_builder.count(), 2)
