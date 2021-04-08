@@ -195,11 +195,6 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         Tests that documents with mismatched_language=True are excluded when
         mismatched_language=True is in params for SegmentQueryBuilder
         """
-        # clear channels
-        channels = self.channel_manager.search().execute()
-        ids = [item.main.id for item in channels]
-        self.channel_manager.delete(ids)
-
         # Test mismatched_language=True channels excluded with filter
         channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
         channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
@@ -215,7 +210,7 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
             mismatched_language=True
         )
         query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
-        response = query_builder.execute()
+        response = query_builder.execute(limit=100)
         ids = [item.main.id for item in response]
         self.assertNotIn(channel_doc1.main.id, ids)
         self.assertIn(channel_doc2.main.id, ids)
