@@ -11,8 +11,11 @@ from segment.models import CustomSegment
 from segment.utils.send_export_email import send_export_email
 from utils.dv360_api import DV360Connector
 
-
-# DV360 API AdGroup SDF downloads contain these columns which break uploading SDFs in the DV360 UI.
+"""
+DV360 API AdGroup SDF downloads contain these columns which break uploading SDFs in the DV360 UI.
+Unknown why downloading SDF through api contains these columns but does not accept them when uploading SDF with these 
+columns through the DV360 UI
+"""
 REMOVE_COLUMNS = [
     "Placement Targeting - Popular Content - Include"
 ]
@@ -29,7 +32,7 @@ def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
     ad_group_sdf_fp = dv.get_ad_group_sdf_report(advertiser_id, io_ids, target_dir)
 
     # SDF placements must be delimited by ;
-    urls = "; ".join(list(ctl.s3.get_extract_export_ids())[:50000])
+    urls = "; ".join(ctl.s3.get_extract_export_ids())
     output_fp = target_dir + "/output.csv"
     # Edit sdf file with placements from ctl
     with open(ad_group_sdf_fp, "r") as source, \
