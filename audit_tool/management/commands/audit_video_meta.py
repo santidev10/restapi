@@ -423,6 +423,7 @@ class Command(BaseCommand):
             if word not in acp.word_hits[node]:
                 acp.word_hits[node].append(word)
         acp.save(update_fields=["word_hits"])
+        self.acps[str(channel_id)] = acp
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
