@@ -416,7 +416,7 @@ class Command(BaseCommand):
             # pylint: enable=broad-except
                 return
         acp = self.acps[str(channel_id)]
-        acp.reload()
+        acp.refresh_from_db()
         if node not in acp.word_hits:
             acp.word_hits[node] = []
         for word in hits:
