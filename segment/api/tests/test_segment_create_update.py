@@ -23,6 +23,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models import CustomSegmentVettedFileUpload
+from segment.models import ParamsTemplate
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
 from segment.models.constants import Params
@@ -1506,3 +1507,25 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             .get()["Body"].read().decode('utf-8').split()
         self.assertEqual(len(exported_source_list), 2)
 
+    def test_template_id_in_ctl_parms(self, mock_generate):
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        user = self.create_admin_user()
+        params_template = ParamsTemplate.objects.create(
+            segment_type=0,
+            title="test id in ctl params",
+            owner=user
+        )
+        payload = {
+            "title": "test_create_with_source_success",
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+            "template_id": params_template.id
+        }
+        payload = self.get_params(**payload)
+        form = dict(
+            data=json.dumps(payload),
+        )
+        response = self.client.post(self._get_url(), form)
+        ctl_params = response.data.get("ctl_params")
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(ctl_params["template_id"], params_template.id)
