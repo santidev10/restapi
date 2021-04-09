@@ -1,0 +1,1 @@
+from .google_ads_update import google_ads_update_task
