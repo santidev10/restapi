@@ -33,6 +33,7 @@ PERMISSION_DENIED_ERROR_CODE = "authorization_error: USER_PERMISSION_DENIED"
 EXPECTED_ERROR_CODES = [
     PERMISSION_DENIED_ERROR_CODE,
 ]
+CREATE_THRESHOLD = 10000
 
 
 logger = logging.getLogger(__name__)
@@ -68,8 +69,6 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
     AdGroupGeoViewStatistic model. These stats will be used by PricingTool V2 to provide an segmented pricing history
     @see https://developers.google.com/google-ads/api/fields/v6/geographic_view
     """
-
-    CREATE_THRESHOLD = 10000
 
     def __init__(self, account: Account):
         self.account = account
@@ -185,7 +184,7 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
         create all stats in create queue if create queue exceeds threshold
         :return:
         """
-        if len(self.create_queue) < self.CREATE_THRESHOLD:
+        if len(self.create_queue) < CREATE_THRESHOLD:
             return
 
         self._drop_stats_before_first_create()
