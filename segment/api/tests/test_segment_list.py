@@ -55,6 +55,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         expected_fields = {
             "audit_id",
             "ctl_params",
+            "gads_is_synced",
             "id",
             "is_featured",
             "is_vetting_complete",

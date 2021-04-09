@@ -1,8 +1,4 @@
-/*
-This snippet of code should be pasted in client Google Ads account scripts to support updating
-placements for Google Ads resources
- */
-VIQ_KEY = ''
+VIQ_KEY = '{VIQ_KEY}'
 
 function main() {
   try {
@@ -14,23 +10,20 @@ function main() {
 }
 
 function mccRun() {
-  // Requests cid ids that contain adgroups to be synced and executes run function for each individual cid account
   var url = getSyncUrl() + '&as_mcc=true';
   var cids = JSON.parse(UrlFetchApp.fetch(url).getContentText());
-  // 50 is max number of accounts to process in parallel
   var accountSelector = AdsManagerApp.accounts().withLimit(50).withIds(cids);
   accountSelector.executeInParallel('run')
 }
 
 function run() {
-  // Retrieve execution code to create placements for adgroups under current cid account
   var url = getSyncUrl();
   var response = JSON.parse(UrlFetchApp.fetch(url).getContentText());
   eval(response.code + 'run()');
 }
 
 function getSyncUrl() {
-  var SYNC_ENDPOINT = 'https://rc.viewiq.com/api/v2/segments/sync/gads/'
+  var SYNC_ENDPOINT = 'https://viewiq.com/api/v2/segments/sync/gads/'
   var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
   var url = SYNC_ENDPOINT + cid + '/' + '?viq_key=' + VIQ_KEY
   return url
