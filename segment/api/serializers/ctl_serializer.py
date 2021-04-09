@@ -94,9 +94,9 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
-    gads_synced = SerializerMethodField()
+    gads_is_synced = SerializerMethodField()
 
-    def get_gads_synced(self, obj) -> bool:
+    def get_gads_is_synced(self, obj) -> bool:
         """
         Serialize if any SegmentAdGroupSync objects exists to be synced for the current CTL
         If there exists at least one object that was not synced, then the CTL is not considered synced

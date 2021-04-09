@@ -1,7 +1,9 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import F
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.response import Response
 
 from oauth.constants import OAuthType
@@ -19,8 +21,12 @@ class OAuthAPITokenPermissionClass(BasePermission):
     """ Check if oauth api key is valid """
     def has_permission(self, request, view):
         if request.method.lower() in {"get", "patch"}:
-            viq_key = request.query_params.get("viq_key")
-            has_permission = get_object(OAuthAccount, viq_key=viq_key)
+            try:
+                viq_key = request.query_params.get("viq_key")
+                has_permission = get_object(OAuthAccount, viq_key=viq_key, should_raise=False)
+            # If viq_key is invalid UUID
+            except DjangoValidationError:
+                has_permission = False
         else:
             has_permission = request.user and request.user.is_authenticated
         return has_permission
