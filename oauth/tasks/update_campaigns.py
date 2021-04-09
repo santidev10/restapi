@@ -5,6 +5,7 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_reports import AccountInactiveError
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from oauth.utils.client import get_client
@@ -111,7 +112,10 @@ def get_report(account_id: int, refresh_token: str):
     """ Retrieve Campaign report for Google Ads account id"""
     client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
     fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks", "CampaignStatus"]
-    report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
+    try:
+        report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
+    except AccountInactiveError:
+        report = []
     return account_id, report
 
 
