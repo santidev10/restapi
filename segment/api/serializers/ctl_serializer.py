@@ -24,6 +24,7 @@ from audit_tool.models import get_hash_name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
+from segment.models import SegmentAdGroupSync
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SourceListType
@@ -93,6 +94,14 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
     thumbnail_image_url = SerializerMethodField(read_only=True)
     created_at = DateTimeField(read_only=True)
     updated_at = DateTimeField(read_only=True)
+    gads_synced = SerializerMethodField()
+
+    def get_gads_synced(self, obj) -> bool:
+        """
+        Serialize if any SegmentAdGroupSync objects exists to be synced for the current CTL
+        If there exists at least one object that was not synced, then the CTL is not considered synced
+        """
+        return not SegmentAdGroupSync.objects.filter(segment=obj, is_synced=False).exists()
 
     def get_ctl_params(self, obj: CustomSegment) -> dict:
         """

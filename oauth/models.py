@@ -43,7 +43,6 @@ class OAuthAccount(OAuthBase):
     synced = models.BooleanField(default=False, db_index=True)
     # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
     viq_key = models.UUIDField(default=uuid4)
-    # Store information related to OAuthAccount e.g. If oauth account was synced with Google Ads
     data = models.JSONField(default=dict)
 
 
