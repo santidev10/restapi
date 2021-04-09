@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from oauth.constants import OAuthType
@@ -12,12 +13,14 @@ from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
+from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.models.utils.segment_exporter import SegmentExporter
 from segment.models import SegmentAdGroupSync
 from segment.models import CustomSegment
 from segment.models.constants import Params
 from segment.models.constants import Results
 from segment.models.constants import SegmentTypeEnum
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.patch_bulk_create import patch_bulk_create
@@ -34,7 +37,10 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         super().setUp()
-        self.user = self.create_test_user()
+        self.user = self.create_test_user(perms={
+            StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
+            StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
+        })
         self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value)
 
     def _mock_data(self, oauth_account=None):
@@ -45,6 +51,38 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
         adgroups = [AdGroup.objects.create(campaign=campaign, oauth_type=OAuthType.GOOGLE_ADS.value)]
         oauth_account.gads_accounts.add(account)
         return account, campaign, adgroups
+
+    def test_post_permission(self):
+        """ Test that GET and PATCH must provide viq_key as those requests originate from Google Ads Scripts """
+        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
+        account, campaign, adgroups = self._mock_data()
+        with self.subTest("GET fail no viq_key"):
+            response = self.client.get(self._get_url(account.id))
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        with self.subTest("GET fail invalid viq_key"):
+            response = self.client.get(self._get_url(account.id, viq_key="invalid"))
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        with self.subTest("GET success"):
+            response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+        with self.subTest("PATCH fail no viq_key"):
+            response = self.client.patch(self._get_url(account.id))
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        with self.subTest("PATCH fail invalid viq_key"):
+            response = self.client.patch(self._get_url(account.id, viq_key="invalid"))
+            self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        with self.subTest("PATCH success"):
+            payload = json.dumps({
+                "adgroup_ids": []
+            })
+            response = self.client.patch(self._get_url(account.id, self.oauth_account.viq_key), payload,
+                                       content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_get_sync_data(self):
         """ Test that data is retrieved using Google Ads account Account id as pk, as Google Ads is unaware of ViewIQ data """
@@ -174,3 +212,19 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
                                      content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(all(sync.is_synced for sync in SegmentAdGroupSync.objects.filter(adgroup_id__in=ag_ids)))
+
+    def test_ctl_gads_is_synced(self):
+        """ Test CTL serializer gads_is_synced value """
+        account, campaign, adgroups = self._mock_data(self.oauth_account)
+        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
+        SegmentAdGroupSync.objects.bulk_create([
+            SegmentAdGroupSync(adgroup=ag, segment=ctl, is_synced=False) for ag in adgroups
+        ])
+        with self.subTest("Test ctl.gads_synced = False as there exists related SegmentAdGroupSync.is_synced = False"):
+            serialized = CTLSerializer(ctl).data
+            self.assertEqual(serialized["gads_is_synced"], False)
+
+        with self.subTest("Test ctl.gads_synced = True"):
+            SegmentAdGroupSync.objects.filter(segment=ctl).update(is_synced=True)
+            serialized = CTLSerializer(ctl).data
+            self.assertEqual(serialized["gads_is_synced"], True)

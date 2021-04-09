@@ -10,5 +10,5 @@ from .custom_segment.segment_preview import SegmentPreviewAPIView
 from .custom_segment.segment_update import CustomSegmentUpdateApiView
 from .custom_segment.segment_create_update import SegmentCreateUpdateApiView
 from .custom_segment.segment_dv360_sync import SegmentDV360SyncAPIView
+from .custom_segment.segment_gads_script import SegmentGadsScriptAPIView
 from .custom_segment.segment_gads_sync import SegmentGadsSyncAPIView
-

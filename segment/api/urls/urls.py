@@ -55,6 +55,10 @@ urlpatterns_v2 = [
         views.SegmentPreviewAPIView.as_view(),
         name=Name.SEGMENT_PREVIEW),
 
+    url(r"^segments/sync/gads/script/$",
+        views.SegmentGadsScriptAPIView.as_view(),
+        name=Name.SEGMENT_GADS_SCRIPT),
+
     url(r"^segments/sync/gads/(?P<pk>.+)/$",
         views.SegmentGadsSyncAPIView.as_view(),
         name=Name.SEGMENT_SYNC_GADS),

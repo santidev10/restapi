@@ -5,6 +5,7 @@ from googleads.errors import GoogleAdsServerFault
 from google.auth.exceptions import RefreshError
 
 from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_reports import AccountInactiveError
 from oauth.models import Campaign
 from oauth.models import OAuthAccount
 from oauth.utils.client import get_client
@@ -61,7 +62,7 @@ def update_campaigns_task(oauth_account_id: int, mcc_accounts=None, cid_accounts
             logger.exception(f"Unexpected Exception updating campaigns for OAuthAccount id: {oauth_account_id}")
             return
 
-    update_accounts(oauth_account, mcc_accounts or [] + cid_accounts or [])
+    update_accounts(oauth_account, mcc_accounts or [] + cid_accounts or [], name_field="descriptiveName")
     if mcc_accounts:
         for mcc in mcc_accounts:
             update_mcc_campaigns(mcc["customerId"], oauth_account)
@@ -84,15 +85,17 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
     :return:
     """
     client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
-    all_cids = [int(cid["customerId"]) for cid in get_all_customers(client)]
+    all_customers = get_all_customers(client)
+    all_ids = [int(cid["customerId"]) for cid in all_customers]
 
-    for batch in chunks_generator(all_cids, size=20):
+    for batch in chunks_generator(all_ids, size=20):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=20) as executor:
             all_args = [(cid, oauth_account.refresh_token) for cid in batch]
             futures = [executor.submit(get_report, *args) for args in all_args]
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
             update_create_campaigns(report, account_id)
+    update_accounts(oauth_account, all_customers, name_field="name")
 
 
 def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
@@ -111,7 +114,10 @@ def get_report(account_id: int, refresh_token: str):
     """ Retrieve Campaign report for Google Ads account id"""
     client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
     fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks", "CampaignStatus"]
-    report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
+    try:
+        report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
+    except AccountInactiveError:
+        report = []
     return account_id, report
 
 
