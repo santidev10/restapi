@@ -11,6 +11,7 @@ from oauth.constants import OAuthType
 from oauth.utils.client import load_client_settings
 from oauth.utils.client import get_client
 from oauth.utils.client import API_VERSION
+from utils.db.functions import safe_bulk_create
 
 
 def get_aw_customers(refresh_token):
@@ -83,14 +84,14 @@ def get_accounts(oauth_account):
     return mcc_accounts, cid_accounts
 
 
-def update_accounts(oauth_account, account_data):
+def update_accounts(oauth_account, account_data, id_field="customerId", name_field="name"):
     """
     Update Google CID account objects
     :param oauth_account: OAuthAccount used to query get_customers
     :param account_data: get_customers function response
     :return:
     """
-    ids = [a["customerId"] for a in account_data]
+    ids = [a[id_field] for a in account_data]
     exists = set(Account.objects.filter(id__in=ids).values_list("id", flat=True))
     to_update = []
     to_create = []
@@ -99,8 +100,8 @@ def update_accounts(oauth_account, account_data):
             container = to_update
         else:
             container = to_create
-        container.append(Account(id=account["customerId"], name=account["descriptiveName"]))
-    Account.objects.bulk_create(to_create)
+        container.append(Account(id=account[id_field], name=account[name_field]))
+    safe_bulk_create(Account, to_create)
     Account.objects.bulk_update(to_update, fields=["name"])
     oauth_account.gads_accounts.add(*ids)
 
