@@ -419,10 +419,15 @@ class Command(BaseCommand):
         acp.refresh_from_db()
         if node not in acp.word_hits:
             acp.word_hits[node] = []
+            acp.save(update_fields=["word_hits"])
+        new_words = []
         for word in hits:
             if word not in acp.word_hits[node]:
-                acp.word_hits[node].append(word)
-        acp.save(update_fields=["word_hits"])
+                new_words.append(word)
+        if len(new_words) > 0:
+            acp.refresh_from_db()
+            acp.word_hits[node].extend(new_words)
+            acp.save(update_fields=["word_hits"])
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
