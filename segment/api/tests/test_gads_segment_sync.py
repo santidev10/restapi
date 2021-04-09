@@ -20,6 +20,7 @@ from segment.models import CustomSegment
 from segment.models.constants import Params
 from segment.models.constants import Results
 from segment.models.constants import SegmentTypeEnum
+from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.patch_bulk_create import patch_bulk_create
