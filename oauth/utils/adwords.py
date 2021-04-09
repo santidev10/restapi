@@ -152,7 +152,7 @@ def prepare_items(report: List[namedtuple], model, fields_mapping: Dict[str, str
             obj = exists_mapping[int(getattr(row, fields_mapping["id"]))]
             container = to_update
         except KeyError:
-            default = {"oauth_type": OAuthType.GoogleAds.value}
+            default = {"oauth_type": OAuthType.GOOGLE_ADS.value}
             obj = model(**default)
             container = to_create
         # Set attributes that should be set defined in defaults

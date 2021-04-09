@@ -1,7 +1,8 @@
 function run() {
   var ctlData = {CTL_DATA}
-  ctlData.Object.keys(function(ctlId) {
-    var adgroupIds = ctlData[ctlId].adGroupIds;
+  var processedAdGroupIds = [];
+  Object.keys(ctlData).forEach(function(ctlId) {
+    var adgroupIds = ctlData[ctlId].adgroupIds;
     var placementIds = ctlData[ctlId].placementIds;
     var placementType = ctlData[ctlId].placementType;
 
@@ -11,7 +12,10 @@ function run() {
       removeExistingPlacements(adGroup, placementType);
       createPlacements(adGroup, placementIds, placementType);
     }
-  })
+    if (!AdsApp.getExecutionInfo().isPreview()) {
+      updateSyncStatus(processedAdGroupIds);
+    }
+  });
 }
 
 
@@ -38,11 +42,11 @@ function removeExistingPlacements(adGroup, placementType) {
   }
 }
 
-function updateSyncStatus(ctl_id) {
+function updateSyncStatus(adgroupIds) {
   var options = {
     'muteHttpExceptions' : true,
     'method': 'PATCH',
-    'payload': JSON.stringify({ ctl_id: ctl_id }),
+    'payload': JSON.stringify({ adgroup_ids: adgroupIds }),
    	'contentType': 'application/json'
   };
   var url = getSyncUrl()
@@ -62,7 +66,7 @@ function updateSyncStatus(ctl_id) {
 
 
 function getSyncUrl() {
-  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/'
+  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/gads/'
   var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
   var url = SYNC_ENDPOINT + cid + '/';
   return url

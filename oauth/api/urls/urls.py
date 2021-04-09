@@ -1,9 +1,21 @@
 from django.conf.urls import url
 
-from oauth.api import views
 from .names import OAuthPathName as path_names
+from oauth.api import views
 
 urlpatterns = [
+    # Google AdWords OAuth
+    url(r"^gads_oauth/$",
+        views.GoogleAdsOAuthAPIView.as_view(),
+        name=path_names.GADS_OAUTH),
+    url(r"^gads_oauth/(?P<email>[^/]+)/$",
+        views.GoogleAdsOAuthAPIView.as_view(),
+        name=path_names.GADS_OAUTH),
+    # DV360 OAuth
+    url(r"^dv360_auth/$",
+        views.DV360AuthApiView.as_view(),
+        name=path_names.DV360_OAUTH),
+
     url(r"^oauth_accounts/(?P<pk>\d+)/$",
         views.OAuthAccountUpdateAPIView.as_view(),
         name=path_names.OAUTH_ACCOUNT_UPDATE),

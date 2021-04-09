@@ -26,8 +26,10 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 @mock.patch("segment.api.serializers.gads_sync_serializer.safe_bulk_create", patch_bulk_create)
 class CTLGadsSyncTestCase(ExtendedAPITestCase):
 
-    def _get_url(self, pk):
-        url = reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC, kwargs=dict(pk=pk))
+    def _get_url(self, pk, viq_key=None):
+        url = reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC_GADS, kwargs=dict(pk=pk))
+        if viq_key:
+            url += "?viq_key=" + str(viq_key)
         return url
 
     def setUp(self):
@@ -53,14 +55,14 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             SegmentAdGroupSync.objects.bulk_create([
                 SegmentAdGroupSync(adgroup=ag, segment=ctl, is_synced=True) for ag in adgroups
             ])
-            response = self.client.get(self._get_url(account.id))
+            response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertIsNone(response.data["code"])
 
         with self.subTest("Execution code if is_synced is False, as it has been marked for sync"),\
                 mock.patch.object(SegmentExporter, "get_extract_export_ids", return_value=[]):
             SegmentAdGroupSync.objects.filter(adgroup_id__in=[ag.id for ag in adgroups]).update(is_synced=False)
-            response = self.client.get(self._get_url(account.id))
+            response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertTrue(response.data["code"])
 
@@ -151,7 +153,8 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
         payload = {
             "adgroup_ids": [ag.id for ag in adgroups]
         }
-        response = self.client.patch(self._get_url(account.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(account.id, self.oauth_account.viq_key), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         ctl.refresh_from_db()
         self.assertTrue(len(ctl.statistics[Results.GADS_SYNC_DATA][Results.HISTORY]) == 1)
@@ -167,6 +170,7 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
         payload = {
             "adgroup_ids": ag_ids
         }
-        response = self.client.patch(self._get_url(account.id), data=json.dumps(payload), content_type="application/json")
+        response = self.client.patch(self._get_url(account.id, self.oauth_account.viq_key), data=json.dumps(payload),
+                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(all(sync.is_synced for sync in SegmentAdGroupSync.objects.filter(adgroup_id__in=ag_ids)))

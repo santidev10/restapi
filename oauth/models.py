@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from uuid import uuid4
 
 from .constants import ENTITY_STATUS_CHOICES
 from .constants import OAUTH_CHOICES
@@ -40,6 +41,10 @@ class OAuthAccount(OAuthBase):
     revoked_access = models.BooleanField(default=False, db_index=True)
     is_enabled = models.BooleanField(default=True, db_index=True)
     synced = models.BooleanField(default=False, db_index=True)
+    # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
+    viq_key = models.UUIDField(default=uuid4)
+    # Store information related to OAuthAccount e.g. If oauth account was synced with Google Ads
+    data = models.JSONField(default=dict)
 
 
 class Account(models.Model):
@@ -96,7 +101,14 @@ class InsertionOrder(DV360Base, DV360SharedFieldsMixin):
     campaign = models.ForeignKey(Campaign, related_name="insertion_orders", on_delete=models.CASCADE)
 
 
+class LineItem(DV360Base, DV360SharedFieldsMixin):
+    insertion_order = models.ForeignKey(InsertionOrder, related_name="line_items", on_delete=models.CASCADE)
+
+
 class AdGroup(OAuthBase):
     id = models.BigAutoField(primary_key=True)
-    campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
+    campaign = models.ForeignKey(Campaign, null=True, related_name="adgroups", on_delete=models.CASCADE)
+    line_item = models.ForeignKey(LineItem, null=True, related_name="adgroups", on_delete=models.CASCADE)
     name = models.CharField(max_length=256, null=True, db_index=True)
+
+

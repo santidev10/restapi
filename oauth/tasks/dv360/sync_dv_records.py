@@ -16,24 +16,32 @@ from oauth.models import OAuthAccount
 from oauth.constants import EntityStatusType
 from oauth.constants import OAuthType
 from oauth.tasks.dv360.serializers import AdvertiserSerializer
+from oauth.tasks.dv360.serializers import AdgroupSerializer
 from oauth.tasks.dv360.serializers import CampaignSerializer
 from oauth.tasks.dv360.serializers import InsertionOrderSerializer
+from oauth.tasks.dv360.serializers import LineItemSerializer
 from oauth.tasks.dv360.serializers import PartnerSerializer
 from oauth.utils.dv360 import AdvertiserAdapter
 from oauth.utils.dv360 import CampaignAdapter
 from oauth.utils.dv360 import InsertionOrderAdapter
 from oauth.utils.dv360 import PartnerAdapter
+from oauth.utils.dv360 import LineItemAdapter
+from oauth.utils.dv360 import AdgroupAdapter
 from oauth.utils.dv360 import get_discovery_resource
 from oauth.utils.dv360 import load_credentials
 from oauth.utils.dv360 import request_advertiser_campaigns
 from oauth.utils.dv360 import request_partner_advertisers
 from oauth.utils.dv360 import request_partners
 from oauth.utils.dv360 import request_insertion_orders
+from oauth.utils.dv360 import request_line_items
+from oauth.utils.dv360 import request_adgroups
 from oauth.utils.dv360 import serialize_dv360_list_response_items
-from utils.db.functions import safe_bulk_create
+from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import unlock
 from saas import celery_app
 
 
+SYNC_DV360_TASK_LOCK = "sync_dv360_task_lock"
 UPDATED_THRESHOLD_MINUTES = 30
 CREATED_THRESHOLD_MINUTES = 2
 logger = logging.getLogger(__name__)
@@ -44,6 +52,19 @@ def _revoked(oauth_account):
     oauth_account.save(update_fields=["revoked_access"])
     message = f"DV360 OAuth access lost for OAuthAccount: {oauth_account.id}"
     logger.warning(message)
+
+
+@celery_app.task
+def sync_dv360():
+    is_acquired = REDIS_CLIENT.lock(SYNC_DV360_TASK_LOCK).acquire(blocking=False)
+    if is_acquired:
+        sync_dv_partners()
+        sync_dv_advertisers()
+        sync_dv_campaigns()
+        sync_insertion_orders()
+        sync_line_items()
+        sync_adgroups()
+        unlock.run(lock_name=SYNC_DV360_TASK_LOCK, fail_silently=True)
 
 
 @celery_app.task
@@ -145,6 +166,16 @@ def sync_dv_campaigns():
 @celery_app.task
 def sync_insertion_orders():
     DVInsertionOrderSynchronizer().run()
+
+
+@celery_app.task
+def sync_line_items():
+    DVLineItemSynchronizer().run()
+
+
+@celery_app.task
+def sync_adgroups():
+    DVAdgroupSynchronizer().run()
 
 
 class AbstractThreadedDVSynchronizer:
@@ -282,6 +313,8 @@ class AbstractThreadedDVSynchronizer:
         logger.info("saving dv responses")
         # serialize the advertiser/campaign instances
         for response in self.responses:
+            if not response:
+                continue
             serializers = serialize_dv360_list_response_items(
                 response=response,
                 items_key=self.response_items_key,
@@ -345,9 +378,47 @@ class DVInsertionOrderSynchronizer(AbstractThreadedDVSynchronizer):
         self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
 
     def run(self):
-        logger.info(f"starting dv campaign sync...")
+        logger.info(f"starting insertion orders sync...")
         super().run()
 
     @staticmethod
     def get_request_function():
         return request_insertion_orders
+
+
+class DVLineItemSynchronizer(AbstractThreadedDVSynchronizer):
+    model_id_filter = "dv360_advertisers__id__in"
+    response_items_key = "lineItems"
+    adapter_class = LineItemAdapter
+    serializer_class = LineItemSerializer
+
+    def __init__(self):
+        super().__init__()
+        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
+
+    def run(self):
+        logger.info(f"starting line items sync...")
+        super().run()
+
+    @staticmethod
+    def get_request_function():
+        return request_line_items
+
+
+class DVAdgroupSynchronizer(AbstractThreadedDVSynchronizer):
+    model_id_filter = "dv360_advertisers__id__in"
+    response_items_key = "adGroups"
+    adapter_class = AdgroupAdapter
+    serializer_class = AdgroupSerializer
+
+    def __init__(self):
+        super().__init__()
+        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
+
+    def run(self):
+        logger.info(f"starting adgroups sync...")
+        super().run()
+
+    @staticmethod
+    def get_request_function():
+        return request_adgroups

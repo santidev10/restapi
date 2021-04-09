@@ -13,7 +13,14 @@ def load_settings():
     return conf
 
 
-def _get_client(*_, **settings):
+def _get_client(*_, **settings) -> GoogleAdsClient:
+    """
+    create a google ads client, given the provided settings
+    for more on login_customer_id, @see https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid
+    :param _:
+    :param settings:
+    :return:
+    """
     developer_token = settings.pop("developer_token")
     login_customer_id = str(settings.pop("login_customer_id"))
     oauth2_client = oauth2.get_credentials(settings)
@@ -26,6 +33,11 @@ def _get_client(*_, **settings):
 
 
 def get_client(**kwargs):
+    """
+    get the google ads client. Override loaded settings with the passed kwargs
+    :param kwargs:
+    :return:
+    """
     api_settings = load_settings()
     api_settings.update(kwargs)
     return _get_client(**api_settings)

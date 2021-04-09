@@ -48,6 +48,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.google_ads.tasks.update_geo_targets.update_geo_targets",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
     },
+    "google_ads_pricing_tool_ad_group_stats": {
+        "task": "aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats",
+        "schedule": crontab(hour="*", minute="*/5"),
+    },
     "full-sf-update": {
         "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
         "schedule": crontab(hour="*", minute="0"),
@@ -168,32 +172,8 @@ CELERY_BEAT_SCHEDULE = {
         # defaults to twice per day, 0500, 1700 PST
         "schedule": crontab(hour=os.getenv("IAS_INGESTION_SCHEDULE_HOUR", "0,12"), minute=0),
     },
-    # "sync_dv_partners": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_partners",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "sync_dv_advertisers": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_advertisers",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "sync_dv_campaigns": {
-    #     "task": "performiq.tasks.dv360.sync_dv_records.sync_dv_campaigns",
-    #     "schedule": crontab(minute="*/10"),
-    # },
-    # "performiq_google_ads_update": {
-    #     "task": "performiq.tasks.google_ads_update.google_ads_update_task",
-    #     "schedule": crontab(minute="*/10")
-    # },
-    "sync_dv_partners": {
-        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_partners",
-        "schedule": crontab(minute="*/10"),
-    },
-    "sync_dv_advertisers": {
-        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_advertisers",
-        "schedule": crontab(minute="*/10"),
-    },
-    "sync_dv_campaigns": {
-        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv_campaigns",
+    "sync_dv360": {
+        "task": "oauth.tasks.dv360.sync_dv_records.sync_dv360",
         "schedule": crontab(minute="*/10"),
     },
     "oauth_google_ads_update": {
@@ -228,6 +208,7 @@ CELERY_ROUTES_PREPARED = [
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.update.*", {"queue": Queue.HOURLY_STATISTIC}),
+    ("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),

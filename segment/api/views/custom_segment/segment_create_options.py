@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
+from django.db.utils import DataError
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -92,6 +93,10 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
             except IntegrityError:
                 message = {"Error": "Template with that title and CTL type already exists."}
                 return Response(message, status=HTTP_400_BAD_REQUEST)
+            except DataError:
+                if isinstance(template_title, str) and len(template_title) > 100:
+                    message = {"Error": "Template title must be 100 characters or less."}
+                    return Response(message, status=HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         """
