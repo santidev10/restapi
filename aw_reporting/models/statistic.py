@@ -59,7 +59,7 @@ class AdGroupGeoViewStatistic(models.Model):
     country = models.ForeignKey(GeoTarget, related_name="country_geo_view_stats", on_delete=models.CASCADE)
     region = models.ForeignKey(GeoTarget, related_name="region_geo_view_stats", on_delete=models.CASCADE)
     metro = models.ForeignKey(GeoTarget, related_name="metro_geo_view_stats", on_delete=models.CASCADE)
-    # metrics
+    # metrics (these are not nullable, since the report never yields null values)
     impressions = models.IntegerField(default=0, db_index=True)
     video_views = models.IntegerField(default=0, db_index=True)
     clicks = models.IntegerField(default=0, db_index=True)

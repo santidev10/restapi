@@ -580,6 +580,8 @@ DOMAIN_MANAGEMENT_PERMISSIONS = (
     "Tools > Ads Analyzer"
 )
 
+PRICING_TOOL_AD_GROUP_STATS_SIZE = 10
+
 try:
     from .local_settings import *
 except ImportError:
