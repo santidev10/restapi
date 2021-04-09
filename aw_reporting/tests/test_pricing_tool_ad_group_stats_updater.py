@@ -1,23 +1,22 @@
-# import mock
 import random
-from django.utils import timezone
+from datetime import timedelta
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.test import TransactionTestCase
-from datetime import timedelta
+from django.utils import timezone
 
+from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import DATE_FORMAT
+from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import PricingToolAccountAdGroupStatsUpdater
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
-from unittest.mock import patch
-from unittest.mock import MagicMock
-from aw_reporting.models.ad_words.ad_group import AdGroup
-from aw_reporting.models.ad_words.campaign import Campaign
 from aw_reporting.models.ad_words.account import Account
+from aw_reporting.models.ad_words.ad_group import AdGroup
 from aw_reporting.models.ad_words.ad_words import GeoTarget
-from aw_reporting.models.statistic import AdGroupGeoViewStatistic
+from aw_reporting.models.ad_words.campaign import Campaign
 from aw_reporting.models.ad_words.constants import AdGroupTypeEnum
 from aw_reporting.models.ad_words.constants import Device
-from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import PricingToolAccountAdGroupStatsUpdater
-from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import DATE_FORMAT
-from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import CREATE_THRESHOLD
+from aw_reporting.models.statistic import AdGroupGeoViewStatistic
 from utils.unittests.int_iterator import int_iterator
 
 
@@ -177,6 +176,10 @@ class RowFactory:
 
 
 class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
+    """
+    uses TransactionTestCase, since TestCase is run inside a transaction. safe_bulk_create, which is used by the
+    updater, doesn't like this.
+    """
 
     def test_create_new_records(self):
         """
