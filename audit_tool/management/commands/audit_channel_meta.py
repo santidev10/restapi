@@ -172,10 +172,24 @@ class Command(BaseCommand):
                     acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
                 else:
                     acp.clean = False
-            acp.save(update_fields=["clean", "processed", "word_hits"])
+            self.update_acp_values(acp)
             if self.placement_list and not db_channel_meta.monetised:
                 db_channel_meta.monetised = True
                 db_channel_meta.save(update_fields=["monetised"])
+
+    def update_acp_values(self, acp):
+        if not isinstance(acp, AuditChannelProcessor):
+            return
+        acp_clean = acp.clean
+        acp_processed = acp.processed
+        acp_word_hits_inclusion = acp.word_hits["inclusion"]
+        acp_word_hits_exclusion = acp.word_hits["exclusion"]
+        acp.refresh_from_db()
+        acp.clean = acp_clean
+        acp.processed = acp_processed
+        acp.word_hits["inclusion"] = acp_word_hits_inclusion
+        acp.word_hits["exclusion"] = acp_word_hits_exclusion
+        acp.save(update_fields=["clean", "processed", "word_hits"])
 
     def handle_bad_response_code(self, response, response_json, acp):
         """
