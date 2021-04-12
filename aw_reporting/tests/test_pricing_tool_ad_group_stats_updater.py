@@ -39,13 +39,13 @@ class RowFactory:
         :param geo_targets_count:
         """
         # create adgroup dependencies
-        timezone = "America/Los_Angeles"
+        timezone_string = "America/Los_Angeles"
         manager_id = next(int_iterator)
         self.manager = Account.objects.create(id=manager_id, name=f"manager_{manager_id}", is_active=True,
-                                              timezone=timezone)
+                                              timezone=timezone_string)
         account_id = next(int_iterator)
         self.account = Account.objects.create(id=account_id, name=f"account_{account_id}", is_active=True,
-                                              timezone=timezone)
+                                              timezone=timezone_string)
         campaign_id = next(int_iterator)
         self.campaign = Campaign.objects.create(id=campaign_id, name=f"campaign_{campaign_id}", account_id=account_id)
         # create adgroups
@@ -257,12 +257,12 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
 
         # create records that will persist, because they're outside the deletion range
         days_diffs = list(range(AD_WORDS_STABILITY_STATS_DAYS_COUNT + 1,
-                                AD_WORDS_STABILITY_STATS_DAYS_COUNT + random.randrange(2, 10)))
+                                AD_WORDS_STABILITY_STATS_DAYS_COUNT + 10))
         will_persist = self._get_stats_instances(days_diffs=days_diffs, row_factory=row_factory)
         will_persist = AdGroupGeoViewStatistic.objects.bulk_create(will_persist)
 
         # create reocrds that won't persist, because they're within the deletion range
-        days_diffs = list(range(0, AD_WORDS_STABILITY_STATS_DAYS_COUNT - random.randrange(8)))
+        days_diffs = list(range(0, AD_WORDS_STABILITY_STATS_DAYS_COUNT))
         wont_persist = self._get_stats_instances(days_diffs=days_diffs, row_factory=row_factory)
         wont_persist = AdGroupGeoViewStatistic.objects.bulk_create(wont_persist)
 
@@ -272,12 +272,8 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
             updater = PricingToolAccountAdGroupStatsUpdater(account=row_factory.get_account())
             updater.run()
 
-            new_stats_count = AdGroupGeoViewStatistic.objects.count()
-            expected_stats_count = existing_stats_count - len(wont_persist) + row_count
-
             all_ids = list(AdGroupGeoViewStatistic.objects.values_list("id", flat=True))
             # ensure the records we expect to be dropped are dropped
-            self.assertEqual(expected_stats_count, new_stats_count)
             for record in wont_persist:
                 with self.subTest(record):
                     self.assertNotIn(record.id, all_ids)
@@ -286,3 +282,6 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
                 with self.subTest(record):
                     self.assertIn(record.id, all_ids)
 
+            new_stats_count = AdGroupGeoViewStatistic.objects.count()
+            expected_stats_count = existing_stats_count - len(wont_persist) + row_count
+            self.assertEqual(expected_stats_count, new_stats_count)
