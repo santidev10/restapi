@@ -48,7 +48,7 @@ def get_campaign_report(client, fields, predicates: list = None, date_range: dic
 
 
 def get_adgroup_report(client, fields, predicates: list = None):
-    predicates = predicates or [{"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]}]
+    predicates = predicates or [{"field": "AdGroupStatus", "operator": "EQUALS", "values": ["ENABLED"]}]
     selector = {"fields": fields, "predicates": predicates}
     date_range_type = "ALL_TIME"
     report = _get_report(client, "ADGROUP_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,

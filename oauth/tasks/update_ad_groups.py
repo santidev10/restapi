@@ -19,8 +19,7 @@ ADGROUP_REPORT_FIELDS_MAPPING = dict(
 )
 
 ADGROUP_REPORT_PREDICATES = [
-    {"field": "AdGroupStatus", "operator": "EQUALS", "values": ["ENABLED"]},
-    {"field": "CampaignStatus", "operator": "EQUALS", "values": ["ENABLED"]},
+    {"field": "AdGroupStatus", "operator": "EQUALS", "values": ["PAUSED", "ENABLED"]}
 ]
 
 
