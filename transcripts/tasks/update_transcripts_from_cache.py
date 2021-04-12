@@ -10,11 +10,14 @@ from celery.exceptions import Retry
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
+from elasticapm.transport.exceptions import TransportException
+from elasticsearch.exceptions import ConnectionError
+from elasticsearch.exceptions import TransportError
 from elasticsearch.helpers.errors import BulkIndexError
 from http.client import IncompleteRead
 from urllib3.exceptions import ConnectionError as Urllib3ConnectionError
 from urllib3.exceptions import ProtocolError
-from elasticsearch.exceptions import ConnectionError
+from urllib3.exceptions import ReadTimeoutError
 
 from administration.notifications import send_email
 from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum
@@ -36,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 # the greatest extant AuditVideoTranscript ID after VIQ2-643 was released
 TRANSCRIPTS_UPDATE_ID_CEILING = 45831922
+UPSERT_BACKOFF_EXCEPTIONS = (TransportError, TransportException, ReadTimeoutError, BulkIndexError,)
 
 
 class TranscriptsFromCacheUpdater:
@@ -43,7 +47,7 @@ class TranscriptsFromCacheUpdater:
     CHUNK_SIZE = 5000
     SLEEP_SECONDS = 0
     EMAIL_LOCK_NAME = "update_transcripts_from_cache_email"
-    EMAIL_LIST = ["andrew.wong@channelfactory.com"]
+    EMAIL_LIST = ["andrew.wong@channelfactory.com", "alex.peace@channelfactory.com"]
 
     def __init__(self):
         self.cursor = 0
@@ -158,6 +162,7 @@ class TranscriptsFromCacheUpdater:
         for video_id in video_ids:
             self._handle_video(video_id)
 
+        self._set_rescore_flag()
         self._upsert_chunk()
         self.upsert_queue = []
 
@@ -420,8 +425,16 @@ class TranscriptsFromCacheUpdater:
 
         return transcript_texts, lang_codes
 
+    def _set_rescore_flag(self):
+        """
+        set all videos to be rescored
+        :return:
+        """
+        for video in self.upsert_queue:
+            video.populate_brand_safety(rescore=True)
+
     # exp. backoff w/ noise, intended to catch ES query queue limit exceeded exception
-    @backoff(max_backoff=600, exceptions=(BulkIndexError,))
+    @backoff(max_backoff=600, exceptions=UPSERT_BACKOFF_EXCEPTIONS)
     def _upsert_chunk(self):
         """
         upsert the current upsert queue
@@ -434,7 +447,8 @@ class TranscriptsFromCacheUpdater:
 
     @staticmethod
     def _get_manager_instance():
-        return VideoManager(sections=(Sections.MAIN,), upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+        return VideoManager(sections=(Sections.MAIN,), upsert_sections=(Sections.CUSTOM_CAPTIONS,
+                                                                        Sections.BRAND_SAFETY))
 
 
 def recurse_proof_of_concept(chunk: list = None, size=100):
