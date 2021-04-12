@@ -416,17 +416,16 @@ class Command(BaseCommand):
             # pylint: enable=broad-except
                 return
         acp = self.acps[str(channel_id)]
-        acp.refresh_from_db()
-        if node not in acp.word_hits:
-            acp.word_hits[node] = []
-            acp.save(update_fields=["word_hits"])
-        new_words = []
+        old_word_hits_node_list = []
+        if node in acp.word_hits:
+            old_word_hits_node_list = acp.word_hits[node]
+        word_hits_node_set = set(old_word_hits_node_list)
         for word in hits:
-            if word not in acp.word_hits[node]:
-                new_words.append(word)
-        if len(new_words) > 0:
+            word_hits_node_set.add(word)
+        new_word_hits_node_list = list(word_hits_node_set)
+        if len(new_word_hits_node_list) > len(old_word_hits_node_list):
             acp.refresh_from_db()
-            acp.word_hits[node].extend(new_words)
+            acp.word_hits[node] = new_word_hits_node_list
             acp.save(update_fields=["word_hits"])
 
     def audit_video_meta_for_emoji(self, db_video_meta):

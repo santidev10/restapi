@@ -181,14 +181,20 @@ class Command(BaseCommand):
         if not isinstance(acp, AuditChannelProcessor):
             return
         acp_clean = acp.clean
-        acp_processed = acp.processed
-        acp_word_hits_inclusion = acp.word_hits["inclusion"]
-        acp_word_hits_exclusion = acp.word_hits["exclusion"]
+        acp_processed = acp.processed if acp.processed is not None else None
+        acp_word_hits_inclusion = acp.word_hits["inclusion"] if "inclusion" in acp.word_hits else None
+        acp_word_hits_exclusion = acp.word_hits["exclusion"] if "exclusion" in acp.word_hits else None
+        acp_word_hits_error = acp.word_hits["error"] if "error" in acp.word_hits else None
         acp.refresh_from_db()
         acp.clean = acp_clean
-        acp.processed = acp_processed
-        acp.word_hits["inclusion"] = acp_word_hits_inclusion
-        acp.word_hits["exclusion"] = acp_word_hits_exclusion
+        if acp_processed is not None:
+            acp.processed = acp_processed
+        if acp_word_hits_inclusion is not None:
+            acp.word_hits["inclusion"] = acp_word_hits_inclusion
+        if acp_word_hits_exclusion is not None:
+            acp.word_hits["exclusion"] = acp_word_hits_exclusion
+        if acp_word_hits_error is not None:
+            acp.word_hits["error"] = acp_word_hits_error
         acp.save(update_fields=["clean", "processed", "word_hits"])
 
     def handle_bad_response_code(self, response, response_json, acp):
@@ -210,7 +216,7 @@ class Command(BaseCommand):
         acp.clean = False
         acp.processed = timezone.now()
         acp.word_hits["error"] = response.status_code
-        acp.save(update_fields=["clean", "processed", "word_hits"])
+        self.update_acp_values(acp)
 
     def get_videos_using_uploads_playlist(self, num_videos, acp):
         """
