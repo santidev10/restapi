@@ -23,7 +23,7 @@ function run() {
 }
 
 function getSyncUrl() {
-  var SYNC_ENDPOINT = 'https://viewiq.com/api/v2/segments/sync/gads/'
+  var SYNC_ENDPOINT = 'https://www.viewiq.com/api/v2/segments/sync/gads/'
   var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
   var url = SYNC_ENDPOINT + cid + '/' + '?viq_key=' + VIQ_KEY
   return url

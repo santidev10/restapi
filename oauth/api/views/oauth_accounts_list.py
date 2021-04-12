@@ -16,9 +16,9 @@ class OAuthAccountListPIView(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         gads_oauth_account = get_object(OAuthAccount, should_raise=False, user=user,
-                                        oauth_type=OAuthType.GOOGLE_ADS.value)
+                                        oauth_type=OAuthType.GOOGLE_ADS.value, is_enabled=True)
         dv360_oauth_account = get_object(OAuthAccount, should_raise=False, user=user,
-                                        oauth_type=OAuthType.DV360.value)
+                                        oauth_type=OAuthType.DV360.value, is_enabled=True)
         data = {
             "gads": OAuthAccountSerializer(gads_oauth_account).data if gads_oauth_account else None,
             "dv360": OAuthAccountSerializer(dv360_oauth_account).data if dv360_oauth_account else None,
