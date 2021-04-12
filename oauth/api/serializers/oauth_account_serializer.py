@@ -5,6 +5,7 @@ class OAuthAccountSerializer(serializers.Serializer):
     email = serializers.CharField(read_only=True)
     id = serializers.IntegerField(read_only=True)
     is_enabled = serializers.BooleanField(required=False)
+    synced = serializers.BooleanField(read_only=True)
 
     def update(self, instance, validated_data):
         for key, value in validated_data.items():

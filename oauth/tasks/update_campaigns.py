@@ -37,8 +37,7 @@ CAMPAIGN_REPORT_FIELDS_MAPPING = dict(
 )
 
 CAMPAIGN_REPORT_PREDICATES = [
-    {"field": "ServingStatus", "operator": "EQUALS", "values": ["SERVING"]},
-    {"field": "CampaignStatus", "operator": "EQUALS", "values": ["ENABLED"]},
+    {"field": "CampaignStatus", "operator": "IN", "values": ["PAUSED", "ENABLED"]},
 ]
 
 
@@ -126,5 +125,10 @@ def update_create_campaigns(report, account_id):
     to_update, to_create = prepare_items(
         report, Campaign, CAMPAIGN_REPORT_FIELDS_MAPPING, defaults={"account_id": account_id}
     )
+    # Add account id FK if missed in previous updates. Account id is not returned in API
+    # response so we must set manually
+    for campaign in to_update:
+        campaign.account_id = account_id
     safe_bulk_create(Campaign, to_create)
-    Campaign.objects.bulk_update(to_update, fields=clean_update_fields(CAMPAIGN_REPORT_FIELDS_MAPPING.keys()))
+    Campaign.objects.bulk_update(to_update,
+                                 fields=["account_id", *clean_update_fields(CAMPAIGN_REPORT_FIELDS_MAPPING.keys())])
