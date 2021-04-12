@@ -3,7 +3,6 @@ from django.db.models import F
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.response import Response
 
 from oauth.constants import OAuthType
@@ -74,7 +73,9 @@ class SegmentGadsSyncAPIView(APIView):
         serializer = GadsSyncSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response()
+        message = "Your Ad Groups are being synced with Google Ads. Please wait up to an hour for your changes to be" \
+                  "reflected on Google Ads."
+        return Response(message)
 
     def patch(self, request, *args, **kwargs):
         """
