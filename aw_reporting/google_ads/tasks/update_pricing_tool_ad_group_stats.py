@@ -120,10 +120,11 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
         else:
             now = now_in_default_tz()
             min_account_date, max_account_date = self.get_account_border_dates(self.account)
-            self.query_start_date = max_account_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) \
-                if max_account_date else self.MIN_FETCH_DATE
-            # get the latest date depending on timezone of the account
+            # get the latest date depending on timezone of the account, use max ready date since that can be greater
+            # than our latest stats because of timezone shift
             self.query_end_date = self.max_ready_date(now, tz_str=self.account.timezone)
+            self.query_start_date = self.query_end_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) \
+                if max_account_date else self.MIN_FETCH_DATE
 
         # get the GAQL query
         query = self._get_query(start_date=self.query_start_date.strftime(DATE_FORMAT),
