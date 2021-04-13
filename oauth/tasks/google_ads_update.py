@@ -75,7 +75,6 @@ def update_with_lock(update_func, account_id: int, oauth: OAuthAccount) -> None:
     :param oauth: OAuthAccount
     """
     lock = LOCK_PREFIX + str(account_id)
-    unlock(lock_name=lock, fail_silently=True)
     is_acquired = REDIS_CLIENT.lock(lock, timeout=3600 * 2).acquire(blocking=False)
     if is_acquired:
         try:
