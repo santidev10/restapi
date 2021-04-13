@@ -1,6 +1,7 @@
 import csv
 import enum
 import logging
+from datetime import timedelta
 from typing import Union
 from urllib import parse
 from urllib.parse import ParseResult
@@ -19,6 +20,7 @@ DISNEY_CREATIVE_ID_KEY = "dc_trk_cid"
 
 MAKE_GOOD = "Make Good"
 
+
 class DailyApexDisneyCampaignEmailReport(AbstractDailyApexEmailReport):
 
     CSV_HEADER = ("Campaign Advertiser ID", "Campaign Advertiser", "Campaign ID", "Campaign Name", "Placement ID",
@@ -29,6 +31,9 @@ class DailyApexDisneyCampaignEmailReport(AbstractDailyApexEmailReport):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tag_sheet_map = DisneyTagSheetMap()
+        # instead of using self.yesterday, we're getting the last 30d for this report. still excluding current date
+        # since numbers are inaccurate for current date
+        self.date_floor = self.yesterday - timedelta(days=30)
 
     def get_user(self):
         return get_user_model().objects.filter(email=settings.DAILY_APEX_DISNEY_CAMPAIGN_REPORT_CREATOR).first()
@@ -56,13 +61,14 @@ class DailyApexDisneyCampaignEmailReport(AbstractDailyApexEmailReport):
 
     def get_stats(self, campaign_ids: list, is_historical: bool = False):
         """
-        get stats day-by-day, instead of a summed "running total". If
+        get stats from the last 30 days, instead of a summed "running total". If
         is_historical is set, then results are not constrained to only
-        yesterday's.
+        the last 30 days.
         """
         filter_kwargs = {"ad__ad_group__campaign__id__in": campaign_ids, }
         if not is_historical:
-            filter_kwargs["date"] = self.yesterday
+            filter_kwargs["date__gte"] = self.date_floor
+            filter_kwargs["date__lte"] = self.yesterday
 
         return AdStatistic.objects.filter(**filter_kwargs) \
             .order_by("date", "impressions") \
