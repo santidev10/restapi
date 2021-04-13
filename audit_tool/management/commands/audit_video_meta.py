@@ -250,7 +250,6 @@ class Command(BaseCommand):
     def update_acps_from_local_dict(self):
         for acp in self.acps:
             db_acp = acp['acp']
-            db_acp.refresh_from_db()
             if len(acp['word_hits'] > 0):
                 for node in acp['word_hits']:
                     node_items_set = set(acp['word_hits'][node])
