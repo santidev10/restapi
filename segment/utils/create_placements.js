@@ -1,6 +1,5 @@
 function run() {
   var ctlData = {CTL_DATA}
-  var processedAdGroupIds = [];
   Object.keys(ctlData).forEach(function(ctlId) {
     var adgroupIds = ctlData[ctlId].adgroupIds;
     var placementIds = ctlData[ctlId].placementIds;
@@ -13,7 +12,7 @@ function run() {
       createPlacements(adGroup, placementIds, placementType);
     }
     if (!AdsApp.getExecutionInfo().isPreview()) {
-      updateSyncStatus(processedAdGroupIds);
+      updateSyncStatus(adgroupIds);
     }
   });
 }

@@ -19,7 +19,9 @@ function mccRun() {
 function run() {
   var url = getSyncUrl();
   var response = JSON.parse(UrlFetchApp.fetch(url).getContentText());
-  eval(response.code + 'run()');
+  if (response.code !== null) {
+    eval(response.code + 'run()');
+  }
 }
 
 function getSyncUrl() {
