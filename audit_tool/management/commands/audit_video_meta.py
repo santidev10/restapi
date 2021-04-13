@@ -242,9 +242,17 @@ class Command(BaseCommand):
             self.do_check_video(videos)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=["updated"])
+        self.update_acps_from_local_dict()
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit {}.  thread {}".format(self.audit.id, self.thread_id))
     # pylint: enable=too-many-branches,too-many-statements
+
+    def update_acps_from_local_dict(self):
+        for acp in self.acps:
+            db_acp = acp['acp']
+            if db_acp.word_hits != acp['word_hits']:
+                db_acp.word_hits = acp['word_hits']
+                db_acp.save(update_fields=['word_hits'])
 
     def do_check_video(self, videos):
         for video_id, avp in videos.items():
@@ -407,14 +415,16 @@ class Command(BaseCommand):
         channel_id = avp.video.channel_id
         if str(channel_id) not in self.acps:
             try:
-                self.acps[str(channel_id)] = AuditChannelProcessor.objects.get(
-                    audit_id=avp.audit_id,
-                    channel_id=channel_id,
-                )
+                self.acps[str(channel_id)] = {'acp': AuditChannelProcessor.objects.get(
+                        audit_id=avp.audit_id,
+                        channel_id=channel_id,
+                    ), 'word_hits' = {}
+                }
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
                 return
+<<<<<<< HEAD
         acp = self.acps[str(channel_id)]
         old_word_hits_node_list = []
         if node in acp.word_hits:
@@ -427,6 +437,20 @@ class Command(BaseCommand):
             acp.refresh_from_db()
             acp.word_hits[node] = new_word_hits_node_list
             acp.save(update_fields=["word_hits"])
+=======
+        acp = self.acps[str(channel_id)]['acp']
+        # acp.refresh_from_db()
+        if node not in acp.word_hits:
+            acp.word_hits[node] = []
+        if node not in self.acps[str(channel_id)]['word_hits']
+            self.acps[str(channel_id)]['word_hits'][node] = []
+        for word in hits:
+            if word not in acp.word_hits[node]:
+                acp.word_hits[node].append(word)
+            if word not in self.acps[str(channel_id)]['word_hits'][node]
+                self.acps[str(channel_id)]['word_hits'][node].append(word)
+        acp.save(update_fields=["word_hits"])
+>>>>>>> 1190732f944c6999c9a4ca70c89bd0d3b84301b5
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
