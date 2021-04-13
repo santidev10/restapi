@@ -250,8 +250,13 @@ class Command(BaseCommand):
     def update_acps_from_local_dict(self):
         for acp in self.acps:
             db_acp = acp['acp']
-            if db_acp.word_hits != acp['word_hits']:
-                db_acp.word_hits = acp['word_hits']
+            db_acp.refresh_from_db()
+            if len(acp['word_hits'] > 0):
+                for node in acp['word_hits']:
+                    node_items_set = set(acp['word_hits'][node])
+                    if node in db_acp.word_hits:
+                        node_items_set.update(db_acp.word_hits[node])
+                    db_acp.word_hits[node] = list(node_items_set)
                 db_acp.save(update_fields=['word_hits'])
 
     def do_check_video(self, videos):
@@ -416,25 +421,18 @@ class Command(BaseCommand):
         if str(channel_id) not in self.acps:
             try:
                 self.acps[str(channel_id)] = {
-                    'acp': AuditChannelProcessor.objects.get(audit_id=avp.audit_id,channel_id=channel_id),
-                    'word_hits' : {}
+                    'acp': AuditChannelProcessor.objects.get(audit_id=avp.audit_id, channel_id=channel_id),
+                    'word_hits': {}
                 }
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
                 return
         acp = self.acps[str(channel_id)]['acp']
-        # acp.refresh_from_db()
-        if node not in acp.word_hits:
-            acp.word_hits[node] = []
         if node not in self.acps[str(channel_id)]['word_hits']:
             self.acps[str(channel_id)]['word_hits'][node] = []
         for word in hits:
-            if word not in acp.word_hits[node]:
-                acp.word_hits[node].append(word)
-            if word not in self.acps[str(channel_id)]['word_hits'][node]:
-                self.acps[str(channel_id)]['word_hits'][node].append(word)
-        acp.save(update_fields=["word_hits"])
+            self.acps[str(channel_id)]['word_hits'][node].append(word)
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
