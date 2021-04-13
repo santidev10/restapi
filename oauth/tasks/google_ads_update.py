@@ -30,12 +30,11 @@ def google_ads_update_task(oauth_account_ids=None):
     resources
     :param oauth_account_ids: list -> OAuthAccount ids to update
     """
-    now = now_in_default_tz()
-    update_threshold = now - datetime.timedelta(seconds=UPDATE_THRESHOLD)
     oauth_filter = Q() if oauth_account_ids is None else Q(id__in=oauth_account_ids)
-    oauth_accounts = OAuthAccount.objects\
-        .filter(oauth_filter, oauth_type=OAuthType.GOOGLE_ADS.value)\
+    oauth_accounts = OAuthAccount.objects \
+        .filter(oauth_filter, oauth_type=OAuthType.GOOGLE_ADS.value) \
         .order_by("updated_at")
+    update_threshold = now_in_default_tz() - datetime.timedelta(seconds=UPDATE_THRESHOLD)
     for oauth in oauth_accounts:
         try:
             mcc_accounts, cid_accounts = get_accounts(oauth.refresh_token)
@@ -60,9 +59,10 @@ def get_to_update(accounts: list, update_threshold: datetime.datetime) -> list:
     :return: list -> Account ids to retrieve OAuth data for
     """
     ids = [a["customerId"] for a in accounts]
-    exists = Account.objects.filter(id__in=ids, updated_at__lte=update_threshold).values_list("id", flat=True)
-    remains = set(ids) - set(exists)
-    return [*exists, *remains]
+    exists = Account.objects.filter(id__in=ids).values_list("id", flat=True)
+    to_update = set(exists.filter(updated_at__lte=update_threshold))
+    to_create = set(ids) - set(exists)
+    return [*to_create, *to_update]
 
 
 def update_with_lock(update_func, account_id: int, oauth: OAuthAccount) -> None:
@@ -79,5 +79,6 @@ def update_with_lock(update_func, account_id: int, oauth: OAuthAccount) -> None:
     if is_acquired:
         try:
             update_func(account_id, oauth)
+            Account.objects.filter(id=account_id).update(updated_at=now_in_default_tz())
         finally:
             unlock(lock_name=lock, fail_silently=True)
