@@ -1,8 +1,16 @@
 import datetime
+import logging
 
+from django.db.models import Q
+from googleads.errors import GoogleAdsServerFault
+from google.auth.exceptions import RefreshError
+
+from .update_campaigns import update_mcc_campaigns
+from .update_campaigns import update_cid_campaigns
 from oauth.constants import OAuthType
+from oauth.models import Account
 from oauth.models import OAuthAccount
-from oauth.tasks.update_campaigns import update_campaigns_task
+from oauth.utils.adwords import get_accounts
 from saas import celery_app
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
@@ -10,28 +18,67 @@ from utils.datetime import now_in_default_tz
 
 LOCK_PREFIX = "oauth_google_ads_update_"
 UPDATE_THRESHOLD = 3600 * 2
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def google_ads_update_task():
+def google_ads_update_task(oauth_account_ids=None):
     """
     Main scheduler task to start individual account update tasks
+    Update process involves filtering for non existent and outdated accounts
+    Locks are acquired for each account update to prevent concurrent updates on similar
+    resources
+    :param oauth_account_ids: list -> OAuthAccount ids to update
     """
     now = now_in_default_tz()
     update_threshold = now - datetime.timedelta(seconds=UPDATE_THRESHOLD)
-    accounts = OAuthAccount.objects\
-        .filter(oauth_type=OAuthType.GOOGLE_ADS.value, updated_at__lte=update_threshold)\
+    oauth_filter = Q() if oauth_account_ids is None else Q(id__in=oauth_account_ids)
+    oauth_accounts = OAuthAccount.objects\
+        .filter(oauth_filter, oauth_type=OAuthType.GOOGLE_ADS.value)\
         .order_by("updated_at")
-    for account in accounts:
-        lock, is_acquired = get_lock(account.id)
-        if is_acquired:
-            update_campaigns_task(account.id)
-            account.updated_at = now_in_default_tz()
-            account.save()
-            unlock.run(lock_name=lock, fail_silently=True)
+    for oauth in oauth_accounts:
+        try:
+            mcc_accounts, cid_accounts = get_accounts(oauth.refresh_token)
+        except (GoogleAdsServerFault, RefreshError):
+            logger.warning(f"Error google_ads_update_task for OAuthAccount id: {oauth.id}")
+            continue
+
+        for mcc_id in get_to_update(mcc_accounts, update_threshold):
+            update_with_lock(update_mcc_campaigns, mcc_id, oauth)
+        for cid_id in get_to_update(cid_accounts, update_threshold):
+            update_with_lock(update_cid_campaigns, cid_id, oauth)
+
+        oauth.synced = True
+        oauth.save(update_fields=["synced"])
 
 
-def get_lock(account_id):
+def get_to_update(accounts: list, update_threshold: datetime.datetime) -> list:
+    """
+    Retrieve account ids to update that have not been updated within threshold.
+    :param accounts: list -> API response of get_accounts function
+    :param update_threshold: datetime -> Lowest acceptable update time to update accounts again
+    :return: list -> Account ids to retrieve OAuth data for
+    """
+    ids = [a["customerId"] for a in accounts]
+    exists = Account.objects.filter(id__in=ids, updated_at__lte=update_threshold).values_list("id", flat=True)
+    remains = set(ids) - set(exists)
+    return [*exists, *remains]
+
+
+def update_with_lock(update_func, account_id: int, oauth: OAuthAccount) -> None:
+    """
+    Invoke update_func for target account id only if lock is acquired
+    There may be instances in which many users have access to the same MCC, and if oauthing at
+    similar times, updates will be inefficient as the same resources will be retrieved
+    :param update_func: Function to perform update
+    :param account_id: int
+    :param oauth: OAuthAccount
+    """
     lock = LOCK_PREFIX + str(account_id)
-    is_acquired = REDIS_CLIENT.lock(lock, timeout=60 * 60 * 2).acquire(blocking=False)
-    return lock, is_acquired
+    unlock(lock_name=lock, fail_silently=True)
+    is_acquired = REDIS_CLIENT.lock(lock, timeout=3600 * 2).acquire(blocking=False)
+    if is_acquired:
+        try:
+            update_func(account_id, oauth)
+        finally:
+            unlock(lock_name=lock, fail_silently=True)

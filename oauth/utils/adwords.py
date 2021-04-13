@@ -42,7 +42,7 @@ def get_campaign_report(client, fields, predicates: list = None, date_range: dic
         date_range_type = "CUSTOM_DATE"
         selector["dateRange"] = date_range
     report = _get_report(client, "CAMPAIGN_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
-                         use_raw_enum_values=True, skip_column_header=True)
+                         use_raw_enum_values=True, skip_column_header=True, include_zero_impressions=True)
     rows = _output_to_rows(report, fields)
     return rows
 
@@ -52,7 +52,7 @@ def get_adgroup_report(client, fields, predicates: list = None):
     selector = {"fields": fields, "predicates": predicates}
     date_range_type = "ALL_TIME"
     report = _get_report(client, "ADGROUP_PERFORMANCE_REPORT", selector, date_range_type=date_range_type,
-                         use_raw_enum_values=True, skip_column_header=True)
+                         use_raw_enum_values=True, skip_column_header=True, include_zero_impressions=True)
     rows = _output_to_rows(report, fields)
     return rows
 
@@ -71,8 +71,8 @@ def get_report(client, report_query, fields, addl_fields=None):
     return result
 
 
-def get_accounts(oauth_account):
-    gads_accounts = get_customers(oauth_account)
+def get_accounts(refresh_token):
+    gads_accounts = get_customers(refresh_token)
     mcc_accounts = []
     cid_accounts = []
     for account in gads_accounts:
