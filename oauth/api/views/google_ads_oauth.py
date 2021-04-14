@@ -7,7 +7,7 @@ from suds import WebFault
 
 from .base_google_oauth import BaseGoogleOAuthAPIView
 from oauth.constants import OAuthType
-from oauth.tasks.update_campaigns import update_campaigns_task
+from oauth.tasks.google_ads_update import google_ads_update_task
 from performiq.api.serializers.aw_auth_serializer import AWAuthSerializer
 from performiq.utils.adwords_report import get_accounts
 
@@ -75,6 +75,5 @@ class GoogleAdsOAuthAPIView(BaseGoogleOAuthAPIView):
             else:
                 response = "You have no accounts to sync."
                 status = HTTP_400_BAD_REQUEST
-            update_campaigns_task.delay(oauth_account.id)
+            google_ads_update_task.delay([oauth_account.id])
             return Response(data=response, status=status)
-

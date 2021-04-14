@@ -5,10 +5,10 @@ from oauth.api import views
 
 urlpatterns = [
     # Google AdWords OAuth
-    url(r"^gads_oauth/$",
+    url(r"^aw_auth/$",
         views.GoogleAdsOAuthAPIView.as_view(),
         name=path_names.GADS_OAUTH),
-    url(r"^gads_oauth/(?P<email>[^/]+)/$",
+    url(r"^aw_auth/(?P<email>[^/]+)/$",
         views.GoogleAdsOAuthAPIView.as_view(),
         name=path_names.GADS_OAUTH),
     # DV360 OAuth
