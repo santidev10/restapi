@@ -9,6 +9,7 @@ from oauth.models import OAuthAccount
 from segment.models import CustomSegment
 from segment.models.constants import SegmentTypeEnum
 from segment.utils.utils import get_gads_sync_code
+from segment.utils.utils import GADS_ADGROUP_PLACEMENT_LIMIT
 from segment.models.utils.segment_exporter import SegmentExporter
 from segment.models import SegmentAdGroupSync
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -69,8 +70,21 @@ class GadsSyncCodeTestCase(ExtendedAPITestCase):
             self.assertFalse("Video" in code)
 
     def test_code_replaces_placement_ids(self,  mock_get_ids):
-        mock_ids = [f"test_id_{i}" for i in range(5)]
-        mock_get_ids.return_value = mock_ids
-        ctl, account, syncs = self._create_test_data(segment_type=SegmentTypeEnum.VIDEO.value)
-        code = get_gads_sync_code(account)
-        self.assertTrue(json.dumps(mock_ids) in code)
+        with self.subTest("Test placement ids are replaced"):
+            mock_ids = [f"test_id_{i}" for i in range(5)]
+            mock_get_ids.return_value = mock_ids
+            ctl, account, syncs = self._create_test_data(segment_type=SegmentTypeEnum.VIDEO.value)
+            code = get_gads_sync_code(account)
+            self.assertTrue(json.dumps(mock_ids) in code)
+
+        with self.subTest("Test that placement ids limit is 20k as Google Ads only allows 20k inclusion placements"
+                          "per Ad Group"):
+            mock_ids = [f"test_id_{i}" for i in range(GADS_ADGROUP_PLACEMENT_LIMIT + 1)]
+            mock_get_ids.return_value = mock_ids
+            ctl, account, syncs = self._create_test_data(segment_type=SegmentTypeEnum.VIDEO.value)
+            code = get_gads_sync_code(account)
+            # Extract placement id sync data that is replaced into script code
+            start = code.find(mock_ids[0]) - 1
+            end = code.find('], "placementType"')
+            sync_placement_ids = json.loads(f"[{code[start:end]}]")
+            self.assertEqual(len(sync_placement_ids), GADS_ADGROUP_PLACEMENT_LIMIT)

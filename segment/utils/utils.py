@@ -216,6 +216,9 @@ def delete_related(segment, *_, delete_ctl=True, **__):
         segment.delete()
 
 
+GADS_ADGROUP_PLACEMENT_LIMIT = 20000
+
+
 def get_gads_sync_code(account: Account):
     """
     Read in Google Ads Scripts code file and replace placeholders with data to execute in Google Ads Scripts
@@ -237,7 +240,7 @@ def get_gads_sync_code(account: Account):
         segment = CustomSegment.objects.get(id=segment_id)
         # Placement type is required as video and channel function names in Google Ads scripts are different
         placement_type = SegmentTypeEnum(segment.segment_type).name.capitalize()
-        placement_ids = list(segment.s3.get_extract_export_ids())
+        placement_ids = list(segment.s3.get_extract_export_ids())[:GADS_ADGROUP_PLACEMENT_LIMIT]
         sync_data[segment_id] = {
             "adgroupIds": ctl_to_adgroups[segment_id],
             "placementIds": placement_ids,

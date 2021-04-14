@@ -228,3 +228,27 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             SegmentAdGroupSync.objects.filter(segment=ctl).update(is_synced=True)
             serialized = CTLSerializer(ctl).data
             self.assertEqual(serialized["gads_is_synced"], True)
+
+    def test_as_mcc(self):
+        """ Test that as MCC, managed CID account ids are retrieved to execute script for each individual CID """
+        mcc = Account.objects.create()
+        self.oauth_account.gads_accounts.add(mcc)
+
+        # CID accounts
+        cid1, campaign1, adgroups1 = self._mock_data(self.oauth_account)
+        cid2, campaign2, adgroups2 = self._mock_data(self.oauth_account)
+
+        ctl = CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
+        SegmentAdGroupSync.objects.bulk_create([
+            SegmentAdGroupSync(adgroup=ag, segment=ctl, is_synced=False) for ag in adgroups1 + adgroups2
+        ])
+        with self.subTest("Test that Account CID id's are returned"):
+            response = self.client.get(self._get_url(mcc.id, self.oauth_account.viq_key) + "&as_mcc=true")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(list(response.data), [cid1.id, cid2.id])
+
+        with self.subTest("Test that response is empty if all SegmentAdGroupSync are synced"):
+            SegmentAdGroupSync.objects.all().update(is_synced=True)
+            response = self.client.get(self._get_url(mcc.id, self.oauth_account.viq_key) + "&as_mcc=true")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(list(response.data), [])
