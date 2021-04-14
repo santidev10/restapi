@@ -4,6 +4,7 @@ from googleapiclient.discovery import build, Resource
 from oauth2client.client import GoogleCredentials
 from rest_framework.serializers import Serializer
 
+from oauth.constants import EntityStatusType
 from oauth.models import DV360Advertiser
 from oauth.models import DV360Partner
 from oauth.models import OAuthAccount
@@ -234,3 +235,59 @@ def request_line_items(advertiser: DV360Advertiser, resource):
 
 def request_adgroups(advertiser: DV360Advertiser, resource):
     return resource.advertisers().adGroups().list(advertiserId=str(advertiser.id)).execute()
+
+
+def retrieve_sdf_items(dv_connector, advertiser_ids, fields_mapping, model):
+    import concurrent.futures
+    import os
+    from uuid import uuid4
+    import csv
+    from utils.db.functions import safe_bulk_create
+
+    base_sdf_dir = f"/tmp/sdf_{uuid4()}"
+    os.mkdir(base_sdf_dir)
+    dirs = []
+    for i in range(len(advertiser_ids)):
+        d = f"{base_sdf_dir}/sdf_{i}"
+        os.mkdir(d)
+        dirs.append(d)
+
+    all_args = [(a_id, target_dir) for a_id, target_dir in zip(advertiser_ids, dirs)]
+    all_fps = []
+    with concurrent.futures.thread.ThreadPoolExecutor(max_workers=len(all_args)) as executor:
+        futures = [executor.submit(dv_connector.get_line_items_sdf_report, *args) for args in all_args]
+        sdf_fps = [f.result() for f in concurrent.futures.as_completed(futures)]
+        all_fps.extend(sdf_fps)
+    data = []
+    for fp in all_fps:
+        with open(fp, "r") as file:
+            reader = csv.DictReader(file)
+            data.append([row for row in reader])
+    all_to_create = []
+    all_to_update = []
+    for rows in data:
+        to_create, to_update = prepare_sdf_items(rows, fields_mapping, model)
+        all_to_update.extend(to_update)
+        all_to_create.extend(to_create)
+    safe_bulk_create(model, all_to_create)
+    model.objects.bulk_update(all_to_update, fields=list(set(fields_mapping.keys()) - set("id")))
+    print('done')
+
+
+
+def prepare_sdf_items(rows, mapping, model, exists_filter=None):
+    to_create = []
+    to_update = []
+    exists = set(model.objects.filter(**exists_filter or {}).values_list("id", flat=True))
+    for row in rows:
+        data = {db_field: row.get(report_field) for db_field, report_field in mapping.items()}
+        try:
+            data["entity_status"] = EntityStatusType["ENTITY_STATUS_" + data["entity_status"].upper()].value
+        except KeyError:
+            data["entity_status"] = None
+        obj = model(**data)
+        container = to_update if obj.id in exists else to_create
+        container.append(obj)
+    return to_create, to_update
+
+

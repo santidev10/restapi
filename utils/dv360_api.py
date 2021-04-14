@@ -35,10 +35,6 @@ class DV360Connector:
         insertion_orders = res.get("insertionOrders", [])
         return insertion_orders
 
-    def line_items(self, *_, **kwargs):
-        res = self._resource.advertisers().lineItems().list(**kwargs).execute()
-        return res
-
     def download_metrics_report(self, report_fp: str, report_type: str, filters: List[Dict[str, str]],
                            metrics: List[str], group_by: List[str], date_range: str, report_format="csv") -> dict:
         """
@@ -97,6 +93,19 @@ class DV360Connector:
         report_download_url = response["metadata"]["googleCloudStoragePathForLatestReport"]
         self._download(report_fp, report_download_url)
         return response
+
+    def get_line_items_sdf_report(self, advertiser_id, target_dir):
+        report_filter = {
+            "version": self.SDF_VERSION,
+            "advertiserId": advertiser_id,
+            "parentEntityFilter": {
+                "fileType": "FILE_TYPE_LINE_ITEM",
+                "filterType": "FILTER_TYPE_NONE",
+            }
+        }
+        self.get_sdf_report(report_filter, target_dir)
+        sdf_fp = f"{target_dir}/SDF-LineItems.csv"
+        return sdf_fp
 
     def get_ad_group_sdf_report(self, advertiser_id, insertion_order_ids, target_dir):
         if isinstance(insertion_order_ids, str):

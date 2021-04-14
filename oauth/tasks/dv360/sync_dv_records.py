@@ -169,8 +169,20 @@ def sync_insertion_orders():
 
 
 @celery_app.task
-def sync_line_items():
-    DVLineItemSynchronizer().run()
+def sync_line_items(oauth_account_ids=None):
+    from oauth.utils.update import get_to_update
+    from utils.dv360_api import DV360Connector
+    from utils.datetime import now_in_default_tz
+    import datetime
+    thresh = now_in_default_tz() - timedelta(days=2)
+
+    ids_filter = Q() if oauth_account_ids is None else Q()
+    for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True, is_synced=True):
+        advertiser_ids = oauth.dv360_advertisers.all().values_list("id", flat=True)
+        advertisers_to_update = get_to_update(DV360Advertiser, advertiser_ids, thresh)
+        for advertiser in advertisers_to_update:
+            connector = DV360Connector(access_token=oauth.token, refresh_token=oauth.refresh_token)
+
 
 
 @celery_app.task
