@@ -245,7 +245,7 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
         with self.subTest("Test that Account CID id's are returned"):
             response = self.client.get(self._get_url(mcc.id, self.oauth_account.viq_key) + "&as_mcc=true")
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(list(response.data), [cid1.id, cid2.id])
+            self.assertEqual(set(response.data), {cid1.id, cid2.id})
 
         with self.subTest("Test that response is empty if all SegmentAdGroupSync are synced"):
             SegmentAdGroupSync.objects.all().update(is_synced=True)
