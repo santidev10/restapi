@@ -46,7 +46,7 @@ class SegmentGadsSyncAPIView(APIView):
             # If running as an MCC, the Google Ads scripts requires the cid account ids to individually request the
             # placement creation code for each account
             cid_ids = SegmentAdGroupSync.objects\
-                .filter(adgroup__campaign__account__oauth_accounts=oauth_account)\
+                .filter(is_synced=False, adgroup__campaign__account__oauth_accounts=oauth_account)\
                 .annotate(cid=F("adgroup__campaign__account_id"))\
                 .distinct()\
                 .values_list("cid", flat=True)
