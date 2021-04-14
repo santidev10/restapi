@@ -60,11 +60,3 @@ function updateSyncStatus(adgroupIds) {
     Logger.log(message);
   }
 }
-
-
-function getSyncUrl() {
-  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/gads/'
-  var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
-  var url = SYNC_ENDPOINT + cid + '/';
-  return url
-}
