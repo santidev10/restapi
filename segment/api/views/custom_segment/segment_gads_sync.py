@@ -74,7 +74,7 @@ class SegmentGadsSyncAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         message = "Your Ad Groups are being synced with Google Ads. Please wait up to an hour for your changes to be" \
-                  "reflected on Google Ads."
+                  " reflected on Google Ads."
         return Response(message)
 
     def patch(self, request, *args, **kwargs):

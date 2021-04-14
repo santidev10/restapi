@@ -52,15 +52,13 @@ function updateSyncStatus(adgroupIds) {
   var resp = UrlFetchApp.fetch(url, options);
   var message;
 
-  if (resp.getResponseCode() == 200) {
-    message = JSON.parse(resp.getContentText());
-  } else {
+  if (resp.getResponseCode() !== 200) {
     message = {
   	  'errorCode': resp.getResponseCode(),
       'message': resp.getContentText()
     };
+    Logger.log(message);
   }
-  return message;
 }
 
 
