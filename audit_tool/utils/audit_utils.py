@@ -219,6 +219,7 @@ class AuditUtils(object):
     def get_avp_from_url(seed, audit):
         if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
             return
+        seed = seed.replace('"', "").replace("'", "")
         v_id = seed.replace(",", "").split("/")[-1]
         if '?v=' in v_id:
             v_id = v_id.split("v=")[-1]
