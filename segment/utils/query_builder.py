@@ -19,6 +19,7 @@ from es_components.query_repository import get_last_vetted_at_exists_filter
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from utils.brand_safety import map_score_threshold
+from utils.search_after import search_after
 
 
 # pylint: disable=too-many-instance-attributes
@@ -379,7 +380,7 @@ class SegmentQueryBuilder:
             # Get the list of unique channel Ids using the current query
             video_manager = VideoManager(sections=(Sections.MAIN, Sections.CHANNEL))
             current_channel_ids_set = set()
-            for video in video_manager.scan(filters=current_query):
+            for video in search_after(current_query, video_manager, source=(Sections.MAIN, Sections.CHANNEL)):
                 current_channel_ids_set.add(video.channel.id)
 
             if len(current_channel_ids_set) > 0:
@@ -393,7 +394,7 @@ class SegmentQueryBuilder:
                 )
                 min_subs_ct_queries &= channel_manager.ids_query(ids=current_channel_ids_list)
                 filtered_channel_ids_list = []
-                for channel in channel_manager.scan(filters=min_subs_ct_queries):
+                for channel in search_after(min_subs_ct_queries, channel_manager, source=(Sections.MAIN, Sections.STATS)):
                     filtered_channel_ids_list.append(channel.main.id)
                 video_channels_subscribers_query = QueryBuilder().build().must().terms().field(
                                                         VIDEO_CHANNEL_ID_FIELD).value(filtered_channel_ids_list).get()
