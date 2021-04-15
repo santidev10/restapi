@@ -595,7 +595,8 @@ class AuditExportApiView(APIView):
         for cid in channels:
             full_channel_id = cid.channel.channel_id
             channel_ids.append(full_channel_id)
-            auditchannelmeta_dict[full_channel_id] = cid.channel.auditchannelmeta
+            if not auditchannelmeta_dict.get(full_channel_id):
+                auditchannelmeta_dict[full_channel_id] = cid.channel.auditchannelmeta
             channel_videos_count = 0
             if auditchannelmeta_dict[full_channel_id].video_count is not None:
                 channel_videos_count = auditchannelmeta_dict[full_channel_id].video_count
@@ -667,7 +668,9 @@ class AuditExportApiView(APIView):
         print("EXPORT: starting channel processing of export {}".format(export.id))
         for db_channel in channels:
             channel = db_channel.channel
-            v = auditchannelmeta_dict[channel.channel_id]
+            v = auditchannelmeta_dict.get(channel.channel_id)
+            if not v:
+                v = channel.auditchannelmeta
             try:
                 language = self.get_lang(v.language_id)
             # pylint: disable=broad-except
