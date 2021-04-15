@@ -31,7 +31,6 @@ from utils.aws.s3_exporter import S3Exporter
 from utils.brand_safety import map_brand_safety_score
 from utils.permissions import user_has_permission
 from utils.utils import chunks_generator
-from utils.utils import remove_tags_punctuation
 
 
 class AuditExportApiView(APIView):
