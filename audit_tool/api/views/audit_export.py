@@ -797,7 +797,7 @@ class AuditExportApiView(APIView):
         if not isinstance(audit, AuditProcessor) or not isinstance(acp, AuditChannelProcessor):
             return
         avps = AuditVideoProcessor.objects.filter(audit=audit, channel=acp.channel)
-        if len(avps) > len(acp.word_hits.get('processed_video_ids')):
+        if avps is not None and len(avps) > len(acp.word_hits.get('processed_video_ids')):
             for avp in avps:
                 if not BlacklistItem.get(avp.video.video_id, BlacklistItem.VIDEO_ITEM):
                     self.check_video_is_clean(audit, acp, avp)
