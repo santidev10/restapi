@@ -248,7 +248,7 @@ class Command(BaseCommand):
     # pylint: enable=too-many-branches,too-many-statements
 
     def update_acps_word_hits_from_local_dict(self):
-        for channel_id_str, acp_data in self.acps_data.iteritems():
+        for channel_id_str, acp_data in self.acps_data.items():
             if len(acp_data['word_hits']) > 0:
                 try:
                     db_acp = AuditChannelProcessor.objects.get(audit_id=acp_data['audit_id'],
