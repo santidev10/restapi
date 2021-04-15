@@ -36,8 +36,13 @@ function removeExistingPlacements(adGroup, placementType) {
   // Remove all existing placements before adding new ones
   var targetingName = 'youTube' + placementType + 's';
   var placementsIterator = adGroup.videoTargeting()[targetingName]().get();
+  var count = 0;
   while (placementsIterator.hasNext()) {
     placementsIterator.next().remove();
+    count += 1;
+    if (count % 5000 === 0) {
+      Utilities.sleep(1000);
+    }
   }
 }
 
@@ -52,21 +57,11 @@ function updateSyncStatus(adgroupIds) {
   var resp = UrlFetchApp.fetch(url, options);
   var message;
 
-  if (resp.getResponseCode() == 200) {
-    message = JSON.parse(resp.getContentText());
-  } else {
+  if (resp.getResponseCode() !== 200) {
     message = {
   	  'errorCode': resp.getResponseCode(),
       'message': resp.getContentText()
     };
+    Logger.log(message);
   }
-  return message;
-}
-
-
-function getSyncUrl() {
-  var SYNC_ENDPOINT = '{DOMAIN}/api/v2/segments/sync/gads/'
-  var cid = AdsApp.currentAccount().getCustomerId().split('-').join('');
-  var url = SYNC_ENDPOINT + cid + '/';
-  return url
 }
