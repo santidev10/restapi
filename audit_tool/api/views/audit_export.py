@@ -596,7 +596,9 @@ class AuditExportApiView(APIView):
             channel_ids.append(full_channel_id)
             if audit.params.get('do_videos'):
                 try:
-                    if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos():
+                    if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() and \
+                            cid.channel.auditchannelmeta.video_count is not None and \
+                            cid.channel.auditchannelmeta.video_count >= audit.get_num_videos():
                         self.aggregate_channel_word_hits(audit=audit, acp=cid)
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
                 # pylint: disable=broad-except
@@ -794,42 +796,37 @@ class AuditExportApiView(APIView):
         return s3_file_name, download_file_name
 
     def aggregate_channel_word_hits(self, audit, acp):
-        if not isinstance(audit, AuditProcessor) or not isinstance(acp, AuditChannelProcessor):
+        if not isinstance(audit, AuditProcessor) or \
+                not isinstance(acp, AuditChannelProcessor) or \
+                not audit.params.get("do_videos"):
             return
         avps = AuditVideoProcessor.objects.filter(audit=audit, channel=acp.channel)
-        if avps is not None and len(avps) > len(acp.word_hits.get('processed_video_ids')):
+        if len(avps) > len(acp.word_hits.get('processed_video_ids')):
             for avp in avps:
-                if not BlacklistItem.get(avp.video.video_id, BlacklistItem.VIDEO_ITEM):
-                    self.check_video_is_clean(audit, acp, avp)
-                else:
+                if BlacklistItem.get(avp.video.video_id, BlacklistItem.VIDEO_ITEM):
                     self.append_to_channel(acp, avp, [avp.video_id], "bad_video_ids")
-
-    def get_video_word_hits(self, audit, acp, avp):
-        """
-        This is a helper function to the aggregate_channel_word_hits function to collect the word_hits data
-        from the video and append it to the channel's word_hits
-        """
-        if audit.params.get("do_videos"):
-            db_video_meta = AuditVideoMeta.objects.get(video=avp.video)
-            self.append_to_channel(acp, [avp.video_id], "processed_video_ids")
-            if db_video_meta.made_for_kids:
-                self.append_to_channel(acp, [avp.video_id], "made_for_kids")
-            if db_video_meta.age_restricted:
-                self.append_to_channel(acp, [avp.video_id], "age_restricted_videos")
-                self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
-            if "inclusion" in avp.word_hits and len(avp.word_hits["inclusion"]) > 0:
-                self.append_to_channel(acp, avp.word_hits["inclusion"], "inclusion_videos")
-            if "exclusion" in avp.word_hits and len(avp.word_hits["exclusion"]) > 0:
-                self.append_to_channel(acp, avp.word_hits["exclusion"], "exclusion_videos")
-                self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
-            if "exclusion_title" in avp.word_hits and len(avp.word_hits["exclusion_title"]) > 0:
-                self.append_to_channel(acp, avp.word_hits["exclusion_title"], "exclusion_videos")
-                self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+                else:
+                    db_video_meta = AuditVideoMeta.objects.get(video=avp.video)
+                    self.append_to_channel(acp, [avp.video_id], "processed_video_ids")
+                    if db_video_meta.made_for_kids:
+                        self.append_to_channel(acp, [avp.video_id], "made_for_kids")
+                    if db_video_meta.age_restricted:
+                        self.append_to_channel(acp, [avp.video_id], "age_restricted_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+                    if "inclusion" in avp.word_hits and len(avp.word_hits["inclusion"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["inclusion"], "inclusion_videos")
+                    if "exclusion" in avp.word_hits and len(avp.word_hits["exclusion"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["exclusion"], "exclusion_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+                    if "exclusion_title" in avp.word_hits and len(avp.word_hits["exclusion_title"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["exclusion_title"], "exclusion_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
 
     def append_to_channel(self, acp, hits, node):
         """
-        This is a helper function to the aggregate_channel_word_hits function
-        it adds the items in "hits" to the list "acp.word_hits[node]", and saves the acp object after the change
+        This is a helper function to the aggregate_channel_word_hits function.
+        It adds the items in "hits" to the list "acp.word_hits[node]", eliminates duplicates,
+        and saves the acp object after the change
         """
         if node not in acp.word_hits:
             acp.word_hits[node] = []
