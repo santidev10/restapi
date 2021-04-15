@@ -797,7 +797,6 @@ class AuditExportApiView(APIView):
     def aggregate_channel_word_hits(self, audit, acp):
         if not isinstance(audit, AuditProcessor) or not isinstance(acp, AuditChannelProcessor):
             return
-        acp.refresh_from_db()
         avps = AuditVideoProcessor.objects.filter(audit=audit, channel=acp.channel)
         if len(avps) > len(acp.word_hits.get('processed_video_ids')):
             for avp in avps:
