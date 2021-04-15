@@ -36,8 +36,13 @@ function removeExistingPlacements(adGroup, placementType) {
   // Remove all existing placements before adding new ones
   var targetingName = 'youTube' + placementType + 's';
   var placementsIterator = adGroup.videoTargeting()[targetingName]().get();
+  var count = 0;
   while (placementsIterator.hasNext()) {
     placementsIterator.next().remove();
+    count += 1;
+    if (count % 5000 === 0) {
+      Utilities.sleep(1000);
+    }
   }
 }
 
