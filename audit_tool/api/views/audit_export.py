@@ -586,6 +586,7 @@ class AuditExportApiView(APIView):
         kid_videos_count = {}
         age_restricted_videos_count = {}
         video_count = {}
+        auditchannelmeta_dict = {}
         channel_ids = []
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
@@ -594,11 +595,13 @@ class AuditExportApiView(APIView):
         for cid in channels:
             full_channel_id = cid.channel.channel_id
             channel_ids.append(full_channel_id)
+            auditchannelmeta_dict[full_channel_id] = cid.channel.auditchannelmeta
+            channel_videos_count = 0
+            if auditchannelmeta_dict[full_channel_id].video_count is not None:
+                channel_videos_count = auditchannelmeta_dict[full_channel_id].video_count
             if audit.params.get('do_videos'):
                 try:
-                    if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() and \
-                            cid.channel.auditchannelmeta.video_count is not None and \
-                            cid.channel.auditchannelmeta.video_count >= audit.get_num_videos():
+                    if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() <= channel_videos_count:
                         self.aggregate_channel_word_hits(audit=audit, acp=cid)
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
                 # pylint: disable=broad-except
@@ -664,7 +667,7 @@ class AuditExportApiView(APIView):
         print("EXPORT: starting channel processing of export {}".format(export.id))
         for db_channel in channels:
             channel = db_channel.channel
-            v = channel.auditchannelmeta
+            v = auditchannelmeta_dict[channel.channel_id]
             try:
                 language = self.get_lang(v.language_id)
             # pylint: disable=broad-except
