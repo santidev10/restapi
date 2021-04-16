@@ -20,18 +20,18 @@ from urllib3.exceptions import ProtocolError
 from urllib3.exceptions import ReadTimeoutError
 
 from administration.notifications import send_email
-from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
+from transcripts.constants import AuditVideoTranscriptSourceTypeIdEnum
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.exception import backoff
 from utils.transform import populate_video_custom_captions
-from utils.utils import chunked_queryset
 from utils.utils import RunningAverage
+from utils.utils import chunked_queryset
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ TRANSCRIPTS_UPDATE_ID_CEILING = 45831922
 UPSERT_BACKOFF_EXCEPTIONS = (TransportError, TransportException, ReadTimeoutError, BulkIndexError,)
 
 
-class TranscriptsFromCacheUpdater:
+class Updater:
 
     CHUNK_SIZE = 5000
     SLEEP_SECONDS = 0
@@ -57,7 +57,7 @@ class TranscriptsFromCacheUpdater:
         self.floor = 0
         self.ceiling = 0
         self.counts_by_lang_code = {}
-        self.skipped_count = 0
+        self.videos_skipped_count = 0
         self.videos_processed_count = 0
         self.no_es_record_count = 0
         self.no_pg_transcripts_count = 0
@@ -73,7 +73,7 @@ class TranscriptsFromCacheUpdater:
         self.latest_chunk_video_count = 0
         self.avg_vids_per_chunk_count = RunningAverage()
         self.en_language = None
-        self.start_datetime = None
+        self.started_at = None
         # self.manager = self._get_manager_instance()
 
     def run(self, floor: int = 0, ceiling: int = TRANSCRIPTS_UPDATE_ID_CEILING):
@@ -84,7 +84,7 @@ class TranscriptsFromCacheUpdater:
         :param ceiling:
         :return:
         """
-        self.start_datetime = timezone.now()
+        self.started_at = timezone.now()
         self.floor = floor
         self.ceiling = ceiling
         query = AuditVideoTranscript.objects.prefetch_related("video", "language")\
@@ -173,7 +173,7 @@ class TranscriptsFromCacheUpdater:
         """
         total_pct = round((self.cursor / self.ceiling) * 100, 2)
         transcripts_this_run = self.cursor - self.floor
-        runtime_pct = round((transcripts_this_run / self.ceiling) * 100, 2)
+        transcripts_this_run_pct = round((transcripts_this_run / self.ceiling) * 100, 2)
         transcripts_processed_count = sum([
             self.custom_transcripts_count,
             self.watson_transcripts_count,
@@ -183,7 +183,7 @@ class TranscriptsFromCacheUpdater:
         tts_url_pct = round((self.tts_url_transcripts_count / transcripts_processed_count) * 100, 2)
         watson_pct = round((self.watson_transcripts_count / transcripts_processed_count) * 100, 2)
 
-        skipped_pct = round((self.skipped_count / self.transcripts_to_process_count) * 100, 2)
+        skipped_pct = round((self.videos_skipped_count / self.transcripts_to_process_count) * 100, 2)
         no_es_record_pct = round((self.no_es_record_count / self.transcripts_to_process_count) * 100, 2)
         no_pg_transcripts_pct = round((self.no_pg_transcripts_count / self.transcripts_to_process_count) * 100, 2)
         empty_pg_transcripts_pct = round((self.empty_pg_transcripts_count / self.transcripts_to_process_count) * 100,
@@ -193,30 +193,30 @@ class TranscriptsFromCacheUpdater:
         eta_seconds = round(self.avg_chunk_dur_secs.get(pretty=False) * chunks_remaining_count)
         message = (
             "\n"
-            f"total transcripts progress: {total_pct}% (cursor: {self.cursor} ceiling: {self.ceiling}) \n"
-            f"----- chunks processed this run: {self.chunks_count} \n"
+            f"total transcripts progress: {total_pct}% (cursor: {self.cursor:,} ceiling: {self.ceiling:,}) \n"
+            f"----- chunks processed this run: {self.chunks_count:,} \n"
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
             f"----- average chunk duration: {timedelta(seconds=self.avg_chunk_dur_secs.get(pretty=False))} \n"
-            f"----- videos this chunk: {self.latest_chunk_video_count} \n"
-            f"----- average videos per chunk: {round(self.avg_vids_per_chunk_count.get(pretty=False), 2)} \n"
-            f"----- chunks to completion: {chunks_remaining_count} \n"
-            f"----- runtime: {timezone.now() - self.start_datetime} \n"
+            f"----- videos this chunk: {self.latest_chunk_video_count:,} \n"
+            f"----- average videos per chunk: {round(self.avg_vids_per_chunk_count.get(pretty=False), 2):,} \n"
+            f"----- chunks to completion: {chunks_remaining_count:,} \n"
+            f"----- runtime: {timezone.now() - self.started_at} \n"
             f"----- estimated time to completion: {timedelta(seconds=eta_seconds)} \n"
-            f"videos processed this run: {self.videos_processed_count} \n"
-            f"videos skipped this run: {self.skipped_count} ({skipped_pct}%) \n"
-            f"----- no es record: {self.no_es_record_count} ({no_es_record_pct}%) \n"
-            f"----- no PG transcripts: {self.no_pg_transcripts_count} ({no_pg_transcripts_pct}%) \n"
-            f"----- empty PG transcripts: {self.empty_pg_transcripts_count} ({empty_pg_transcripts_pct}%) \n"
-            f"total transcripts remaining: {self.transcripts_to_process_count - self.cursor} \n"
-            f"transcripts processed this run: {transcripts_this_run} ({runtime_pct})% \n"
-            f"----- custom transcripts: {self.custom_transcripts_count} ({custom_pct}% of processed) \n"
-            f"----- tts_url transcripts: {self.tts_url_transcripts_count} ({tts_url_pct}% of processed) \n"
-            f"----- watson transcripts: {self.watson_transcripts_count} ({watson_pct}% of processed) \n"
+            f"videos processed this run: {self.videos_processed_count:,} \n"
+            f"videos skipped this run: {self.videos_skipped_count:,} ({skipped_pct}%) \n"
+            f"----- no es record: {self.no_es_record_count:,} ({no_es_record_pct}%) \n"
+            f"----- no PG transcripts: {self.no_pg_transcripts_count:,} ({no_pg_transcripts_pct}%) \n"
+            f"----- empty PG transcripts: {self.empty_pg_transcripts_count:,} ({empty_pg_transcripts_pct}%) \n"
+            f"total transcripts remaining: {self.transcripts_to_process_count - self.cursor:,} \n"
+            f"transcripts processed this run: {transcripts_this_run:,} ({transcripts_this_run_pct})% \n"
+            f"----- custom transcripts: {self.custom_transcripts_count:,} ({custom_pct}% of processed) \n"
+            f"----- tts_url transcripts: {self.tts_url_transcripts_count:,} ({tts_url_pct}% of processed) \n"
+            f"----- watson transcripts: {self.watson_transcripts_count:,} ({watson_pct}% of processed) \n"
             f"transcript languages: \n"
         )
         sorted_counts = dict(sorted(self.counts_by_lang_code.items(), key=lambda item: item[1], reverse=True))
         for code, count in sorted_counts.items():
-            message += f"----- {code}: {count} \n"
+            message += f"----- {code}: {count:,} \n"
         logger.info(message)
 
         try:
@@ -296,7 +296,7 @@ class TranscriptsFromCacheUpdater:
         """
         transcripts = self.pg_transcript_map.get(video_id, [])
         if not transcripts:
-            self.skipped_count += 1
+            self.videos_skipped_count += 1
             self.no_pg_transcripts_count += 1
             return
 
@@ -304,13 +304,13 @@ class TranscriptsFromCacheUpdater:
 
         transcripts = [transcript for transcript in transcripts if transcript.transcript]
         if not transcripts:
-            self.skipped_count += 1
+            self.videos_skipped_count += 1
             self.empty_pg_transcripts_count += 1
             return
 
         es_video = self.es_videos_map.get(video_id, None)
         if es_video is None:
-            self.skipped_count += 1
+            self.videos_skipped_count += 1
             self.no_es_record_count += 1
             return
 
@@ -318,9 +318,9 @@ class TranscriptsFromCacheUpdater:
         tts_url_transcripts = []
         watson_transcripts = []
         transcripts_by_type = {
-            AuditVideoTranscriptSourceTypeEnum.CUSTOM.value: custom_transcripts,
-            AuditVideoTranscriptSourceTypeEnum.TTS_URL.value: tts_url_transcripts,
-            AuditVideoTranscriptSourceTypeEnum.WATSON.value: watson_transcripts
+            AuditVideoTranscriptSourceTypeIdEnum.CUSTOM.value: custom_transcripts,
+            AuditVideoTranscriptSourceTypeIdEnum.TTS_URL.value: tts_url_transcripts,
+            AuditVideoTranscriptSourceTypeIdEnum.WATSON.value: watson_transcripts
         }
         for transcript in transcripts:
             transcript_list = transcripts_by_type.get(transcript.source, None)
