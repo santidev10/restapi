@@ -52,23 +52,6 @@ class GadsSyncCodeTestCase(ExtendedAPITestCase):
             self.assertTrue(json.dumps([syncs[0].adgroup_id]) in code)
             self.assertTrue(str(ctl.id) in code)
 
-    def test_code_ctl_placeholders(self, mock_get_ids):
-        """
-        Test that placementType uses CustomSegment.segment_type string value (channel, video)
-        as Google Ads Scripts methods contain those strings
-        """
-        with self.subTest("Test video"):
-            ctl, account, syncs = self._create_test_data(segment_type=SegmentTypeEnum.VIDEO.value)
-            code = get_gads_sync_code(account)
-            self.assertTrue("Video" in code)
-            self.assertFalse("Channel" in code)
-
-        with self.subTest("Test video"):
-            ctl, account, syncs = self._create_test_data()
-            code = get_gads_sync_code(account)
-            self.assertTrue("Channel" in code)
-            self.assertFalse("Video" in code)
-
     def test_code_replaces_placement_ids(self,  mock_get_ids):
         with self.subTest("Test placement ids are replaced"):
             mock_ids = [f"test_id_{i}" for i in range(5)]
