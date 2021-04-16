@@ -49,7 +49,7 @@ class OAuthAccount(OAuthBase):
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
-    updated_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     name = models.CharField(max_length=255, db_index=True, null=True)
 
 

@@ -1,9 +1,9 @@
+import pytz
 import random
 from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from django.test import TestCase
 from django.test import TransactionTestCase
 from django.utils import timezone
 
@@ -28,6 +28,9 @@ class Section:
     pass
 
 
+TIMEZONE_STRING = "America/Los_Angeles"
+
+
 class RowFactory:
     """
     factory for creating dummy rows to simulate a google ads report response
@@ -39,13 +42,12 @@ class RowFactory:
         :param geo_targets_count:
         """
         # create adgroup dependencies
-        timezone_string = "America/Los_Angeles"
         manager_id = next(int_iterator)
         self.manager = Account.objects.create(id=manager_id, name=f"manager_{manager_id}", is_active=True,
-                                              timezone=timezone_string)
+                                              timezone=TIMEZONE_STRING)
         account_id = next(int_iterator)
         self.account = Account.objects.create(id=account_id, name=f"account_{account_id}", is_active=True,
-                                              timezone=timezone_string)
+                                              timezone=TIMEZONE_STRING)
         campaign_id = next(int_iterator)
         self.campaign = Campaign.objects.create(id=campaign_id, name=f"campaign_{campaign_id}", account_id=account_id)
         # create adgroups
@@ -233,9 +235,12 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         :return:
         """
         stats = []
+        # match timezone to account timezone, for the purposes of this test, which assumes same dates, for simplicity
+        tz_inst = pytz.timezone(TIMEZONE_STRING)
+        now_tz_corrected = timezone.now().astimezone(tz_inst)
         for _ in range(len(days_diffs)):
             days_diff = days_diffs.pop()
-            timestamp = timezone.now() - timedelta(days=days_diff)
+            timestamp = now_tz_corrected - timedelta(days=days_diff)
             stat = AdGroupGeoViewStatistic(date=timestamp.date(), ad_group_id=row_factory._get_ad_group_id(),
                                            device_id=Device.MOBILE,
                                            country_id=row_factory._get_geo_target_id(),

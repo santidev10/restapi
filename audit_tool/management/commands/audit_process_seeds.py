@@ -166,6 +166,7 @@ class Command(BaseCommand):
     # pylint: enable=too-many-statements
 
     def get_channel_id(self, seed):
+        seed = seed.replace('"', "").replace("'", "")
         if "youtube.com/channel/" in seed:
             if seed[-1] == "/":
                 seed = seed[:-1]
