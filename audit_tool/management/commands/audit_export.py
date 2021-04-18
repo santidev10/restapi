@@ -133,7 +133,10 @@ class Command(BaseCommand):
         except Exception:
         # pylint: enable=broad-except
             emails = settings.AUDIT_TOOL_EMAIL_RECIPIENTS
-        self.send_audit_email(file_name, emails, count)
+        try:
+            self.send_audit_email(file_name, emails, count)
+        except Exception as e:
+            print("error sending email to {}".format(str(emails)))
         self.export.completed = timezone.now()
         self.export.file_name = file_name
         if self.audit.completed:
