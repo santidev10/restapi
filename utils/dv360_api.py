@@ -2,24 +2,25 @@ import io
 import os
 from typing import Dict, List
 import zipfile
-import gzip
+import socket
 
-from uuid import uuid4
-from django.conf import settings
 from googleapiclient import http as google_http
 from googleapiclient import discovery
 from six.moves.urllib.request import urlopen
 from contextlib import closing
 
-from oauth.utils.dv360 import load_credentials
-from oauth.utils.dv360 import get_discovery_resource
 from utils.exception import backoff
+
+# Downloading SDF reports from DV360 api results im read timeouts if default timeout is set
+socket.setdefaulttimeout(1200)
 
 
 class DV360Connector:
     SDF_VERSION = "SDF_VERSION_5_3"
 
     def __init__(self, access_token, refresh_token):
+        from oauth.utils.dv360 import load_credentials
+        from oauth.utils.dv360 import get_discovery_resource
         credentials = load_credentials(access_token=access_token, refresh_token=refresh_token)
         self._resource = get_discovery_resource(credentials)
         self._metrics_report_service = discovery.build("doubleclickbidmanager", "v1.1", credentials=credentials)
@@ -107,16 +108,13 @@ class DV360Connector:
         sdf_fp = f"{target_dir}/SDF-LineItems.csv"
         return sdf_fp
 
-    def get_ad_group_sdf_report(self, advertiser_id, insertion_order_ids, target_dir):
-        if isinstance(insertion_order_ids, str):
-            insertion_order_ids = [insertion_order_ids]
+    def get_adgroup_sdf_report(self, advertiser_id, target_dir):
         report_filter = {
             "version": self.SDF_VERSION,
             "advertiserId": advertiser_id,
             "parentEntityFilter": {
                 "fileType": "FILE_TYPE_AD_GROUP",
-                "filterType": "FILTER_TYPE_INSERTION_ORDER_ID",
-                "filterIds": insertion_order_ids,
+                "filterType": "FILTER_TYPE_NONE",
             }
         }
         self.get_sdf_report(report_filter, target_dir)
@@ -135,7 +133,7 @@ class DV360Connector:
         request = self.service.media().download_media(resourceName=resource_name)
 
         zipped_fp = f"{target_dir}/temp.zip"
-        downloader = google_http.MediaIoBaseDownload(io.FileIO(zipped_fp, mode="wb"), request)
+        downloader = google_http.MediaIoBaseDownload(io.FileIO(zipped_fp, mode="wb"), request, chunksize=1024*1024)
         download_finished = False
         while download_finished is False:
             _, download_finished = downloader.next_chunk()
