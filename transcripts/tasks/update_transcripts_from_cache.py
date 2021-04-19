@@ -5,6 +5,7 @@ from time import sleep
 from typing import Iterable
 from typing import Tuple
 
+from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
 from celery.exceptions import Retry
 from datetime import timedelta
@@ -98,7 +99,10 @@ class Updater:
             self.chunks_count += 1
             self.avg_chunk_dur_secs.update(self.latest_chunk_dur_seconds)
             self.avg_vids_per_chunk_count.update(self.latest_chunk_video_count)
-            self._report()
+            try:
+                self._report()
+            except ClientError:
+                pass  # issue with SES emailer. proceed
 
             if self.SLEEP_SECONDS:
                 logger.info(f"sleeping for {self.SLEEP_SECONDS}")
