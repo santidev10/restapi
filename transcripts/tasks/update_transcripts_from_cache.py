@@ -445,7 +445,7 @@ class Updater:
         :return:
         """
         manager = self._get_manager_instance()
-        manager.upsert(self.upsert_queue)
+        manager.upsert(self.upsert_queue, ignore_update_time_sections=[Sections.BRAND_SAFETY])
         self.latest_chunk_video_count = len(self.upsert_queue)
         # self.manager.upsert(self.upsert_queue)
 
