@@ -56,11 +56,15 @@ class BrandSafetyVideoAPIView(APIView):
                 all_keywords.append((word, int(category_id)))
                 video_brand_safety_data["total_unique_flagged_words"] += 1
                 video_brand_safety_data["category_flagged_words"][category_name].add(word)
-        # Query for grouping of name and category id as there may be duplicate names
-        query = reduce(
-            operator.or_,
-            (Q(name=name, category_id=category_id) for name, category_id in all_keywords)
-        )
-        worst_words = BadWord.objects.filter(query).order_by("-negative_score")[:3]
+        try:
+            # Query for grouping of name and category id as there may be duplicate names
+            query = reduce(
+                operator.or_,
+                (Q(name=name, category_id=category_id) for name, category_id in all_keywords)
+            )
+            worst_words = BadWord.objects.filter(query).order_by("-negative_score")[:3]
+        except TypeError:
+            # Empty all_keywords for reduce func will raise TypeError
+            worst_words = []
         video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
