@@ -78,5 +78,5 @@ class BrandSafetyVideoAPIView(APIView):
         for word, category_id in keywords:
             if (word, category_id) in exists:
                 video_brand_safety_data["total_unique_flagged_words"] += 1
-                video_brand_safety_data["category_flagged_words"][category_name].add(word)
+                video_brand_safety_data["category_flagged_words"][category_mapping[category_id]].add(word)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
