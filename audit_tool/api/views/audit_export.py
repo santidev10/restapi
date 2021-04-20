@@ -492,7 +492,10 @@ class AuditExportApiView(APIView):
         """
         channel_scores = {}
         channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY,))
+        chunk_count = 0
         for chunk in chunks_generator(channel_ids, size=chunk_size):
+            print("doing chunk {}".format(chunk_count))
+            chunk_count+=1
             results = channel_manager.get(chunk, skip_none=True)
             for channel in results:
                 try:
