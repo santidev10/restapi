@@ -38,20 +38,25 @@ CREATE_THRESHOLD = 10000
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task
+@celery_app.task()
 def update(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
     """
     this will update pricing tool ad group stats on a schedule
     will also support updating all as an option
     :return:
     """
+    logger.info(f"google_ads_geo_view_ad_group_stats: Started...")
     lock(lock_name=LOCK_NAME, expires=timedelta(hours=1).total_seconds())
+    logger.info(f"google_ads_geo_view_ad_group_stats: Updating {size:,} accounts...")
     accounts = GoogleAdsUpdater.get_accounts_to_update(hourly_update=hourly_update, size=size, as_obj=True)
+    created_count = 0
     try:
         for account in accounts:
             updater = PricingToolAccountAdGroupStatsUpdater(account=account)
             updater.run()
+            created_count += updater.get_created_count()
     finally:
+        logger.info(f"google_ads_geo_view_ad_group_stats: Completed. {created_count:,} stats records created.")
         unlock(lock_name=LOCK_NAME, fail_silently=True)
 
 
@@ -153,9 +158,11 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
         self._clear_create_queue()
 
         if self.created_count:
-            created_count_message = (f"created {self.created_count:,} pricing tool ad group stats records for account"
-                                     f"{self.account}")
+            created_count_message = (f"{self.__class__.__qualname__} created {self.created_count:,} pricing tool ad "
+                                     f"group stats records for account {self.account}")
             logger.info(created_count_message)
+        else:
+            logger.info(f"{self.__class__.__qualname__} unable to create records for account: {self.account}")
         if len(self.missing_ad_group_ids):
             logger.warning(f"skipped stats for the following non-existant adgroup ids: {self.missing_ad_group_ids}")
 
