@@ -33,6 +33,8 @@ class BrandSafetyVideoAPIView(APIView):
             brand_safety_section = video_data.brand_safety
         except (IndexError, AttributeError):
             raise Http404
+
+        # Prepare response data to update
         brand_safety_data = get_brand_safety_data(brand_safety_section.overall_score)
         video_brand_safety_data = {
             "score": brand_safety_data["score"],
@@ -40,31 +42,41 @@ class BrandSafetyVideoAPIView(APIView):
             "total_unique_flagged_words": 0,
             "category_flagged_words": defaultdict(set),
         }
-        # Map category ids to category names and aggregate all keywords for each category
-        all_keywords = []
+
         categories = brand_safety_section.categories.to_dict()
+        keywords = set()
+        # Get all keywords to check they have not been deleted
         for category_id, data in categories.items():
-            if str(category_id) in BadWordCategory.EXCLUDED:
+            category_id = str(category_id)
+            if category_id in BadWordCategory.EXCLUDED:
                 continue
             # Handle category ids that may have been removed
             try:
-                category_name = category_mapping[category_id]
+                category_mapping[category_id]
             except KeyError:
                 continue
-            for keyword_data in data["keywords"]:
-                word = keyword_data["keyword"]
-                all_keywords.append((word, int(category_id)))
-                video_brand_safety_data["total_unique_flagged_words"] += 1
-                video_brand_safety_data["category_flagged_words"][category_name].add(word)
+            # Prepare tuples of word and category id to query as there may be duplicate words
+            keywords.update((word["keyword"], category_id) for word in data["keywords"])
+        exists = set()
+        worst_words = set()
         try:
-            # Query for grouping of name and category id as there may be duplicate names
+            # Check if words have been deleted
             query = reduce(
                 operator.or_,
-                (Q(name=name, category_id=category_id) for name, category_id in all_keywords)
+                (Q(name=name, category_id=category_id) for name, category_id in keywords)
             )
-            worst_words = BadWord.objects.filter(query).order_by("-negative_score")[:3]
+            # Add to worst words and exists to filter out deleted words
+            for word in BadWord.objects.filter(query).order_by("-negative_score"):
+                if len(worst_words) < 3 and word.name not in worst_words:
+                    worst_words.add(word.name)
+                exists.add((word.name, str(word.category_id)))
         except TypeError:
-            # Empty all_keywords for reduce func will raise TypeError
-            worst_words = []
-        video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
+            # Raises if reduce is given empty iterable
+            pass
+        video_brand_safety_data["worst_words"] = list(worst_words)
+        # Map category ids to category names and aggregate all keywords for each category for existing words
+        for word, category_id in keywords:
+            if (word, category_id) in exists:
+                video_brand_safety_data["total_unique_flagged_words"] += 1
+                video_brand_safety_data["category_flagged_words"][category_mapping[category_id]].add(word)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
