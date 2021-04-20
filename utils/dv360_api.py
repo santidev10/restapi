@@ -114,11 +114,13 @@ class DV360Connector:
         sdf_fp = f"{target_dir}/SDF-LineItems.csv"
         return sdf_fp
 
-    def get_adgroup_sdf_report(self, advertiser_id, target_dir, line_item_ids: list = None):
+    def get_adgroup_sdf_report(self, advertiser_id, target_dir, adgroup_ids: list = None,
+                               line_item_ids: list = None):
         """
         SDF reports must be used to retrieve Youtube Adgroups
         :param advertiser_id: Parent Advertiser
         :param target_dir: Directory to download report
+        :param adgroup_ids:
         :param line_item_ids: List of LineItem ids to filter for Adgroups
         :return: File path of Adgroup SDF
         """
@@ -130,7 +132,12 @@ class DV360Connector:
                 "filterType": "FILTER_TYPE_NONE",
             }
         }
-        if line_item_ids is not None:
+        if adgroup_ids is not None:
+            del report_filter["parentEntityFilter"]
+            report_filter["idFilter"] = {
+                "adGroupIds": adgroup_ids
+            }
+        elif line_item_ids is not None:
             report_filter["parentEntityFilter"].update({
                 "filterType": "FILTER_TYPE_LINE_ITEM_ID",
                 "filterIds": line_item_ids,
