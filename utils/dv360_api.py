@@ -91,7 +91,7 @@ class DV360Connector:
                 "frequency": "ONE_TIME"
             }
         }
-        operation = self._metrics_report_service.sdfdownloadtasks().create(body=report_request).execute()
+        operation = self._metrics_report_service.queries().createquery(body=report_request).execute()
         query_request = self._metrics_report_service.queries().getquery(queryId=operation["queryId"])
         response = self._poll_query_completion(query_request)
         report_download_url = response["metadata"]["googleCloudStoragePathForLatestReport"]

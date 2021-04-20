@@ -157,28 +157,23 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         """
         This functions tests that the Segmet filter for Build > video CTL > channels subscribers filter works
         """
-        channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
-        channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
-        channel_doc1.populate_stats(
-            subscribers=10
-        )
-        channel_doc2.populate_stats(
-            subscribers=50
-        )
-        self.channel_manager.upsert([channel_doc1, channel_doc2])
         video_doc1 = self.video_manager.model(f"video_{next(int_iterator)}")
         video_doc2 = self.video_manager.model(f"video_{next(int_iterator)}")
         video_doc3 = self.video_manager.model(f"video_{next(int_iterator)}")
-        video_doc1.populate_channel(
-            id=channel_doc1.main.id
+        video_doc4 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc1.populate_stats(
+            channel_subscribers=0
         )
-        video_doc2.populate_channel(
-            id=channel_doc2.main.id
+        video_doc2.populate_stats(
+            channel_subscribers=10
         )
-        video_doc3.populate_channel(
-            id=channel_doc2.main.id
+        video_doc3.populate_stats(
+            channel_subscribers=20
         )
-        self.video_manager.upsert([video_doc1, video_doc2, video_doc3])
+        video_doc4.populate_stats(
+            channel_subscribers=30
+        )
+        self.video_manager.upsert([video_doc1, video_doc2, video_doc3, video_doc4])
         params = dict(
             segment_type=0,
             minimum_subscribers=20,
@@ -187,8 +182,16 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
         response = query_builder.execute()
         self.assertEqual(len(response), 2)
-        self.assertEqual(response[0].main.id, video_doc2.main.id)
+        self.assertEqual(response[0].main.id, video_doc3.main.id)
+        self.assertEqual(response[1].main.id, video_doc4.main.id)
+
+        params["minimum_subscribers_include_na"] = True
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(len(response), 3)
+        self.assertEqual(response[0].main.id, video_doc1.main.id)
         self.assertEqual(response[1].main.id, video_doc3.main.id)
+        self.assertEqual(response[2].main.id, video_doc4.main.id)
 
     def test_mismatched_language_exclusion_filter(self):
         """

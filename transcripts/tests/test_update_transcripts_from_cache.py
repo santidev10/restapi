@@ -4,7 +4,6 @@ import math
 from django.test.testcases import TestCase
 from unittest.mock import patch
 
-from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoTranscript
@@ -13,7 +12,8 @@ from email_reports.tests.test_daily_apex_disney_report_utils import do_nothing
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
-from transcripts.tasks.update_transcripts_from_cache import TranscriptsFromCacheUpdater
+from transcripts.constants import AuditVideoTranscriptSourceTypeIdEnum as SourceTypeEnum
+from transcripts.tasks.update_transcripts_from_cache import Updater
 from utils.transform import populate_video_custom_captions
 
 
@@ -96,9 +96,9 @@ class UpdateTranscriptsFromCacheTestCase(TestCase):
         transcript_ids = AuditVideoTranscript.objects.filter(video__id__in=video_ids_to_process).order_by("id") \
             .values_list("id", flat=True)
         transcript_ids = list(transcript_ids)
-        with patch.object(TranscriptsFromCacheUpdater, "CHUNK_SIZE", math.floor(len(transcript_ids) / 2)):
+        with patch.object(Updater, "CHUNK_SIZE", math.floor(len(transcript_ids) / 2)):
             # run the updater on only the processed_audit_videos' transcripts
-            updater = TranscriptsFromCacheUpdater()
+            updater = Updater()
             updater.run(floor=transcript_ids[0], ceiling=transcript_ids[-1])
             processed_videos = self.manager.get([video.video_id for video in processed_audit_videos])
             for video in processed_videos:
