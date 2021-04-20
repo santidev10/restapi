@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from oauth.models import DV360Advertiser
 from oauth.models import InsertionOrder
 from segment.models import CustomSegment
-from segment.tasks.generate_sdf import generate_sdf
+from segment.tasks.generate_sdf import generate_sdf_task
 from utils.views import get_object
 
 
@@ -16,7 +16,7 @@ class SegmentDV360SyncAPIView(APIView):
         Update SegmentAdGroupSync record with CID and Adgroup Ids to update Google Ads placements
         """
         segment_id, advertiser_id, line_item_ids = self._validate()
-        generate_sdf.delay(request.user.email, segment_id, advertiser_id, line_item_ids)
+        generate_sdf_task.delay(request.user.email, segment_id, advertiser_id, line_item_ids)
         return Response()
 
     def _validate(self):
