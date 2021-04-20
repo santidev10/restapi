@@ -77,11 +77,6 @@ class BrandSafetyVideoAPIView(APIView):
         # Map category ids to category names and aggregate all keywords for each category for existing words
         for word, category_id in keywords:
             if (word, category_id) in exists:
-                # Handle category ids that may have been removed
-                try:
-                    category_name = category_mapping[category_id]
-                except KeyError:
-                    continue
                 video_brand_safety_data["total_unique_flagged_words"] += 1
                 video_brand_safety_data["category_flagged_words"][category_name].add(word)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
