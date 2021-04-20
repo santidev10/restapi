@@ -1,5 +1,8 @@
 from collections import defaultdict
+from functools import reduce
+import operator
 
+from django.db.models import Q
 from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -38,7 +41,7 @@ class BrandSafetyVideoAPIView(APIView):
             "category_flagged_words": defaultdict(set),
         }
         # Map category ids to category names and aggregate all keywords for each category
-        all_keywords = set()
+        all_keywords = []
         categories = brand_safety_section.categories.to_dict()
         for category_id, data in categories.items():
             if str(category_id) in BadWordCategory.EXCLUDED:
@@ -48,10 +51,16 @@ class BrandSafetyVideoAPIView(APIView):
                 category_name = category_mapping[category_id]
             except KeyError:
                 continue
-            keywords = [word["keyword"] for word in data["keywords"]]
-            all_keywords.update(keywords)
-            video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
-            video_brand_safety_data["category_flagged_words"][category_name].update(keywords)
-        worst_words = BadWord.objects.filter(name__in=all_keywords).order_by("-negative_score")[:3]
+            for keyword_data in data["keywords"]:
+                word = keyword_data["keyword"]
+                all_keywords.append((word, int(category_id)))
+                video_brand_safety_data["total_unique_flagged_words"] += 1
+                video_brand_safety_data["category_flagged_words"][category_name].add(word)
+        # Query for grouping of name and category id as there may be duplicate names
+        query = reduce(
+            operator.or_,
+            (Q(name=name, category_id=category_id) for name, category_id in all_keywords)
+        )
+        worst_words = BadWord.objects.filter(query).order_by("-negative_score")[:3]
         video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
