@@ -95,7 +95,13 @@ class DV360Connector:
         self._download(report_fp, report_download_url)
         return response
 
-    def get_line_items_sdf_report(self, advertiser_id, target_dir):
+    def get_line_items_sdf_report(self, advertiser_id: int, target_dir: str) -> str:
+        """
+        SDF reports must be used to retrieve LineItems that contain Youtube Adgroups
+        :param advertiser_id: Parent Advertiser
+        :param target_dir: Directory to download report
+        :return: File path of LineItem SDF
+        """
         report_filter = {
             "version": self.SDF_VERSION,
             "advertiserId": advertiser_id,
@@ -108,7 +114,14 @@ class DV360Connector:
         sdf_fp = f"{target_dir}/SDF-LineItems.csv"
         return sdf_fp
 
-    def get_adgroup_sdf_report(self, advertiser_id, target_dir):
+    def get_adgroup_sdf_report(self, advertiser_id, target_dir, line_item_ids: list = None):
+        """
+        SDF reports must be used to retrieve Youtube Adgroups
+        :param advertiser_id: Parent Advertiser
+        :param target_dir: Directory to download report
+        :param line_item_ids: List of LineItem ids to filter for Adgroups
+        :return: File path of Adgroup SDF
+        """
         report_filter = {
             "version": self.SDF_VERSION,
             "advertiserId": advertiser_id,
@@ -117,11 +130,24 @@ class DV360Connector:
                 "filterType": "FILTER_TYPE_NONE",
             }
         }
+        if line_item_ids is not None:
+            report_filter["parentEntityFilter"].update({
+                "filterType": "FILTER_TYPE_LINE_ITEM_ID",
+                "filterIds": line_item_ids,
+            })
         self.get_sdf_report(report_filter, target_dir)
         ad_group_sdf_fp = f"{target_dir}/SDF-Adgroups.csv"
         return ad_group_sdf_fp
 
-    def get_sdf_report(self, report_filter, target_dir):
+    def get_sdf_report(self, report_filter: dict, target_dir: str) -> list:
+        """
+        Creates SDF report create task with report_filter and polls report completion. Downloads and unzips
+            report to target_dir as SDF report is downloaded as a zip file
+        :param report_filter: Report filter to create SDF task
+            https://developers.google.com/display-video/api/reference/rest/v1/sdfdownloadtasks/create#FilterType
+        :param target_dir: Directory to download SDF report
+        :return: List of unzipped files from report download
+        """
         operation = self.service.sdfdownloadtasks().create(body=report_filter).execute()
         query_request = self.service.sdfdownloadtasks().operations().get(name=operation["name"])
         response = self._poll_sdf_completion(query_request)

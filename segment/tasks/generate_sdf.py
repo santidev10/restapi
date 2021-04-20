@@ -23,13 +23,13 @@ PLACEMENTS_INCLUSION_KEY = "Placement Targeting - YouTube Channels - Include"
 
 
 @celery_app.task
-def generate_sdf(user_email, ctl_id, advertiser_id, io_ids):
+def generate_sdf(user_email, ctl_id, advertiser_id, line_item_ids):
     ctl = CustomSegment.objects.get(id=ctl_id)
     oauth_account = OAuthAccount.objects.get(email="kenneth.oh@channelfactory.com", oauth_type=1)
     dv = DV360Connector(oauth_account.token, oauth_account.refresh_token)
     target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}"
     os.mkdir(target_dir)
-    ad_group_sdf_fp = dv.get_ad_group_sdf_report(advertiser_id, io_ids, target_dir)
+    ad_group_sdf_fp = dv.get_adgroup_sdf_report(advertiser_id, target_dir, line_item_ids)
 
     # SDF placements must be delimited by ;
     urls = "; ".join(ctl.s3.get_extract_export_ids())
