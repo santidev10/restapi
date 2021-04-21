@@ -34,6 +34,6 @@ def channel_update_helper(scheduler, query: Q, queue: str, sort=("-stats.subscri
     if rescore is True:
         # Update channels rescore values that are rescored
         update_rescore_channels = channel_manager.get(channel_ids, skip_none=True)
-        for channel in channels:
+        for channel in update_rescore_channels:
             channel.brand_safety.rescore = False
         channel_manager.upsert(update_rescore_channels, ignore_update_time_sections=[Sections.BRAND_SAFETY])
