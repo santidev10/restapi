@@ -4,12 +4,15 @@ Administration notifications module
 import json
 import os
 import re
+import smtplib
+from botocore.exceptions import ClientError
 from logging import Filter
 from logging import Handler
 from re import Pattern
 
 import requests
 from django.conf import settings
+from django.core import mail
 from django.core.mail import send_mail
 from django.template.loader import get_template
 
@@ -39,7 +42,7 @@ def send_new_registration_email(email_data):
            "Annual ad spend: {annual_ad_spend} \n" \
            "User type: {user_type} \n\n" \
            "Please accept the user: {user_list_link} \n\n".format(**email_data)
-    send_mail(subject, text, sender, to, fail_silently=True)
+    send_email(subject, text, sender, to, fail_silently=True)
 
 
 def send_new_channel_authentication_email(user, channel_id, request):
@@ -67,7 +70,7 @@ def send_new_channel_authentication_email(user, channel_id, request):
             link="{}{}/research/channels/{}".format(prefix, host, channel_id),
             user_list_link="{}{}/admin/users".format(prefix, host),
         )
-    send_mail(subject, text, sender, to, fail_silently=True)
+    send_email(subject, text, sender, to, fail_silently=True)
 
 
 def send_admin_notification(channel_id):
@@ -78,7 +81,7 @@ def send_admin_notification(channel_id):
               f"(https://www.viewiq.com/research/channels/{channel_id}) " \
               f"has just authenticated on ViewIQ"
 
-    send_mail(subject, message, sender, to, fail_silently=False)
+    send_email(subject, message, sender, to, fail_silently=False)
 
 
 def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False, host=None):
@@ -97,13 +100,40 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
 
 
 def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwargs):
-    return send_mail(
-        subject=subject,
-        message=message,
-        from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
-        recipient_list=recipient_list,
-        **kwargs
-    )
+    result = None
+    if from_email is None or recipient_list is None:
+        return result
+    try:
+        kwargs["fail_silently"] = False
+        result = send_mail(subject=subject,
+                           message=message,
+                           from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
+                           recipient_list=recipient_list,
+                           **kwargs)
+    except (smtplib.SMTPException, ClientError):
+        html_message = None
+        if "html_message" in kwargs:
+            html_message = kwargs["html_message"]
+        result = send_email_using_alternative_smtp(subject, message, recipient_list, html_message)
+
+    return result
+
+
+def send_email_using_alternative_smtp(subject, message=None, recipient_list=None, html_message=None):
+    result = None
+    email_backend = 'django.core.mail.backends.smtp.EmailBackend'
+    smtp_host = os.getenv("SMTP_HOST", "")
+    smtp_email = os.getenv("SMTP_EMAIL", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+
+    if not smtp_host or not smtp_email or not smtp_password:
+        return result
+    with mail.get_connection(backend=email_backend, fail_silently=True,
+                             host=smtp_host, username=smtp_email, password=smtp_password,
+                             port=465, use_ssl=True) as connection:
+        result = send_mail(subject=subject, message=message, from_email=smtp_email, fail_silently=True,
+                           recipient_list=recipient_list, html_message=html_message, connection=connection)
+    return result
 
 
 def send_welcome_email(user, request):
