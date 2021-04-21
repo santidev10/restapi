@@ -49,17 +49,17 @@ class SegmentActionEnum(enum.IntEnum):
     DOWNLOAD = 2
 
 
-class SegmentTypeEnum(enum.Enum):
+class SegmentTypeEnum(enum.IntEnum):
     VIDEO = 0
     CHANNEL = 1
 
 
-class SegmentListType(enum.Enum):
+class SegmentListType(enum.IntEnum):
     WHITELIST = 0
     BLACKLIST = 1
 
 
-class SegmentVettingStatusEnum(enum.Enum):
+class SegmentVettingStatusEnum(enum.IntEnum):
     NOT_VETTED = 0
     VETTED_SAFE = 1
     VETTED_RISKY = 2

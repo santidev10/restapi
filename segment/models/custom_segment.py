@@ -268,7 +268,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.params[nested_key][data_field] = data
         :param save: If True, then save instance
         """
-        nested_data = self.params.get(nested_key)
+        nested_data = self.params.get(nested_key, {})
         if data_field is not None:
             nested_data[data_field] = data
         else:

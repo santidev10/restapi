@@ -1,4 +1,5 @@
-from rest_framework.exceptions import ValidationError
+from django.http import Http404
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -32,12 +33,12 @@ class SegmentDV360SyncAPIView(APIView):
     def _validate(self):
         data = self.request.data
         adgroup_ids = data.get("adgroup_ids", [])
-        advertiser = get_object(DV360Advertiser, id=self.kwargs.get("pk"))
-        segment = get_object(CustomSegment, id=data.get("segment_id"))
+        advertiser = get_object(DV360Advertiser, id=data.get("advertiser_id"))
+        segment = get_object(CustomSegment, id=self.kwargs.get("pk"))
         exists = AdGroup.objects.filter(id__in=adgroup_ids, oauth_type=int(OAuthType.DV360))
         remains = set(adgroup_ids) - set(exists.values_list("id", flat=True))
         if not exists or remains:
-            raise ValidationError(f"Unknown Adgroup ids: {remains}")
+            raise Http404(f"Unknown Adgroup ids: {remains}")
         return segment, advertiser, adgroup_ids
 
     def _start_audit(self, segment):
