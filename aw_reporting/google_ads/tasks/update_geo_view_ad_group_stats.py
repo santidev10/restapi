@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 @celery_app.task
 def update_geo_view_ad_group_stats_task(hourly_update=True, size=None):
     """
-    task for updating geo vewe ad group stats on a schedule
+    task for updating geo view ad group stats on a schedule
     :return:
     """
     logger.info(f"google_ads_geo_view_ad_group_stats: Started...")
