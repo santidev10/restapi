@@ -49,7 +49,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
     },
     "google_ads_geo_view_ad_group_stats": {
-        "task": "aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.update_geo_view_ad_group_stats",
+        "task": "aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.update_geo_view_ad_group_stats_task",
         "schedule": crontab(hour="*", minute="*/5"),
     },
     "full-sf-update": {

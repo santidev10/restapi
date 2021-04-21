@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task()
-def update_geo_view_ad_group_stats(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
+def update_geo_view_ad_group_stats_task(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
     """
     this will update pricing tool ad group stats on a schedule
     will also support updating all as an option
