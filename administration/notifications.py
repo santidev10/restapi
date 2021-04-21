@@ -101,7 +101,7 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
 
 def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwargs):
     result = None
-    if from_email is None or recipient_list is None:
+    if not recipient_list:
         return result
     try:
         kwargs["fail_silently"] = False
@@ -116,7 +116,6 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
             html_message = kwargs["html_message"]
         result = send_email_using_alternative_smtp(subject=subject, message=message, recipient_list=recipient_list,
                                                    html_message=html_message)
-
     return result
 
 
