@@ -28,7 +28,9 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from audit_tool.utils.regex_trie import get_optimized_regex
 from segment.models import CustomSegment
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.utils import get_content_disposition
+from segment.tasks.generate_sdf import generate_sdf_task
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import chunks_generator
@@ -102,8 +104,10 @@ class Command(BaseCommand):
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def update_ctl(self):
-        from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
-        """ Create export for CTL using audited data """
+        """
+        Create export for CTL using audited data
+        Will start generate_sdf_task if audit was started from SegmentDV360SyncAPIView
+        """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
             url_separator = "?v="
@@ -156,6 +160,8 @@ class Command(BaseCommand):
         else:
             os.remove(export_fp)
             os.remove(admin_export_fp)
+            if self.audit.params.get("start_dv360_task") is True:
+                generate_sdf_task.delay(self.audit.params["user_id"], segment.id)
         # pylint: enable=broad-except
         finally:
             os.remove(temp_file)

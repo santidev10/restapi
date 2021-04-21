@@ -6,10 +6,9 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from uuid import uuid4
 
-from oauth.models import DV360Advertiser
-from oauth.models import AdGroup
 from oauth.models import OAuthAccount
 from saas import celery_app
+from segment.models.constants import Params
 from segment.models.constants import Results
 from segment.models import CustomSegment
 from segment.utils.send_export_email import send_export_email
@@ -28,24 +27,22 @@ PLACEMENTS_INCLUSION_KEY = "Placement Targeting - YouTube Channels - Include"
 
 
 @celery_app.task
-def generate_sdf_task(user_id: get_user_model().id,
-                      segment_id: CustomSegment.pk,
-                      advertiser_id: DV360Advertiser.id,
-                      adgroup_ids: list[AdGroup.id]):
+def generate_sdf_task(user_id: get_user_model().id, segment_id: CustomSegment.pk):
     """
     Generate Ad group SDF with CustomSegment data as Ad group placements
     :param user_id: User id requesting DV360 sync and email completion recipient
     :param segment_id: CustomSegment id
-    :param advertiser_id: DV360Advertiser id parent
-    :param adgroup_ids: LineItem id parents
     """
     try:
         user = get_user_model().objects.get(id=user_id)
         segment = CustomSegment.objects.get(id=segment_id)
         oauth_account = OAuthAccount.objects.get(email=user.email, oauth_type=1)
-    except ObjectDoesNotExist:
+        advertiser_id = segment.params[Params.ADVERTISER_ID]
+        adgroup_ids = segment.params[Params.ADGROUP_IDS]
+    except (ObjectDoesNotExist, KeyError):
         return
     connector = DV360Connector(oauth_account.token, oauth_account.refresh_token)
+    # Prepare directory where SDF will be downloaded to
     target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}"
     os.mkdir(target_dir)
     adgroup_sdf_fp = get_adgroup_sdf(connector, advertiser_id, target_dir, adgroup_ids)

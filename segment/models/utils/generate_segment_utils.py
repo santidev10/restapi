@@ -196,13 +196,13 @@ class GenerateSegmentUtils:
             ]
         return non_blocklist
 
-    def start_audit(self, filename):
+    def start_audit(self, filename, audit=None):
         """
         Upload audit source channel / video urls file and make audit visible for processing
         :param filename: str -> On disk fp of export file
         :return:
         """
-        audit = AuditProcessor.objects.get(id=self.segment.params[Params.META_AUDIT_ID])
+        audit = audit or AuditProcessor.objects.get(id=self.segment.params[Params.META_AUDIT_ID])
         self._upload_audit_source_file(audit, filename)
         # Update audit.temp_stop to make it visible for processing
         audit.temp_stop = False
