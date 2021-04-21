@@ -38,8 +38,8 @@ CREATE_THRESHOLD = 10000
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
-def update_geo_view_ad_group_stats_task(hourly_update=True, size=settings.PRICING_TOOL_AD_GROUP_STATS_SIZE):
+@celery_app.task
+def update_geo_view_ad_group_stats_task(hourly_update=True, size=None):
     """
     this will update pricing tool ad group stats on a schedule
     will also support updating all as an option
@@ -47,6 +47,8 @@ def update_geo_view_ad_group_stats_task(hourly_update=True, size=settings.PRICIN
     """
     logger.info(f"google_ads_geo_view_ad_group_stats: Started...")
     lock(lock_name=LOCK_NAME, expires=timedelta(hours=1).total_seconds())
+    if not isinstance(size, int):
+        size = getattr(settings, "PRICING_TOOL_AD_GROUP_STATS_SIZE", 1)
     logger.info(f"google_ads_geo_view_ad_group_stats: Updating {size:,} accounts...")
     accounts = GoogleAdsUpdater.get_accounts_to_update(hourly_update=hourly_update, size=size, as_obj=True)
     created_count = 0
