@@ -42,7 +42,7 @@ def send_new_registration_email(email_data):
            "Annual ad spend: {annual_ad_spend} \n" \
            "User type: {user_type} \n\n" \
            "Please accept the user: {user_list_link} \n\n".format(**email_data)
-    send_email(subject, text, sender, to, fail_silently=True)
+    send_email(subject=subject, message=text, from_email=sender, recipient_list=to, fail_silently=True)
 
 
 def send_new_channel_authentication_email(user, channel_id, request):
@@ -70,7 +70,7 @@ def send_new_channel_authentication_email(user, channel_id, request):
             link="{}{}/research/channels/{}".format(prefix, host, channel_id),
             user_list_link="{}{}/admin/users".format(prefix, host),
         )
-    send_email(subject, text, sender, to, fail_silently=True)
+    send_email(subject=subject, message=text, from_email=sender, recipient_list=to, fail_silently=True)
 
 
 def send_admin_notification(channel_id):
