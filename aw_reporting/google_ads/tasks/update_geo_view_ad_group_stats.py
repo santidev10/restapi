@@ -55,6 +55,10 @@ def update_geo_view_ad_group_stats_task(hourly_update=True, size=settings.PRICIN
             updater = PricingToolAccountAdGroupStatsUpdater(account=account)
             updater.run()
             created_count += updater.get_created_count()
+    # pylint: disable=broad-except
+    except Exception as e:
+        # pylint: enable=broad-except
+        logger.error(e)
     finally:
         logger.info(f"google_ads_geo_view_ad_group_stats: Completed. {created_count:,} stats records created.")
         unlock(lock_name=LOCK_NAME, fail_silently=True)
