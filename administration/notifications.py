@@ -81,7 +81,7 @@ def send_admin_notification(channel_id):
               f"(https://www.viewiq.com/research/channels/{channel_id}) " \
               f"has just authenticated on ViewIQ"
 
-    send_email(subject, message, sender, to, fail_silently=False)
+    send_email(subject=subject, message=message, from_email=sender, recipient_list=to, fail_silently=False)
 
 
 def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False, host=None):
@@ -114,7 +114,8 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
         html_message = None
         if "html_message" in kwargs:
             html_message = kwargs["html_message"]
-        result = send_email_using_alternative_smtp(subject, message, recipient_list, html_message)
+        result = send_email_using_alternative_smtp(subject=subject, message=message, recipient_list=recipient_list,
+                                                   html_message=html_message)
 
     return result
 
