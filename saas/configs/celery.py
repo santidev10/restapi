@@ -49,7 +49,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
     },
     "google_ads_geo_view_ad_group_stats": {
-        "task": "aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.update",
+        "task": "aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.update_geo_view_ad_group_stats_task",
         "schedule": crontab(hour="*", minute="*/5"),
     },
     "full-sf-update": {
@@ -208,7 +208,7 @@ CELERY_ROUTES_PREPARED = [
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.update.*", {"queue": Queue.HOURLY_STATISTIC}),
-    ("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.*", {"queue": Queue.HOURLY_STATISTIC}),
+    ("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
