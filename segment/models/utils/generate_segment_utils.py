@@ -200,6 +200,7 @@ class GenerateSegmentUtils:
         """
         Upload audit source channel / video urls file and make audit visible for processing
         :param filename: str -> On disk fp of export file
+        :param audit: AuditProcessor to start. If None, then will use audit id set on segment params
         :return:
         """
         audit = audit or AuditProcessor.objects.get(id=self.segment.params[Params.META_AUDIT_ID])

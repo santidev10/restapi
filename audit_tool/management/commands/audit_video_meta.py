@@ -160,7 +160,7 @@ class Command(BaseCommand):
         else:
             os.remove(export_fp)
             os.remove(admin_export_fp)
-            if self.audit.params.get("start_dv360_task") is True:
+            if self.audit.params.get("with_dv360_sdf") is True:
                 generate_sdf_task.delay(self.audit.params["user_id"], segment.id)
         # pylint: enable=broad-except
         finally:

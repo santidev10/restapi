@@ -1,10 +1,15 @@
 import json
 from unittest import mock
+from io import BytesIO
 
+import boto3
+from django.conf import settings
 from django.urls import reverse
+from moto import mock_s3
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from audit_tool.models import AuditProcessor
 from oauth.constants import OAuthType
 from oauth.models import AdGroup
 from oauth.models import DV360Partner
@@ -12,11 +17,13 @@ from oauth.models import DV360Advertiser
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
+from segment.models import CustomSegmentFileUpload
 from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
+from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from utils.unittests.test_case import ExtendedAPITestCase
 
-
+@mock_s3
 class CTLDV360SyncTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_id):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC_DV360, kwargs=dict(pk=segment_id))
@@ -73,3 +80,53 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         dv360_params = segment.params[Params.DV360_SYNC_DATA]
         self.assertEqual(dv360_params[Params.ADVERTISER_ID], advertiser.id)
         self.assertEqual(dv360_params[Params.ADGROUP_IDS], ag_ids)
+
+    def test_success_audit_creation(self):
+        """ Test audit is created for DV360 SDF creation and source file for audit is uploaded """
+        segment, advertiser, adgroups = self._mock_data()
+        export = CustomSegmentFileUpload.objects.create(segment=segment, filename="test.csv", query={})
+        ag_ids = [ag.id for ag in adgroups]
+
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        conn.create_bucket(Bucket=settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME)
+
+        url = f"https://www.youtube.com/channel/{'test_channel'.zfill(24)}"
+        file = BytesIO()
+        file.write(b"URL\n")
+        file.write(url.encode("utf-8"))
+        file.write(b"\n")
+        file.seek(0)
+        conn.Object(segment.s3.bucket_name, export.filename).upload_fileobj(file)
+        payload = json.dumps(dict(
+            advertiser_id=advertiser.id,
+            adgroup_ids=ag_ids,
+        ))
+        response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        audit = AuditProcessor.objects.get(params__segment_id=segment.id)
+        self.assertEqual(audit.params["segment_id"], segment.id)
+        self.assertEqual(audit.params["with_dv360_sdf"], True)
+        # Check audit seed file was uploaded correctly
+        audit_seed_data = conn.Object(settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME, audit.params["seed_file"]).get()["Body"]
+        rows = [row.decode("utf-8") for row in audit_seed_data]
+        self.assertEqual(rows[0].strip(), url)
+
+    def test_ctl_export_not_found(self):
+        """ Test handling if CTL does not have an export to generate an SDF for. Should not create audit s"""
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+
+        segment, advertiser, adgroups = self._mock_data()
+        ag_ids = [ag.id for ag in adgroups]
+        payload = json.dumps(dict(
+            advertiser_id=advertiser.id,
+            adgroup_ids=ag_ids,
+        ))
+        with mock.patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
+            response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertTrue("Export not found" in response.data["detail"])
+        # Audit should not be created if ctl has no export
+        self.assertFalse(AuditProcessor.objects.filter(params__segment_id=segment.id).exists())
+        mock_start_audit.assert_not_called()
