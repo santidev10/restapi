@@ -17,10 +17,12 @@ class AuditStopApiView(APIView):
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         if audit_id:
             try:
+                user_id = request.user.id
                 audit = AuditProcessor.objects.get(id=audit_id, completed__isnull=True)
                 if audit.source == 2:
                     return Response({'error': 'can not stop a CTL audit.'})
                 audit.params['stopped'] = True
+                audit.params["stopped_by"] = user_id
                 audit.completed = timezone.now()
                 audit.pause = 0
                 if audit.params.get('audit_type_original'):
