@@ -582,6 +582,8 @@ DOMAIN_MANAGEMENT_PERMISSIONS = (
 )
 
 PRICING_TOOL_AD_GROUP_STATS_SIZE = 10
+# Hours that an AuditProcessor is valid for after auditing a CTL for DV360 SDF generation
+AUDIT_SDF_VALID_TIME = os.getenv("AUDIT_SDF_VALID_TIME", 24)
 
 try:
     from .local_settings import *

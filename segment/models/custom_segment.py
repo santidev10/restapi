@@ -235,9 +235,12 @@ class CustomSegment(SegmentMixin, Timestampable):
         _delete_audit(self.params.get(Params.META_AUDIT_ID))
         self.delete()
 
-    def update_statistics(self, nested_key, data, data_field, save=False):
-        nested_data = self.statistics.get(nested_key)
-        nested_data[data_field] = data
+    def update_statistics(self, data, nested_key: str, data_field=None, save=False):
+        nested_data = self.statistics.get(nested_key, {})
+        if data_field is not None:
+            nested_data[data_field] = data
+        else:
+            nested_data.update(data)
         self.statistics[nested_key] = nested_data
         if save is True:
             self.save(update_fields=["statistics"])

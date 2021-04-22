@@ -28,6 +28,7 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from audit_tool.utils.regex_trie import get_optimized_regex
 from segment.models import CustomSegment
+from segment.models.constants import Params
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.utils import get_content_disposition
 from segment.tasks.generate_sdf import generate_sdf_task
@@ -160,8 +161,10 @@ class Command(BaseCommand):
         else:
             os.remove(export_fp)
             os.remove(admin_export_fp)
-            if self.audit.params.get("with_dv360_sdf") is True:
-                generate_sdf_task.delay(self.audit.params["user_id"], segment.id)
+            dv360_params = self.audit.params.get(Params.DV360_SYNC_DATA)
+            if dv360_params:
+                generate_sdf_task.delay(self.audit.params["user_id"], segment.id,
+                                        dv360_params[Params.ADVERTISER_ID], dv360_params[Params.ADGROUP_IDS])
         # pylint: enable=broad-except
         finally:
             os.remove(temp_file)
