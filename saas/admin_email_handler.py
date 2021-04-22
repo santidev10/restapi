@@ -34,7 +34,10 @@ class LimitedAdminEmailHandler(AdminEmailHandler):
         super(LimitedAdminEmailHandler, self).emit(record)
 
     def send_mail(self, subject, message, *args, **kwargs):
-        """Send a message to the admins, as defined by the ADMINS setting."""
+        """
+        Send a message to the admins, as defined by the ADMINS setting using the alternative SMTP to the default one.
+        This function is used to report exceptions to Admins.
+        """
         if not settings.ADMINS or not settings.SERVER_EMAIL:
             return
         html_message = kwargs["html_message"] if "html_message" in kwargs else None

@@ -60,12 +60,5 @@ def export_channels_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-
-    try:
-        send_email(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
-    # pylint: disable=broad-except
-    except Exception as e:
-        # pylint: enable=broad-except
-        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
-    else:
-        logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)
+    send_email(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
+    logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

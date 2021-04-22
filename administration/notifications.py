@@ -2,6 +2,7 @@
 Administration notifications module
 """
 import json
+import logging
 import os
 import re
 import smtplib
@@ -19,6 +20,7 @@ from django.template.loader import get_template
 from utils.es_components_exporter import ESDataS3ExportApiView
 from utils.lang import get_request_prefix
 
+logger = logging.getLogger(__name__)
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
 }
@@ -110,7 +112,8 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
                            from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
                            recipient_list=recipient_list,
                            **kwargs)
-    except (smtplib.SMTPException, ClientError):
+    except (smtplib.SMTPException, ClientError) as e:
+        logger.info("Send Email AWS-SES : Error during sending email to %s: %s", recipient_list, e)
         html_message = None
         if "html_message" in kwargs:
             html_message = kwargs["html_message"]
@@ -120,6 +123,9 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
 
 
 def send_email_using_alternative_smtp(subject, message=None, recipient_list=None, html_message=None):
+    """
+    This function sends an email message using alternative SMTP configurations to the default one in settings (AWS-SES)
+    """
     result = None
     email_backend = 'django.core.mail.backends.smtp.EmailBackend'
     smtp_host = os.getenv("SMTP_HOST", "")

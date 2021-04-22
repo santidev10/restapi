@@ -1,9 +1,8 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
-from django.core.mail import EmailMultiAlternatives
 from django.template.defaultfilters import striptags
 from django.template.loader import get_template
 
+from administration.notifications import send_email
 from email_reports.reports.base import BaseEmailReport
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -28,28 +27,25 @@ class ESMonitoringEmailReport(BaseEmailReport):
         html_content = self._get_body()
         text_content = striptags(html_content)
 
-        msg = EmailMultiAlternatives(
-            self._get_subject(),
-            text_content,
+        send_email(
+            subject=self._get_subject(),
+            message=text_content,
             from_email=settings.SENDER_EMAIL_ADDRESS,
-            to=settings.ES_MONITORING_EMAIL_ADDRESSES,
-            headers={"X-Priority": 2},
-            reply_to="",
+            recipient_list=settings.ES_MONITORING_EMAIL_ADDRESSES,
+            html_message=html_content,
+            fail_silently=False
         )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
 
     def _send_alert_email(self, model_name, alert_message):
         subject = f"DMP ALERT: {self.cluster} [{self.today}]"
         body = f"{model_name}: {alert_message}"
-        email = EmailMessage(
+        send_email(
             subject=subject,
-            body=body,
+            message=body,
             from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
-            to=settings.EMERGENCY_EMAIL_ADDRESSES,
-            bcc=[],
+            recipient_list=settings.EMERGENCY_EMAIL_ADDRESSES,
+            fail_silently=False
         )
-        email.send(fail_silently=False)
 
     def send_alerts(self):
         for model_name, report in self.monitoring_reports.items():
