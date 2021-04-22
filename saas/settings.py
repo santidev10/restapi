@@ -302,13 +302,15 @@ MCC_ACCOUNT_IDS = [
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    "maria.konareva@sigma.software",
-    "sean.maguire@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "alex.peace@channelfactory.com",
+    "cosmo.johnson@channelfactory.com",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "maria.konareva@sigma.software",
-    "sean.maguire@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "alex.peace@channelfactory.com",
+    "ben.leyland@channelfactory.com",
 ]
 
 CHANNEL_AUTHENTICATION_NOTIFY_TO = [
@@ -316,13 +318,14 @@ CHANNEL_AUTHENTICATION_NOTIFY_TO = [
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    "maria.konareva@sigma.software",
-    "sean.maguire@channelfactory.com",
+    "andrew.vonpelt@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
-    "andrii.dobrovolskyi@sigma.software",
-    "sergey.zhiltsov@sigma.software",
+    "bryan.ngo@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 AUDIT_TOOL_EMAIL_RECIPIENTS = [
@@ -338,12 +341,10 @@ VETTING_EXPORT_EMAIL_RECIPIENTS = [
 EMERGENCY_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",
-    "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
     "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
-    "maria.konareva@sigma.software",
-    "sergey.zhiltsov@sigma.software",
+    "abe.grair@channelfactory.com",
     "megumi.sato@channelfactory.com",
     "andrew.wong@channelfactory.com",
 ]
@@ -351,11 +352,11 @@ EMERGENCY_EMAIL_ADDRESSES = [
 ES_MONITORING_EMAIL_ADDRESSES = [
     "alex.peace@channelfactory.com",
     "andrew.vonpelt@channelfactory.com",
-    "andrii.dobrovolskyi@sigma.software",
+    "andrew.wong@channelfactory.com",
     "bryan.ngo@channelfactory.com",
-    "anthony.silva@channelfactory.com",
     "kenneth.oh@channelfactory.com",
-    "sergey.zhiltsov@sigma.software",
+    "erik.reed@channelfactory.com",
+    "abe.grair@channelfactory.com",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
