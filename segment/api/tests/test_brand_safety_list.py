@@ -10,7 +10,6 @@ from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models.constants import SegmentTypeEnum
-from segment.models.constants import VideoExclusion
 from userprofile.constants import StaticPermissions
 from utils.unittests.test_case import ExtendedAPITestCase
 

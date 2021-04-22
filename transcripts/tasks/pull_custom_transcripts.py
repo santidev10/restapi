@@ -6,19 +6,24 @@ from aiohttp import ClientSession
 from aiohttp.web import HTTPTooManyRequests
 from bs4 import BeautifulSoup as bs
 from django.conf import settings
+from django.utils import timezone
 from elasticsearch_dsl import Q
 from elasticsearch_dsl import Search
 
-from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.connections import init_es_connection
 from es_components.constants import Sections
+from es_components.managers.transcript import TranscriptManager
 from es_components.managers.video import VideoManager
+from es_components.models.transcript import Transcript
 from es_components.models.video import Video
 from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
+from transcripts.constants import AuditVideoTranscriptSourceTypeIdEnum as SourceTypeIdEnum
+from transcripts.constants import PROCESSOR_VERSION
+from transcripts.constants import TranscriptSourceTypeEnum as SourceTypeEnum
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -80,41 +85,64 @@ def pull_and_update_transcripts(unparsed_vids):
     start = time.perf_counter()
     all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
     all_videos = video_manager.get(list(vid_ids))
+    es_transcripts = []
     for vid_obj in all_videos:
         vid_id = vid_obj.main.id
-        transcripts_counter = parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                                               lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                                               transcripts_counter=transcripts_counter)
+        video_es_transcripts, transcripts_counter = parse_and_store_transcript_soups(
+            vid_obj=vid_obj,
+            lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+            transcripts_counter=transcripts_counter)
+        es_transcripts.extend(video_es_transcripts)
         vid_counter += 1
         # logger.info(f"Parsed video with id: {vid_id}")
         # logger.info(f"Number of videos parsed: {vid_counter}")
         # logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
     video_manager.upsert(all_videos)
+    transcript_manager = TranscriptManager(upsert_sections=(Sections.TEXT, Sections.VIDEO, Sections.GENERAL_DATA))
+    transcript_manager.upsert(es_transcripts)
     elapsed = time.perf_counter() - start
     total_elapsed += elapsed
     logger.info("Upserted %s videos in %s seconds.", len(all_videos), elapsed)
 
 
-def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
+def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict: dict, transcripts_counter: int):
+    """
+    takes a lang code > soups dict, processes the soups, and saves
+    :param vid_obj:
+    :param lang_codes_soups_dict:
+    :param transcripts_counter:
+    :return:
+    """
     transcript_texts = []
     lang_codes = []
+    es_transcripts = []
     if not lang_codes_soups_dict:
-        populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
-        return transcripts_counter
+        populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source=SourceTypeEnum.CUSTOM.value)
+        return es_transcripts, transcripts_counter
     vid_id = vid_obj.main.id
     top_5_transcripts = get_top_5_transcripts(lang_codes_soups_dict, vid_obj.general_data.lang_code)
     for vid_lang_code, transcript_soup in top_5_transcripts.items():
         transcript_text = get_formatted_captions_from_soup(transcript_soup)
-        if transcript_text != "":
-            AuditVideoTranscript.update_or_create_with_parent(video_id=vid_id, lang_code=vid_lang_code,
-                                                              defaults={"source": SourceTypeEnum.CUSTOM.value,
-                                                                        "transcript": str(transcript_soup)})
-            logger.info("VIDEO WITH ID %s HAS A CUSTOM TRANSCRIPT.", vid_id)
-            transcripts_counter += 1
-            transcript_texts.append(transcript_text)
-            lang_codes.append(vid_lang_code)
-    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
-    return transcripts_counter
+        if transcript_text == "":
+            continue
+        pg_transcript = AuditVideoTranscript.update_or_create_with_parent(
+            video_id=vid_id, lang_code=vid_lang_code, defaults={"source": SourceTypeIdEnum.CUSTOM.value,
+                                                                "transcript": str(transcript_soup)})
+        logger.info("VIDEO WITH ID %s HAS A CUSTOM TRANSCRIPT.", vid_id)
+        transcripts_counter += 1
+        transcript_texts.append(transcript_text)
+        lang_codes.append(vid_lang_code)
+
+        # create an es transcript record
+        es_transcript = Transcript(pg_transcript.id)
+        es_transcript.populate_video(id=vid_id)
+        es_transcript.populate_text(value=transcript_text)
+        es_transcript.populate_general_data(language_code=vid_lang_code, source_type=SourceTypeEnum.CUSTOM.value,
+                                            is_asr=False, processor_version=PROCESSOR_VERSION,
+                                            processed_at=timezone.now())
+        es_transcripts.append(es_transcript)
+    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source=SourceTypeEnum.CUSTOM.value)
+    return es_transcripts, transcripts_counter
 
 
 def get_top_5_transcripts(transcripts_dict, video_lang_code):

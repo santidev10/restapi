@@ -112,7 +112,10 @@ class BrandSafetyVideo(Serializer):
 
     @staticmethod
     def get_best_available_language(lang_code_priorities, captions_items):
-        available_lang_codes = [item.language_code.split('-')[0].lower() for item in captions_items]
+        try:
+            available_lang_codes = [item.language_code.split('-')[0].lower() for item in captions_items]
+        except AttributeError:
+            return
         for lang_code in lang_code_priorities:
             if lang_code in available_lang_codes:
                 return lang_code
@@ -123,7 +126,11 @@ class BrandSafetyVideo(Serializer):
         # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
         best_lang_code = self.get_best_available_language(lang_code_priorities, captions_items)
         for item in captions_items:
-            if item.language_code.split('-')[0].lower() == best_lang_code:
+            try:
+                item_lang = item.language_code.split('-')[0].lower()
+            except AttributeError:
+                continue
+            if item_lang == best_lang_code:
                 text = item.text
                 break
         return text

@@ -7,6 +7,7 @@ from elasticsearch_dsl import Index
 
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.utils import AuditUtils
+from brand_safety.auditors.utils import remove_tags_punctuation
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.auditors.video_auditor import VideoAuditor
@@ -102,6 +103,23 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
         swedish_hits = swedish_keywords_processor.extract_keywords(swedish_video.general_data.description)
         self.assertEqual(english_hits, ["mma"])
         self.assertEqual(swedish_hits, [])
+
+    def test_punctuation_characters(self, *_):
+        en_lang = AuditLanguage.objects.get_or_create(language="en")[0]
+        bs_category = BadWordCategory.objects.get_or_create(name="test")[0]
+        mma_video = Video(**dict(
+            main=dict(id=f"channel_{next(int_iterator)}"),
+            general_data=dict(description="test!\"%&\'()+,-./:;<=>?[\\]^_`{|}~mma test@test$test#test*test"),
+        ))
+        BadWord.objects.bulk_create([
+            BadWord(name="mma", language=en_lang, category=bs_category)
+        ])
+        audit_utils = AuditUtils()
+        english_keywords_processor = audit_utils.bad_word_processors_by_language["en"]
+        english_video_description = remove_tags_punctuation(mma_video.general_data.description)
+        english_hits = english_keywords_processor.extract_keywords(english_video_description)
+        self.assertEqual(english_video_description, "test                            mma test@test$test#test*test")
+        self.assertEqual(english_hits, ["mma"])
 
     def test_audit_serialized(self, *_):
         """ Test audit_serialized method functions properly and without errors """

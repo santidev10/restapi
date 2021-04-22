@@ -23,6 +23,7 @@ from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
 from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
+from segment.models.constants import Params
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from utils.brand_safety import map_brand_safety_score
 from utils.utils import chunks_generator
@@ -201,7 +202,7 @@ class GenerateSegmentUtils:
         :param filename: str -> On disk fp of export file
         :return:
         """
-        audit = AuditProcessor.objects.get(id=self.segment.params["meta_audit_id"])
+        audit = AuditProcessor.objects.get(id=self.segment.params[Params.META_AUDIT_ID])
         self._upload_audit_source_file(audit, filename)
         # Update audit.temp_stop to make it visible for processing
         audit.temp_stop = False

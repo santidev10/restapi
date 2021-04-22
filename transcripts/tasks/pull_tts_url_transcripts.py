@@ -11,14 +11,18 @@ from elasticsearch_dsl.query import Query
 from typing import Type
 
 from administration.notifications import send_email
-from audit_tool.constants import AuditVideoTranscriptSourceTypeEnum as SourceTypeEnum
 from audit_tool.models import APIScriptTracker
 from audit_tool.models import AuditVideoTranscript
 from es_components.constants import Sections
+from es_components.managers.transcript import TranscriptManager
 from es_components.managers.video import VideoManager
+from es_components.models.transcript import Transcript
 from saas import celery_app
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
+from transcripts.constants import AuditVideoTranscriptSourceTypeIdEnum as SourceTypeIdEnum
+from transcripts.constants import PROCESSOR_VERSION
+from transcripts.constants import TranscriptSourceTypeEnum as SourceTypeEnum
 from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -121,10 +125,11 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
         logger.info("Scraped %s Video Transcripts in %s seconds.", len(videos_batch), scraper_time)
         successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
         success_count += len(successful_vid_ids)
-        vid_ids_to_rescore = []
+        # vid_ids_to_rescore = []
         logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video"
                     f" transcripts, FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
         updated_videos = []
+        es_transcripts = []
         update_start = time.perf_counter()
         for vid_obj in videos_batch:
             vid_id = vid_obj.main.id
@@ -137,14 +142,14 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
                         upsert_end = time.perf_counter()
                         upsert_time = upsert_end - upsert_start
                         logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
-                    if vid_ids_to_rescore:
-                        rescore_start = time.perf_counter()
-                        rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                        video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
-                        rescore_end = time.perf_counter()
-                        rescore_time = rescore_end - rescore_start
-                        logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
-                                    f"seconds.")
+                    # if vid_ids_to_rescore:
+                    #     rescore_start = time.perf_counter()
+                    #     rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+                    #     video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
+                    #     rescore_end = time.perf_counter()
+                    #     rescore_time = rescore_end - rescore_start
+                    #     logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
+                    #                 f"seconds.")
                     logger.info(failure.message)
                     transcripts_scraper.send_yt_blocked_email()
                     # store count of successes over a period of time, notify if none over that period
@@ -156,37 +161,52 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
                     continue
                 else:
                     vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
+                    vid_obj.populate_brand_safety(rescore=True)
                     updated_videos.append(vid_obj)
                     continue
             # we want to save the raw response to PG so that if we ever need to re-process
             # a transcript from the response, then we'll have it on hand
             raw_response = transcripts_scraper.successful_vids[vid_id].captions_url_response
             lang_code = transcripts_scraper.successful_vids[vid_id].captions_language
-            AuditVideoTranscript.update_or_create_with_parent(video_id=vid_id, lang_code=lang_code,
-                                                              defaults={"source": SourceTypeEnum.TTS_URL.value,
-                                                                        "transcript": raw_response})
+            pg_transcript = AuditVideoTranscript.update_or_create_with_parent(
+                video_id=vid_id, lang_code=lang_code, defaults={"source": SourceTypeIdEnum.TTS_URL.value,
+                                                                "transcript": raw_response})
+            # TODO for > 5.15: once we've completely migrated over to using the Transcripts index, we can remove this
             # we'll store the processed transcript in ES for display
-            processed_transcript = transcripts_scraper.successful_vids[vid_id].captions
-            populate_video_custom_captions(vid_obj, [processed_transcript], [lang_code], source="tts_url",
+            processed_text = transcripts_scraper.successful_vids[vid_id].captions
+            populate_video_custom_captions(vid_obj, [processed_text], [lang_code], source="tts_url",
                                            asr_lang=lang_code)
+            vid_obj.populate_brand_safety(rescore=True)
             updated_videos.append(vid_obj)
-            if "task_us_data" not in vid_obj:
-                vid_ids_to_rescore.append(vid_id)
+            # if "task_us_data" not in vid_obj:
+            #     vid_ids_to_rescore.append(vid_id)
+
+            # save ES Transcript record in the new Transcripts index, instead of on the video
+            es_transcript = Transcript(pg_transcript.id)
+            es_transcript.populate_video(id=vid_id)
+            es_transcript.populate_text(value=processed_text)
+            es_transcript.populate_general_data(language_code=lang_code, source_type=SourceTypeEnum.TTS_URL.value,
+                                                is_asr=True, processor_version=PROCESSOR_VERSION,
+                                                processed_at=timezone.now())
+            es_transcripts.append(es_transcript)
+
         update_end = time.perf_counter()
         update_time = update_end - update_start
         logger.info(f"Populated Transcripts for {len(updated_videos)} Videos in {update_time} seconds.")
         upsert_start = time.perf_counter()
-        video_manager.upsert(updated_videos)
+        video_manager.upsert(updated_videos, ignore_update_time_sections=[Sections.BRAND_SAFETY])
+        transcript_manager = TranscriptManager(upsert_sections=(Sections.TEXT, Sections.VIDEO, Sections.GENERAL_DATA))
+        transcript_manager.upsert(es_transcripts)
         upsert_end = time.perf_counter()
         upsert_time = upsert_end - upsert_start
         logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
-        if vid_ids_to_rescore:
-            rescore_start = time.perf_counter()
-            rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-            video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
-            rescore_end = time.perf_counter()
-            rescore_time = rescore_end - rescore_start
-            logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")
+        # if vid_ids_to_rescore:
+        #     rescore_start = time.perf_counter()
+        #     rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+        #     video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
+        #     rescore_end = time.perf_counter()
+        #     rescore_time = rescore_end - rescore_start
+        #     logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")
 
     # store count of successes over a period of time, notify if none over that period
     notify_if_no_successes()

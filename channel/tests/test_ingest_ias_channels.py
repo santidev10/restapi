@@ -2,6 +2,7 @@ from datetime import timedelta
 import random
 from mock import patch
 
+from django.test import TransactionTestCase
 from django.utils import timezone
 
 from audit_tool.models import IASChannel
@@ -10,7 +11,7 @@ from audit_tool.models import AuditChannel
 from audit_tool.models import get_hash_name
 from channel.tasks.ingest_ias_channels_v2 import IASChannelIngestor
 from es_components.tests.utils import ESTestCase
-from utils.unittests.test_case import ExtendedAPITestCase
+from utils.db.functions import safe_bulk_create
 
 
 FILE_NAME = "file.csv"
@@ -23,6 +24,7 @@ CHANNEL_IDS = ["UCRI7hheejBbWS6etTNwMT0g", "UCZOlCVo53M355pFIsjWp3Ig", "UCtyKq8y
 
 INVALID_FILE_NAMES = ["some/file.csv", "IGNORE_this.csv", "should_not_be_processed"]
 VALID_FILE_NAMES = ["should_be_processesed.csv", "also_valid.csv"]
+FILE_NAMES_TO_SKIP = ["skip_me_1.csv", "skip_me_2.csv", "skip_me_3.csv"]
 FILE_NAMES = INVALID_FILE_NAMES + VALID_FILE_NAMES
 
 
@@ -30,7 +32,12 @@ def do_nothing(*args, **kwargs):
     pass
 
 
-class IASChannelIngestorTestCase(ExtendedAPITestCase, ESTestCase):
+class IASChannelIngestorTestCase(TransactionTestCase, ESTestCase):
+    """
+    Uses TransactionTestCase because safe_bulk_create doesn't like being run inside a transaction
+    """
+
+    databases = ["audit", "default"]
 
     @patch.object(IASChannelIngestor, "_archive_s3_object", do_nothing)
     @patch.object(IASChannelIngestor, "_make_working_copy_of_s3_object", do_nothing)
@@ -115,9 +122,37 @@ class IASChannelIngestorTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(IASHistory.objects.filter(name=FILE_NAME).count(), 2)
         self.assertNotEqual(IASHistory.objects.get(pk=history.id).completed, IASHistory.objects.last())
 
-
     @patch.object(IASChannelIngestor, "_get_s3_file_names", return_value=FILE_NAMES)
     def test_invalid_file_names_ignored(self, *args, **kwargs):
         channel_ingestor = IASChannelIngestor()
         channel_ingestor._init_process_queue()
         self.assertEqual(set(channel_ingestor.process_queue), set(VALID_FILE_NAMES))
+
+    @patch.object(IASChannelIngestor, "_get_s3_file_names", return_value=FILE_NAMES + FILE_NAMES_TO_SKIP)
+    def test_skip_duplicate_file_names_setting(self, *args, **kwargs):
+        """
+        test that the IAS_SKIP_DUPLICATE_FILENAMES setting skips file names already in the history when True, and
+        doesn't skip them when False
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        histories = []
+        for file_name in FILE_NAMES_TO_SKIP:
+            history = IASHistory(name=file_name, started=timezone.now(), completed=timezone.now())
+            histories.append(history)
+        safe_bulk_create(IASHistory, histories)
+
+        with self.settings(IAS_SKIP_DUPLICATE_FILENAMES=True):
+            channel_ingestor = IASChannelIngestor()
+            channel_ingestor._init_process_queue()
+            for file_name in FILE_NAMES_TO_SKIP:
+                with self.subTest(file_name):
+                    self.assertNotIn(file_name, channel_ingestor.process_queue)
+
+        with self.settings(IAS_SKIP_DUPLICATE_FILENAMES=False):
+            channel_ingestor = IASChannelIngestor()
+            channel_ingestor._init_process_queue()
+            for file_name in FILE_NAMES_TO_SKIP:
+                with self.subTest(file_name):
+                    self.assertIn(file_name, channel_ingestor.process_queue)

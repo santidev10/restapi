@@ -20,6 +20,7 @@ from audit_tool.models import AuditCountry
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
 from brand_safety.auditors.video_auditor import VideoAuditor
@@ -187,12 +188,12 @@ class AuditExportApiView(APIView):
     def delete_blocklist_channels(self, audit):
         if audit.params.get("override_blocklist"):
             return
-        blocklist_channels = BlacklistItem.objects.filter(item_type=1).values_list('item_id', flat=True)
+        blocklist_channels = BlacklistItem.objects.filter(item_type=1, blocklist=True).values_list('item_id', flat=True)
         bad_channels = AuditChannelProcessor.objects.filter(audit=audit,
                                                             channel__channel_id__in=blocklist_channels)
         bad_channels_videos = AuditVideoProcessor.objects.filter(audit=audit,
                                                             channel__channel_id__in=blocklist_channels)
-        blocklist_videos = BlacklistItem.objects.filter(item_type=0).values_list('item_id', flat=True)
+        blocklist_videos = BlacklistItem.objects.filter(item_type=0, blocklist=True).values_list('item_id', flat=True)
         bad_videos = AuditVideoProcessor.objects.filter(audit=audit,
                                                         video__video_id__in=blocklist_videos)
         bad_channels.delete()
@@ -491,7 +492,10 @@ class AuditExportApiView(APIView):
         """
         channel_scores = {}
         channel_manager = ChannelManager(sections=(Sections.BRAND_SAFETY,))
+        chunk_count = 0
         for chunk in chunks_generator(channel_ids, size=chunk_size):
+            print("doing chunk {}".format(chunk_count))
+            chunk_count+=1
             results = channel_manager.get(chunk, skip_none=True)
             for channel in results:
                 try:
@@ -585,6 +589,7 @@ class AuditExportApiView(APIView):
         kid_videos_count = {}
         age_restricted_videos_count = {}
         video_count = {}
+        auditchannelmeta_dict = {}
         channel_ids = []
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
@@ -593,8 +598,15 @@ class AuditExportApiView(APIView):
         for cid in channels:
             full_channel_id = cid.channel.channel_id
             channel_ids.append(full_channel_id)
+            if not auditchannelmeta_dict.get(full_channel_id):
+                auditchannelmeta_dict[full_channel_id] = cid.channel.auditchannelmeta
+            channel_videos_count = 0
+            if auditchannelmeta_dict[full_channel_id].video_count is not None:
+                channel_videos_count = auditchannelmeta_dict[full_channel_id].video_count
             if audit.params.get('do_videos'):
                 try:
+                    if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() <= channel_videos_count:
+                        self.aggregate_channel_word_hits(audit=audit, acp=cid)
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
                 # pylint: disable=broad-except
                 except Exception:
@@ -659,7 +671,9 @@ class AuditExportApiView(APIView):
         print("EXPORT: starting channel processing of export {}".format(export.id))
         for db_channel in channels:
             channel = db_channel.channel
-            v = channel.auditchannelmeta
+            v = auditchannelmeta_dict.get(channel.channel_id)
+            if not v:
+                v = channel.auditchannelmeta
             try:
                 language = self.get_lang(v.language_id)
             # pylint: disable=broad-except
@@ -789,6 +803,46 @@ class AuditExportApiView(APIView):
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
         return s3_file_name, download_file_name
+
+    def aggregate_channel_word_hits(self, audit, acp):
+        if not isinstance(audit, AuditProcessor) or \
+                not isinstance(acp, AuditChannelProcessor) or \
+                not audit.params.get("do_videos"):
+            return
+        avps = AuditVideoProcessor.objects.filter(audit=audit, channel=acp.channel)
+        if len(avps) > len(acp.word_hits.get('processed_video_ids')):
+            for avp in avps:
+                if BlacklistItem.get(avp.video.video_id, BlacklistItem.VIDEO_ITEM):
+                    self.append_to_channel(acp, avp, [avp.video_id], "bad_video_ids")
+                else:
+                    db_video_meta = AuditVideoMeta.objects.get(video=avp.video)
+                    self.append_to_channel(acp, [avp.video_id], "processed_video_ids")
+                    if db_video_meta.made_for_kids:
+                        self.append_to_channel(acp, [avp.video_id], "made_for_kids")
+                    if db_video_meta.age_restricted:
+                        self.append_to_channel(acp, [avp.video_id], "age_restricted_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+                    if "inclusion" in avp.word_hits and len(avp.word_hits["inclusion"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["inclusion"], "inclusion_videos")
+                    if "exclusion" in avp.word_hits and len(avp.word_hits["exclusion"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["exclusion"], "exclusion_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+                    if "exclusion_title" in avp.word_hits and len(avp.word_hits["exclusion_title"]) > 0:
+                        self.append_to_channel(acp, avp.word_hits["exclusion_title"], "exclusion_videos")
+                        self.append_to_channel(acp, [avp.video_id], "bad_video_ids")
+
+    def append_to_channel(self, acp, hits, node):
+        """
+        This is a helper function to the aggregate_channel_word_hits function.
+        It adds the items in "hits" to the list "acp.word_hits[node]", eliminates duplicates,
+        and saves the acp object after the change
+        """
+        if node not in acp.word_hits:
+            acp.word_hits[node] = []
+        node_items_set = set(acp.word_hits[node])
+        node_items_set.update(hits)
+        acp.word_hits[node] = list(node_items_set)
+        acp.save(update_fields=["word_hits"])
 
     def export_keywords(self, audit, audit_id=None, export=None):
         if not audit_id:

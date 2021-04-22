@@ -130,9 +130,10 @@ class BrandSafetyVideoAudit(object):
 
         return brand_safety_score
 
-    def add_brand_safety_data(self) -> Video:
+    def add_brand_safety_data(self, reset_rescore=False) -> Video:
         """
         Add brand safety data to ES video document
+        :param reset_rescore: bool -> If True, set rescore=False
         """
         video = self.doc
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
@@ -163,6 +164,7 @@ class BrandSafetyVideoAudit(object):
                 brand_safety_data["categories"][category]["severity_counts"][severity] += 1
             except KeyError:
                 continue
-
+        if reset_rescore is True:
+            brand_safety_data["rescore"] = False
         video.brand_safety = brand_safety_data
         return video

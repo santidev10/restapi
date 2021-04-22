@@ -23,9 +23,10 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.models import CustomSegmentSourceFileUpload
 from segment.models import CustomSegmentVettedFileUpload
+from segment.models import ParamsTemplate
 from segment.models import SegmentAction
 from segment.models.constants import SegmentActionEnum
-from segment.models.constants import VideoExclusion
+from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from segment.models.utils.segment_exporter import SegmentExporter
@@ -39,6 +40,15 @@ from utils.unittests.patch_bulk_create import patch_bulk_create
 @patch("segment.api.serializers.ctl_serializer.generate_custom_segment")
 @patch("segment.models.models.safe_bulk_create", new=patch_bulk_create)
 class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
+    mock_s3 = mock_s3()
+
+    def setUp(self):
+        super().setUp()
+        self.mock_s3.start()
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.mock_s3.stop()
 
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATE)
@@ -401,11 +411,11 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         ctl = CustomSegment.objects.get(title=payload["title"])
         self.assertTrue("empty inclusion" in ctl.statistics["error"])
 
-    def test_create_with_source_success(self, mock_generate):
+    def test_create_with_video_source_success(self, mock_generate):
         """ Test creates source with success with at least one valid url"""
         self.create_admin_user()
         payload = {
-            "title": "test_create_with_source_success",
+            "title": "test_create_with_video_source_success",
             "score_threshold": 0,
             "content_categories": [],
             "languages": [],
@@ -431,7 +441,36 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
 
-    @mock_s3
+    def test_create_with_channel_source_success(self, mock_generate):
+        """ Test creates channel source with success with at least one valid url"""
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_with_channel_source_success",
+            "score_threshold": 0,
+            "content_categories": [],
+            "languages": [],
+            "severity_counts": {},
+            "segment_type": SegmentTypeEnum.CHANNEL.value,
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.write(f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}\n".encode("utf-8"))
+        file.write("bad_url".encode("utf-8"))
+        file.name = payload["title"]
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        with patch("segment.models.custom_segment.SegmentExporter"):
+            response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data["id"]).source
+        self.assertEqual(file.name, source.name)
+
     def test_create_with_source_limit_success(self, mock_generate):
         """ Test that source list is limited to size, also test permissions on non-admin user"""
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -458,11 +497,10 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         source = CustomSegment.objects.get(id=response.data["id"]).source
         self.assertEqual(file.name, source.name)
 
-        exported_soure_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
+        exported_source_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename)\
             .get()["Body"].read().decode('utf-8').split()
-        self.assertEqual(len(exported_soure_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
+        self.assertEqual(len(exported_source_list), CTLSerializer.SOURCE_LIST_MAX_SIZE)
 
-    @mock_s3
     def test_source_file_permission_denied(self, mock_generate):
         """
         test that access is denied if the user creates a CTL from source list without the proper permission
@@ -571,8 +609,8 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         segment = CustomSegment.objects.get(id=response.data["id"])
         expected_params = {
-            "inclusion_file": inclusion_file.name,
-            "exclusion_file": exclusion_file.name,
+            Params.INCLUSION_FILE: inclusion_file.name,
+            Params.EXCLUSION_FILE: exclusion_file.name,
         }
         saved_params = {
             key: segment.params.get(key, None) for key in expected_params.keys()
@@ -659,6 +697,25 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertNotEqual(old_params, updated_params)
         mock_generate.assert_called_once()
 
+    def test_regenerates_not_reset_audit_status(self, mock_generate):
+        """ Test that meta AuditProcessor completed timestamp is not reset if it has already completed """
+        self.create_admin_user()
+        now = timezone.now()
+        audit = AuditProcessor.objects.create(completed=now)
+        segment = CustomSegment.objects.create(title="test_regenerates_not_reset_audit_status", segment_type=1, params={
+            Params.META_AUDIT_ID: audit.id,
+        })
+        CustomSegmentFileUpload.objects.create(segment=segment, query=dict())
+        updated_payload = self.get_params(id=segment.id, minimum_views=1, segment_type=1)
+
+        with patch("segment.api.serializers.ctl_serializer.generate_custom_segment.delay") as mock_generate,\
+                patch.object(CTLSerializer, "_check_should_regenerate", return_value=True):
+            response = self.client.patch(self._get_url(), dict(data=json.dumps(updated_payload)))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        audit.refresh_from_db()
+        # Completed timestamp should be overwritten
+        self.assertEqual(audit.completed, now)
+
     def test_regenerate_exclusion_keywords_changed(self, mock_generate):
         """ Test that CTL is regenerated if exclusion keywords have changed """
         self.create_admin_user()
@@ -675,7 +732,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
-        old_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        old_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
 
         updated_exclusion_file = BytesIO()
         updated_exclusion_file.name = "test_exclusion.csv"
@@ -691,7 +748,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response2.status_code, HTTP_200_OK)
 
         created.refresh_from_db()
-        new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        new_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
         self.assertNotEqual(old_audit.params["exclusion"], new_audit.params["exclusion"])
         self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
@@ -712,7 +769,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
         created = CustomSegment.objects.get(id=response.data["id"])
-        old_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        old_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
 
         updated_inclusion_file = BytesIO()
         updated_inclusion_file.name = "test_new_inclusion.csv"
@@ -728,7 +785,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response2.status_code, HTTP_200_OK)
 
         created.refresh_from_db()
-        new_audit = AuditProcessor.objects.get(id=created.params["meta_audit_id"])
+        new_audit = AuditProcessor.objects.get(id=created.params[Params.META_AUDIT_ID])
         self.assertNotEqual(old_audit.params["inclusion"], new_audit.params["inclusion"])
         self.assertEqual(new_audit.params["segment_id"], created.id)
         mock_generate.assert_called_once()
@@ -775,7 +832,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             source_file=source_file
         )
         with patch("segment.models.custom_segment.SegmentExporter.get_extract_export_ids",
-                   return_value=["source_url"]),\
+                   return_value=[f"https://www.youtube.com/channel/{str(next(int_iterator)).zfill(24)}"]),\
                 patch("segment.models.custom_segment.SegmentExporter.export_file_to_s3"):
             response = self.client.patch(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -804,7 +861,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             )
         )
         audit = AuditProcessor.objects.create(source=2, params=audit_params)
-        segment.params.update({"meta_audit_id": audit.id})
+        segment.params.update({Params.META_AUDIT_ID: audit.id})
         segment.save()
         payload.update(dict(
             id=segment.id, segment_type=segment.segment_type, title="updated_title",
@@ -917,7 +974,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(audit.pause, 0)
         self.assertEqual(audit.params["stopped"], True)
 
-        new_audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         updated_exclusion_file.seek(0)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.params, new_audit.params)
@@ -1024,7 +1081,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         # A new audit should have been created, but since inclusion / exclusion words were not changed in the update
         # request, the new audit should have same inclusion / exclusion params as old audit
-        new_audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         self.assertEqual(audit.params["stopped"], True)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.name, new_audit.name)
@@ -1076,7 +1133,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         # A new audit should have been created, and since inclusion_hit_threshold was sent as
         # None, it is considered removed and a new audit should be created without the old inclusion keywords
-        new_audit = AuditProcessor.objects.get(id=segment.params["meta_audit_id"])
+        new_audit = AuditProcessor.objects.get(id=segment.params[Params.META_AUDIT_ID])
         self.assertEqual(audit.params["stopped"], True)
         self.assertNotEqual(audit.id, new_audit.id)
         self.assertNotEqual(audit.name, new_audit.name)
@@ -1131,7 +1188,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment.refresh_from_db()
         audit.refresh_from_db()
         self.assertEqual(audit.params["stopped"], True)
-        self.assertFalse(segment.params.get("meta_audit_id"))
+        self.assertFalse(segment.params.get(Params.META_AUDIT_ID))
 
     def test_regneration_deletes_records(self, mock_generate):
         """
@@ -1145,7 +1202,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=1, owner=user, audit_id=audit.id,
-            statistics={"items_count": 1}, params={"meta_audit_id": None},
+            statistics={"items_count": 1}, params={Params.META_AUDIT_ID: None},
             is_vetting_complete=True,
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
@@ -1228,7 +1285,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         segment = CustomSegment.objects.create(
             title=f"test_regenerate_remove_related",
             segment_type=SegmentTypeEnum.CHANNEL.value, owner=user,
-            statistics={"items_count": 1}, params={"meta_audit_id": None},
+            statistics={"items_count": 1}, params={Params.META_AUDIT_ID: None},
         )
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         payload = dict(
@@ -1365,7 +1422,7 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         channel_ctl.refresh_from_db()
         self.assertEqual(channel_ctl.export.query["params"], params)
-        self.assertEqual(channel_ctl.params[VideoExclusion.WITH_VIDEO_EXCLUSION], True)
+        self.assertEqual(channel_ctl.params[Params.WITH_VIDEO_EXCLUSION], True)
         mock_exclusion_generate.assert_called_once()
 
     def test_creation_error(self, mock_generate):
@@ -1421,3 +1478,57 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             ctl = CustomSegment.objects.get(title=payload["title"])
             self.assertTrue(ctl.statistics["error"])
+
+    def test_create_with_video_source_url_format(self, mock_generate):
+        """ Test creates video source with success different formats """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.create_admin_user()
+        payload = {
+            "title": "test_create_with_source_success",
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+        }
+        payload = self.get_params(**payload)
+        file = BytesIO()
+        file.name = payload["title"]
+        file.write(f"https://www.youtube.com/watch?v={str(next(int_iterator)).zfill(11)}\n".encode("utf-8"))
+        file.write(f"https://www.youtube.com/video/{str(next(int_iterator)).zfill(11)}\n".encode("utf-8"))
+        file.seek(0)
+        form = dict(
+            source_file=file,
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertTrue(CustomSegment.objects.filter(title=payload["title"]).exists())
+        source = CustomSegment.objects.get(id=response.data["id"]).source
+        self.assertEqual(file.name, source.name)
+        exported_source_list = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source.filename) \
+            .get()["Body"].read().decode('utf-8').split()
+        self.assertEqual(len(exported_source_list), 2)
+
+    def test_template_id_in_ctl_parms(self, mock_generate):
+        """
+        Tests that template_id is in ctl_params in response if passed in with request payload
+        """
+        conn = boto3.resource("s3", region_name="us-east-1")
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        user = self.create_admin_user()
+        params_template = ParamsTemplate.objects.create(
+            segment_type=0,
+            title="test id in ctl params",
+            owner=user
+        )
+        payload = {
+            "title": "test_create_with_source_success",
+            "segment_type": SegmentTypeEnum.VIDEO.value,
+            "template_id": params_template.id
+        }
+        payload = self.get_params(**payload)
+        form = dict(
+            data=json.dumps(payload),
+        )
+        response = self.client.post(self._get_url(), form)
+        ctl_params = response.data.get("ctl_params")
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(ctl_params["template_id"], params_template.id)

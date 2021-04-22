@@ -263,7 +263,7 @@ class Command(BaseCommand):
         has_more = True
         page_token = None
         page = 0
-        count = 0
+        video_ids_set = set()
         per_page = num_videos
         if per_page > 50:
             per_page = 50
@@ -279,12 +279,16 @@ class Command(BaseCommand):
                 page_token=pt,
                 num_videos=per_page,
             )
-            count += per_page
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
                 self.handle_bad_response_code(r, data, acp)
                 return
+            for item in data["items"]:
+                video_id = item['id']['videoId']
+                video_ids_set.add(video_id)
+                self.update_or_create_video(video_id, acp)
+            count = len(video_ids_set)
             page_token = data.get("nextPageToken")
             if not page_token \
                     or page >= self.max_pages \
@@ -292,8 +296,6 @@ class Command(BaseCommand):
                     or per_page < 50 \
                     or count >= num_videos:
                 has_more = False
-            for item in data["items"]:
-                self.update_or_create_video(item['id']['videoId'], acp)
 
     def update_or_create_video(self, video_id, acp):
         """

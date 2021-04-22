@@ -1,8 +1,10 @@
+import hashlib
 import string
 from collections import Counter
 from django.db.models.query import QuerySet
 from itertools import count
 from itertools import groupby
+from typing import Union
 
 from es_components.iab_categories import HIDDEN_IAB_CATEGORIES
 from utils.lang import flatten
@@ -95,8 +97,21 @@ def prune_iab_categories(iab_categories):
 
 
 def remove_tags_punctuation(s):
-    return s.translate(str.maketrans("", "", string.punctuation.replace("@", "").replace("$", "").replace("#", "")
-                                     .replace("*", "")))
+    """
+    This function replaces any Punctuation Character (except @$#*) from the passed string with a white space:
+    Punctuation Characters: !\"%&\'()+,-./:;<=>?[\\]^_`{|}~
+    """
+    result = ''
+    if isinstance(s, str) and len(s) > 0:
+        result = s
+        # Get the punctuation characters list except: @$#*
+        punctuation_str = string.punctuation.replace("@", "").replace("$", "").replace("#", "").replace("*", "")
+        if len(punctuation_str) > 0:
+            # Create a string of white spaces with the same exact length as punctuation characters string
+            white_spaces_str = ' ' * len(punctuation_str)
+            # Replace any punctuation character (except @$#*) with a white space
+            result = s.translate(str.maketrans(punctuation_str, white_spaces_str)).strip()
+    return result
 
 
 def slice_generator(data_generator, limit):
@@ -107,3 +122,78 @@ def slice_generator(data_generator, limit):
 
         yield item
         counter += 1
+
+
+def validate_youtube_url(url, url_type, default=None) -> str:
+    """
+    Return string youtube id if url is valid
+    Otherwise return None if unable to extract id
+    :param url: str
+    :param url_type: int
+    :param default: Default value to return if id could not be extracted
+    :return:
+    """
+    if url_type in {0, "video"}:
+        splits = ["?v=", "/video/"]
+        target = 11
+    else:
+        splits = ["/channel/"]
+        target = 24
+    for split in splits:
+        val = url.split(split)[-1]
+        if len(val) == target:
+            return val
+    return default
+
+def get_hash(s):
+    """
+    :s: str
+    :return: int, hashed string
+    """
+    return int(hashlib.sha256(s.encode("utf-8")).hexdigest(), 16) % 10 ** 8
+
+
+class RunningAverage:
+
+    def __init__(self):
+        self.count = 0
+        self.average = 0.0
+
+    def update(self, value: Union[float, int]) -> Union[float, str]:
+        """
+        increment the average, returns new value
+        :param value:
+        :return:
+        """
+        self.count += 1
+        self.average += (value - self.average) / self.count
+        return self.get()
+
+    def get(self, pretty=True) -> Union[float, str]:
+        """
+        get the current running average
+        :return:
+        """
+        average = self.average
+        if pretty:
+            average = f"{round(average, 2):,}"
+        return average
+
+    def get_count(self) -> int:
+        """
+        return the number of iterations or samples
+        :return:
+        """
+        return self.count
+
+    @staticmethod
+    def running_average(count: int, value: float, average: float):
+        """
+        get a running average given count, value, average
+        :param count:
+        :param value:
+        :param average:
+        :return:
+        """
+        average += (value - average) / count
+        return average

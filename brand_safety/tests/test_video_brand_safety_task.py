@@ -2,9 +2,8 @@ from mock import patch
 
 from elasticsearch_dsl import Q
 
-from brand_safety.auditors.video_auditor import VideoAuditor
-from brand_safety.auditors.utils import AuditUtils
-from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
+from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
 from brand_safety.tasks.constants import Schedulers
 from brand_safety.tasks.video_discovery import video_discovery_scheduler
 from brand_safety.tasks.video_discovery import video_update
@@ -21,6 +20,11 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
     channel_manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
     video_manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS))
+
+    def setUp(self):
+        super().setUp()
+        category = BadWordCategory.objects.create(name="test_category")
+        BadWord.objects.create(name="test", category=category)
 
     def test_video_discovery_channel_rescore(self):
         """
@@ -93,7 +97,8 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
                 patch("brand_safety.tasks.video_discovery.group.apply_async") as group_apply_async,\
                 patch.object(VideoManager, "forced_filters", return_value=Q()):
             video_discovery_scheduler()
-            group_apply_async.assert_called_once()
+            # Group called for rescore and no score queries
+            self.assertEqual(group_apply_async.call_count, 2)
 
     def test_scheduler_not_runs(self):
         """ Test Video discovery scheduler task does not run when queue is above threshold """
@@ -112,14 +117,13 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         )
         video.populate_brand_safety(overall_score=0, rescore=True)
         self.video_manager.upsert([video])
-        with patch("brand_safety.tasks.video_discovery.video_update") as mock_update, \
+        with patch("brand_safety.tasks.video_discovery.group") as mock_update, \
                 patch("brand_safety.tasks.video_discovery.get_queue_size", return_value=0):
             video_discovery_scheduler()
-        apply_async_kwargs = mock_update.apply_async.call_args.kwargs
-        ids_arg = apply_async_kwargs["args"]
-        rescore_kwarg = apply_async_kwargs["kwargs"]
-        self.assertEqual({video.main.id}, set(*ids_arg))
-        self.assertEqual(rescore_kwarg["rescore"], True)
+        # Get video_update task signature with rescore parameters
+        task_signature = mock_update.call_args_list[0].args[0][0]
+        self.assertEqual({video.main.id}, set(*task_signature.args))
+        self.assertEqual(task_signature.kwargs["rescore"], True)
 
     def test_update_resets_rescore(self):
         """ Test discovery scheduler updates rescore value after scoring """
@@ -134,7 +138,7 @@ class VideoBrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         video.transcript = ""
         video.transcript_language = ""
         self.video_manager.upsert([video])
-        with patch.object(VideoAuditor, "process", return_value=[BrandSafetyVideoAudit(video, AuditUtils())]):
-            video_update([video.main.id], rescore=True)
-            updated = self.video_manager.get([video.main.id])[0]
-            self.assertEqual(updated.brand_safety.rescore, False)
+        # with patch.object(VideoAuditor, "process", return_value=[BrandSafetyVideoAudit(video, AuditUtils())]):
+        video_update([video.main.id], rescore=True)
+        updated = self.video_manager.get([video.main.id])[0]
+        self.assertEqual(updated.brand_safety.rescore, False)

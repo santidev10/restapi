@@ -4,9 +4,9 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from oauth.models import Campaign
 from performiq.api.urls.names import PerformIQPathName
 from performiq.models.constants import OAuthType
-from performiq.models import Campaign
 from performiq.models import IQCampaign
 from saas.urls.namespaces import Namespace
 from userprofile.constants import StaticPermissions

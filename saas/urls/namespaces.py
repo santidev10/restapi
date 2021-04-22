@@ -18,3 +18,5 @@ class Namespace:
     TRANSCRIPTS = "transcripts"
     DASHBOARD = "dashboard"
     PERFORMIQ = "performiq"
+    OAUTH = "oauth"
+

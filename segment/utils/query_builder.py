@@ -10,6 +10,8 @@ from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
+from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
@@ -17,6 +19,7 @@ from es_components.query_repository import get_last_vetted_at_exists_filter
 from segment.models.constants import SegmentTypeEnum
 from segment.models.constants import SegmentVettingStatusEnum
 from utils.brand_safety import map_score_threshold
+from utils.search_after import search_after
 
 
 # pylint: disable=too-many-instance-attributes
@@ -110,6 +113,14 @@ class SegmentQueryBuilder:
                 attr_name="minimum_subscribers",
                 flag_name="minimum_subscribers_include_na",
                 field_name="stats.subscribers"
+            )
+            must_queries.append(min_subs_ct_queries)
+
+        if segment_type == SegmentTypeEnum.VIDEO.value and self._params.get("minimum_subscribers"):
+            min_subs_ct_queries = self.get_numeric_include_na_queries(
+                attr_name="minimum_subscribers",
+                flag_name="minimum_subscribers_include_na",
+                field_name="stats.channel_subscribers"
             )
             must_queries.append(min_subs_ct_queries)
 
@@ -243,13 +254,6 @@ class SegmentQueryBuilder:
                 .gte(self._params["ias_verified_date"]).get()
             must_queries.append(ias_verified_query)
 
-        if self._params.get("mismatched_language") is not None:
-            mismatched_language_queries = QueryBuilder().build().must().term().field(
-                "task_us_data.mismatched_language").value(self._params["mismatched_language"]).get()
-            mismatched_language_queries |= QueryBuilder().build().must_not().exists().field(
-                "task_us_data.mismatched_language").get()
-            must_queries.append(mismatched_language_queries)
-
         if self._params.get("vetting_status") is not None and len(self._params.get("vetting_status", [])) > 0:
             vetting_status_queries = Q("bool")
             for status in self._params["vetting_status"]:
@@ -290,9 +294,15 @@ class SegmentQueryBuilder:
             query &= QueryBuilder().build().must_not().term().field(f"{Sections.CUSTOM_PROPERTIES}.blocklist")\
                 .value(True).get()
 
+        if self._params.get("mismatched_language", None) is True:
+            """ if mistmached_langauge is True, exclude all docs where mismatched_language=True """
+            query &= QueryBuilder().build().must_not().term().field(f"{Sections.TASK_US_DATA}.mismatched_language")\
+                .value(True).get()
+
         # Extend should queries last as combining queries with other queries (i.e. combining with forced_filters)
         # with operators (e.g. &, |) does not properly combine should queries
         query._params["should"].extend(should_queries)
+
         return query
 
     @staticmethod
@@ -329,7 +339,8 @@ class SegmentQueryBuilder:
         """
         queries = Q("bool")
         if self._params.get(flag_name):
-            if flag_name == "minimum_subscribers_include_na":
+            if self._params.get("segment_type") == SegmentTypeEnum.CHANNEL.value and \
+                    flag_name == "minimum_subscribers_include_na":
                 queries |= QueryBuilder().build().should().term().field("stats.hidden_subscriber_count").value(
                     True).get()
             else:
