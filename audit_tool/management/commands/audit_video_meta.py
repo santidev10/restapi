@@ -113,7 +113,8 @@ class Command(BaseCommand):
             url_separator = "/channel/"
             # If a channel contains one unclean video, the entire channel is considered unclean
             unclean_channel_ids = AuditVideoProcessor.objects.filter(audit=self.audit, clean=False)\
-                .annotate(yt_channel_id=F("channel__channel_id"))\
+                .annotate(yt_channel_id=F("channel__channel_id")) \
+                .exclude(yt_channel_id__isnull=True) \
                 .values_list("yt_channel_id")\
                 .distinct()
             clean_audits = AuditChannelProcessor.objects.filter(audit=self.audit)\
