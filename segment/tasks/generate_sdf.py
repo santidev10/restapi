@@ -29,7 +29,10 @@ columns through the DV360 UI
 REMOVE_COLUMNS = [
     "Placement Targeting - Popular Content - Include"
 ]
-PLACEMENTS_INCLUSION_KEY = "Placement Targeting - YouTube Channels - Include"
+INCLUSION_COLUMN = "Placement Targeting - YouTube {YT_TYPE} - Include"
+PLACEMENTS_CHANNEL_INCLUSION_COLUMN = INCLUSION_COLUMN.replace("{YT_TYPE}", "Channels")
+PLACEMENTS_VIDEO_INCLUSION_COLUMN = INCLUSION_COLUMN.replace("{YT_TYPE}", "Videos")
+
 MAX_PLACEMENTS = 20000
 
 
@@ -67,24 +70,33 @@ def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: Custom
         writer = csv.writer(dest)
 
         header = next(reader)
-        # Detect the column where placements need to be added
-        placements_idx = header.index(PLACEMENTS_INCLUSION_KEY)
-        remove_idx = []
+        if segment.segment_type == SegmentTypeEnum.VIDEO:
+            add_column = PLACEMENTS_VIDEO_INCLUSION_COLUMN
+            remove_column = PLACEMENTS_CHANNEL_INCLUSION_COLUMN
+        else:
+            add_column = PLACEMENTS_CHANNEL_INCLUSION_COLUMN
+            remove_column = PLACEMENTS_VIDEO_INCLUSION_COLUMN
+
+        # Detect the column where placements need to be added and removed
+        placements_add_idx = header.index(add_column)
+        placements_remove_idx = header.index(remove_column)
+        remove_erroneous_idx = []
         # Find indexes of erroneous columns to remove from data rows. Unknown why downloading SDF through api contains
         # these columns but does not accept them when uploading SDF with these columns through the DV360 UI.
         for col in REMOVE_COLUMNS:
             try:
                 i = header.index(col)
                 header.pop(i)
-                remove_idx.append(i)
+                remove_erroneous_idx.append(i)
             except ValueError:
                 pass
 
         writer.writerow(header)
         for row in reader:
             # Update placements with filtered results
-            row[placements_idx] = formatted
-            _remove_error_fields(row, remove_idx)
+            row[placements_add_idx] = formatted
+            row[placements_remove_idx] = ""
+            _remove_error_fields(row, remove_erroneous_idx)
             writer.writerow(row)
     finalize_results(segment, output_fp, user.email)
 
@@ -121,7 +133,7 @@ def _remove_error_fields(row, idx) -> None:
         row.pop(i)
 
 
-def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> str:
+def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> list:
     """
     Get audited placements that are clean from audit created in SegmentDV360SyncAPIView
     SDF uploads must have valid placements (e.g. not deleted from Youtube) in order to be successful. This function
@@ -155,5 +167,5 @@ def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> str:
             to_export.append(placement_id)
         if len(to_export) >= MAX_PLACEMENTS:
             break
-    return to_e
+    return to_export
 

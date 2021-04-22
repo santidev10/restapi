@@ -32,7 +32,7 @@ class SegmentDV360SyncAPIView(APIView):
                                f"is ready."}
         return Response(response)
 
-    def _process(self, segment: CustomSegment, advertiser_id: DV360Advertiser.id, adgroup_ids: list[int]) -> CustomSegment:
+    def _process(self, segment: CustomSegment, advertiser: DV360Advertiser, adgroup_ids: list[int]) -> CustomSegment:
         """
         Determine if new audit must be created or generate_sdf_task can be called immediately
         :param segment: CustomSegment retrieved from request pk
@@ -43,15 +43,11 @@ class SegmentDV360SyncAPIView(APIView):
         # If a valid audit exists for this segment, then immediately start generate_sdf_task, else start a new one
         audit = self._get_audit(segment)
         if audit is None:
-            dv360_params = {
-                Params.ADGROUP_IDS: adgroup_ids,
-                Params.ADVERTISER_ID: advertiser_id,
-            }
-            created_audit = self._start_audit(segment, dv360_params)
+            created_audit = self._start_audit(segment, advertiser.id, adgroup_ids)
             # Save audit id on CustomSegment to later check if we can use same audit to generate SDF in this view
             segment.update_params(created_audit.id, Params.DV360_SYNC_DATA, data_field=Params.META_AUDIT_ID, save=True)
         else:
-            generate_sdf_task.delay(self.request.user.id, audit.id, segment.id, advertiser_id.id, adgroup_ids)
+            generate_sdf_task.delay(self.request.user.id, audit.id, segment.id, advertiser.id, adgroup_ids)
         return segment
 
     def _validate(self) -> tuple:
@@ -69,14 +65,14 @@ class SegmentDV360SyncAPIView(APIView):
             raise NotFound(f"Unknown Adgroup ids: {remains}")
         return segment, advertiser, adgroup_ids
 
-    def _start_audit(self, segment, dv360_params) -> AuditProcessor:
+    def _start_audit(self, segment, advertiser_id, adgroup_ids) -> AuditProcessor:
         """
         Create audit to filter for valid placements in CTL export
         :param segment: CustomSegment
-        :param dv360_params: dict containing DV360 metadata to later start generate_sdf_task
         :return:
         """
         try:
+            # Get export to generate audit seed file
             segment_export_fp = self._download_segment_export(segment)
         except ClientError:
             raise NotFound(f"Export not found for segment: {segment.title}")
@@ -91,7 +87,10 @@ class SegmentDV360SyncAPIView(APIView):
             "segment_id": segment.id,
             "audit_type_original": audit_type,
             "user_id": self.request.user.id,
-            Params.DV360_SYNC_DATA: dv360_params
+            Params.DV360_SYNC_DATA: {
+                Params.ADGROUP_IDS: adgroup_ids,
+                Params.ADVERTISER_ID: advertiser_id,
+            }
         }
         # Audit.temp_stop will be False once seed file is uploaded with start_audit method
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, name=segment.title.lower(),
@@ -102,7 +101,7 @@ class SegmentDV360SyncAPIView(APIView):
     def _download_segment_export(self, segment):
         """ Download export to create audit seed file """
         fp = f"{settings.TEMPDIR}/{uuid4()}.csv"
-        segment.s3.download_file(segment.get_s3_key(), fp)
+        segment.s3.download_file(segment.get_admin_s3_key(), fp)
         return fp
 
     def _get_audit(self, segment: CustomSegment) -> AuditProcessor:

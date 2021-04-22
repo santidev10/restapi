@@ -1,3 +1,4 @@
+import datetime
 import json
 from unittest import mock
 from io import BytesIO
@@ -21,7 +22,9 @@ from segment.models import CustomSegmentFileUpload
 from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
+from utils.datetime import now_in_default_tz
 from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 @mock_s3
 class CTLDV360SyncTestCase(ExtendedAPITestCase):
@@ -33,9 +36,9 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
 
     def _mock_data(self):
         segment = CustomSegment.objects.create(owner=self.user, segment_type=int(SegmentTypeEnum.CHANNEL))
-        partner = DV360Partner.objects.create(id=1)
-        advertiser = DV360Advertiser.objects.create(id=1, partner=partner)
-        adgroups = [AdGroup.objects.create(id=i, oauth_type=int(OAuthType.DV360)) for i in range(2)]
+        partner = DV360Partner.objects.create(id=next(int_iterator))
+        advertiser = DV360Advertiser.objects.create(id=next(int_iterator), partner=partner)
+        adgroups = [AdGroup.objects.create(id=next(int_iterator), oauth_type=int(OAuthType.DV360)) for _ in range(2)]
         return segment, advertiser, adgroups
 
     def test_invalid_ctl(self):
@@ -47,6 +50,15 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         payload = json.dumps(dict(advertiser_id=-1, adgroup_ids=[adgroups[0].id]))
         response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def _create_audit_with_dv360(self, advertiser_id, adgroup_ids):
+        audit = AuditProcessor.objects.create(params={
+            Params.DV360_SYNC_DATA: {
+                Params.ADGROUP_IDS: adgroup_ids,
+                Params.ADVERTISER_ID: advertiser_id
+            }
+        })
+        return audit
 
     def test_invalid_adgroups(self):
         segment, advertiser, adgroups = self._mock_data()
@@ -130,3 +142,55 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         # Audit should not be created if ctl has no export
         self.assertFalse(AuditProcessor.objects.filter(params__segment_id=segment.id).exists())
         mock_start_audit.assert_not_called()
+
+    @mock.patch("segment.api.views.custom_segment.segment_dv360_sync.SegmentDV360SyncAPIView._download_segment_export",
+                return_value="test.csv")
+    def test_reuse_audit_check(self, mock_download_segment_export):
+        """ Test logic determining if existing AuditProcessor should be used """
+        with self.subTest("Audit should be created if SDF export requested for first time"):
+            segment, advertiser, adgroups = self._mock_data()
+            ag_ids = [ag.id for ag in adgroups]
+            payload = json.dumps(dict(
+                advertiser_id=advertiser.id,
+                adgroup_ids=ag_ids,
+            ))
+            with mock.patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
+                response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_start_audit.assert_called_once()
+
+        with self.subTest("Audit should be created if existing AuditProcessor expires"):
+            segment, advertiser, adgroups = self._mock_data()
+            ag_ids = [ag.id for ag in adgroups]
+
+            audit = self._create_audit_with_dv360(advertiser.id, ag_ids)
+            # Set audit to be invalid by expiring it
+            outdated = datetime.datetime.now() - datetime.timedelta(hours=settings.AUDIT_SDF_VALID_TIME + 1)
+            AuditProcessor.objects.filter(id=audit.id).update(created=outdated)
+            segment.update_params(audit.id, Params.DV360_SYNC_DATA, data_field=Params.META_AUDIT_ID, save=True)
+            ag_ids = [ag.id for ag in adgroups]
+            payload = json.dumps(dict(
+                advertiser_id=advertiser.id,
+                adgroup_ids=ag_ids,
+            ))
+            now = now_in_default_tz()
+            # Mock now_in_default_tz to ensure that the audit created timestamp is being compared
+            with mock.patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit,\
+                    mock.patch("segment.api.views.custom_segment.segment_dv360_sync.now_in_default_tz", return_value=now) as mock_now:
+                response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_start_audit.assert_called_once()
+            mock_now.assert_called_once()
+
+        with self.subTest("Audit should be reused if existing AuditProcessor is valid"):
+            segment, advertiser, adgroups = self._mock_data()
+            ag_ids = [ag.id for ag in adgroups]
+
+            audit = self._create_audit_with_dv360(advertiser.id, ag_ids)
+            segment.update_params(audit.id, Params.DV360_SYNC_DATA, data_field=Params.META_AUDIT_ID, save=True)
+            with mock.patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit,\
+                    mock.patch("segment.api.views.custom_segment.segment_dv360_sync.generate_sdf_task.delay") as mock_generate_sdf:
+                response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
+                self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_generate_sdf.assert_called_once()
+            mock_start_audit.assert_not_called()
