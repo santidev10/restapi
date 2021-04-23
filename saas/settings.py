@@ -531,6 +531,10 @@ TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
+DEBUG_EMAIL_ADDRESSES = [
+    "alex.peace@channelfactory.com",
+]
+
 APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
     apm_env = os.getenv("APM_ENV", APP_ENV)

@@ -178,7 +178,12 @@ class AbstractDailyApexEmailReport(BaseEmailReport):
         )
 
         msg.attach(self.attachment_filename, csv_context, "text/csv")
-        msg.send(fail_silently=False)
+        try:
+            msg.send(fail_silently=False)
+        # pylint: disable=broad-except
+        except Exception as e:
+            # pylint: enable=broad-except
+            print("Emailing export to %s failed. Error: %s", str(self.to), e)
 
     @staticmethod
     def _get_revenue(obj, campaign_prefix, rate_field=None) -> Union[float, None]:

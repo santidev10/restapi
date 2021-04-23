@@ -60,5 +60,5 @@ def export_channels_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    send_email(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
-    logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)
+    if send_email(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body):
+        logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

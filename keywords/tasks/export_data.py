@@ -1,8 +1,8 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 
+from administration.notifications import send_email
 from es_components.constants import Sections
 from es_components.managers import KeywordManager
 from keywords.api.serializers.keyword_export import KeywordListExportSerializer
@@ -48,20 +48,5 @@ def export_keywords_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    bcc = []
-
-    try:
-        email = EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=from_email,
-            to=user_emails,
-            bcc=bcc,
-        )
-        email.send(fail_silently=False)
-    # pylint: disable=broad-except
-    except Exception as e:
-        # pylint: enable=broad-except
-        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
-    else:
+    if send_email(subject=subject, message=body, from_email=from_email, recipient_list=user_emails):
         logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

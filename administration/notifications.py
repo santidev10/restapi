@@ -105,6 +105,9 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
     result = None
     if not recipient_list:
         return result
+    fail_silently_param = True
+    if kwargs and "fail_silently" in kwargs and not kwargs["fail_silently"]:
+        fail_silently_param = False
     try:
         kwargs["fail_silently"] = False
         result = send_mail(subject=subject,
@@ -119,6 +122,8 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
             html_message = kwargs["html_message"]
         result = send_email_using_alternative_smtp(subject=subject, message=message, recipient_list=recipient_list,
                                                    html_message=html_message)
+        if not fail_silently_param:
+            raise
     return result
 
 

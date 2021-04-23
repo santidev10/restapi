@@ -9,6 +9,7 @@ from brand_safety.models.bad_word import BadWord
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 
+
 class Command(BaseCommand):
     help = 'Produce an export of all bad word hits with stats'
     words = {}
@@ -100,15 +101,21 @@ class Command(BaseCommand):
 
     def email_export(self, csv_context):
         print("Emailing export...")
+        to = ['andrew.wong@channelfactory.com']
         msg = EmailMessage(
             subject='bad word hit list',
             body='attached is the bad word hit list',
             from_email=settings.EXPORTS_EMAIL_ADDRESS,
-            to=['andrew.wong@channelfactory.com',],
+            to=to,
         )
 
         msg.attach("export.csv", csv_context, "text/csv")
-        msg.send(fail_silently=False)
+        try:
+            msg.send(fail_silently=False)
+        # pylint: disable=broad-except
+        except Exception as e:
+            # pylint: enable=broad-except
+            print("Emailing export to %s failed. Error: %s", str(to), e)
 
     def add_bad_word_data(self, word, categories=[], languages=[], scores=[], hit_count=0):
         # word, exclusion category, language, severity, hit count

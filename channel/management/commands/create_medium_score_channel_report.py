@@ -99,14 +99,20 @@ class Command(BaseCommand):
                 self.channel_ids.append(channel_id)
 
     def email_csv(self):
+        to = ['andrew.wong@channelfactory.com']
         msg = EmailMessage(
             subject="medium score channel report",
             body="medium score channel report attached",
             from_email=settings.EXPORTS_EMAIL_ADDRESS,
-            to=['andrew.wong@channelfactory.com'],
+            to=to,
         )
         msg.attach("report.csv", self.csv, "text/csv")
-        msg.send(fail_silently=False)
+        try:
+            msg.send(fail_silently=False)
+        # pylint: disable=broad-except
+        except Exception as e:
+            # pylint: enable=broad-except
+            print("Emailing export to %s failed. Error: %s", str(to), e)
 
     def write_csv(self):
         csv_file = StringIO()
