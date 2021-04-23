@@ -219,6 +219,9 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
+        max_rows = audit.params.get('MAX_VIDEO_ROWS')
+        if not max_rows:
+            max_rows = self.MAX_ROWS
         self.get_categories()
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
@@ -283,8 +286,8 @@ class AuditExportApiView(APIView):
         auditor = VideoAuditor()
         rows = [cols]
         count = videos.count()
-        if count > self.MAX_ROWS:
-            count = self.MAX_ROWS
+        if count > max_rows:
+            count = max_rows
         num_done = 0
         print("EXPORT {}: starting video processing".format(export.id))
         for avp in videos:
@@ -300,7 +303,7 @@ class AuditExportApiView(APIView):
                 acm = v_channel.auditchannelmeta
             except Exception:
                 acm = None
-            if num_done > self.MAX_ROWS:
+            if num_done > max_rows:
                 continue
             try:
                 language = self.get_lang(v.language_id)
