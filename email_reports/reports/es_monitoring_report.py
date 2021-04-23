@@ -2,7 +2,7 @@ from django.conf import settings
 from django.template.defaultfilters import striptags
 from django.template.loader import get_template
 
-from administration.notifications import send_email
+from administration.notifications import send_email_with_headers
 from email_reports.reports.base import BaseEmailReport
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -27,24 +27,23 @@ class ESMonitoringEmailReport(BaseEmailReport):
         html_content = self._get_body()
         text_content = striptags(html_content)
 
-        send_email(
+        send_email_with_headers(
             subject=self._get_subject(),
-            message=text_content,
+            body=text_content,
             from_email=settings.SENDER_EMAIL_ADDRESS,
-            recipient_list=settings.ES_MONITORING_EMAIL_ADDRESSES,
-            html_message=html_content,
-            fail_silently=False
+            to=settings.ES_MONITORING_EMAIL_ADDRESSES,
+            headers={"X-Priority": 2},
+            html_content=html_content,
         )
 
     def _send_alert_email(self, model_name, alert_message):
         subject = f"DMP ALERT: {self.cluster} [{self.today}]"
         body = f"{model_name}: {alert_message}"
-        send_email(
+        send_email_with_headers(
             subject=subject,
-            message=body,
+            body=body,
             from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
-            recipient_list=settings.EMERGENCY_EMAIL_ADDRESSES,
-            fail_silently=False
+            to=settings.EMERGENCY_EMAIL_ADDRESSES,
         )
 
     def send_alerts(self):

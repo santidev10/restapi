@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Sum
 
-from administration.notifications import send_email
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
@@ -79,14 +79,15 @@ class TechFeeCapExceeded(BaseCampaignEmailReport):
                         placement["opportunity__account_manager__email"])
 
                 manager_name = placement["opportunity__ad_ops_manager__name"]
-                msg = send_email(
+                send_email_with_headers(
                     subject="Tech Fee Cap Exceeded",
-                    message=_body_template.format(
+                    body=_body_template.format(
                         ad_ops_name=manager_name or "Dear Manager",
                         opportunity_name=placement["opportunity__name"],
                         tech_fee_cap=tech_fee_cap,
                         placement_name=placement["name"]),
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
-                    recipient_list=to_recipients + cc_recipients
+                    to=self.get_to(to_recipients),
+                    cc=self.get_cc(cc_recipients),
+                    bcc=self.get_bcc()
                 )
-                msg.send(fail_silently=False)

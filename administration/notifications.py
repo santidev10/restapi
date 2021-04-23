@@ -15,6 +15,7 @@ import requests
 from django.conf import settings
 from django.core import mail
 from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.template.loader import get_template
 
 from utils.es_components_exporter import ESDataS3ExportApiView
@@ -101,13 +102,41 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
     )
 
 
+def send_email_with_headers(subject, body=None, from_email=None, to=[], cc=[], bcc=[],
+                            headers=None, html_content=None, csv_content=None):
+    """
+    This function is similar to "django.core.mail.EmailMultiAlternatives" function and it calls its send() once.
+    In case there was an exception, this function tries an alternative SMTP server once and stops.
+    """
+    result = None
+    if len(to) == 0 and len(cc) == 0 and len(bcc) == 0:
+        return result
+    try:
+        msg = EmailMultiAlternatives(subject=subject, body=body, from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
+                                     to=to, cc=cc, bcc=bcc, headers=headers)
+        if html_content:
+            msg.attach_alternative(html_content, "text/html")
+        if csv_content:
+            msg.attach_alternative(html_content, "text/html")
+        msg.send()
+    except (smtplib.SMTPException, ClientError) as e:
+        recipient_list = to + cc + bcc
+        logger.warning("Send Email AWS-SES : Error during sending email to %s: %s", str(recipient_list), e)
+        if csv_content:
+            body = body + "\n\n" + csv_content
+        result = send_email_using_alternative_smtp(subject=subject, message=body, recipient_list=recipient_list,
+                                                   html_message=html_content)
+    return result
+
+
 def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwargs):
+    """
+    This function is similar to "django.core.mail.send_mail" function and it calls it once.
+    In case there was an exception, this function tries an alternative SMTP server once and stops.
+    """
     result = None
     if not recipient_list:
         return result
-    fail_silently_param = True
-    if kwargs and "fail_silently" in kwargs and not kwargs["fail_silently"]:
-        fail_silently_param = False
     try:
         kwargs["fail_silently"] = False
         result = send_mail(subject=subject,
@@ -116,14 +145,12 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
                            recipient_list=recipient_list,
                            **kwargs)
     except (smtplib.SMTPException, ClientError) as e:
-        logger.info("Send Email AWS-SES : Error during sending email to %s: %s", recipient_list, e)
+        logger.warning("Send Email AWS-SES : Error during sending email to %s: %s", str(recipient_list), e)
         html_message = None
         if "html_message" in kwargs:
             html_message = kwargs["html_message"]
         result = send_email_using_alternative_smtp(subject=subject, message=message, recipient_list=recipient_list,
                                                    html_message=html_message)
-        if not fail_silently_param:
-            raise
     return result
 
 

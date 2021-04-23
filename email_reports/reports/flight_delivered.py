@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db.models import Count
 
-from administration.notifications import send_email
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatus
 from aw_reporting.models import Opportunity
@@ -45,13 +45,17 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
         for opportunity in opportunities:
 
             flight_alerts = self.get_flight_alerts(opportunity, report)
+            to = (self.get_to(opportunity.ad_ops_manager.email) + self.get_bcc(settings.CF_AD_OPS_DIRECTORS) +
+                  self.get_bcc())
 
             for flight_alert in filter(lambda alert: alert is not None, flight_alerts):
-                send_email(
+                send_email_with_headers(
                     subject=flight_alert.subject,
-                    message=flight_alert.body,
+                    body=flight_alert.body,
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
-                    recipient_list=[opportunity.ad_ops_manager.email] + settings.CF_AD_OPS_DIRECTORS
+                    to=self.get_to([opportunity.ad_ops_manager.email]),
+                    cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                    bcc=self.get_bcc()
                 )
 
     def get_flight_alerts(self, opportunity, report):

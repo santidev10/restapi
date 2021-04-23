@@ -2,7 +2,7 @@ import logging
 
 from django.conf import settings
 
-from administration.notifications import send_email
+from administration.notifications import send_email_with_headers
 from es_components.constants import Sections
 from es_components.managers import KeywordManager
 from keywords.api.serializers.keyword_export import KeywordListExportSerializer
@@ -48,5 +48,5 @@ def export_keywords_data(query_params, export_name, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    if send_email(subject=subject, message=body, from_email=from_email, recipient_list=user_emails):
+    if send_email_with_headers(subject=subject, body=body, from_email=from_email, to=user_emails):
         logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

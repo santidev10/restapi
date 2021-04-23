@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 
-from administration.notifications import send_email
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
@@ -53,10 +53,12 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
         for ad_ops_manager, message in messages.items():
             name, to_email = ad_ops_manager
 
-            send_email(
+            send_email_with_headers(
                 subject=f"{name} Opportunities Under Margin Report",
-                message=message + "Please adjust IMMEDIATELY.",
+                body=message + "Please adjust IMMEDIATELY.",
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
-                recipient_list=[to_email] + settings.CF_AD_OPS_DIRECTORS,
-                fail_silently=False
+                to=self.get_to([to_email]),
+                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                bcc=self.get_bcc(),
+                headers={"X-Priority": 2},
             )
