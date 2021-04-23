@@ -26,6 +26,7 @@ from utils.datetime import now_in_default_tz
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
 
+
 @mock_s3
 class CTLDV360SyncTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_id):
@@ -78,25 +79,26 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_success(self):
+        mock_audit = AuditProcessor.objects.create()
         segment, advertiser, adgroups = self._mock_data()
         ag_ids = [ag.id for ag in adgroups]
         payload = json.dumps(dict(
             advertiser_id=advertiser.id,
             adgroup_ids=ag_ids,
         ))
-        with mock.patch("segment.api.views.custom_segment.segment_dv360_sync.SegmentDV360SyncAPIView._start_audit") as mock_start_audit:
+        with mock.patch("segment.api.views.custom_segment.segment_dv360_sync.SegmentDV360SyncAPIView._start_audit", return_value=mock_audit) as mock_start_audit:
             response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         segment.refresh_from_db()
         mock_start_audit.assert_called_once()
-        dv360_params = segment.params[Params.DV360_SYNC_DATA]
-        self.assertEqual(dv360_params[Params.ADVERTISER_ID], advertiser.id)
-        self.assertEqual(dv360_params[Params.ADGROUP_IDS], ag_ids)
+        self.assertEqual(segment.params[Params.DV360_SYNC_DATA][Params.META_AUDIT_ID], mock_audit.id)
 
     def test_success_audit_creation(self):
         """ Test audit is created for DV360 SDF creation and source file for audit is uploaded """
         segment, advertiser, adgroups = self._mock_data()
-        export = CustomSegmentFileUpload.objects.create(segment=segment, filename="test.csv", query={})
+        export_filename = "test.csv"
+        export = CustomSegmentFileUpload.objects.create(segment=segment, filename=export_filename,
+                                                        admin_filename=export_filename, query={})
         ag_ids = [ag.id for ag in adgroups]
 
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -117,8 +119,11 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         audit = AuditProcessor.objects.get(params__segment_id=segment.id)
+        audit_dv360_params = audit.params[Params.DV360_SYNC_DATA]
         self.assertEqual(audit.params["segment_id"], segment.id)
-        self.assertEqual(audit.params["with_dv360_sdf"], True)
+        self.assertEqual(audit_dv360_params[Params.ADVERTISER_ID], advertiser.id)
+        self.assertEqual(audit_dv360_params[Params.ADGROUP_IDS], ag_ids)
+
         # Check audit seed file was uploaded correctly
         audit_seed_data = conn.Object(settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME, audit.params["seed_file"]).get()["Body"]
         rows = [row.decode("utf-8") for row in audit_seed_data]
