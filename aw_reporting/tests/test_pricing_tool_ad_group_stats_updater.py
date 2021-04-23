@@ -7,8 +7,8 @@ from unittest.mock import patch
 from django.test import TransactionTestCase
 from django.utils import timezone
 
-from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import DATE_FORMAT
-from aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats import PricingToolAccountAdGroupStatsUpdater
+from aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats import DATE_FORMAT
+from aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats import PricingToolAccountAdGroupStatsUpdater
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.models.ad_words.ad_group import AdGroup
@@ -194,7 +194,7 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         row_factory = RowFactory()
         row_count = random.randrange(10, 25)
         service_mock.search.return_value = [row_factory.make() for _ in range(row_count)]
-        with patch("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.get_client",
+        with patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.get_client",
                    return_value=client_mock):
 
             updater = PricingToolAccountAdGroupStatsUpdater(account=row_factory.get_account())
@@ -216,9 +216,9 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         row_factory = RowFactory(days_diff=row_count)
         service_mock.search.return_value = [row_factory.make() for _ in range(row_count)]
         create_threshold = 3
-        with patch("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.get_client",
+        with patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.get_client",
                    return_value=client_mock),\
-                patch("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.CREATE_THRESHOLD",
+                patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.CREATE_THRESHOLD",
                       create_threshold):
 
             updater = PricingToolAccountAdGroupStatsUpdater(account=row_factory.get_account())
@@ -272,7 +272,7 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         wont_persist = AdGroupGeoViewStatistic.objects.bulk_create(wont_persist)
 
         existing_stats_count = AdGroupGeoViewStatistic.objects.count()
-        with patch("aw_reporting.google_ads.tasks.update_pricing_tool_ad_group_stats.get_client",
+        with patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.get_client",
                    return_value=client_mock):
             updater = PricingToolAccountAdGroupStatsUpdater(account=row_factory.get_account())
             updater.run()
