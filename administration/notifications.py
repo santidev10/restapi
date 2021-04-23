@@ -117,7 +117,7 @@ def send_email_with_headers(subject, body=None, from_email=None, to=[], cc=[], b
         if html_content:
             msg.attach_alternative(html_content, "text/html")
         if csv_content:
-            msg.attach_alternative(html_content, "text/html")
+            msg.attach_alternative(csv_content, "text/csv")
         msg.send()
     except (smtplib.SMTPException, ClientError) as e:
         recipient_list = to + cc + bcc

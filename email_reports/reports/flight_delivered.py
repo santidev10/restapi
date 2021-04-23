@@ -45,8 +45,6 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
         for opportunity in opportunities:
 
             flight_alerts = self.get_flight_alerts(opportunity, report)
-            to = (self.get_to(opportunity.ad_ops_manager.email) + self.get_bcc(settings.CF_AD_OPS_DIRECTORS) +
-                  self.get_bcc())
 
             for flight_alert in filter(lambda alert: alert is not None, flight_alerts):
                 send_email_with_headers(
