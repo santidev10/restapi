@@ -11,6 +11,7 @@ from oauth.constants import OAuthType
 from oauth.models import Account
 from oauth.models import OAuthAccount
 from oauth.utils.adwords import get_accounts
+from oauth.utils.adwords import update_accounts
 from saas import celery_app
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
@@ -44,6 +45,8 @@ def google_ads_update_task(oauth_account_ids=None):
 
         for mcc_id in get_to_update(mcc_accounts, update_threshold):
             update_with_lock(update_mcc_campaigns, mcc_id, oauth)
+
+        update_accounts(oauth, cid_accounts, name_field="descriptiveName")
         for cid_id in get_to_update(cid_accounts, update_threshold):
             update_with_lock(update_cid_campaigns, cid_id, oauth)
 
