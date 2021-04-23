@@ -257,9 +257,12 @@ class Command(BaseCommand):
                     logger.info("problem saving channel")
                 self.calc_video_languages_and_sentiment(db_channel_meta)
             AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
+        except KeyError:
+            AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
         # pylint: disable=broad-except
         except Exception as e:
         # pylint: enable=broad-except
+            print("error processing: ".format(str(ids)))
             logger.exception(e)
 
     # pylint: enable=too-many-branches,too-many-nested-blocks,too-many-statements

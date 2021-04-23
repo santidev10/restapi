@@ -1,11 +1,14 @@
 import logging
 from datetime import timedelta
+from typing import Union
 
 from aw_reporting.adwords_reports import ad_group_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models.ad_words.constants import BiddingStrategyTypeEnum
+from aw_reporting.models.ad_words.constants import bidding_strategy_type_id_mapping
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
@@ -84,6 +87,7 @@ class AdGroupUpdater(UpdateMixin):
                         "name": row_obj.AdGroupName,
                         "status": row_obj.AdGroupStatus,
                         "type": row_obj.AdGroupType,
+                        "bidding_strategy_type_id": self._get_bidding_strategy_type_id(row_obj),
                         "campaign_id": campaign_id,
                         "cpv_bid": self._validate_integer(row_obj.CpvBid),
                         "cpm_bid": self._validate_integer(row_obj.CpmBid),
@@ -126,3 +130,14 @@ class AdGroupUpdater(UpdateMixin):
         except (ValueError, TypeError):
             pass
         return validated
+
+    @staticmethod
+    def _get_bidding_strategy_type_id(row) -> Union[int, None]:
+        """
+        transform the string type to an id type
+        :param row:
+        :return:
+        """
+        bidding_strategy_type = row.BiddingStrategyType
+        type_id = bidding_strategy_type_id_mapping.get(bidding_strategy_type)
+        return type_id

@@ -26,11 +26,12 @@ from segment.api.export_serializers import AdminCustomSegmentChannelExportSerial
 from segment.api.export_serializers import AdminCustomSegmentVideoExportSerializer
 from segment.api.export_serializers import CustomSegmentVideoExportSerializer
 from segment.models import CustomSegment
+from segment.models.constants import Params
 from segment.models.constants import SourceListType
 from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
-from segment.tasks.generate_segment import generate_segment
+from segment.utils.generate_segment import generate_segment
 from utils.brand_safety import map_brand_safety_score
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -469,7 +470,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for _ in range(5):
             _id = next(int_iterator)
-            doc = VideoManager.model(f"id_{_id}")
+            doc = VideoManager.model(f"id_{_id}".zfill(11))
             doc.populate_general_data(title=f"title_{_id}", age_restricted=False)
             docs.append(doc)
         # Prepare inclusion source list of urls
@@ -510,7 +511,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for i in range(10):
             _id = next(int_iterator)
-            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc = ChannelManager.model(f"channel_id_{_id}".zfill(24))
             doc.populate_general_data(title=f"channel_title_{_id}")
             if i % 2 == 0:
                 doc.populate_monetization(is_monetizable=True)
@@ -616,7 +617,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         docs = []
         for i in range(5):
             _id = next(int_iterator)
-            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc = ChannelManager.model(f"channel_id_{_id}".zfill(24))
             doc.populate_general_data(title=f"channel_title_{_id}")
             if i % 2 == 0:
                 doc.populate_monetization(is_monetizable=True)
@@ -643,7 +644,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         CustomSegmentSourceFileUpload.objects.create(
             segment=segment, source_type=SourceListType.INCLUSION.value, filename=source_key,
         )
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[[], inclusion, exclusion]):
             generate_segment(segment, Q(), len(docs))
         export_key = segment.get_admin_s3_key()
         body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()["Body"]
@@ -665,11 +666,11 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         segment = CustomSegment(title=f"title_{next(int_iterator)}", segment_type=1, owner=user)
         audit = AuditProcessor.objects.create(source=2, params=dict(segment_id=segment.id))
-        segment.params["meta_audit_id"] = audit.id
+        segment.params[Params.META_AUDIT_ID] = audit.id
         segment.save()
         doc = Channel(f"yt_channel_{next(int_iterator)}")
         self.channel_manager.upsert([doc])
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[[doc]]):
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[[doc]]):
             generate_segment(segment, Q(), 1, with_audit=True)
 
         # Audit params should be updated after generate_segment is complete
@@ -697,13 +698,14 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         audit_id = next(int_iterator)
         audit, _ = AuditProcessor.objects.get_or_create(id=audit_id, source=2,
                                                         defaults=dict(params=dict(segment_id=segment.id)))
-        segment.params["meta_audit_id"] = audit.id
+        segment.params[Params.META_AUDIT_ID] = audit.id
         segment.save()
-        with patch("segment.tasks.generate_segment.bulk_search", return_value=[]),\
+        with patch("segment.utils.generate_segment.bulk_search", return_value=[]),\
                 patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit:
             result = generate_segment(segment, Q(), 1, with_audit=True)
         segment.refresh_from_db()
-        expected_removed_ctl_params = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        expected_removed_ctl_params = {Params.META_AUDIT_ID, Params.INCLUSION_FILE,
+                                       Params.EXCLUSION_FILE}
         # Audit should be deleted as no items on ctl for audit to process
         self.assertFalse(AuditProcessor.objects.filter(id=audit_id).exists())
         for key in expected_removed_ctl_params:
@@ -855,7 +857,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             title=f"title_{next(int_iterator)}",
             segment_type=1, owner=user, uuid=uuid4(), list_type=0,
         )
-        with patch("segment.tasks.generate_segment.GenerateSegmentUtils",
+        with patch("segment.utils.generate_segment.GenerateSegmentUtils",
                    side_effect=[ConnectionError, IncompleteRead(""), GenerateSegmentUtils(segment)]):
             results = generate_segment(segment, Q(), 1)
         self.assertTrue(results)

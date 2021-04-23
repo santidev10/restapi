@@ -13,9 +13,10 @@ from segment.utils.query_builder import SegmentQueryBuilder
 
 class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
     def setUp(self):
-        sections = [Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS, Sections.GENERAL_DATA]
-        self.channel_manager = ChannelManager(sections=sections, upsert_sections=sections)
-        self.video_manager = VideoManager(sections=sections, upsert_sections=sections)
+        channel_sections = [Sections.TASK_US_DATA, Sections.STATS, Sections.ADS_STATS, Sections.GENERAL_DATA]
+        self.channel_manager = ChannelManager(sections=channel_sections, upsert_sections=channel_sections)
+        video_sections = channel_sections + [Sections.CHANNEL]
+        self.video_manager = VideoManager(sections=video_sections, upsert_sections=video_sections)
 
     def test_video_vetted_after(self):
         """ Should return documents vetted after a provided date """
@@ -151,3 +152,105 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         response = query_builder.execute()
         self.assertEqual(len(response), 1)
         self.assertEqual(response[0].main.id, doc3.main.id)
+
+    def test_video_channels_subs_count(self):
+        """
+        This functions tests that the Segmet filter for Build > video CTL > channels subscribers filter works
+        """
+        video_doc1 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc2 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc3 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc4 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc1.populate_stats(
+            channel_subscribers=0
+        )
+        video_doc2.populate_stats(
+            channel_subscribers=10
+        )
+        video_doc3.populate_stats(
+            channel_subscribers=20
+        )
+        video_doc4.populate_stats(
+            channel_subscribers=30
+        )
+        self.video_manager.upsert([video_doc1, video_doc2, video_doc3, video_doc4])
+        params = dict(
+            segment_type=0,
+            minimum_subscribers=20,
+            minimum_subscribers_include_na=False,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response[0].main.id, video_doc3.main.id)
+        self.assertEqual(response[1].main.id, video_doc4.main.id)
+
+        params["minimum_subscribers_include_na"] = True
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        self.assertEqual(len(response), 3)
+        self.assertEqual(response[0].main.id, video_doc1.main.id)
+        self.assertEqual(response[1].main.id, video_doc3.main.id)
+        self.assertEqual(response[2].main.id, video_doc4.main.id)
+
+    def test_mismatched_language_exclusion_filter(self):
+        """
+        Tests that documents with mismatched_language=True are excluded when
+        mismatched_language=True is in params for SegmentQueryBuilder
+        """
+        # Test mismatched_language=True channels excluded with filter
+        channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc1.populate_task_us_data(
+            mismatched_language=True
+        )
+        channel_doc2.populate_task_us_data(
+            mismatched_language=False
+        )
+        self.channel_manager.upsert([channel_doc1, channel_doc2])
+        params = dict(
+            segment_type=1,
+            mismatched_language=True
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute(limit=100)
+        ids = [item.main.id for item in response]
+        self.assertNotIn(channel_doc1.main.id, ids)
+        self.assertIn(channel_doc2.main.id, ids)
+
+        # Test mismatched_language=True videos excluded with filter
+        video_doc1 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc2 = self.video_manager.model(f"video_{next(int_iterator)}")
+        video_doc1.populate_channel(
+            id=channel_doc1.main.id
+        )
+        video_doc1.populate_task_us_data(
+            mismatched_language=True
+        )
+        video_doc2.populate_channel(
+            id=channel_doc2.main.id
+        )
+        video_doc2.populate_task_us_data(
+            mismatched_language=False
+        )
+        self.video_manager.upsert([video_doc1, video_doc2])
+        params = dict(
+            segment_type=0,
+            mismatched_language=True,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        ids = [item.main.id for item in response]
+        self.assertIn(video_doc2.main.id, ids)
+        self.assertNotIn(video_doc1.main.id, ids)
+
+        # Test mismatched_language=False does not exclude docs
+        params = dict(
+            segment_type=0,
+            mismatched_language=False,
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        ids = [item.main.id for item in response]
+        self.assertIn(video_doc2.main.id, ids)
+        self.assertIn(video_doc1.main.id, ids)

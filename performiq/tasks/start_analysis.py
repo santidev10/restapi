@@ -1,9 +1,9 @@
 from .constants import EXPORT_TYPES
+from oauth.models import OAuthAccount
 from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import DataSourceType
 from performiq.analyzers.executor_analyzer import ExecutorAnalyzer
 from performiq.models import IQCampaign
-from performiq.models import OAuthAccount
 from performiq.tasks.generate_exports import generate_exports
 from performiq.utils.send_export_email import send_export_email
 from saas import celery_app
@@ -41,7 +41,7 @@ def start_analysis_task(iq_campaign_id: int, email: str, completion_link: str):
     iq_campaign.completed = now_in_default_tz()
     iq_campaign.save(update_fields=["started", "results", "completed"])
 
-    if not iq_campaign.results.get("error"):
+    if not iq_campaign.results.get("error") and not iq_campaign.results.get("no_placement_analyzed"):
         _send_completion_email(email, iq_campaign, completion_link)
 
 

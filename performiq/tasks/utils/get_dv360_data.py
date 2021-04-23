@@ -5,9 +5,9 @@ import tempfile
 
 from django.conf import settings
 
+from oauth.models import OAuthAccount
 from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.constants import COERCE_FIELD_FUNCS
-from performiq.models import OAuthAccount
 from performiq.models import IQCampaign
 from performiq.models.constants import AnalysisFields
 from utils.dv360_api import DV360Connector
@@ -38,7 +38,7 @@ def get_dv360_data(iq_campaign: IQCampaign, **kwargs):
         dv360_campaign = iq_campaign.campaign
         oauth_account = OAuthAccount.objects.get(id=kwargs["oauth_account_id"])
         connector = DV360Connector(access_token=oauth_account.token, refresh_token=oauth_account.refresh_token)
-        insertion_orders = connector.get_insertion_orders(advertiserId="1878225",
+        insertion_orders = connector.get_insertion_orders(advertiserId=str(dv360_campaign.advertiser.id),
                                                           filter=f"campaignId={dv360_campaign.id}")
         insertion_order_filters = [{
             "type": "FILTER_INSERTION_ORDER",

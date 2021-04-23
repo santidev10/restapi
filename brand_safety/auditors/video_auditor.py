@@ -93,12 +93,14 @@ class VideoAuditor(BaseAuditor):
                 self.index_audit_results(self.video_manager, to_index)
         return all_audits
 
-    def process(self, video_ids: list, index=True, channel_mapping=None) -> list:
+    def process(self, video_ids: list, index=True, channel_mapping=None, as_rescore=False) -> list:
         """
         Audit videos ids with indexing
         :param video_ids: list[str]
         :param index: Should index results
         :param channel_mapping: dict -> dict of channel id to channel
+        :param as_rescore: bool -> If the batch of video_ids are being scored with a value of brand_safety.rescore=True.
+            If as_rescore is True, then the scored videos will be set with rescore=False as scoring is completed
         :return: None
         """
         scored = []
@@ -113,7 +115,7 @@ class VideoAuditor(BaseAuditor):
             self._check_rescore_channels(check_rescore_channels)
             scored.extend(video_audits)
             if index is True:
-                to_index = [audit.add_brand_safety_data() for audit in video_audits]
+                to_index = [audit.add_brand_safety_data(reset_rescore=as_rescore) for audit in video_audits]
                 self.index_audit_results(self.video_manager, to_index)
         return scored
 

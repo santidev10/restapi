@@ -3,7 +3,7 @@ from distutils.util import strtobool
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .utils.get_campaigns import get_campaigns
+from oauth.utils.view import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
 from performiq.api.views.utils.paginator import PerformIQPaginatior
 from performiq.models import IQCampaign
@@ -50,5 +50,5 @@ class PerformIQCampaignListCreateAPIView(APIView):
         request = self.request
         prefix = get_request_prefix(request)
         host = request.get_host()
-        link = f"{prefix}{host}/analytics/perform_iq/{iq_campaign.id}"
+        link = f"{prefix}{host}/review/{iq_campaign.id}"
         return link

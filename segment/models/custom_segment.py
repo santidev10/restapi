@@ -25,12 +25,15 @@ from segment.api.export_serializers import CustomSegmentChannelVettedExportSeria
 from segment.api.export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.constants import ChannelConfig
+from segment.models.constants import Params
+from segment.models.constants import Results
 from segment.models.constants import VideoConfig
 from segment.models.constants import SegmentTypeEnum
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 from segment.models.utils.segment_exporter import SegmentExporter
 from utils.models import Timestampable
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +60,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     # audit_id is AuditProcessor id used for ctl vetting
     audit_id = models.IntegerField(null=True, default=None, db_index=True)
     uuid = models.UUIDField(unique=True, default=uuid4)
-    # Store general statistics / results data
+    # Store general statistics / results data. This should never be reset, always updated
     statistics = models.JSONField(default=dict)
     list_type = models.IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE)
@@ -68,10 +71,13 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_regenerating = models.BooleanField(default=False, db_index=True)
     featured_image_url = models.TextField(default="")
+    # Store general ctl generation params. This should never be reset, always updated
     params = models.JSONField(default=dict)
 
     def remove_meta_audit_params(self):
-        remove_keys = {"meta_audit_id", "inclusion_file", "exclusion_file"}
+        remove_keys = {
+            Params.META_AUDIT_ID, Params.INCLUSION_FILE, Params.EXCLUSION_FILE,
+        }
         [self.params.pop(key, None) for key in remove_keys]
         self.save(update_fields=["params"])
 
@@ -226,8 +232,29 @@ class CustomSegment(SegmentMixin, Timestampable):
             except AuditProcessor.DoesNotExist:
                 pass
         _delete_audit(self.audit_id)
-        _delete_audit(self.params.get("meta_audit_id"))
+        _delete_audit(self.params.get(Params.META_AUDIT_ID))
         self.delete()
+
+    def update_statistics(self, sub_key, data, data_key=None, save=False):
+        sub_data = self.statistics.get(sub_key, {})
+        if not data_key:
+            sub_data.update(data)
+        else:
+            sub_data[data_key] = data
+        if save:
+            self.save(update_fields=["statistics"])
+
+    def update_sync_history(self, account_name, sync_type) -> None:
+        """
+        Add date to ctl sync history
+        :param account_name: str -> Name of external resource entity e.g. GAds cid Account name
+        :param sync_type: str -> Name of external resource e.g. gads or dv360
+        """
+        date_str = now_in_default_tz().strftime("%H:%M, %B %d, %Y")
+        message = f"{account_name} - at {date_str}"
+        self.statistics[sync_type] = self.statistics.get(sync_type, {})
+        prev_history = self.statistics[sync_type].get(Results.HISTORY, [])
+        self.statistics[sync_type][Results.HISTORY] = [*prev_history, message]
 
 
 class CustomSegmentRelated(models.Model):

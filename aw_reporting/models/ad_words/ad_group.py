@@ -16,6 +16,7 @@ class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True, db_index=True)
     type = models.CharField(max_length=35, default="", db_index=True)
+    bidding_strategy_type_id = models.IntegerField(default=None, null=True, db_index=True)
     campaign = models.ForeignKey(Campaign, related_name="ad_groups", on_delete=models.CASCADE)
     engagements = models.IntegerField(default=0, db_index=True)
     active_view_impressions = models.IntegerField(default=0, db_index=True)

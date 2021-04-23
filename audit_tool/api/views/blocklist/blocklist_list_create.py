@@ -22,6 +22,7 @@ from utils.db.functions import safe_bulk_create
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.views import validate_max_page
 from utils.datetime import now_in_default_tz
+from utils.utils import validate_youtube_url
 
 
 class BlocklistPaginator(CustomPageNumberPaginator):
@@ -55,7 +56,7 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         objects = BlacklistItem.objects.filter(item_type=data_type, blocklist=True).order_by(F("updated_at").desc(nulls_last=True))
         ordered_ids = [item.item_id for item in objects]
         sections = (Sections.GENERAL_DATA,)
-        queryset = es_manager_class(sections=sections).get(ordered_ids)
+        queryset = es_manager_class(sections=sections).get(ordered_ids, skip_none=True)
         return queryset
 
     def _validate(self):
@@ -141,26 +142,14 @@ class BlocklistListCreateAPIView(ListCreateAPIView):
         :param data_type: video or channel
         :return: new list of item ids
         """
-        separator = "/channel/" if data_type == "channel" else "?v="
         mapped_ids = []
         if isinstance(urls, str):
             urls = [urls]
         for url in urls:
-            mapped = url
-            if "youtube" in url:
-                mapped = url.split(separator)[-1].strip("/")
-            if self._validate_url(mapped, data_type):
-                mapped_ids.append(mapped)
+            extracted_id = validate_youtube_url(url, data_type)
+            if extracted_id:
+                mapped_ids.append(extracted_id)
         return mapped_ids
-
-    def _validate_url(self, url, data_type):
-        url = str(url)
-        valid = True
-        if data_type == "channel" and len(url) != 24:
-            valid = False
-        elif data_type == "video" and len(url) != 11:
-            valid = False
-        return valid
 
     def _update_docs(self, item_ids: list, should_block: bool, data_type: str) -> None:
         """

@@ -8,14 +8,14 @@ from django.utils import timezone
 
 from .utils import get_params
 from es_components.tests.utils import ESTestCase
+from oauth.models import Campaign
+from oauth.models import OAuthAccount
 from performiq.analyzers.base_analyzer import PerformIQDataFetchError
 from performiq.analyzers.executor_analyzer import ExecutorAnalyzer
 from performiq.analyzers import PerformanceAnalyzer
 from performiq.analyzers.constants import AnalysisResultSection
 from performiq.analyzers import ChannelAnalysis
-from performiq.models import Campaign
 from performiq.models import IQCampaign
-from performiq.models import OAuthAccount
 from performiq.models.constants import OAuthType
 import performiq.tasks.start_analysis as start_analysis
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -78,7 +78,7 @@ class PerformIQAnalysisTestCase(ExtendedAPITestCase, ESTestCase):
             start_analysis.start_analysis_task(iq_campaign.id, "", "")
         iq_campaign.refresh_from_db()
         self.assertTrue(iq_campaign.results["no_placement_analyzed"], True)
-        mock_email.assert_called_once()
+        mock_email.assert_not_called()
 
     @mock_s3
     def test_no_filters_null_results(self):

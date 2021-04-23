@@ -11,8 +11,11 @@ class Name:
     SEGMENT_CREATE = "segment_create"
     SEGMENT_EXPORT = "segment_export"
     SEGMENT_SOURCE = "segment_source"
-
+    SEGMENT_OAUTH = "segment_oauth"
+    SEGMENT_SYNC_GADS = "segment_sync_gads"
+    SEGMENT_SYNC_DV360 = "segment_sync_dv360"
     SEGMENT_PREVIEW = "segment_preview"
+    SEGMENT_GADS_SCRIPT = "segment_gads_script"
 
     PERSISTENT_SEGMENT_LIST = "persistent_segment_list"
     PERSISTENT_SEGMENT_DETAILS = "persistent_segment_details"

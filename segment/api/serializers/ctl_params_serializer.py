@@ -6,7 +6,7 @@ from rest_framework.serializers import empty
 from rest_framework.exceptions import ValidationError
 
 from es_components.iab_categories import IAB_TIER2_SET
-from segment.models.constants import SegmentTypeEnum
+from segment.models import ParamsTemplate
 from segment.utils.utils import validate_all_in
 from segment.utils.utils import validate_segment_type
 from audit_tool.models import AuditContentQuality
@@ -193,6 +193,8 @@ class CTLParamsSerializer(serializers.Serializer):
     minimum_views_include_na = NonRequiredBooleanField()
     mismatched_language = NonRequiredBooleanField()
 
+    template_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+
     def validate(self, data: dict) -> dict:
         validated_data = super().validate(data)
         # Only validate if content_categories was passed in
@@ -214,3 +216,17 @@ class CTLParamsSerializer(serializers.Serializer):
             if bad_content_categories:
                 comma_separated = ", ".join(str(item) for item in bad_content_categories)
                 raise ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'")
+
+
+class ParamsTemplateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for ParamsTemplate model
+    serializes all fields except for title_hash
+    """
+    template_id = serializers.IntegerField(source="id")
+    template_title = serializers.CharField(source="title")
+    ctl_params = serializers.JSONField(source="params")
+
+    class Meta:
+        model = ParamsTemplate
+        fields = ("template_id", "segment_type", "template_title", "owner", "ctl_params", "created_at", "updated_at")

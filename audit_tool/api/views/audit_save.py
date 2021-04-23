@@ -6,6 +6,7 @@ from io import StringIO
 from uuid import uuid4
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -22,7 +23,9 @@ from utils.aws.s3_exporter import S3Exporter
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE__CREATE),
+        StaticPermissions.has_perms(StaticPermissions.AUDIT_QUEUE__CREATE, method="post")
+        | StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_VET_ENABLE, method="patch"),
+
     )
     LANGUAGES_REVERSE = {}
 

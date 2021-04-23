@@ -60,6 +60,7 @@ PROJECT_APPS = (
     "ftux",
     "healthcheck",
     "keyword_tool",
+    "oauth",
     "performiq",
     "related_tool",
     "segment",
@@ -514,6 +515,7 @@ PROXY_PORT = ""
 
 IAS_ARCHIVE_FOLDER = "archive/"
 IAS_PROCESSING_FOLDER = "processing/"
+IAS_SKIP_DUPLICATE_FILENAMES = False
 ARCHIVE_IAS = False
 
 PERFORMIQ_OAUTH_USER_AGENT = "Web application"
@@ -578,6 +580,8 @@ DOMAIN_MANAGEMENT_PERMISSIONS = (
     "Tools > Audit Queue",
     "Tools > Ads Analyzer"
 )
+
+PRICING_TOOL_AD_GROUP_STATS_SIZE = 10
 
 try:
     from .local_settings import *
