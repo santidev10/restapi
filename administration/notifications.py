@@ -103,7 +103,7 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
 
 
 def send_email_with_headers(subject, body=None, from_email=None, to=[], cc=[], bcc=[],
-                            headers=None, html_content=None, csv_content=None):
+                            headers=None, html_content=None, csv_file_name=None, csv_content=None):
     """
     This function is similar to "django.core.mail.EmailMultiAlternatives" function and it calls its send() once.
     In case there was an exception, this function tries an alternative SMTP server once and stops.
@@ -116,14 +116,14 @@ def send_email_with_headers(subject, body=None, from_email=None, to=[], cc=[], b
                                      to=to, cc=cc, bcc=bcc, headers=headers)
         if html_content:
             msg.attach_alternative(html_content, "text/html")
-        if csv_content:
-            msg.attach_alternative(csv_content, "text/csv")
+        if csv_file_name and csv_content:
+            msg.attach(csv_file_name, csv_content, "text/csv")
         msg.send()
     except (smtplib.SMTPException, ClientError) as e:
         recipient_list = to + cc + bcc
         logger.warning("Send Email AWS-SES : Error during sending email to %s: %s", str(recipient_list), e)
-        if csv_content:
-            body = body + "\n\n" + csv_content
+        if csv_file_name and csv_content:
+            body = body + "\n\n" + csv_file_name + "\n" + csv_content
         result = send_email_using_alternative_smtp(subject=subject, message=body, recipient_list=recipient_list,
                                                    html_message=html_content)
     return result

@@ -105,6 +105,7 @@ class Command(BaseCommand):
                 body="medium score channel report attached",
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=to,
+                csv_file_name="report.csv",
                 csv_content=self.csv):
             print("Emailing export to %s failed.", str(to))
 

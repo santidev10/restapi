@@ -107,6 +107,7 @@ class Command(BaseCommand):
                 body='attached is the bad word hit list',
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=to,
+                csv_file_name="export.csv",
                 csv_content=csv_context):
             print("Emailing export to %s failed.", str(to))
 

@@ -175,6 +175,7 @@ class AbstractDailyApexEmailReport(BaseEmailReport):
                 to=self.get_to(self.to),
                 cc=self.get_cc(self.cc),
                 bcc=self.get_bcc(),
+                csv_file_name=self.attachment_filename,
                 csv_content=csv_context):
             print("Emailing export to %s failed.", str(self.to))
 
