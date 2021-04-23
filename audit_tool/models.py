@@ -196,7 +196,7 @@ class AuditProcessor(models.Model):
             ret["items_count"] = len(audits)
         else:
             ret["items_count"] = all_audits.count()
-            all_audits = all_audits.order_by("pause", "-completed", "id")
+            all_audits = all_audits.order_by("-source", "pause", "-completed", "id")
             if limit:
                 start = (cursor - 1) * limit
                 all_audits = all_audits[start:start + limit]

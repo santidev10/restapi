@@ -120,10 +120,20 @@ class IASChannelIngestor:
         else:
             # include only files in the top level cf-ias directory, files that are CSVs
             # and don't start with an "IGNORE" flag
-            self.process_queue = [file_name for file_name in file_names
-                                  if "/" not in file_name
-                                  and not file_name.startswith("IGNORE")
-                                  and file_name.endswith(".csv")]
+            file_names = [file_name for file_name in file_names
+                          if "/" not in file_name
+                          and not file_name.startswith("IGNORE")
+                          and file_name.endswith(".csv")]
+            # Prevents RC from re-processing the same file when production doesn't archive items.
+            if settings.IAS_SKIP_DUPLICATE_FILENAMES:
+                file_names_to_skip = IASHistory.objects.filter(name__in=file_names).values_list("name", flat=True)
+                file_names_to_skip = list(file_names_to_skip)
+                to_skip_str = ", ".join(file_names_to_skip)
+                logger.info(f"skipping files: {to_skip_str} because IAS_SKIP_DUPLICATE_FILENAMES is True and the file "
+                            "names already exists in the history.")
+                file_names = [file_name for file_name in file_names if file_name not in file_names_to_skip]
+
+            self.process_queue = file_names
 
     def _get_s3_file_names(self) -> list:
         """

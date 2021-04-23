@@ -59,7 +59,7 @@ def video_update(video_ids, rescore=False):
     rescore_channels = auditor.channel_manager.get(to_rescore, skip_none=True)
     for channel in rescore_channels:
         channel.brand_safety.rescore = True
-    auditor.channel_manager.upsert(rescore_channels)
+    auditor.channel_manager.upsert(rescore_channels, ignore_update_time_sections=[Sections.BRAND_SAFETY])
 
 
 def _create_rescore_tasks(video_manager, base_query):

@@ -80,5 +80,5 @@ class GoogleAdsOAuthAPIView(BaseGoogleOAuthAPIView):
             return Response(data=response, status=status)
         finally:
             if is_err:
-                oauth_account.synced = True
-                oauth_account.save(update_fields=["synced"])
+                oauth_account.is_enabled = False
+                oauth_account.save(update_fields=["is_enabled"])
