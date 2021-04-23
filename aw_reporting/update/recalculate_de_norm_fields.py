@@ -56,7 +56,7 @@ def recalculate_de_norm_fields_for_account(account_id: Account.id, with_counts=T
     """
     _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id)
     _recalculate_de_norm_fields_for_account_flights(account_id)
-    # This function costly as it aggregates on the massive
+    # _recalculate_de_norm_fields_for_account_statistics is costly as it aggregates on the massive
     # YTChannel and YTVideo statistics tables. These stats do not need to be updated often and will be updated
     # by the update_without_campaigns task which processes accounts on a longer interval
     if with_counts:
