@@ -82,7 +82,7 @@ class StaticPermissions:
     BUILD__CTL_DELETE_CHANNEL_LIST = "build.ctl_delete"
     BUILD__CTL_CREATE_VIDEO_LIST = "build.ctl_create_video_list"
     BUILD__CTL_DELETE_VIDEO_LIST = "build.ctl_delete_video_list"
-    BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES = "build.ctl_relevant_primary_categories"
+    BUILD__CTL_CATEGORY_INTERSECTIONS = "build.ctl_category_intersections"
 
     BUILD__CTL_FEATURE_LIST = "build.ctl_feature_list"
     BUILD__CTL_EXPORT_BASIC = "build.ctl_export_basic"

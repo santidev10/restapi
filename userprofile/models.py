@@ -289,7 +289,7 @@ class PermissionItem(models.Model):
         [StaticPermissions.BUILD__CTL_RESOLVE_LIMBO_STATE,          False,  "Resolve Limbo State"],
         [StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST,             False,  "Create CTL From a Custom List"],
         [StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE,              False,  "Parameter Templates"],
-        [StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES,  False,  "Relevant Primary Categories"],
+        [StaticPermissions.BUILD__CTL_CATEGORY_INTERSECTIONS,       False,  "T1 & T2 Category Intersections"],
 
         [StaticPermissions.BUILD__CTL_VET_EXPORT,           False,  "Download Vetted only Export"],
         [StaticPermissions.BUILD__CTL_VIDEO_EXCLUSION,      False,  "Create and export Video Exclusion CTL for Channel CTL"],
