@@ -2,8 +2,8 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
@@ -72,18 +72,15 @@ class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
 
         name, email = ad_ops_manager
 
-        msg = EmailMultiAlternatives(
-            self._get_subject(name),
-            self._build_body(name, messages),
+        send_email_with_headers(
+            subject=self._get_subject(name),
+            body=self._build_body(name, messages),
             from_email=settings.EXPORTS_EMAIL_ADDRESS,
             to=self.get_to([email]),
             cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
             bcc=self.get_bcc(),
             headers={"X-Priority": 2},
-            reply_to="",
         )
-
-        msg.send(fail_silently=False)
 
     def _get_subject(self, ad_ops_manager_name):
         return f"{ad_ops_manager_name} Opportunities {self._problem_str.upper()} Pacing Report"

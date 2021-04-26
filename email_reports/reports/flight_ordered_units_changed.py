@@ -1,6 +1,6 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
 
+from administration.notifications import send_email_with_headers
 from email_reports.reports.base import BaseEmailReport
 
 
@@ -32,11 +32,10 @@ class FlightOrderedUnitsChangedEmail(BaseEmailReport):
                          old_value=self.old_ordered_units,
                          new_value=self.new_ordered_units)
 
-        msg = EmailMessage(
+        send_email_with_headers(
             subject=subject,
             body=text,
             from_email=sender,
             to=to,
-            bcc=bcc,
+            bcc=bcc
         )
-        msg.send()

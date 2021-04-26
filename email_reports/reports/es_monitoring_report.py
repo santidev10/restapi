@@ -1,9 +1,8 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
-from django.core.mail import EmailMultiAlternatives
 from django.template.defaultfilters import striptags
 from django.template.loader import get_template
 
+from administration.notifications import send_email_with_headers
 from email_reports.reports.base import BaseEmailReport
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -27,28 +26,24 @@ class ESMonitoringEmailReport(BaseEmailReport):
         html_content = self._get_body()
         text_content = striptags(html_content)
 
-        msg = EmailMultiAlternatives(
-            self._get_subject(),
-            text_content,
+        send_email_with_headers(
+            subject=self._get_subject(),
+            body=text_content,
             from_email=settings.SENDER_EMAIL_ADDRESS,
             to=settings.ES_MONITORING_EMAIL_ADDRESSES,
             headers={"X-Priority": 2},
-            reply_to="",
+            html_content=html_content,
         )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
 
     def _send_alert_email(self, model_name, alert_message):
         subject = f"DMP ALERT: {self.cluster} [{self.today}]"
         body = f"{model_name}: {alert_message}"
-        email = EmailMessage(
+        send_email_with_headers(
             subject=subject,
             body=body,
             from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
             to=settings.EMERGENCY_EMAIL_ADDRESSES,
-            bcc=[],
         )
-        email.send(fail_silently=False)
 
     def send_alerts(self):
         for model_name, report in self.monitoring_reports.items():

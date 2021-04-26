@@ -8,11 +8,11 @@ from io import StringIO
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand
 from django.db import connections
 from django.db.utils import OperationalError
 
+from administration.notifications import send_email_with_headers
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
@@ -99,14 +99,15 @@ class Command(BaseCommand):
                 self.channel_ids.append(channel_id)
 
     def email_csv(self):
-        msg = EmailMessage(
-            subject="medium score channel report",
-            body="medium score channel report attached",
-            from_email=settings.EXPORTS_EMAIL_ADDRESS,
-            to=['andrew.wong@channelfactory.com'],
-        )
-        msg.attach("report.csv", self.csv, "text/csv")
-        msg.send(fail_silently=False)
+        to = ['andrew.wong@channelfactory.com']
+        if not send_email_with_headers(
+                subject="medium score channel report",
+                body="medium score channel report attached",
+                from_email=settings.EXPORTS_EMAIL_ADDRESS,
+                to=to,
+                csv_file_name="report.csv",
+                csv_content=self.csv):
+            print("Emailing export to %s failed.", str(to))
 
     def write_csv(self):
         csv_file = StringIO()

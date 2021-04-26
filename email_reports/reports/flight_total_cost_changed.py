@@ -1,6 +1,6 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
 
+from administration.notifications import send_email_with_headers
 from email_reports.reports.base import BaseEmailReport
 
 
@@ -17,9 +17,9 @@ class FlightTotalCostChangedEmail(BaseEmailReport):
 
     def send(self):
         sender = settings.EXPORTS_EMAIL_ADDRESS
+        subject = "{opportunity_name} Total Client Cost has changed".format(opportunity_name=self.opportunity_name)
         to = self.get_to(self.recipients or settings.SALESFORCE_UPDATES_ADDRESSES)
         bcc = self.get_bcc()
-        subject = "{opportunity_name} Total Client Cost has changed".format(opportunity_name=self.opportunity_name)
         text = "Flight: {flight_name}\n\n" \
                "Placement: {placement_name}\n\n" \
                "Change: The total client cost was changed from {old_value} to {new_value}" \
@@ -28,11 +28,10 @@ class FlightTotalCostChangedEmail(BaseEmailReport):
                          old_value=self.old_total_cost,
                          new_value=self.new_total_cost)
 
-        msg = EmailMessage(
+        send_email_with_headers(
             subject=subject,
             body=text,
             from_email=sender,
             to=to,
-            bcc=bcc,
+            bcc=bcc
         )
-        msg.send()

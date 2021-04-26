@@ -10,7 +10,7 @@ from google.auth.exceptions import RefreshError
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
-from administration.notifications import send_mail
+from administration.notifications import send_email
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
@@ -207,7 +207,7 @@ class GoogleAdsUpdater:
             formatted = "\n".join(invalid_ids)
             message = f"Invalid Opportunity aw_cids: \n{formatted}"
             subject = "Google Ads Update Errors"
-            send_mail(subject, message, settings.SERVER_EMAIL, getattr(settings, "GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES", []))
+            send_email(subject, message, settings.SERVER_EMAIL, getattr(settings, "GOOGLE_ADS_UPDATE_ERROR_EMAIL_ADDRESSES", []))
         return to_update
 
     @staticmethod
