@@ -108,7 +108,7 @@ class GoogleAdsUpdater:
         self.execute_with_any_permission(campaign_updater)
         self.account.hourly_updated_at = timezone.now()
         self.account.save()
-        recalculate_de_norm_fields_for_account(self.account.id)
+        recalculate_de_norm_fields_for_account(self.account.id, with_counts=False)
 
     def update_accounts_as_mcc(self, mcc_account=None):
         """ Update /Save accounts managed by MCC """
