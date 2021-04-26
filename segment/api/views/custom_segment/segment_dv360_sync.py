@@ -26,6 +26,15 @@ class SegmentDV360SyncAPIView(APIView):
         Update CustomSegment and create AuditProcessor with request data to generate SDF
         DV360 SDF uploads are validated for existing Youtube Channels and Videos. We must filter the CustomSegment
         export for existing Youtube resources through audit queue for SDF uploads to work
+
+        Flow:
+            1. _validate -> Validate client post params
+            2. _process -> Check if a valid AuditProcessor exists for the target CustomSegment and determine task.
+                Audit validity is checked in _get_audit
+            3.
+                If no valid audit exists: _start_audit -> Begin audit flow in audit_tool app. This will trigger
+                    an audit for the CustomSegment and will call generate_sdf_task in audit_video_meta.py
+                If valid audit exists: generate_sdf_task -> Generate SDF export directly with valid AuditProcessor data
         """
         segment = self._process(*self._validate())
         response = {"message": f"Processing. You will receive an email when your DV360 SDF export for: {segment.title} "
@@ -36,7 +45,7 @@ class SegmentDV360SyncAPIView(APIView):
         """
         Determine if new audit must be created or generate_sdf_task can be called immediately
         :param segment: CustomSegment retrieved from request pk
-        :param advertiser_id: Parent DV360Advertiser of adgroup_ids
+        :param advertiser: Parent DV360Advertiser of adgroup_ids
         :param adgroup_ids: ids of DV360 Adgroups to update placements for
         :return: CustomSegment
         """
@@ -67,9 +76,10 @@ class SegmentDV360SyncAPIView(APIView):
 
     def _start_audit(self, segment, advertiser_id, adgroup_ids) -> AuditProcessor:
         """
-        Create audit to filter for valid placements in CTL export
+        Create audit to filter for valid placements in CTL export. DV360 SDF uploads will break if a placement
+            is invalid e.g. Removed from YouTube
         :param segment: CustomSegment
-        :return:
+        :return: Created AuditProcessor
         """
         try:
             # Get export to generate audit seed file
@@ -98,7 +108,7 @@ class SegmentDV360SyncAPIView(APIView):
         GenerateSegmentUtils(segment).start_audit(segment_export_fp, audit)
         return audit
 
-    def _download_segment_export(self, segment):
+    def _download_segment_export(self, segment: CustomSegment):
         """ Download export to create audit seed file """
         fp = f"{settings.TEMPDIR}/{uuid4()}.csv"
         segment.s3.download_file(segment.get_admin_s3_key(), fp)

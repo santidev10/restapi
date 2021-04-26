@@ -41,6 +41,8 @@ def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: Custom
                       adgroup_ids: list[AdGroup.id]):
     """
     Generate Ad group SDF with CustomSegment data as Ad group placements
+        This task retrieves SDF data for the target Ad Groups from the DV360 API to ensure that the only resources
+        being updated on the generated SDF are the placements of the target Ad groups.
     :param user_id: User id requesting DV360 sync and email completion recipient
     :param segment_id: CustomSegment id
     :param advertiser_id: DV360Advertiser parent id of ad groups
@@ -53,10 +55,10 @@ def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: Custom
     except (ObjectDoesNotExist, KeyError):
         return
     connector = DV360Connector(oauth_account.token, oauth_account.refresh_token)
-    # Prepare directory where SDF will be downloaded to
+    # Prepare directory where SDF will be downloaded to as we must download SDF files as zip files
     target_dir = f"{settings.TEMPDIR}/sdf_{uuid4()}"
     os.mkdir(target_dir)
-    # SDF uploads must match the data existing in DV360
+    # SDF uploads must match the data existing in DV360. Only the placements columns must be edited
     adgroup_sdf_fp = get_adgroup_sdf(connector, advertiser_id, target_dir, adgroup_ids)
 
     # SDF placements must be delimited by ;
@@ -70,6 +72,7 @@ def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: Custom
         writer = csv.writer(dest)
 
         header = next(reader)
+        # Previous placements must be removed if the data type (video | channel) is changing
         if segment.segment_type == SegmentTypeEnum.VIDEO:
             add_column = PLACEMENTS_VIDEO_INCLUSION_COLUMN
             remove_column = PLACEMENTS_CHANNEL_INCLUSION_COLUMN
@@ -82,7 +85,7 @@ def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: Custom
         placements_remove_idx = header.index(remove_column)
         remove_erroneous_idx = []
         # Find indexes of erroneous columns to remove from data rows. Unknown why downloading SDF through api contains
-        # these columns but does not accept them when uploading SDF with these columns through the DV360 UI.
+        # these columns but does not accept them when uploading SDF with these columns through the DV360 UI
         for col in REMOVE_COLUMNS:
             try:
                 i = header.index(col)
@@ -120,7 +123,7 @@ def finalize_results(segment: CustomSegment, result_fp: str, user_email: str):
     s3_key = f"{uuid4()}.csv"
     segment.s3.export_file_to_s3(result_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
     segment.update_statistics(s3_key, Results.DV360_SYNC_DATA, Results.EXPORT_FILENAME, save=True)
-    send_export_email(user_email, f"{segment.title}: DV360 Ad Groups SDF Download", segment.s3.generate_temporary_url(s3_key))
+    send_export_email(user_email, segment.title, segment.s3.generate_temporary_url(s3_key), message_type=1)
 
 
 def _remove_error_fields(row, idx) -> None:
