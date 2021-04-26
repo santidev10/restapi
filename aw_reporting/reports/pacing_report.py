@@ -608,7 +608,7 @@ class PacingReport:
                         create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
                     )
-                if is_opp_under_margin(margin, today, o["end"]):
+                elif is_opp_under_margin(margin, today, o["end"]):
                     alerts.append(
                         create_alert("Campaign Under Margin", f"{o['name']} is under margin at {margin}."
                                                               f" Please adjust IMMEDIATELY.")
