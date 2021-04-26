@@ -88,7 +88,7 @@ class Command(BaseCommand):
             # self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(temp_stop=False, seed_status=2, completed__isnull=True, audit_type__in=[1,2],
-                                                           source__in=[0,2]).order_by("pause", "id")[self.machine_number]
+                                                           source__in=[0,2]).order_by("-source", "pause", "id")[self.machine_number]
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except

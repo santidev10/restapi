@@ -6,10 +6,8 @@ from django.test import TestCase
 from email_reports.tasks import send_daily_email_reports
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from es_components.managers import KeywordManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
-from es_components.models import Keyword
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 
@@ -23,9 +21,6 @@ class ESMonitoringTestCase(TestCase, ESTestCase):
 
         videos = [Video("monitoring" + str(i)) for i in range(10)]
         VideoManager((Sections.GENERAL_DATA, Sections.STATS)).upsert(videos)
-
-        keywords = [Keyword("monitoring" + str(i)) for i in range(10)]
-        KeywordManager(Sections.STATS).upsert(keywords)
 
         send_daily_email_reports(reports=["ESMonitoringEmailReport"], debug=False)
 

@@ -7,7 +7,6 @@ from django.template.loader import get_template
 from email_reports.reports.base import BaseEmailReport
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
-from es_components.managers import KeywordManager
 from es_components.managers import VideoManager
 from utils.datetime import now_in_default_tz
 
@@ -67,7 +66,6 @@ class ESMonitoringEmailReport(BaseEmailReport):
                             Sections.AUTH, Sections.CMS]),
             VideoManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                           Sections.ANALYTICS, Sections.CAPTIONS, Sections.CMS]),
-            KeywordManager(Sections.STATS)
         ]
 
         for manager in managers:
