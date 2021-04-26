@@ -490,7 +490,7 @@ class CTLSerializer(FeaturedImageUrlMixin, Serializer):
         # to temp_stop=False once generate_custom_segment completes with finished source file for audit. The audit
         # update is done in the segment.models.utils.generate_segment_utils.GenerateSegmentUtils.start_audit method
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, temp_stop=True,
-                                              name=segment.title.lower(), params=params)
+                                              name=segment.title.lower(), params=params, pause=-100) #pause is the priority
         segment.params.update({
             Params.INCLUSION_FILE: inclusion_filename,
             Params.EXCLUSION_FILE: exclusion_filename,
