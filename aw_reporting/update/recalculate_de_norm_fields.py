@@ -47,10 +47,20 @@ MODELS_WITH_ACCOUNT_ID_REF = (
 )
 
 
-def recalculate_de_norm_fields_for_account(account_id):
+def recalculate_de_norm_fields_for_account(account_id: Account.id, with_counts=True):
+    """
+    Update account statistics that must be calculated across many tables
+    :param account_id: aw_reporting.models.Account id
+    :param with_counts: If _recalculate_de_norm_fields_for_account_statistics should be invoked
+    :return:
+    """
     _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id)
-    _recalculate_de_norm_fields_for_account_statistics(account_id)
     _recalculate_de_norm_fields_for_account_flights(account_id)
+    # _recalculate_de_norm_fields_for_account_statistics is costly as it aggregates on the massive
+    # YTChannel and YTVideo statistics tables. These stats do not need to be updated often and will be updated
+    # by the update_without_campaigns task which processes accounts on a longer interval
+    if with_counts:
+        _recalculate_de_norm_fields_for_account_statistics(account_id)
 
 
 def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):

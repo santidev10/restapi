@@ -1,16 +1,26 @@
-from django.conf import settings
+import concurrent.futures
+import os
+import csv
+import sys
+from typing import Type
 
+from django.conf import settings
 from googleapiclient.discovery import build, Resource
 from oauth2client.client import GoogleCredentials
 from rest_framework.serializers import Serializer
+from uuid import uuid4
 
+from oauth.constants import EntityStatusType
+from oauth.constants import OAuthType
 from oauth.models import DV360Advertiser
 from oauth.models import DV360Partner
 from oauth.models import OAuthAccount
 from performiq.models.constants import ENTITY_STATUS_MAP_TO_ID
+from utils.db.functions import safe_bulk_create
+from utils.dv360_api import DV360Connector
 
-from typing import Type
-
+# SDF csv rows may contain huge cells
+csv.field_size_limit(sys.maxsize)
 API_VERSION = "v1"
 SERVICE_NAME = "displayvideo"
 DISCOVERY_SERVICE_URL = f"https://displayvideo.googleapis.com/$discovery/rest?version={API_VERSION}"
@@ -166,28 +176,6 @@ class InsertionOrderAdapter(DV360BaseAdapter):
     }
 
 
-class LineItemAdapter(DV360BaseAdapter):
-    field_name_mapping = {
-        "name": "name",
-        "lineItemId": "id",
-        "insertionOrderId": "insertion_order_id",
-        "displayName": "display_name",
-        "entityStatus": "entity_status",
-        "updateTime": "update_time",
-    }
-
-
-class AdgroupAdapter(DV360BaseAdapter):
-    field_name_mapping = {
-        "name": "name",
-        "adGroupId": "id",
-        "lineItemId": "line_item_id",
-        "displayName": "display_name",
-        "entityStatus": "entity_status",
-        "updateTime": "update_time",
-    }
-
-
 def request_partners(resource: Resource) -> dict:
     """
     given a Discovery Resource, request
@@ -228,9 +216,89 @@ def request_insertion_orders(advertiser: DV360Advertiser, resource):
     return resource.advertisers().insertionOrders().list(advertiserId=str(advertiser.id)).execute()
 
 
-def request_line_items(advertiser: DV360Advertiser, resource):
-    return resource.advertisers().lineItems().list(advertiserId=str(advertiser.id)).execute()
+def retrieve_sdf_items(oauth_account: OAuthAccount, advertiser_ids: list[int], fields_mapping: dict[str, str],
+                       model, conn_method: str):
+    """
+    Function to query, download, and save DV360 SDF API responses
+    :param oauth_account: OAuthAccount to create oauth credentials
+    :param advertiser_ids: List of advertiser ids to retrieve child resources
+    :param fields_mapping: Dict of Django model field names to SDF column names. Used to map SDF column names
+        to db column names
+    :param model: OAuth model to create instances for with SDf results
+    :param conn_method: Name of DV360Connector method to retrieve SDF's
+    :return:
+    """
+    def get(conn: DV360Connector, advertiser_id: int, target_dir: str):
+        """ Helper function to invoke method on DV360Connector for ThreadPoolExecutor """
+        res = getattr(conn, conn_method)(advertiser_id, target_dir)
+        return res
+
+    # Prepare directories to store sdf files for each advertiser. Downloaded files are zip files which must be
+    # unzipped, and files always have same filenames. Create separate directories to avoid name clash
+    base_sdf_dir = f"/tmp/sdf_{uuid4()}"
+    os.mkdir(base_sdf_dir)
+    dirs = []
+    for i in range(len(advertiser_ids)):
+        d = f"{base_sdf_dir}/sdf_{i}"
+        os.mkdir(d)
+        dirs.append(d)
+
+    # Each thread needs separate httplib2 instance
+    # https://googleapis.github.io/google-api-python-client/docs/thread_safety.html
+    # Prepare args for each thread to retrieve sdf report for each advertiser
+    all_args = [
+        (DV360Connector(load_credentials(oauth_account)), a_id, target_dir)
+        for a_id, target_dir in zip(advertiser_ids, dirs)
+    ]
+    all_fps = []
+    with concurrent.futures.thread.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = [executor.submit(get, *args) for args in all_args]
+        sdf_fps = [f.result() for f in concurrent.futures.as_completed(futures)]
+        all_fps.extend(sdf_fps)
+
+    # Prepare to gather data from all files
+    data = []
+    for fp in all_fps:
+        with open(fp, "r") as file:
+            reader = csv.DictReader(file)
+            data.append([row for row in reader])
+
+    # Prepare all data separated into create or update lists
+    all_to_create = []
+    all_to_update = []
+    for rows in data:
+        to_create, to_update = prepare_sdf_items(rows, fields_mapping, model)
+        all_to_update.extend(to_update)
+        all_to_create.extend(to_create)
+    safe_bulk_create(model, all_to_create)
+    model.objects.bulk_update(all_to_update, fields=set(fields_mapping.keys()) - {"id"})
 
 
-def request_adgroups(advertiser: DV360Advertiser, resource):
-    return resource.advertisers().adGroups().list(advertiserId=str(advertiser.id)).execute()
+def prepare_sdf_items(rows: list[dict], report_mapping: dict[str, str], model, exists_filter=None) -> tuple[list, list]:
+    """
+    Separate model instances instantiated from sdf report rows into create or update lists
+    :param rows: List of dictionaries with SDF report keys and column values, such as csv.DictReader for a SDF csv file
+    :param report_mapping:
+    :param model: OAuth DV360 model
+    :param exists_filter: Optional filter for retrieving model rows to check existence for
+    :return: Tuple of lists of create and update items
+    """
+    to_create = []
+    to_update = []
+    exists = set(model.objects.filter(**exists_filter or {}).values_list("id", flat=True))
+    # Some models require additional values
+    extra = {"oauth_type": OAuthType.DV360.value} \
+        if "oauth_type" in set(f.name for f in model._meta.get_fields()) else {}
+    for row in rows:
+        data = {db_field: row.get(report_field) for db_field, report_field in report_mapping.items()}
+        data.update(extra)
+        try:
+            data["entity_status"] = EntityStatusType["ENTITY_STATUS_" + data["entity_status"].upper()].value
+        except KeyError:
+            data["entity_status"] = None
+        obj = model(**data)
+        container = to_update if int(obj.id) in exists else to_create
+        container.append(obj)
+    return to_create, to_update
+
+
