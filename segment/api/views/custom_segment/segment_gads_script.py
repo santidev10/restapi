@@ -28,4 +28,8 @@ class SegmentGadsScriptAPIView(APIView):
         with open(script_fp, "r") as file:
             func = file.read()
             code = func.replace("{VIQ_KEY}", str(oauth_account.viq_key))
-        return Response(code)
+        response = {
+            "code_link": "https://ads.google.com/aw/bulk/scripts/management",
+            "code": code,
+        }
+        return Response(response)
