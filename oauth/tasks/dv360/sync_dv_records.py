@@ -10,31 +10,28 @@ from googleapiclient.errors import HttpError
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from oauth.models import AdGroup
 from oauth.models import DV360Advertiser
+from oauth.models import LineItem
 from oauth.models import DV360Partner
 from oauth.models import OAuthAccount
 from oauth.constants import EntityStatusType
 from oauth.constants import OAuthType
 from oauth.tasks.dv360.serializers import AdvertiserSerializer
-from oauth.tasks.dv360.serializers import AdgroupSerializer
 from oauth.tasks.dv360.serializers import CampaignSerializer
 from oauth.tasks.dv360.serializers import InsertionOrderSerializer
-from oauth.tasks.dv360.serializers import LineItemSerializer
 from oauth.tasks.dv360.serializers import PartnerSerializer
 from oauth.utils.dv360 import AdvertiserAdapter
 from oauth.utils.dv360 import CampaignAdapter
 from oauth.utils.dv360 import InsertionOrderAdapter
 from oauth.utils.dv360 import PartnerAdapter
-from oauth.utils.dv360 import LineItemAdapter
-from oauth.utils.dv360 import AdgroupAdapter
 from oauth.utils.dv360 import get_discovery_resource
 from oauth.utils.dv360 import load_credentials
+from oauth.utils.dv360 import retrieve_sdf_items
 from oauth.utils.dv360 import request_advertiser_campaigns
 from oauth.utils.dv360 import request_partner_advertisers
 from oauth.utils.dv360 import request_partners
 from oauth.utils.dv360 import request_insertion_orders
-from oauth.utils.dv360 import request_line_items
-from oauth.utils.dv360 import request_adgroups
 from oauth.utils.dv360 import serialize_dv360_list_response_items
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
@@ -169,13 +166,32 @@ def sync_insertion_orders():
 
 
 @celery_app.task
-def sync_line_items():
-    DVLineItemSynchronizer().run()
+def sync_line_items(oauth_account_ids=None):
+    mapping = {
+        "id": "Line Item Id",
+        "name": "Name",
+        "entity_status": "Status",
+        "insertion_order_id": "Io Id",
+    }
+
+    ids_filter = Q() if oauth_account_ids is None else Q()
+    for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True, is_synced=True):
+        advertiser_ids = oauth.dv360_advertisers.all().values_list("id", flat=True)
+        retrieve_sdf_items(oauth, advertiser_ids, mapping, LineItem, "get_line_items_sdf_report")
 
 
 @celery_app.task
-def sync_adgroups():
-    DVAdgroupSynchronizer().run()
+def sync_adgroups(oauth_account_ids=None):
+    mapping = {
+        "id": "Ad Group Id",
+        "name": "Name",
+        "line_item_id": "Line Item Id",
+    }
+    ids_filter = Q() if oauth_account_ids is None else Q()
+    for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True,
+                                             is_synced=True):
+        advertiser_ids = oauth.dv360_advertisers.all().values_list("id", flat=True)
+        retrieve_sdf_items(oauth, advertiser_ids, mapping, AdGroup)
 
 
 class AbstractThreadedDVSynchronizer:
@@ -372,7 +388,6 @@ class DVInsertionOrderSynchronizer(AbstractThreadedDVSynchronizer):
     adapter_class = InsertionOrderAdapter
     serializer_class = InsertionOrderSerializer
 
-
     def __init__(self):
         super().__init__()
         self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
@@ -384,41 +399,3 @@ class DVInsertionOrderSynchronizer(AbstractThreadedDVSynchronizer):
     @staticmethod
     def get_request_function():
         return request_insertion_orders
-
-
-class DVLineItemSynchronizer(AbstractThreadedDVSynchronizer):
-    model_id_filter = "dv360_advertisers__id__in"
-    response_items_key = "lineItems"
-    adapter_class = LineItemAdapter
-    serializer_class = LineItemSerializer
-
-    def __init__(self):
-        super().__init__()
-        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
-
-    def run(self):
-        logger.info(f"starting line items sync...")
-        super().run()
-
-    @staticmethod
-    def get_request_function():
-        return request_line_items
-
-
-class DVAdgroupSynchronizer(AbstractThreadedDVSynchronizer):
-    model_id_filter = "dv360_advertisers__id__in"
-    response_items_key = "adGroups"
-    adapter_class = AdgroupAdapter
-    serializer_class = AdgroupSerializer
-
-    def __init__(self):
-        super().__init__()
-        self.query = DV360Advertiser.objects.filter(entity_status=EntityStatusType.ENTITY_STATUS_ACTIVE.value)
-
-    def run(self):
-        logger.info(f"starting adgroups sync...")
-        super().run()
-
-    @staticmethod
-    def get_request_function():
-        return request_adgroups
