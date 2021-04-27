@@ -652,7 +652,6 @@ class AuditExporter(models.Model):
         "processing_initial_objs",
         "getting_channel_scores",
         "creating_big_dict",
-        "preparing_file",
         "preparing_to_move_file",
         "moving_file_to_s3",
         "file_copied",

@@ -43,6 +43,7 @@ class AuditExportApiView(APIView):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     MAX_ROWS = 750000
     cache = {}
+    local_file = None
 
     def get(self, request):
         query_params = request.query_params
@@ -287,11 +288,14 @@ class AuditExportApiView(APIView):
         if clean is not None:
             videos = videos.filter(clean=clean)
         auditor = VideoAuditor()
-        rows = [cols]
         count = videos.count()
         if count > max_rows:
             count = max_rows
         num_done = 0
+        self.local_file = "export_files/{}".format(uuid4().hex)
+        my_file = open(self.local_file, 'w+', newline='')
+        wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
+        wr.writerow(cols)
         print("EXPORT {}: starting video processing".format(export.id))
         export.set_current_step("creating_big_dict")
         for avp in videos:
@@ -455,7 +459,7 @@ class AuditExportApiView(APIView):
                 pass
             if audit.params.get('get_tags'):
                 data.extend(v.keywords if v.keywords else "")
-            rows.append(data)
+            wr.writerow(data)
             num_done += 1
             if export and num_done % 500 == 0:
                 export.percent_done = int(1.0 * num_done / count * 100) - 5
@@ -465,23 +469,17 @@ class AuditExportApiView(APIView):
                 print("video export {} at {}".format(export.id, export.percent_done))
             if len(rows) > max_rows:
                 continue
-        export.set_current_step("preparing_file")
-        with open(file_name, 'w+', newline='') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerows(rows)
-            # for row in rows:
-            #     wr.writerow(row)
+        my_file.close()
         export.set_current_step("preparing_to_move_file")
-        with open(file_name) as myfile:
+        with open(self.local_file) as my_file:
             s3_file_name = uuid4().hex
-            download_file_name = file_name
             export.set_current_step("moving_file_to_s3")
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, file_name)
             export.set_current_step("file_copied")
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
-            os.remove(myfile.name)
+            os.remove(self.local_file)
         return s3_file_name, download_file_name
 
     def check_legacy(self, audit):
@@ -801,7 +799,6 @@ class AuditExportApiView(APIView):
                 if export.percent_done > old_percent:
                     export.save(update_fields=['percent_done'])
                 print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
-        export.set_current_step("preparing_file")
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
