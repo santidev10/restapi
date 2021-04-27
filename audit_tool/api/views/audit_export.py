@@ -482,7 +482,7 @@ class AuditExportApiView(APIView):
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
             os.remove(self.local_file)
-        return s3_file_name, download_file_name
+        return s3_file_name, file_name
 
     def check_legacy(self, audit):
         empty_channel_avps = AuditVideoProcessor.objects.filter(audit=audit, channel__isnull=True)
@@ -815,11 +815,11 @@ class AuditExportApiView(APIView):
                 print("copied {} to S3".format(file_name))
             except Exception as e:
                 os.remove(self.local_file)
-                raise Exception("problem copying file {} to S3: {}".format(download_file_name, str(e)))
+                raise Exception("problem copying file {} to S3: {}".format(file_name, str(e)))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
-        return s3_file_name, download_file_name
+        return s3_file_name, file_name
 
     def aggregate_channel_word_hits(self, audit, acp):
         if not isinstance(audit, AuditProcessor) or \
