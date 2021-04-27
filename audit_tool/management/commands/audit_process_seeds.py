@@ -126,7 +126,7 @@ class Command(BaseCommand):
         if self.audit.source in [1,2]:
             self.MAX_SOURCE_CHANNELS_CAP = self.MAX_SOURCE_CHANNELS_FROM_CTL
             self.MAX_SOURCE_CHANNELS = self.MAX_SOURCE_CHANNELS_FROM_CTL
-        videos = []
+        acps = []
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
@@ -140,18 +140,18 @@ class Command(BaseCommand):
                         self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
-                try:
-                    acp = AuditChannelProcessor.objects.create(
-                        audit=self.audit,
-                        channel=channel,
-                    )
-                except Exception as e:
-                    acp = AuditChannelProcessor.objects.get(
-                        audit=self.audit,
-                        channel=channel,
-                    )
+                acp = AuditChannelProcessor(
+                    audit=self.audit,
+                    channel=channel,
+                )
+                acps.append(acp)
                 vids.append(acp)
                 counter += 1
+                if len(acps) >= 250:
+                    AuditChannelProcessor.objects.bulk_create(acps)
+                    acps = []
+        if len(acps) > 0:
+            AuditChannelProcessor.objects.bulk_create(acps)
         if counter == 0 and resume_val == 0:
             self.audit.params["error"] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
