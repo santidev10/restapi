@@ -44,6 +44,7 @@ class OAuthAccount(OAuthBase):
     # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
     viq_key = models.UUIDField(default=uuid4)
     data = models.JSONField(default=dict)
+    can_manage_clients = models.BooleanField(default=False, db_index=True)
 
     def update_data(self, data_key, data, save=True):
         self.data.update({
@@ -112,7 +113,7 @@ class LineItem(DV360Base, DV360SharedFieldsMixin):
     insertion_order = models.ForeignKey(InsertionOrder, related_name="line_items", on_delete=models.CASCADE)
 
 
-class AdGroup(OAuthBase):
+class AdGroup(OAuthBase, DV360SharedFieldsMixin):
     id = models.BigAutoField(primary_key=True)
     campaign = models.ForeignKey(Campaign, null=True, related_name="adgroups", on_delete=models.CASCADE)
     line_item = models.ForeignKey(LineItem, null=True, related_name="adgroups", on_delete=models.CASCADE)
