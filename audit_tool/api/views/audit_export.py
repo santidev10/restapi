@@ -120,12 +120,13 @@ class AuditExportApiView(APIView):
                 })
 
     def get_categories(self):
-        categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
         url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
-        r = requests.get(url)
-        data = r.json()
-        for i in data['items']:
-            AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
+        categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
+        if categories.count() > 0:
+            r = requests.get(url)
+            data = r.json()
+            for i in data['items']:
+                AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     def clean_duration(self, duration):
         try:
