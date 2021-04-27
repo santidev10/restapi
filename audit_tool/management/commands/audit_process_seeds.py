@@ -24,6 +24,7 @@ class Command(BaseCommand):
     MAX_SOURCE_VIDEOS = 750000
     MAX_SOURCE_CHANNELS = 100000
     MAX_SOURCE_CHANNELS_CAP = 300000
+    MAX_SOURCE_CHANNELS_FROM_CTL = 1000000
     num_clones = 0
     original_audit_name = None
     CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -122,6 +123,9 @@ class Command(BaseCommand):
                     break
                 skipper += 1
         counter = 0
+        if self.audit.source in [1,2]:
+            self.MAX_SOURCE_CHANNELS_CAP = self.MAX_SOURCE_CHANNELS_FROM_CTL
+            self.MAX_SOURCE_CHANNELS = self.MAX_SOURCE_CHANNELS_FROM_CTL
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)

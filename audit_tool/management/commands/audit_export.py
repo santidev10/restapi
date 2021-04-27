@@ -102,7 +102,8 @@ class Command(BaseCommand):
                 self.export.machine = None
                 self.export.thread = None
                 self.export.percent_done = 0
-                self.export.save(update_fields=["started", "percent_done", "machine", "thread"])
+                self.export.last_error = str(e)
+                self.export.save(update_fields=["last_error", "started", "percent_done", "machine", "thread"])
                 print("problem with exporting channels {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
@@ -120,7 +121,8 @@ class Command(BaseCommand):
                 self.export.percent_done = 0
                 self.export.machine = None
                 self.export.thread = None
-                self.export.save(update_fields=["started", "percent_done", "machine", "thread"])
+                self.export.last_error = str(e)
+                self.export.save(update_fields=["last_error", "started", "percent_done", "machine", "thread"])
                 print("problem with exporting videos {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)

@@ -76,10 +76,13 @@ class Params:
     # CTL Google Ads Sync
     GADS_SYNC_DATA = "gads_sync_data"
     CID = "cid"
-    ADGROUP_IDS = "adgroup_ids"
 
     # DV360 Sync
-    DV360_SYNC = "dv360_sync_data"
+    DV360_SYNC_DATA = "dv360_sync_data"
+    ADVERTISER_ID = "advertiser_id"
+
+    # Shared sync data
+    ADGROUP_IDS = "adgroup_ids"
 
     # CTL with Keyword audit
     META_AUDIT_ID = "meta_audit_id" # AuditProcessor PK used to run audit against CTL results
@@ -88,9 +91,10 @@ class Params:
     SOURCE_FILE = "source_file"
 
 
+# Saved on CustomSegment.statistics field
 class Results:
     GADS_SYNC_DATA = "gads_sync_data"
-    DV360_SYNC = "dv360_sync_data"
+    DV360_SYNC_DATA = "dv360_sync_data"
     HISTORY = "history"
     CTL_STATISTICS = "ctl_statistics"
     SYNC = "sync"
