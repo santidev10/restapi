@@ -223,14 +223,21 @@ class Command(BaseCommand):
                 if skipper >= resume_val:
                     break
                 skipper += 1
+        avps = []
         for row in reader:
             avp = AuditUtils.get_avp_from_url(row[0], self.audit)
             if avp:
+                avps.append(avp)
+                if len(avps) >= self.MAX_BULK_CREATE:
+                    AuditVideoProcessor.objects.bulk_create(avps)
+                    avps = []
                 counter+=1
                 if len(vids) >= self.MAX_SOURCE_VIDEOS:
                     self.clone_audit()
                     vids = []
                 vids.append(avp)
+        if len(avps) > 0:
+            AuditVideoProcessor.objects.bulk_create(avps)
         if counter == 0 and resume_val == 0:
             self.audit.params["error"] = "no valid YouTube Video URL's in seed file"
             self.audit.seed_status = 2
