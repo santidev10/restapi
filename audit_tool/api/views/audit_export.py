@@ -476,7 +476,7 @@ class AuditExportApiView(APIView):
         with open(self.local_file) as my_file:
             s3_file_name = uuid4().hex
             export.set_current_step("moving_file_to_s3")
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, file_name)
+            AuditS3Exporter.export_to_s3(my_file.buffer.raw, s3_file_name, file_name)
             export.set_current_step("file_copied")
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
