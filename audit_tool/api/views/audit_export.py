@@ -120,9 +120,9 @@ class AuditExportApiView(APIView):
                 })
 
     def get_categories(self):
-        url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
         if categories.count() > 0:
+            url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
             r = requests.get(url)
             data = r.json()
             for i in data['items']:
