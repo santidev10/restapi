@@ -41,7 +41,7 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
-    MAX_ROWS = 750000
+    MAX_ROWS = 1000000
     cache = {}
     local_file = None
 
