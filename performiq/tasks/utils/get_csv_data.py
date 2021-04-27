@@ -82,8 +82,7 @@ def _get_rows(filepath: str):
     with open(filepath, mode="rb") as file:
         all_bytes = b"".join(file.readlines())
         decoded = decode_to_string(all_bytes)
-    io_string = io.StringIO(decoded)
-    reader = get_reader(io_string)
+    reader = get_reader(decoded)
     rows = [r for r in reader]
     csv_util = CSVHeaderUtil(rows=rows)
     start_index = csv_util.get_first_data_row_index()
