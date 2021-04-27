@@ -36,6 +36,6 @@ class SegmentGadsScriptAPIView(APIView):
         }
         # Save timestamp if first time starting OAuth process. Timestamp will be used in segment_gads_oauth_notify_task
         # to prompt users to complete OAuth process
-        if oauth_account.data.get(OAuthData.GADS_OAUTH_TIMESTAMP) is None:
-            oauth_account.update_data(OAuthData.GADS_OAUTH_TIMESTAMP, str(now_in_default_tz()))
+        if oauth_account.data.get(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP) is None:
+            oauth_account.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, str(now_in_default_tz()))
         return Response(response)

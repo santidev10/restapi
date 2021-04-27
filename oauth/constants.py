@@ -38,5 +38,5 @@ ENTITY_STATUS_MAP_TO_STR = {status.value: status.name for status in EntityStatus
 class OAuthData:
     # Timestamp when OAuthAccount has started segment sync process in SegmentGadsScriptAPIView get method
     # If sync was successful in SegmentGadsSyncAPIView get method, then this value will be set to True
-    GADS_OAUTH_TIMESTAMP = "gads_oauth_timestamp"
+    SEGMENT_GADS_OAUTH_TIMESTAMP = "segment_gads_oauth_timestamp"
 

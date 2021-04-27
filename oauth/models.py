@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from .constants import ENTITY_STATUS_CHOICES
 from .constants import OAUTH_CHOICES
-from .constants import OAuthData
 from utils.models import Timestampable
 
 
@@ -59,6 +58,7 @@ class Account(models.Model):
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     name = models.CharField(max_length=255, db_index=True, null=True)
+    # can_manage_clients = models.BooleanField(default=False, db_index=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):

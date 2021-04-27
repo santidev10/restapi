@@ -15,7 +15,6 @@ from segment.api.serializers.gads_sync_serializer import GadsSyncSerializer
 from segment.models.constants import Results
 from segment.utils.utils import get_gads_sync_code
 from utils.views import get_object
-from utils.datetime import now_in_default_tz
 
 
 class OAuthAPITokenPermissionClass(BasePermission):
@@ -60,7 +59,7 @@ class SegmentGadsSyncAPIView(APIView):
             }
 
         # Set GADS_OAUTH_TIMESTAMP value to True to indicate that Google Ads has successfully synced with OAuthAccount
-        oauth_account.update_data(OAuthData.GADS_OAUTH_TIMESTAMP, True)
+        oauth_account.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, True)
         return Response(res)
 
     def post(self, request, *args, **kwargs):

@@ -18,7 +18,7 @@ class SegmentGadsOAuthNotifyTestCase(ExtendedAPITestCase):
         """ Test sends notify email if OAuthAccount has not finished oauth process and time elapsed
         exceeds NOTIFY_HOURS_THRESHOLD """
         oauth_data = {
-            OAuthData.GADS_OAUTH_TIMESTAMP: str(
+            OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP: str(
                 now_in_default_tz() - datetime.timedelta(hours=NOTIFY_HOURS_THRESHOLD + 1))
         }
         OAuthAccount.objects.create(
@@ -40,7 +40,7 @@ class SegmentGadsOAuthNotifyTestCase(ExtendedAPITestCase):
 
         with self.subTest("Test should not send notify email if time has not exceeded threshold hours"):
             oauth_data = {
-                OAuthData.GADS_OAUTH_TIMESTAMP: str(
+                OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP: str(
                     now_in_default_tz() - datetime.timedelta(hours=NOTIFY_HOURS_THRESHOLD - 1))
             }
             OAuthAccount.objects.filter(id=oauth_account.id).update(data=oauth_data)
@@ -50,7 +50,7 @@ class SegmentGadsOAuthNotifyTestCase(ExtendedAPITestCase):
 
         with self.subTest("Test should not send notify email if OAuthAccount has successfully been synced"):
             # Value of True indicates OAuthAccount has been synced in SegmentGadsSyncAPIView get method
-            oauth_data = {OAuthData.GADS_OAUTH_TIMESTAMP: True}
+            oauth_data = {OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP: True}
             OAuthAccount.objects.filter(id=oauth_account.id).update(data=oauth_data)
             with mock.patch("oauth.tasks.segment_gads_oauth_notify._send_email") as mock_send_email:
                 segment_gads_oauth_notify_task()

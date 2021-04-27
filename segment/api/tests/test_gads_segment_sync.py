@@ -112,7 +112,7 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.oauth_account.refresh_from_db()
-        self.assertIsNotNone(self.oauth_account.data[OAuthData.GADS_SYNC_TIMESTAMP])
+        self.assertIsNotNone(self.oauth_account.data[OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP])
 
     def test_post_creates_sync_record(self):
         """ Test POST for first time creates sync record """
