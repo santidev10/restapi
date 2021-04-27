@@ -1532,3 +1532,31 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         ctl_params = response.data.get("ctl_params")
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(ctl_params["template_id"], params_template.id)
+
+    def test_relevant_primary_categories_perm(self, mock_generate):
+        user = self.create_test_user()
+        user.perms[StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE] = True
+        user.perms[StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES] = False
+        user.save()
+        payload = {
+            "languages": ["pt"],
+            "score_threshold": 1,
+            "content_categories": [],
+            "minimum_option": 0,
+            "vetted_after": "2020-01-01",
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        payload = self.get_params(**payload)
+        payload["template_title"] = "test1"
+        payload["segment_type"] = 0
+        payload["relevant_primary_categories"] = True
+        response = self.client.generic(method="POST", path=self._get_url(),
+                                       data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
+
+        payload["template_id"] = 0
+        payload.pop("template_title")
+        response = self.client.generic(method="PATCH", path=self._get_url(),
+                                       data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
