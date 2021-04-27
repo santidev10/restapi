@@ -467,7 +467,7 @@ class AuditExportApiView(APIView):
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
                 print("video export {} at {}".format(export.id, export.percent_done))
-            if len(rows) > max_rows:
+            if num_done > max_rows:
                 continue
         my_file.close()
         export.set_current_step("preparing_to_move_file")
