@@ -2,11 +2,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from oauth.constants import OAuthData
 from oauth.constants import OAuthType
 from oauth.models import OAuthAccount
 from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes
 from utils.views import get_object
+from utils.datetime import now_in_default_tz
 
 
 class SegmentGadsScriptAPIView(APIView):
@@ -32,4 +34,8 @@ class SegmentGadsScriptAPIView(APIView):
             "code_link": "https://ads.google.com/aw/bulk/scripts/management",
             "code": code,
         }
+        # Save timestamp if first time starting OAuth process. Timestamp will be used in segment_gads_oauth_notify_task
+        # to prompt users to complete OAuth process
+        if oauth_account.data.get(OAuthData.GADS_OAUTH_TIMESTAMP) is None:
+            oauth_account.update_data(OAuthData.GADS_OAUTH_TIMESTAMP, str(now_in_default_tz()))
         return Response(response)

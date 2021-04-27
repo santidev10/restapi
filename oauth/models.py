@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from .constants import ENTITY_STATUS_CHOICES
 from .constants import OAUTH_CHOICES
+from .constants import OAuthData
 from utils.models import Timestampable
 
 
@@ -44,6 +45,13 @@ class OAuthAccount(OAuthBase):
     # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
     viq_key = models.UUIDField(default=uuid4)
     data = models.JSONField(default=dict)
+
+    def update_data(self, data_key, data, save=True):
+        self.data.update({
+            data_key: data,
+        })
+        if save is True:
+            self.save(update_fields=["data"])
 
 
 class Account(models.Model):

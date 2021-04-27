@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from oauth.constants import OAuthType
+from oauth.constants import OAuthData
 from oauth.models import Account
 from oauth.models import AdGroup
 from oauth.models import Campaign
@@ -103,6 +104,15 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertTrue(response.data["code"])
+
+    def test_sync_save_timestamp(self):
+        """ Test syncing with ViewIQ for first time from Google Ads saves timestamp """
+        CustomSegment.objects.create(owner=self.user, segment_type=SegmentTypeEnum.CHANNEL.value)
+        account, campaign, adgroups = self._mock_data()
+        response = self.client.get(self._get_url(account.id, self.oauth_account.viq_key))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.oauth_account.refresh_from_db()
+        self.assertIsNotNone(self.oauth_account.data[OAuthData.GADS_SYNC_TIMESTAMP])
 
     def test_post_creates_sync_record(self):
         """ Test POST for first time creates sync record """

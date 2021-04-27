@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from oauth.constants import OAuthType
+from oauth.constants import OAuthData
 from oauth.models import Account
 from oauth.models import OAuthAccount
 from segment.models import CustomSegment
@@ -14,6 +15,7 @@ from segment.api.serializers.gads_sync_serializer import GadsSyncSerializer
 from segment.models.constants import Results
 from segment.utils.utils import get_gads_sync_code
 from utils.views import get_object
+from utils.datetime import now_in_default_tz
 
 
 class OAuthAPITokenPermissionClass(BasePermission):
@@ -40,15 +42,15 @@ class SegmentGadsSyncAPIView(APIView):
         """
         account = self._get_account()
         query_params = request.query_params
+        viq_key = query_params["viq_key"]
+        oauth_account = get_object(OAuthAccount, viq_key=viq_key)
         if query_params.get("as_mcc"):
-            viq_key = query_params["viq_key"]
-            oauth_account = get_object(OAuthAccount, viq_key=viq_key)
             # If running as an MCC, the Google Ads scripts requires the cid account ids to individually request the
             # placement creation code for each account
-            cid_ids = SegmentAdGroupSync.objects\
-                .filter(is_synced=False, adgroup__campaign__account__oauth_accounts=oauth_account)\
-                .annotate(cid=F("adgroup__campaign__account_id"))\
-                .distinct()\
+            cid_ids = SegmentAdGroupSync.objects \
+                .filter(is_synced=False, adgroup__campaign__account__oauth_accounts=oauth_account) \
+                .annotate(cid=F("adgroup__campaign__account_id")) \
+                .distinct() \
                 .values_list("cid", flat=True)
             res = cid_ids
         else:
@@ -56,6 +58,9 @@ class SegmentGadsSyncAPIView(APIView):
             res = {
                 "code": code,
             }
+
+        # Set GADS_OAUTH_TIMESTAMP value to True to indicate that Google Ads has successfully synced with OAuthAccount
+        oauth_account.update_data(OAuthData.GADS_OAUTH_TIMESTAMP, True)
         return Response(res)
 
     def post(self, request, *args, **kwargs):
