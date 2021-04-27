@@ -222,6 +222,7 @@ class AuditExportApiView(APIView):
         max_rows = audit.params.get('MAX_VIDEO_ROWS')
         if not max_rows:
             max_rows = self.MAX_ROWS
+        export.set_current_step("getting_categories")
         self.get_categories()
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
@@ -229,6 +230,7 @@ class AuditExportApiView(APIView):
         do_exclusion = True
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         #    do_exclusion = True
+        export.set_current_step("delete_blocklist_channels")
         self.delete_blocklist_channels(audit)
         cols = [
             "Video URL",
@@ -263,6 +265,7 @@ class AuditExportApiView(APIView):
             "Live Broadcast",
             "Aspect Ratio",
         ]
+        export.set_current_step("building_bad_word_category_map")
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
             bad_words_category_mapping = dict()
@@ -290,6 +293,7 @@ class AuditExportApiView(APIView):
             count = max_rows
         num_done = 0
         print("EXPORT {}: starting video processing".format(export.id))
+        export.set_current_step("creating_big_dict")
         for avp in videos:
             vid = avp.video
             try:
@@ -461,16 +465,19 @@ class AuditExportApiView(APIView):
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
                 print("video export {} at {}".format(export.id, export.percent_done))
+        export.set_current_step("preparing_file")
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
             # for row in rows:
             #     wr.writerow(row)
-
+        export.set_current_step("preparing_to_move_file")
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
             download_file_name = file_name
+            export.set_current_step("moving_file_to_s3")
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
+            export.set_current_step("file_copied")
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
@@ -480,6 +487,7 @@ class AuditExportApiView(APIView):
     def check_legacy(self, audit):
         empty_channel_avps = AuditVideoProcessor.objects.filter(audit=audit, channel__isnull=True)
         if empty_channel_avps.exists():
+            print("doing legacy update on {} channels".format(empty_channel_avps.count()))
             for avp in empty_channel_avps:
                 try:
                     avp.channel = avp.video.channel
@@ -537,7 +545,9 @@ class AuditExportApiView(APIView):
         #do_exclusion = False
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         do_exclusion = True
+        export.set_current_step("getting_categories")
         self.get_categories()
+        export.set_current_step("delete_blocklist_channels")
         self.delete_blocklist_channels(audit)
         cols = [
             "Channel Title",
@@ -569,6 +579,7 @@ class AuditExportApiView(APIView):
             "Error",
         ]
         try:
+            export.set_current_step("building_bad_word_category_map")
             bad_word_categories = set(audit.params['exclusion_category'])
             bad_words_category_mapping = dict()
             if "" in bad_word_categories:
@@ -594,10 +605,12 @@ class AuditExportApiView(APIView):
         video_count = {}
         auditchannelmeta_dict = {}
         channel_ids = []
+        export.set_current_step("check_legacy")
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
+        export.set_current_step("processing_initial_objs")
         for cid in channels:
             full_channel_id = cid.channel.channel_id
             channel_ids.append(full_channel_id)
@@ -609,6 +622,7 @@ class AuditExportApiView(APIView):
             if audit.params.get('do_videos'):
                 try:
                     if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() <= channel_videos_count:
+                        print("re-calculating {}".format(str(cid)))
                         self.aggregate_channel_word_hits(audit=audit, acp=cid)
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
                 # pylint: disable=broad-except
@@ -660,6 +674,7 @@ class AuditExportApiView(APIView):
                 except Exception:
                 # pylint: enable=broad-except
                     pass
+        export.set_current_step("getting_channel_scores")
         print("EXPORT: getting channel scores: starting")
         try:
             channel_scores = self.get_scores_for_channels(channel_ids)
@@ -672,6 +687,7 @@ class AuditExportApiView(APIView):
         num_done = 0
         # sections = (Sections.MONETIZATION,)
         print("EXPORT: starting channel processing of export {}".format(export.id))
+        export.set_current_step("creating_big_dict")
         for db_channel in channels:
             channel = db_channel.channel
             v = auditchannelmeta_dict.get(channel.channel_id)
@@ -785,19 +801,22 @@ class AuditExportApiView(APIView):
                 if export.percent_done > old_percent:
                     export.save(update_fields=['percent_done'])
                 print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
+        export.set_current_step("preparing_file")
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
             print("written rows to {}".format(file_name))
             # for row in rows:
             #     wr.writerow(row)
-
+        export.set_current_step("preparing_to_move_file")
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
             download_file_name = file_name
             try:
+                export.set_current_step("moving_file_to_s3")
                 AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
                 os.remove(myfile.name)
+                export.set_current_step("file_copied")
                 print("copied {} to S3".format(file_name))
             except Exception as e:
                 os.remove(myfile.name)

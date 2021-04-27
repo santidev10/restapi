@@ -636,11 +636,35 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+    last_error = models.TextField(default=None, null=True)
+    current_step = models.IntegerField(null=True, default=None)
 
     class Meta:
         index_together = [
             ("audit", "completed"),
         ]
+
+    STEPS = [
+        "getting_categories",
+        "delete_blocklist_channels",
+        "building_bad_word_category_map",
+        "check_legacy",
+        "processing_initial_objs",
+        "getting_channel_scores",
+        "creating_big_dict",
+        "preparing_file",
+        "preparing_to_move_file",
+        "moving_file_to_s3",
+        "file_copied",
+    ]
+    def set_current_step(self, step):
+        counter = 0
+        for s in self.STEPS:
+            if s == step:
+                self.current_step = counter
+                self.save(update_fields=['current_step'])
+                return
+            counter += 1
 
     @staticmethod
     def running():
