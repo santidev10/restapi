@@ -40,7 +40,7 @@ class PerformIQCampaignListCreateAPIView(APIView):
 
     def delete(self, request, *args, **kwargs):
         user = request.user
-        campaign_ids = request.data.getlist('cmp_ids')
+        campaign_ids = request.data.get('cmp_ids')
         deleted = 0
 
         if isinstance(campaign_ids, list) and len(campaign_ids) > 0:
