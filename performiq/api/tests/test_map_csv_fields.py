@@ -3,8 +3,9 @@ import os
 import string
 
 import boto3
-from django.urls import reverse
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -60,6 +61,17 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
             self.assertIn("The file extension must be '.csv'", response.json().get("csv_file")[0])
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_bad_content_type(self):
+        self.create_admin_user()
+        filename = self._create_csv("csv_file")
+        with open(filename) as file:
+            content = file.read().encode("utf_8")
+            data = SimpleUploadedFile(name="csv_file.csv", content=content, content_type="asdf/asdf")
+            response = self.client.post(self._get_url(), {"csv_file": data})
+            self.assertIn("The file's content type (asdf/asdf) is not of the expected:",
+                          response.json().get("csv_file")[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_no_data(self):
