@@ -457,7 +457,7 @@ class AuditChannel(models.Model):
     processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
-    def get_or_create(channel_id, create=True):
+    def get_or_create(channel_id, create=True, add_meta=False):
         channel_id_hash = get_hash_name(channel_id)
         res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
         for r in res:
@@ -465,10 +465,13 @@ class AuditChannel(models.Model):
                 return r
         if create:
             try:
-                return AuditChannel.objects.create(
+                c = AuditChannel.objects.create(
                     channel_id=channel_id,
                     channel_id_hash=channel_id_hash
                 )
+                if add_meta:
+                    AuditChannelMeta.objects.create(channel=c)
+                return c
             except IntegrityError:
                 return AuditChannel.objects.get(channel_id=channel_id)
         return None

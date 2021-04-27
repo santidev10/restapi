@@ -126,6 +126,7 @@ class Command(BaseCommand):
         if self.audit.source in [1,2]:
             self.MAX_SOURCE_CHANNELS_CAP = self.MAX_SOURCE_CHANNELS_FROM_CTL
             self.MAX_SOURCE_CHANNELS = self.MAX_SOURCE_CHANNELS_FROM_CTL
+        videos = []
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
@@ -134,12 +135,11 @@ class Command(BaseCommand):
                 if len(vids) >= self.MAX_SOURCE_CHANNELS:
                     self.clone_audit()
                     vids = []
-                channel = AuditChannel.get_or_create(v_id)
+                channel = AuditChannel.get_or_create(v_id, add_meta=True)
                 if channel.processed_time and (
                         self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
-                AuditChannelMeta.objects.get_or_create(channel=channel)
                 try:
                     acp = AuditChannelProcessor.objects.get(
                         audit=self.audit,
