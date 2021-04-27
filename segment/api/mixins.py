@@ -59,7 +59,7 @@ class ParamsTemplateMixin:
     """
 
     @staticmethod
-    def _check_params_template_permissions(user):
+    def check_params_template_permissions(user):
         """
         :param user:
         :return:
@@ -128,7 +128,8 @@ class RelevantPrimaryCategoriesMixin:
     validate field
     """
 
-    def _check_relevant_primary_categories_perm(self, user, params):
+    @staticmethod
+    def check_relevant_primary_categories_perm(user, params):
         """
         :param user: userprofile.models.UserProfile
         :param params: dict

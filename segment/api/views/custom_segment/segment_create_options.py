@@ -60,7 +60,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         deletes ParamsTemplate object for a given id if user is owner
         """
-        self._check_params_template_permissions(request.user)
+        self.check_params_template_permissions(request.user)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         params_template = get_object(ParamsTemplate, id=template_id)
@@ -76,7 +76,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
-        self._check_relevant_primary_categories_perm(request.user, validated_params)
+        self.check_relevant_primary_categories_perm(request.user, validated_params)
         if request.data.get("get_estimate", None):
             res_data = {}
             query_builder = SegmentQueryBuilder(validated_params)
@@ -86,7 +86,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
             return Response(status=HTTP_200_OK, data=res_data)
         else:
             try:
-                self._check_params_template_permissions(request.user)
+                self.check_params_template_permissions(request.user)
                 template_title = request.data.get("template_title", None)
                 self._validate_field(template_title, str)
                 template = self._create_params_template(request.user, template_title, validated_params)
@@ -105,12 +105,12 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         Updates ParamsTemplate params field for a given id
         """
-        self._check_params_template_permissions(request.user)
+        self.check_params_template_permissions(request.user)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
-        self._check_relevant_primary_categories_perm(request.user, validated_params)
+        self.check_relevant_primary_categories_perm(request.user, validated_params)
         template = self._update_params_template(request.user, template_id, validated_params)
         serializer = ParamsTemplateSerializer(template)
         return Response(status=HTTP_200_OK, data=serializer.data)
