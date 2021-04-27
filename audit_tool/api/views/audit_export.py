@@ -820,7 +820,7 @@ class AuditExportApiView(APIView):
                 print("copied {} to S3".format(file_name))
             except Exception as e:
                 os.remove(myfile.name)
-                raise Exception("problem copying file {} to S3".format(download_file_name))
+                raise Exception("problem copying file {} to S3: {}".format(download_file_name, str(e)))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
