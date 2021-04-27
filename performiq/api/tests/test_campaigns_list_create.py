@@ -236,7 +236,7 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["params"]["score_threshold"], params["score_threshold"])
 
-    def test_delete(self):
+    def test_delete_iq_campaigns(self):
         user = self.create_admin_user()
         gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
         dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
@@ -245,19 +245,22 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         iq_csv = IQCampaign.objects.create(user=user, params=dict(csv_s3_key="test.csv"))
 
         data = dict(cmp_ids=["0", str(iq_csv.id)])
-
-        response = self.client.delete(self._get_url(), data=data)
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_206_PARTIAL_CONTENT)
 
-        response = self.client.delete(self._get_url(), data={'cmp_ids': []})
+        empty_data = {'cmp_ids': []}
+        response = self.client.delete(self._get_url(), data=json.dumps(empty_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-        response = self.client.delete(self._get_url(), data=data)
+        invalid_data = {'cmp_ids': None}
+        response = self.client.delete(self._get_url(), data=json.dumps(invalid_data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_304_NOT_MODIFIED)
 
         data = dict(cmp_ids=[str(iq_google.id), str(iq_dv360.id)])
-
-        response = self.client.delete(self._get_url(), data=data)
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         count = IQCampaign.objects.filter(id__in=[iq_google.id, iq_dv360.id, iq_csv.id], user=user).count()
