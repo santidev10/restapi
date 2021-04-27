@@ -141,12 +141,12 @@ class Command(BaseCommand):
                     channel.processed_time = None
                     channel.save(update_fields=["processed_time"])
                 try:
-                    acp = AuditChannelProcessor.objects.get(
+                    acp = AuditChannelProcessor.objects.create(
                         audit=self.audit,
                         channel=channel,
                     )
                 except Exception as e:
-                    acp = AuditChannelProcessor.objects.create(
+                    acp = AuditChannelProcessor.objects.get(
                         audit=self.audit,
                         channel=channel,
                     )
