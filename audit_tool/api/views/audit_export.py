@@ -297,7 +297,7 @@ class AuditExportApiView(APIView):
         my_file = open(self.local_file, 'w+', newline='')
         wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
         wr.writerow(cols)
-        print("EXPORT {}: starting video processing".format(export.id))
+        print("EXPORT {}: starting video processing {}".format(export.id, self.local_file))
         export.set_current_step("creating_big_dict")
         for avp in videos:
             vid = avp.video
@@ -385,14 +385,15 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words = ""
                 title_bad_hit_words = ""
             try:
-                video_audit = auditor.audit_serialized({
-                    "id": vid.video_id,
-                    "title": v.name,
-                    "description": v.description,
-                    "tags": v.keywords if v.keywords else [],
-                })
-                video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
-                mapped_score = map_brand_safety_score(video_audit_score)
+                mapped_score = ""
+                # video_audit = auditor.audit_serialized({
+                #     "id": vid.video_id,
+                #     "title": v.name,
+                #     "description": v.description,
+                #     "tags": v.keywords if v.keywords else [],
+                # })
+                # video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
+                # mapped_score = map_brand_safety_score(video_audit_score)
             # pylint: disable=broad-except
             except Exception:
             # pylint: enable=broad-except
