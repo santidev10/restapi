@@ -23,9 +23,8 @@ class SegmentGadsScriptAPIView(APIView):
     )
 
     def get(self, request, *args, **kwargs):
-        message = "You must OAuth with Google Ads."
         oauth_account = get_object(OAuthAccount, user=request.user, oauth_type=OAuthType.GOOGLE_ADS.value,
-                                   message=message, code=HTTP_400_BAD_REQUEST)
+                                   message="You must OAuth with Google Ads", code=HTTP_400_BAD_REQUEST)
         script_fp = "segment/utils/request_create_placements.js"
         with open(script_fp, "r") as file:
             func = file.read()

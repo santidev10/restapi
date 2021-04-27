@@ -4,8 +4,9 @@ from dateutil import parser
 from django.conf import settings
 
 from administration.notifications import send_html_email
-from oauth.models import OAuthAccount
+from oauth.constants import OAuthData
 from oauth.constants import OAuthType
+from oauth.models import OAuthAccount
 from utils.datetime import now_in_default_tz
 
 NOTIFY_HOURS_THRESHOLD = 24
@@ -21,7 +22,7 @@ def segment_gads_oauth_notify_task():
                                                  revoked_access=False)
     for oauth in oauth_accounts:
         should_notify = False
-        gads_oauth_timestamp = oauth.data.get("gads_oauth_timestamp")
+        gads_oauth_timestamp = oauth.data.get(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP)
         try:
             if gads_oauth_timestamp is not True and \
                     parser.parse(gads_oauth_timestamp) < now_in_default_tz() - timedelta(hours=NOTIFY_HOURS_THRESHOLD):
