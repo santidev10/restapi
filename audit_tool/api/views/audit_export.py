@@ -307,8 +307,6 @@ class AuditExportApiView(APIView):
                 acm = v_channel.auditchannelmeta
             except Exception:
                 acm = None
-            if num_done > max_rows:
-                continue
             try:
                 language = self.get_lang(v.language_id)
             # pylint: disable=broad-except
@@ -465,6 +463,8 @@ class AuditExportApiView(APIView):
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
                 print("video export {} at {}".format(export.id, export.percent_done))
+            if len(rows) > max_rows:
+                continue
         export.set_current_step("preparing_file")
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
