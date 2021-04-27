@@ -7,8 +7,8 @@ from io import StringIO
 from typing import Union
 
 from django.contrib.auth import get_user_model
-from django.core.mail import EmailMessage
 
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import Campaign
 from aw_reporting.models import SalesForceGoalType
 from email_reports.reports.base import BaseEmailReport
@@ -168,17 +168,16 @@ class AbstractDailyApexEmailReport(BaseEmailReport):
             logger.error(f"No data to send {self.__class__.__name__} Apex campaign report.")
             return
 
-        msg = EmailMessage(
-            subject=self._get_subject(),
-            body=self._get_body(),
-            from_email=self.from_email,
-            to=self.get_to(self.to),
-            cc=self.get_cc(self.cc),
-            bcc=self.get_bcc()
-        )
-
-        msg.attach(self.attachment_filename, csv_context, "text/csv")
-        msg.send(fail_silently=False)
+        if not send_email_with_headers(
+                subject=self._get_subject(),
+                body=self._get_body(),
+                from_email=self.from_email,
+                to=self.get_to(self.to),
+                cc=self.get_cc(self.cc),
+                bcc=self.get_bcc(),
+                csv_file_name=self.attachment_filename,
+                csv_content=csv_context):
+            print("Emailing export to %s failed.", str(self.to))
 
     @staticmethod
     def _get_revenue(obj, campaign_prefix, rate_field=None) -> Union[float, None]:

@@ -2,12 +2,13 @@ import csv
 import os
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand
 
+from administration.notifications import send_email_with_headers
 from brand_safety.models.bad_word import BadWord
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+
 
 class Command(BaseCommand):
     help = 'Produce an export of all bad word hits with stats'
@@ -100,15 +101,15 @@ class Command(BaseCommand):
 
     def email_export(self, csv_context):
         print("Emailing export...")
-        msg = EmailMessage(
-            subject='bad word hit list',
-            body='attached is the bad word hit list',
-            from_email=settings.EXPORTS_EMAIL_ADDRESS,
-            to=['andrew.wong@channelfactory.com',],
-        )
-
-        msg.attach("export.csv", csv_context, "text/csv")
-        msg.send(fail_silently=False)
+        to = ['andrew.wong@channelfactory.com']
+        if not send_email_with_headers(
+                subject='bad word hit list',
+                body='attached is the bad word hit list',
+                from_email=settings.EXPORTS_EMAIL_ADDRESS,
+                to=to,
+                csv_file_name="export.csv",
+                csv_content=csv_context):
+            print("Emailing export to %s failed.", str(to))
 
     def add_bad_word_data(self, word, categories=[], languages=[], scores=[], hit_count=0):
         # word, exclusion category, language, severity, hit count

@@ -1,6 +1,6 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
 
+from administration.notifications import send_email_with_headers
 from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.reports.pacing_report import PacingReport
 from saas import celery_app
@@ -25,13 +25,4 @@ def export_pacing_report(get, user_pk, report_name, url_to_export, user_emails):
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
-    bcc = []
-
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=from_email,
-        to=user_emails,
-        bcc=bcc,
-    )
-    email.send(fail_silently=False)
+    send_email_with_headers(subject=subject, body=body, from_email=from_email, to=user_emails)

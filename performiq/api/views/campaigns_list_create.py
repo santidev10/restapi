@@ -2,6 +2,9 @@ from distutils.util import strtobool
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_304_NOT_MODIFIED
+from rest_framework.status import HTTP_206_PARTIAL_CONTENT
 
 from oauth.utils.view import get_campaigns
 from performiq.api.serializers import IQCampaignSerializer
@@ -34,6 +37,23 @@ class PerformIQCampaignListCreateAPIView(APIView):
         link = self._get_completion_link(iq_campaign)
         start_analysis.start_analysis_task.delay(iq_campaign.id, user.email, link)
         return Response(IQCampaignSerializer(iq_campaign).data)
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        campaign_ids = request.data.getlist('cmp_ids')
+        deleted = 0
+
+        if isinstance(campaign_ids, list) and len(campaign_ids) > 0:
+            deleted, _ = IQCampaign.objects.filter(id__in=campaign_ids, user=user).delete()
+        else:
+            return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "Missing or invalid cmp_ids provided"})
+
+        if deleted == 0:
+            return Response(status=HTTP_304_NOT_MODIFIED, data={"detail": "No campaigns were deleted"})
+        elif deleted < len(campaign_ids):
+            return Response(status=HTTP_206_PARTIAL_CONTENT, data={"detail": "Not all campaigns were deleted"})
+
+        return Response()
 
     def _get_analyzed_campaigns(self, request):
         paginator = self.pagination_class()

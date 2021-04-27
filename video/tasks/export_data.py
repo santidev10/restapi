@@ -1,17 +1,15 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 
+from administration.notifications import send_email
 from saas import celery_app
 from utils.aws.export_context_manager import ExportContextManager
 from utils.es_components_exporter import ESDataS3Exporter
 from video.constants import VIDEO_CSV_HEADERS
+from video.tasks.export_generator import VideoListDataGenerator
 
 logger = logging.getLogger(__name__)
-
-
-from .export_generator import VideoListDataGenerator
 
 
 @celery_app.task
@@ -33,11 +31,5 @@ def export_videos_data(query_params, export_name, user_emails):
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
 
-    try:
-        send_mail(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
-    # pylint: disable=broad-except
-    except Exception as e:
-        logger.info("RESEARCH EXPORT: Error during sending email to %s: %s", user_emails, e)
-    # pylint: enable=broad-except
-    else:
+    if send_email(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body):
         logger.info("RESEARCH EXPORT: Email was sent to %s.", user_emails)

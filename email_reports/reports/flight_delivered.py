@@ -2,9 +2,9 @@ import hashlib
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.db.models import Count
 
+from administration.notifications import send_email_with_headers
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatus
 from aw_reporting.models import Opportunity
@@ -47,15 +47,14 @@ class FlightDeliveredReport(BaseCampaignEmailReport):
             flight_alerts = self.get_flight_alerts(opportunity, report)
 
             for flight_alert in filter(lambda alert: alert is not None, flight_alerts):
-                msg = EmailMessage(
+                send_email_with_headers(
                     subject=flight_alert.subject,
                     body=flight_alert.body,
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to([opportunity.ad_ops_manager.email]),
                     cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
-                    bcc=self.get_bcc(),
+                    bcc=self.get_bcc()
                 )
-                msg.send(fail_silently=False)
 
     def get_flight_alerts(self, opportunity, report):
         flight_alerts = []

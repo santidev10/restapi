@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils.log import AdminEmailHandler
 
 from utils.redis import get_redis_client
+from administration.notifications import send_email_using_alternative_smtp
 
 
 class LimitExhausted(Exception):
@@ -31,3 +32,14 @@ class LimitedAdminEmailHandler(AdminEmailHandler):
         except LimitExhausted:
             return
         super(LimitedAdminEmailHandler, self).emit(record)
+
+    def send_mail(self, subject, message, *args, **kwargs):
+        """
+        Send a message to the admins, as defined by the ADMINS setting using the alternative SMTP to the default one.
+        This function is used to report exceptions to Admins.
+        """
+        if not settings.ADMINS or not settings.SERVER_EMAIL:
+            return
+        html_message = kwargs["html_message"] if "html_message" in kwargs else None
+        send_email_using_alternative_smtp(subject=subject, message=message, recipient_list=settings.ADMINS,
+                                          html_message=html_message)
