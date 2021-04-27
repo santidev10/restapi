@@ -461,11 +461,13 @@ class AuditExportApiView(APIView):
                 data.extend(v.keywords if v.keywords else "")
             wr.writerow(data)
             num_done += 1
-            if export and num_done % 500 == 0:
+            if export and num_done % 250 == 0:
+                old_percent = export.percent_done
                 export.percent_done = int(1.0 * num_done / count * 100) - 5
                 if export.percent_done < 0:
                     export.percent_done = 0
-                export.save(update_fields=['percent_done'])
+                if export.percent_done > old_percent:
+                    export.save(update_fields=['percent_done'])
                 print("video export {} at {}".format(export.id, export.percent_done))
             if num_done > max_rows:
                 continue
@@ -680,10 +682,12 @@ class AuditExportApiView(APIView):
         except Exception:
             channel_scores = {}
             print("EXPORT: problem getting scores, connection issue")
-        rows = [cols]
         count = channels.count()
         num_done = 0
-        # sections = (Sections.MONETIZATION,)
+        self.local_file = "export_files/{}".format(uuid4().hex)
+        my_file = open(self.local_file, 'w+', newline='')
+        wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
+        wr.writerow(cols)
         print("EXPORT: starting channel processing of export {}".format(export.id))
         export.set_current_step("creating_big_dict")
         for db_channel in channels:
@@ -789,7 +793,7 @@ class AuditExportApiView(APIView):
             except Exception:
             # pylint: enable=broad-except
                 pass
-            rows.append(data)
+            wr.writerow(data)
             num_done += 1
             if export and num_done % 250 == 0:
                 old_percent = export.percent_done
@@ -799,24 +803,18 @@ class AuditExportApiView(APIView):
                 if export.percent_done > old_percent:
                     export.save(update_fields=['percent_done'])
                 print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
-        with open(file_name, 'w+', newline='') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerows(rows)
-            print("written rows to {}".format(file_name))
-            # for row in rows:
-            #     wr.writerow(row)
+        my_file.close()
         export.set_current_step("preparing_to_move_file")
-        with open(file_name) as myfile:
+        with open(self.local_file) as myfile:
             s3_file_name = uuid4().hex
-            download_file_name = file_name
             try:
                 export.set_current_step("moving_file_to_s3")
-                AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
-                os.remove(myfile.name)
+                AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, file_name)
+                os.remove(self.local_file)
                 export.set_current_step("file_copied")
                 print("copied {} to S3".format(file_name))
             except Exception as e:
-                os.remove(myfile.name)
+                os.remove(self.local_file)
                 raise Exception("problem copying file {} to S3: {}".format(download_file_name, str(e)))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
