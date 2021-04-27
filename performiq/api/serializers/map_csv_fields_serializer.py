@@ -8,17 +8,33 @@ from rest_framework.serializers import ValidationError
 from performiq.utils.map_csv_fields import CSVHeaderUtil
 
 
+EXPECTED_CONTENT_TYPES = [
+    "text/csv",
+    "text/comma-separated-values",
+    "application/csv",
+    "application/excel",
+    "application/vnd.msexcel",
+    "application/vnd.ms-excel",
+]
+
+
 class CSVFileField(serializers.FileField):
 
     def run_validation(self, data: Type[UploadedFile]):
+        """
+        NOTE: Although application/vnd.ms-excel (an excel content type) is allowed, it should only be allowed with a
+        .csv file extension. The extension should always be checked first!
+        :param data:
+        :return:
+        """
         super().run_validation(data=data)
         # check file extension
         if not data.name.endswith("csv"):
             raise ValidationError("The file extension must be '.csv'")
         # check content type
-        expected_content_type = "text/csv"
-        if data.content_type != expected_content_type:
-            msg = f"The file's content type ({data.content_type}) is not the expected: '{expected_content_type}'"
+        if data.content_type not in EXPECTED_CONTENT_TYPES:
+            expected_types_str = ", ".join(EXPECTED_CONTENT_TYPES)
+            msg = f"The file's content type ({data.content_type}) is not of the expected: '{expected_types_str}'"
             raise ValidationError(msg)
         # reset file position and grab the first chunk to validate on
         data.seek(0)
