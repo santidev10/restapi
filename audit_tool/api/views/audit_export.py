@@ -464,8 +464,8 @@ class AuditExportApiView(APIView):
             if export and num_done % 250 == 0:
                 old_percent = export.percent_done
                 export.percent_done = int(1.0 * num_done / count * 100) - 5
-                if export.percent_done < 0:
-                    export.percent_done = 0
+                if export.percent_done < 1:
+                    export.percent_done = 1
                 if export.percent_done > old_percent:
                     export.save(update_fields=['percent_done'])
                 print("video export {} at {}".format(export.id, export.percent_done))
