@@ -182,7 +182,7 @@ class Command(BaseCommand):
                 # pylint: disable=broad-except
                 except Exception:
                 # pylint: enable=broad-except
-                    db_channel = AuditChannel.get_or_create(i["id"])
+                    db_channel = AuditChannel.get_or_create(i["id"], create=True, add_meta=True)
                     db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
                 if not i.get("brandingSettings"):
                     continue

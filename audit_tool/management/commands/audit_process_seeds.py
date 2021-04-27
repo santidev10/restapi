@@ -11,7 +11,6 @@ from pid import PidFile
 
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannel
-from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
@@ -22,9 +21,10 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     MAX_SOURCE_VIDEOS = 750000
-    MAX_SOURCE_CHANNELS = 100000
-    MAX_SOURCE_CHANNELS_CAP = 300000
+    MAX_SOURCE_CHANNELS = 150000
+    MAX_SOURCE_CHANNELS_CAP = 500000
     MAX_SOURCE_CHANNELS_FROM_CTL = 1000000
+    MAX_BULK_CREATE = 250
     num_clones = 0
     original_audit_name = None
     CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -147,7 +147,7 @@ class Command(BaseCommand):
                 acps.append(acp)
                 vids.append(acp)
                 counter += 1
-                if len(acps) >= 250:
+                if len(acps) >= self.MAX_BULK_CREATE:
                     AuditChannelProcessor.objects.bulk_create(acps)
                     acps = []
         if len(acps) > 0:
