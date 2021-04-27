@@ -24,6 +24,7 @@ from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.mixins import ParamsTemplateMixin
+from segment.api.mixins import RelevantPrimaryCategoriesMixin
 from segment.api.serializers import ParamsTemplateSerializer
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
@@ -36,7 +37,7 @@ from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
-class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
+class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryCategoriesMixin):
 
     def get(self, request, *args, **kwargs):
         """
@@ -75,6 +76,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         """
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
+        self._check_relevant_primary_categories_perm(request.user, validated_params)
         if request.data.get("get_estimate", None):
             res_data = {}
             query_builder = SegmentQueryBuilder(validated_params)
@@ -94,9 +96,10 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
                 message = {"Error": "Template with that title and CTL type already exists."}
                 return Response(message, status=HTTP_400_BAD_REQUEST)
             except DataError:
-                if isinstance(template_title, str) and len(template_title) > 100:
-                    message = {"Error": "Template title must be 100 characters or less."}
-                    return Response(message, status=HTTP_400_BAD_REQUEST)
+                message = {"Error": "Template title must be 100 characters or less."} \
+                    if isinstance(template_title, str) and len(template_title) > 100 \
+                    else {}
+                return Response(message, status=HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         """
@@ -107,6 +110,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         self._validate_field(template_id, int)
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
+        self._check_relevant_primary_categories_perm(request.user, validated_params)
         template = self._update_params_template(request.user, template_id, validated_params)
         serializer = ParamsTemplateSerializer(template)
         return Response(status=HTTP_200_OK, data=serializer.data)

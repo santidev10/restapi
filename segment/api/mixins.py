@@ -117,5 +117,38 @@ class ParamsTemplateMixin:
         templates = ParamsTemplate.objects.filter(
             owner=user, segment_type=segment_type
         ).order_by("title")
+        templates = RelevantPrimaryCategoriesMixin._update_params_missing_perm(user, templates)
         serializer = ParamsTemplateSerializer(templates, many=True)
         return serializer.data
+
+
+class RelevantPrimaryCategoriesMixin:
+    """
+    Mixin to check relevant_primary_categories permission,
+    validate field
+    """
+
+    def _check_relevant_primary_categories_perm(self, user, params):
+        """
+        :param user: userprofile.models.UserProfile
+        :param params: dict
+        """
+        if params.get("relevant_primary_categories", None) is True:
+            if not user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES):
+                raise PermissionDenied("Missing permission for relevant primary categories.")
+
+    @staticmethod
+    def _update_params_missing_perm(user, templates):
+        """
+        Removes relevant_primary_category=True field in param templates if
+        user does not have permission for feature
+
+        :param user: userprofile.models.UserProfile
+        :param tempaltes: segment.models.ParamsTemplate
+        """
+        for template in templates:
+            if template.params.get("relevant_primary_categories", None) is True:
+                if not user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES):
+                    template.params.pop("relevant_primary_categories")
+                    template.save()
+        return templates

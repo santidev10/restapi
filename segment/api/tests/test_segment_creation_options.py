@@ -342,3 +342,35 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(HTTP_200_OK, response.status_code)
         self.assertEqual(response.data["video_templates"][0]["template_title"], "Test_1")
         self.assertEqual(response.data["video_templates"][1]["template_title"], "Test_2")
+
+    def test_relevant_primary_categories_perm(self, mock_generate):
+        """
+        Tests that relevant_primary_category field is removed from params template
+        if user does not have permission enabled and value is True
+        """
+        user = self.create_test_user()
+        user.perms[StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE] = True
+        user.perms[StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES] = False
+        user.save()
+        params = {
+            "languages": ["pt"],
+            "score_threshold": 1,
+            "content_categories": [],
+            "minimum_option": 0,
+            "vetted_after": "2020-01-01",
+            "content_type": 0,
+            "content_quality": 0,
+            "relevant_primary_categories": True
+        }
+        params = self._get_params(**params)
+        ParamsTemplate.objects.create(
+            title="Test_1",
+            owner=user,
+            segment_type=0,
+            params=params
+        )
+
+        response = self.client.generic(method="GET", path=self._get_url(),
+                                       data=json.dumps(params), content_type="application/json")
+        self.assertEqual(HTTP_200_OK, response.status_code)
+        self.assertIsNone(response.data["video_templates"][0]["ctl_params"].get("relevant_primary_categories", None))
