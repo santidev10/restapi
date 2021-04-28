@@ -15,6 +15,7 @@ from es_components.countries import COUNTRY_CODES
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
+from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
@@ -204,10 +205,7 @@ class SegmentQueryBuilder:
                 # documents with relevant primary categories must have matching primary category
                 # and at least one of the requested subcategories
                 primary_categories = [item for item in content_categories if item in IAB_TIER1_CATEGORIES]
-                with open("es_components/iab_tier2_categories.json", "r") as f:
-                    categories_dict = json.load(f)
-
-                for primary_category, subcategories in categories_dict.items():
+                for primary_category, subcategories in IAB_TIER2_CATEGORIES_MAPPING.items():
                     if primary_category not in primary_categories:
                         continue
 
