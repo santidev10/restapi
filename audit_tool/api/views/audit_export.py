@@ -302,7 +302,10 @@ class AuditExportApiView(APIView):
             wr.writerow(cols)
             print("EXPORT {}: starting video processing {}".format(export.id, self.local_file))
             export.set_current_step("creating_big_dict")
+            stop = False
             for avp in videos:
+                if stop:
+                    continue
                 vid = avp.video
                 try:
                     v = vid.auditvideometa
@@ -473,7 +476,8 @@ class AuditExportApiView(APIView):
                     if export.percent_done > old_percent:
                         export.save(update_fields=['percent_done'])
                     print("video export {} at {}".format(export.id, export.percent_done))
-                if num_done > max_rows:
+                if num_done >= max_rows:
+                    stop = True
                     continue
         export.set_current_step("preparing_to_move_file")
         with open(self.local_file) as my_file:
