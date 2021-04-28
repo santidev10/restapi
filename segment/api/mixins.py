@@ -123,8 +123,7 @@ class ParamsTemplateMixin:
 
 class RelevantPrimaryCategoriesMixin:
     """
-    Mixin to check relevant_primary_categories permission,
-    validate field
+    Mixin to check relevant_primary_categories permission
     """
 
     @staticmethod
