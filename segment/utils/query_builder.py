@@ -201,6 +201,8 @@ class SegmentQueryBuilder:
                                  - set(self._params.get("exclude_content_categories", []))
 
             if self._params.get("relevant_primary_categories", None) is True:
+                # documents with relevant primary categories must have matching primary category
+                # and at least one of the requested subcategories
                 primary_categories = [item for item in content_categories if item in IAB_TIER1_CATEGORIES]
                 with open("es_components/iab_tier2_categories.json", "r") as f:
                     categories_dict = json.load(f)
@@ -209,12 +211,12 @@ class SegmentQueryBuilder:
                     if primary_category not in primary_categories:
                         continue
 
-                    subcategories = set([item for item in subcategories if item in content_categories])
-                    query = Q({"bool": {
-                          "must": {"term": {"general_data.primary_category": primary_category}},
-                          "should": {"terms": {"general_data.iab_categories": subcategories}}
-                        }})
-                    content_queries |= query
+                    subcategories = [item for item in subcategories if item in content_categories]
+                    must_query = QueryBuilder().build().must().term().field("general_data.primary_category").value(
+                        primary_category).get()
+                    should_query = QueryBuilder().build().should().terms().field("general_data.iab_categories").value(
+                        subcategories).get()
+                    content_queries |= (must_query & should_query)
             else:
                 for category in content_categories:
                     content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
