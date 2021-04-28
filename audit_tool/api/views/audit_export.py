@@ -221,12 +221,6 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
-        try:
-            max_rows = settings.AUDIT_EXPORT_MAX_VIDEO_ROWS
-        except Exception  as e:
-            max_rows = self.MAX_ROWS
-        if audit.params.get('MAX_VIDEO_ROWS'):
-            max_rows = audit.params.get('MAX_VIDEO_ROWS')
         export.set_current_step("getting_categories")
         self.get_categories()
         do_inclusion = False
@@ -293,6 +287,12 @@ class AuditExportApiView(APIView):
             videos = videos.filter(clean=clean)
         auditor = VideoAuditor()
         count = videos.count()
+        try:
+            max_rows = settings.AUDIT_EXPORT_MAX_VIDEO_ROWS
+        except Exception  as e:
+            max_rows = self.MAX_ROWS
+        if audit.params.get('MAX_VIDEO_ROWS') and audit.params.get('MAX_VIDEO_ROWS') > 0:
+            max_rows = audit.params.get('MAX_VIDEO_ROWS')
         if count > max_rows:
             count = max_rows
         num_done = 0
