@@ -1,15 +1,18 @@
 import csv
 import os
 import string
+from random import shuffle
 
 import boto3
-from django.urls import reverse
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from performiq.api.urls.names import PerformIQPathName
+from performiq.api.serializers.map_csv_fields_serializer import EXPECTED_CONTENT_TYPES
 from performiq.utils.constants import CSVFieldTypeEnum
 from performiq.utils.map_csv_fields import CSVWithHeader
 from performiq.utils.map_csv_fields import CSVWithOnlyData
@@ -60,6 +63,17 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         with open(filename) as file:
             response = self.client.post(self._get_url(), {"csv_file": file})
             self.assertIn("The file extension must be '.csv'", response.json().get("csv_file")[0])
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_bad_content_type(self):
+        self.create_admin_user()
+        filename = self._create_csv("csv_file")
+        with open(filename) as file:
+            content = file.read().encode("utf_8")
+            data = SimpleUploadedFile(name="csv_file.csv", content=content, content_type="asdf/asdf")
+            response = self.client.post(self._get_url(), {"csv_file": data})
+            self.assertIn("The file's content type (asdf/asdf) is not of the expected:",
+                          response.json().get("csv_file")[0])
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_no_data(self):
@@ -116,13 +130,19 @@ class MapCSVFieldsAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=settings.AMAZON_S3_PERFORMIQ_CUSTOM_CAMPAIGN_UPLOADS_BUCKET_NAME)
+        expected_content_types = EXPECTED_CONTENT_TYPES.copy()
         for write_header in [True, False]:
             with self.subTest(write_header):
                 for delimiter in [",", "\t"]:
                     with self.subTest(delimiter):
                         filename = self._create_csv("csv_file.csv", write_header=write_header, delimiter=delimiter)
                         with open(filename) as file:
-                            response = self.client.post(self._get_url(), {"csv_file": file})
+                            content = file.read().encode("utf_8")
+                            shuffle(expected_content_types)
+                            content_type = expected_content_types[0]
+                            csv_file = SimpleUploadedFile(name="csv_file.csv", content=content,
+                                                          content_type=content_type)
+                            response = self.client.post(self._get_url(), {"csv_file": csv_file})
                             self.assertEqual(response.status_code, HTTP_200_OK)
                             json = response.json()
                             self.assertIn("mapping", json)
