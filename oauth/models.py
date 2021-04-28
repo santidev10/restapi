@@ -45,12 +45,20 @@ class OAuthAccount(OAuthBase):
     viq_key = models.UUIDField(default=uuid4)
     data = models.JSONField(default=dict)
 
+    def update_data(self, data_key, data, save=True):
+        self.data.update({
+            data_key: data,
+        })
+        if save is True:
+            self.save(update_fields=["data"])
+
 
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     name = models.CharField(max_length=255, db_index=True, null=True)
+    can_manage_clients = models.BooleanField(default=False, db_index=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):
@@ -104,7 +112,7 @@ class LineItem(DV360Base, DV360SharedFieldsMixin):
     insertion_order = models.ForeignKey(InsertionOrder, related_name="line_items", on_delete=models.CASCADE)
 
 
-class AdGroup(OAuthBase):
+class AdGroup(OAuthBase, DV360SharedFieldsMixin):
     id = models.BigAutoField(primary_key=True)
     campaign = models.ForeignKey(Campaign, null=True, related_name="adgroups", on_delete=models.CASCADE)
     line_item = models.ForeignKey(LineItem, null=True, related_name="adgroups", on_delete=models.CASCADE)
