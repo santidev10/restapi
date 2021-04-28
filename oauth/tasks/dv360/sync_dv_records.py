@@ -170,14 +170,14 @@ def sync_line_items(oauth_account_ids=None):
     mapping = {
         "id": "Line Item Id",
         "name": "Name",
+        "display_name": "Name",
         "entity_status": "Status",
         "insertion_order_id": "Io Id",
     }
-
-    ids_filter = Q() if oauth_account_ids is None else Q()
-    for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True, is_synced=True):
+    ids_filter = Q() if oauth_account_ids is None else Q(id__in=oauth_account_ids)
+    for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True, synced=True):
         advertiser_ids = oauth.dv360_advertisers.all().values_list("id", flat=True)
-        retrieve_sdf_items(oauth, advertiser_ids, mapping, LineItem, "get_line_items_sdf_report")
+        retrieve_sdf_items(oauth, advertiser_ids, mapping, LineItem, "get_line_item_sdf_report")
 
 
 @celery_app.task
@@ -185,13 +185,15 @@ def sync_adgroups(oauth_account_ids=None):
     mapping = {
         "id": "Ad Group Id",
         "name": "Name",
+        "display_name": "Name",
+        "entity_status": "Status",
         "line_item_id": "Line Item Id",
     }
-    ids_filter = Q() if oauth_account_ids is None else Q()
+    ids_filter = Q() if oauth_account_ids is None else Q(id__in=oauth_account_ids)
     for oauth in OAuthAccount.objects.filter(ids_filter, oauth_type=OAuthType.DV360.value, is_enabled=True,
-                                             is_synced=True):
+                                             synced=True):
         advertiser_ids = oauth.dv360_advertisers.all().values_list("id", flat=True)
-        retrieve_sdf_items(oauth, advertiser_ids, mapping, AdGroup)
+        retrieve_sdf_items(oauth, advertiser_ids, mapping, AdGroup, "get_adgroup_sdf_report")
 
 
 class AbstractThreadedDVSynchronizer:
