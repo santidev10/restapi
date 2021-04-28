@@ -44,7 +44,6 @@ class OAuthAccount(OAuthBase):
     # ViewIQ generated api key used to authenticate users from external scripts e.g. Google Ads Scripts
     viq_key = models.UUIDField(default=uuid4)
     data = models.JSONField(default=dict)
-    can_manage_clients = models.BooleanField(default=False, db_index=True)
 
     def update_data(self, data_key, data, save=True):
         self.data.update({
@@ -59,7 +58,7 @@ class Account(models.Model):
     oauth_accounts = models.ManyToManyField(OAuthAccount, related_name="gads_accounts", db_index=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     name = models.CharField(max_length=255, db_index=True, null=True)
-    # can_manage_clients = models.BooleanField(default=False, db_index=True)
+    can_manage_clients = models.BooleanField(default=False, db_index=True)
 
 
 class DV360Partner(DV360Base, DV360SharedFieldsMixin):
