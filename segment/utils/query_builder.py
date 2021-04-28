@@ -1,5 +1,3 @@
-import json
-
 from elasticsearch_dsl import Q
 from elasticsearch_dsl.query import Bool
 from typing import Tuple
