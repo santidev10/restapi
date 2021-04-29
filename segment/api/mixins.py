@@ -59,15 +59,6 @@ class ParamsTemplateMixin:
     """
 
     @staticmethod
-    def check_params_template_permissions(user):
-        """
-        :param user:
-        :return:
-        """
-        if not user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
-            raise PermissionDenied
-
-    @staticmethod
     def _update_params_template(user, template_id, params):
         """
         updates ParamsTemplate instance for a given id and new params
@@ -119,19 +110,3 @@ class ParamsTemplateMixin:
         ).order_by("title")
         serializer = ParamsTemplateSerializer(templates, many=True)
         return serializer.data
-
-
-class RelevantPrimaryCategoriesMixin:
-    """
-    Mixin to check relevant_primary_categories permission
-    """
-
-    @staticmethod
-    def check_relevant_primary_categories_perm(user, params):
-        """
-        :param user: userprofile.models.UserProfile
-        :param params: dict
-        """
-        if params.get("relevant_primary_categories", None) is True:
-            if not user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES):
-                raise PermissionDenied("Missing permission for relevant primary categories.")

@@ -6,6 +6,7 @@ import time
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import permissions
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from audit_tool.models import AuditProcessor
@@ -357,3 +358,29 @@ class CustomSegmentChannelDeletePermission(AbstractSegmentTypePermission):
     """
     segment_type = SegmentTypeEnum.CHANNEL.value
     required_permission = StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST
+
+
+class SegmentPermChecks:
+    """
+    Class including methods to check user permissions in build
+    """
+
+    @staticmethod
+    def check_perm(user, perm_name):
+        """
+        :param user:
+        :return:
+        """
+        if not user.has_permission(perm_name):
+            raise PermissionDenied
+
+    @staticmethod
+    def check_boolean_filter_perm(user, params, filter, perm_name, value=True):
+        """
+        :param user: userprofile.models.UserProfile
+        :param params: dict
+        :param filter: str
+        :param perm_name: str
+        """
+        if params.get(filter, None) is value and not user.has_permission(perm_name):
+            raise PermissionDenied

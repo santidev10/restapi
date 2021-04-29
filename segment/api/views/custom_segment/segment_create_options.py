@@ -24,7 +24,7 @@ from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.mixins import ParamsTemplateMixin
-from segment.api.mixins import RelevantPrimaryCategoriesMixin
+from segment.utils.utils import SegmentPermChecks
 from segment.api.serializers import ParamsTemplateSerializer
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
@@ -37,7 +37,7 @@ from userprofile.constants import StaticPermissions
 from utils.views import get_object
 
 
-class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryCategoriesMixin):
+class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
 
     def get(self, request, *args, **kwargs):
         """
@@ -60,7 +60,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         deletes ParamsTemplate object for a given id if user is owner
         """
-        self.check_params_template_permissions(request.user)
+        SegmentPermChecks.check_perm(request.user, StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         params_template = get_object(ParamsTemplate, id=template_id)
@@ -76,7 +76,8 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
-        self.check_relevant_primary_categories_perm(request.user, validated_params)
+        SegmentPermChecks.check_boolean_filter_perm(request.user, validated_params,
+            "relevant_primary_categories", StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES)
         if request.data.get("get_estimate", None):
             res_data = {}
             query_builder = SegmentQueryBuilder(validated_params)
@@ -86,7 +87,7 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
             return Response(status=HTTP_200_OK, data=res_data)
         else:
             try:
-                self.check_params_template_permissions(request.user)
+                SegmentPermChecks.check_perm(request.user, StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE)
                 template_title = request.data.get("template_title", None)
                 self._validate_field(template_title, str)
                 template = self._create_params_template(request.user, template_title, validated_params)
@@ -105,12 +106,13 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin, RelevantPrimaryC
         """
         Updates ParamsTemplate params field for a given id
         """
-        self.check_params_template_permissions(request.user)
+        SegmentPermChecks.check_perm(request.user, StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         data = set_user_perm_params(request, request.data)
         validated_params = self._validate_params(data)
-        self.check_relevant_primary_categories_perm(request.user, validated_params)
+        SegmentPermChecks.check_boolean_filter_perm(request.user, validated_params,
+            "relevant_primary_categories", StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES)
         template = self._update_params_template(request.user, template_id, validated_params)
         serializer = ParamsTemplateSerializer(template)
         return Response(status=HTTP_200_OK, data=serializer.data)

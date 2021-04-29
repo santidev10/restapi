@@ -11,7 +11,7 @@ from rest_framework.status import HTTP_200_OK
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers.video_exclusion_params_serializer import VideoExclusionParamsSerializer
-from segment.api.mixins import RelevantPrimaryCategoriesMixin
+from segment.utils.utils import SegmentPermChecks
 from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
@@ -24,7 +24,7 @@ from utils.permissions import or_permission_classes
 from utils.views import get_object
 
 
-class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, RelevantPrimaryCategoriesMixin):
+class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
     serializer_class = CTLSerializer
     permission_classes = (
         or_permission_classes(
@@ -65,7 +65,8 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Rele
         validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
         self.check_source_file_permissions(request=request)
-        self.check_relevant_primary_categories_perm(request.user, validated_params)
+        SegmentPermChecks.check_boolean_filter_perm(request.user, validated_params,
+            "relevant_primary_categories", StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES)
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_201_CREATED, data=res)
@@ -86,7 +87,8 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin, Rele
         # be included in context
         data_keys = set(data.keys())
         validated_params = self._validate_params(data, partial=True)
-        self.check_relevant_primary_categories_perm(request.user, validated_params)
+        SegmentPermChecks.check_boolean_filter_perm(request.user, validated_params,
+            "relevant_primary_categories", StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES)
         validated_video_exclusion_params = self._validate_video_exclusion(segment, request.user, data)
         cleaned_params = {key: value for key, value in validated_params.items() if key in data_keys}
         serializer = self.serializer_class(segment, data=data,
