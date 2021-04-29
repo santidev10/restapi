@@ -381,6 +381,7 @@ class SegmentPermChecks:
         :param params: dict
         :param filter: str
         :param perm_name: str
+        :param value: bool, default=True:
         """
         if params.get(filter, None) is value and not user.has_permission(perm_name):
             raise PermissionDenied
