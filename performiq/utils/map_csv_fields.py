@@ -313,8 +313,7 @@ class CSVHeaderUtil:
             csv_file.seek(0)
             chunk = next(csv_file.chunks())
             decoded = decode_to_string(chunk)
-            io_string = StringIO(decoded)
-            self.reader = get_reader(io_string)
+            self.reader = get_reader(decoded)
             self._init_rows_from_reader()
 
         self._run_validation()
@@ -374,9 +373,31 @@ class CSVHeaderUtil:
         return max(indices)
 
 
-def get_reader(io_string: StringIO, row_depth: int = 5) -> csv.reader:
+def get_reader(value: str, row_depth: int = 5) -> csv.reader:
     """
-    get a reader with the the most likely delimiter value
+    given a string, iterate through newline options to pass through StringIO until we exhaust the list or raise no
+    exceptions.
+    NOTE: This was implemented to fix an issue with Window's Macintosh style csv, which uses a different newline
+    character. In development, I've never seen anything past the `None` option
+    :param value:
+    :param row_depth:
+    :return:
+    """
+    for newline in ["\n", None, "\r", "\r\n", "EOF"]:
+        io_string = StringIO(value, newline=newline)
+        try:
+            return get_reader_from_io_string(io_string, row_depth=row_depth)
+        except csv.Error as e:
+            if str(e) == ("new-line character seen in unquoted field - do you need to open the file in "
+                          "universal-newline mode?"):
+                continue
+
+            raise e
+
+
+def get_reader_from_io_string(io_string: StringIO, row_depth: int = 5) -> csv.reader:
+    """
+    given an iostring object, return a reader with the the most likely delimiter value
     :param io_string:
     :param row_depth:
     :return csv.reader:
@@ -523,8 +544,7 @@ class CSVColumnMapper:
         self.csv_file.seek(0)
         chunk = next(self.csv_file.chunks())
         decoded = decode_to_string(chunk)
-        io_string = StringIO(decoded)
-        reader = get_reader(io_string)
+        reader = get_reader(decoded)
 
         # skip to the header row index, if it's not in row 0
         util = CSVHeaderUtil(csv_file=self.csv_file)

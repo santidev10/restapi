@@ -31,4 +31,4 @@ class CTLGadsScriptCodeTestCase(ExtendedAPITestCase):
         """ Test that code is retrieved and VIQ_KEY is replaced with user viq_key """
         response = self.client.get(self._url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertTrue(str(self.oauth_account.viq_key) in response.data)
+        self.assertTrue(str(self.oauth_account.viq_key) in response.data["code"])
