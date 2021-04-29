@@ -135,7 +135,7 @@ class Command(BaseCommand):
                 if len(vids) >= self.MAX_SOURCE_CHANNELS:
                     self.clone_audit()
                     vids = []
-                channel = AuditChannel.get_or_create(v_id, add_meta=True)
+                channel = AuditChannel.get_or_create(v_id, create=True, add_meta=True)
                 if channel.processed_time and (
                         self.force_data_refresh or channel.processed_time < timezone.now() - timedelta(days=30)):
                     channel.processed_time = None

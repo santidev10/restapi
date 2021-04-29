@@ -470,7 +470,10 @@ class AuditChannel(models.Model):
                     channel_id_hash=channel_id_hash
                 )
                 if add_meta:
-                    AuditChannelMeta.objects.create(channel=c)
+                    try:
+                        AuditChannelMeta.objects.create(channel=c)
+                    except Exception as e:
+                        pass
                 return c
             except IntegrityError:
                 return AuditChannel.objects.get(channel_id=channel_id)
