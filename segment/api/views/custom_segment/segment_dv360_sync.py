@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.db.models import F
+from django.db.models.functions import Coalesce
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -66,12 +68,19 @@ class SegmentDV360SyncAPIView(APIView):
         """
         data = self.request.data
         adgroup_ids = data.get("adgroup_ids", [])
-        advertiser = get_object(DV360Advertiser, id=data.get("advertiser_id"))
         segment = get_object(CustomSegment, id=self.kwargs.get("pk"))
-        exists = AdGroup.objects.filter(id__in=adgroup_ids, oauth_type=int(OAuthType.DV360))
+        exists = AdGroup.objects.filter(id__in=adgroup_ids, oauth_type=int(OAuthType.DV360))\
+            .annotate(advertiser_id=F("line_item__insertion_order__campaign__advertiser_id"))
         remains = set(adgroup_ids) - set(exists.values_list("id", flat=True))
         if not exists or remains:
             raise NotFound(f"Unknown Adgroup ids: {remains}")
+        advertiser = None
+        for ag in exists:
+            advertiser = get_object(DV360Advertiser, id=ag.advertiser_id, should_raise=False)
+            if advertiser:
+                break
+        if advertiser is None:
+            raise NotFound(f"Unable to find advertiser for Adgroup ids: {adgroup_ids}")
         return segment, advertiser, adgroup_ids
 
     def _start_audit(self, segment, advertiser_id, adgroup_ids) -> AuditProcessor:
