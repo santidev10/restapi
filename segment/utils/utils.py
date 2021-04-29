@@ -368,8 +368,8 @@ class SegmentPermChecks:
     @staticmethod
     def check_perm(user, perm_name):
         """
-        :param user:
-        :return:
+        :param user: userprofile.models.UserProfile
+        :param perm_name: str
         """
         if not user.has_permission(perm_name):
             raise PermissionDenied
