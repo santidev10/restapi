@@ -269,7 +269,7 @@ class Command(BaseCommand):
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=["processed_time"])
-            channel = AuditChannel.get_or_create(i["snippet"]["channelId"])
+            channel = AuditChannel.get_or_create(i["snippet"]["channelId"], add_meta=True)
             db_video_meta.save()
             if db_video.channel != channel:
                 db_video.channel = channel

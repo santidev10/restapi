@@ -457,7 +457,7 @@ class AuditChannel(models.Model):
     processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
-    def get_or_create(channel_id, create=True):
+    def get_or_create(channel_id, create=True, add_meta=True):
         channel_id_hash = get_hash_name(channel_id)
         res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
         for r in res:
@@ -465,10 +465,16 @@ class AuditChannel(models.Model):
                 return r
         if create:
             try:
-                return AuditChannel.objects.create(
+                c = AuditChannel.objects.create(
                     channel_id=channel_id,
                     channel_id_hash=channel_id_hash
                 )
+                if add_meta:
+                    try:
+                        AuditChannelMeta.objects.create(channel=c)
+                    except Exception as e:
+                        pass
+                return c
             except IntegrityError:
                 return AuditChannel.objects.get(channel_id=channel_id)
         return None
@@ -652,7 +658,6 @@ class AuditExporter(models.Model):
         "processing_initial_objs",
         "getting_channel_scores",
         "creating_big_dict",
-        "preparing_file",
         "preparing_to_move_file",
         "moving_file_to_s3",
         "file_copied",
