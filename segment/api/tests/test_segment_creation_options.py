@@ -342,3 +342,31 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(HTTP_200_OK, response.status_code)
         self.assertEqual(response.data["video_templates"][0]["template_title"], "Test_1")
         self.assertEqual(response.data["video_templates"][1]["template_title"], "Test_2")
+
+    def test_relevant_primary_categories_perm(self, mock_generate):
+        user = self.create_test_user()
+        user.perms[StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE] = True
+        user.perms[StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES] = False
+        user.save()
+        payload = {
+            "languages": ["pt"],
+            "score_threshold": 1,
+            "content_categories": [],
+            "minimum_option": 0,
+            "vetted_after": "2020-01-01",
+            "content_type": 0,
+            "content_quality": 0,
+        }
+        payload = self._get_params(**payload)
+        payload["template_title"] = "test1"
+        payload["segment_type"] = 0
+        payload["relevant_primary_categories"] = True
+        response = self.client.generic(method="POST", path=self._get_url(),
+                                       data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
+
+        payload["template_id"] = 0
+        payload.pop("template_title")
+        response = self.client.generic(method="PATCH", path=self._get_url(),
+                                       data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)

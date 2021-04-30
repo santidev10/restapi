@@ -357,3 +357,34 @@ class CustomSegmentChannelDeletePermission(AbstractSegmentTypePermission):
     """
     segment_type = SegmentTypeEnum.CHANNEL.value
     required_permission = StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST
+
+
+class SegmentPermissionsClass(permissions.BasePermission):
+    """
+    Checks permission for relevant primary categories,
+    parameter templates,
+    and build ctl from custom list,
+    depending on request data values and files
+    """
+    def has_permission(self, request, view):
+        if not isinstance(request.user, get_user_model()):
+            return False
+
+        data = request.data
+        if data.get("data", None) is not None:
+            # check if form data to load json
+            data = json.loads(data.get("data"))
+
+        if not request.user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES) \
+            and data.get("relevant_primary_categories", None) is True:
+            return False
+
+        if not request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE) \
+            and (data.get("template_id", None) or data.get("template_title", None)):
+            return False
+
+        if request.FILES.get("source_file") \
+                and not request.user.has_permission(StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST):
+            return False
+
+        return True

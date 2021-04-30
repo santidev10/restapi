@@ -59,15 +59,6 @@ class ParamsTemplateMixin:
     """
 
     @staticmethod
-    def _check_params_template_permissions(user):
-        """
-        :param user:
-        :return:
-        """
-        if not user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE):
-            raise PermissionDenied
-
-    @staticmethod
     def _update_params_template(user, template_id, params):
         """
         updates ParamsTemplate instance for a given id and new params

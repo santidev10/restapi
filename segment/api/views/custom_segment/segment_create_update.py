@@ -11,6 +11,7 @@ from rest_framework.status import HTTP_200_OK
 from segment.api.serializers import CTLParamsSerializer
 from segment.api.serializers.ctl_serializer import CTLSerializer
 from segment.api.serializers.video_exclusion_params_serializer import VideoExclusionParamsSerializer
+from segment.utils.utils import SegmentPermissionsClass
 from segment.api.mixins import SegmentTypePermissionMixin
 from segment.models import CustomSegment
 from segment.models.constants import SegmentActionEnum
@@ -26,6 +27,7 @@ from utils.views import get_object
 class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
     serializer_class = CTLSerializer
     permission_classes = (
+        SegmentPermissionsClass,
         or_permission_classes(
             StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST),
             StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST)
@@ -44,17 +46,6 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         data = set_user_perm_params(request, data)
         return request, data
 
-    @staticmethod
-    def check_source_file_permissions(request):
-        """
-        ensure user has permission to upload a CTL source file
-        :param request:
-        :return:
-        """
-        if request.FILES.get("source_file") \
-                and not request.user.has_permission(StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST):
-            raise PermissionDenied
-
     @segment_action(SegmentActionEnum.CREATE.value)
     def post(self, request, *args, **kwargs):
         """
@@ -63,7 +54,6 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         request, data = self._prep_request(request)
         validated_params = self._validate_params(data)
         self.check_segment_type_permissions(request=request, segment_type=validated_params.get("segment_type"))
-        self.check_source_file_permissions(request=request)
         serializer = self.serializer_class(data=data, context=self._get_context(validated_params))
         res = self._finalize(serializer, validated_params)
         return Response(status=HTTP_201_CREATED, data=res)
@@ -78,7 +68,6 @@ class SegmentCreateUpdateApiView(CreateAPIView, SegmentTypePermissionMixin):
         segment = get_object(CustomSegment, id=data.get("id"))
         self.check_segment_type_permissions(request=request, segment_type=segment.segment_type, allow_if_owner=True,
                                             segment=segment)
-        self.check_source_file_permissions(request=request)
         # Keep track of data.keys as CTLParamsSerializer sets default values for some fields during creation.
         # validated_params will need to be cleaned of these default values and only the keys send for updating should
         # be included in context
