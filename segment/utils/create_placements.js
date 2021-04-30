@@ -8,15 +8,17 @@ function run() {
     var placementType = ctlData[ctlId].placementType;
 
     var adGroupIterator = getAdGroups(adgroupIds);
+    var updatedAdGroupIds = [];
     while (adGroupIterator.hasNext()) {
       var adGroup = adGroupIterator.next();
       removeExistingPlacements(adGroup);
       pollPlacementDeletion(adGroup, 'Channel', maxSleep);
       pollPlacementDeletion(adGroup, 'Video', maxSleep);
       createPlacements(adGroup, placementIds, placementType);
+      updatedAdGroupIds.push(adGroup.getId())
     }
     if (!AdsApp.getExecutionInfo().isPreview()) {
-      updateSyncStatus(adgroupIds);
+      updateSyncStatus(updatedAdGroupIds);
     }
   });
 }
