@@ -8,7 +8,6 @@ from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegmentSourceFileUpload
-from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models.constants import ChannelConfig
 from segment.models.constants import Params
 from segment.models.constants import SegmentTypeEnum
@@ -45,6 +44,8 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
     :param with_audit: bool -> Determines if CTL is being generated with meta audit
     :return:
     """
+    # Keep import statement here to avoid circular import
+    from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
     generate_utils = GenerateSegmentUtils(segment)
     # file for admin or vetted only exports
     admin_filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
