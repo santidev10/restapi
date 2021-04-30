@@ -360,28 +360,29 @@ class CustomSegmentChannelDeletePermission(AbstractSegmentTypePermission):
     required_permission = StaticPermissions.BUILD__CTL_DELETE_CHANNEL_LIST
 
 
-class SegmentPermChecks:
+class SegmentPermissionsClass(permissions.BasePermission):
     """
-    Class including methods to check user permissions in build
+    Checks permission for relevant primary categories,
+    parameter templates,
+    and build ctl from custom list,
+    depending on request data values and files
     """
+    def has_permission(self, request, view):
+        if not isinstance(request.user, get_user_model()):
+            return False
 
-    @staticmethod
-    def check_perm(user, perm_name):
-        """
-        :param user: userprofile.models.UserProfile
-        :param perm_name: str
-        """
-        if not user.has_permission(perm_name):
-            raise PermissionDenied
+        data = json.loads(request.data.get("data", "{}"))
 
-    @staticmethod
-    def check_boolean_filter_perm(user, params, filter, perm_name, value=True):
-        """
-        :param user: userprofile.models.UserProfile
-        :param params: dict
-        :param filter: str
-        :param perm_name: str
-        :param value: bool, default=True:
-        """
-        if params.get(filter, None) is value and not user.has_permission(perm_name):
-            raise PermissionDenied
+        if not request.user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES) \
+            and data.get("relevant_primary_categories", None) is True:
+            return False
+
+        if not request.user.has_permission(StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE) \
+            and (data.get("template_id", None) or data.get("template_title", None)):
+            return False
+
+        if request.FILES.get("source_file") \
+                and not request.user.has_permission(StaticPermissions.BUILD__CTL_FROM_CUSTOM_LIST):
+            return False
+
+        return True

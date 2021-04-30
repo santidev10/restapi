@@ -1535,28 +1535,24 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_relevant_primary_categories_perm(self, mock_generate):
         user = self.create_test_user()
-        user.perms[StaticPermissions.BUILD__CTL_PARAMS_TEMPLATE] = True
         user.perms[StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES] = False
+        user.perms[StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST] = True
+        user.perms[StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST] = True
         user.save()
         payload = {
-            "languages": ["pt"],
-            "score_threshold": 1,
+            "title": "test_create_with_channel_source_success",
+            "score_threshold": 0,
             "content_categories": [],
-            "minimum_option": 0,
-            "vetted_after": "2020-01-01",
+            "languages": [],
+            "severity_counts": {},
             "content_type": 0,
             "content_quality": 0,
+            "segment_type": 0,
         }
         payload = self.get_params(**payload)
-        payload["template_title"] = "test1"
-        payload["segment_type"] = 0
         payload["relevant_primary_categories"] = True
-        response = self.client.generic(method="POST", path=self._get_url(),
-                                       data=json.dumps(payload), content_type="application/json")
-        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
-
-        payload["template_id"] = 0
-        payload.pop("template_title")
-        response = self.client.generic(method="PATCH", path=self._get_url(),
-                                       data=json.dumps(payload), content_type="application/json")
+        form = dict(
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
         self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
