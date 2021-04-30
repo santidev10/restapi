@@ -235,14 +235,50 @@ class CustomSegment(SegmentMixin, Timestampable):
         _delete_audit(self.params.get(Params.META_AUDIT_ID))
         self.delete()
 
-    def update_statistics(self, sub_key, data, data_key=None, save=False):
-        sub_data = self.statistics.get(sub_key, {})
-        if not data_key:
-            sub_data.update(data)
+    def update_statistics(self, data, nested_key: str, data_field=None, save=False):
+        nested_data = self.statistics.get(nested_key, {})
+        if data_field is not None:
+            nested_data[data_field] = data
         else:
-            sub_data[data_key] = data
-        if save:
+            nested_data.update(data)
+        self.statistics[nested_key] = nested_data
+        if save is True:
             self.save(update_fields=["statistics"])
+
+    def update_params(self, data, nested_key: str, data_field=None, save=False) -> None:
+        """
+        Method to handle updating nested data in params JSON field
+
+        :param data:
+        :param nested_key: Key for storing nested data in params
+        :param data_field: Optional key to set data on nested data. If data_field is None, then it is implied that
+            data is a dict and will be used to update the nested data dict
+
+            self.params = {
+                "gads_sync_data": {...}
+                "dv360_sync_data": {...},
+            }
+            nested_key = "gads_sync_data"
+            self.params[nested_key].update(data)
+
+        :usage:
+            self.params = {
+                "gads_sync_data": {...}
+                "dv360_sync_data": {...},
+            }
+            nested_key = "gads_sync_data"
+            data_field = "adgroup_ids"
+            self.params[nested_key][data_field] = data
+        :param save: If True, then save instance
+        """
+        nested_data = self.params.get(nested_key, {})
+        if data_field is not None:
+            nested_data[data_field] = data
+        else:
+            nested_data.update(data)
+        self.params[nested_key] = nested_data
+        if save is True:
+            self.save(update_fields=["params"])
 
     def update_sync_history(self, account_name, sync_type) -> None:
         """

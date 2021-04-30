@@ -247,7 +247,7 @@ def retrieve_sdf_items(oauth_account: OAuthAccount, advertiser_ids: list[int], f
     # https://googleapis.github.io/google-api-python-client/docs/thread_safety.html
     # Prepare args for each thread to retrieve sdf report for each advertiser
     all_args = [
-        (DV360Connector(load_credentials(oauth_account)), a_id, target_dir)
+        (DV360Connector(oauth_account.token, oauth_account.refresh_token), a_id, target_dir)
         for a_id, target_dir in zip(advertiser_ids, dirs)
     ]
     all_fps = []

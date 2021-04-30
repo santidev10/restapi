@@ -196,7 +196,7 @@ class AuditProcessor(models.Model):
             ret["items_count"] = len(audits)
         else:
             ret["items_count"] = all_audits.count()
-            all_audits = all_audits.order_by("-source", "pause", "-completed", "id")
+            all_audits = all_audits.order_by("pause", "-completed", "id")
             if limit:
                 start = (cursor - 1) * limit
                 all_audits = all_audits[start:start + limit]
@@ -457,7 +457,7 @@ class AuditChannel(models.Model):
     processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
-    def get_or_create(channel_id, create=True):
+    def get_or_create(channel_id, create=True, add_meta=True):
         channel_id_hash = get_hash_name(channel_id)
         res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
         for r in res:
@@ -465,10 +465,16 @@ class AuditChannel(models.Model):
                 return r
         if create:
             try:
-                return AuditChannel.objects.create(
+                c = AuditChannel.objects.create(
                     channel_id=channel_id,
                     channel_id_hash=channel_id_hash
                 )
+                if add_meta:
+                    try:
+                        AuditChannelMeta.objects.create(channel=c)
+                    except Exception as e:
+                        pass
+                return c
             except IntegrityError:
                 return AuditChannel.objects.get(channel_id=channel_id)
         return None
@@ -636,11 +642,34 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+    last_error = models.TextField(default=None, null=True)
+    current_step = models.IntegerField(null=True, default=None)
 
     class Meta:
         index_together = [
             ("audit", "completed"),
         ]
+
+    STEPS = [
+        "getting_categories",
+        "delete_blocklist_channels",
+        "building_bad_word_category_map",
+        "check_legacy",
+        "processing_initial_objs",
+        "getting_channel_scores",
+        "creating_big_dict",
+        "preparing_to_move_file",
+        "moving_file_to_s3",
+        "file_copied",
+    ]
+    def set_current_step(self, step):
+        counter = 0
+        for s in self.STEPS:
+            if s == step:
+                self.current_step = counter
+                self.save(update_fields=['current_step'])
+                return
+            counter += 1
 
     @staticmethod
     def running():

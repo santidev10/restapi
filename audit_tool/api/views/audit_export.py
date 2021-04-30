@@ -41,8 +41,9 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
-    MAX_ROWS = 750000
+    MAX_ROWS = 1000000
     cache = {}
+    local_file = None
 
     def get(self, request):
         query_params = request.query_params
@@ -120,11 +121,12 @@ class AuditExportApiView(APIView):
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
-        url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
-        r = requests.get(url)
-        data = r.json()
-        for i in data['items']:
-            AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
+        if categories.count() > 0:
+            url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
+            r = requests.get(url)
+            data = r.json()
+            for i in data['items']:
+                AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     def clean_duration(self, duration):
         try:
@@ -219,9 +221,7 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
-        max_rows = audit.params.get('MAX_VIDEO_ROWS')
-        if not max_rows:
-            max_rows = self.MAX_ROWS
+        export.set_current_step("getting_categories")
         self.get_categories()
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
@@ -229,6 +229,7 @@ class AuditExportApiView(APIView):
         do_exclusion = True
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         #    do_exclusion = True
+        export.set_current_step("delete_blocklist_channels")
         self.delete_blocklist_channels(audit)
         cols = [
             "Video URL",
@@ -263,6 +264,7 @@ class AuditExportApiView(APIView):
             "Live Broadcast",
             "Aspect Ratio",
         ]
+        export.set_current_step("building_bad_word_category_map")
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
             bad_words_category_mapping = dict()
@@ -284,202 +286,215 @@ class AuditExportApiView(APIView):
         if clean is not None:
             videos = videos.filter(clean=clean)
         auditor = VideoAuditor()
-        rows = [cols]
         count = videos.count()
+        try:
+            max_rows = settings.AUDIT_EXPORT_MAX_VIDEO_ROWS
+        except Exception  as e:
+            max_rows = self.MAX_ROWS
+        if audit.params.get('MAX_VIDEO_ROWS') and audit.params.get('MAX_VIDEO_ROWS') > 0:
+            max_rows = audit.params.get('MAX_VIDEO_ROWS')
         if count > max_rows:
             count = max_rows
         num_done = 0
-        print("EXPORT {}: starting video processing".format(export.id))
-        for avp in videos:
-            vid = avp.video
-            try:
-                v = vid.auditvideometa
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                v = None
-            v_channel = vid.channel
-            try:
-                acm = v_channel.auditchannelmeta
-            except Exception:
-                acm = None
-            if num_done > max_rows:
-                continue
-            try:
-                language = self.get_lang(v.language_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                language = ""
-            try:
-                category = self.get_category(v.category_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                category = ""
-            try:
-                country = self.get_country(acm.country_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                country = ""
-            try:
-                channel_lang = self.get_lang(acm.language_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                channel_lang = ""
-            try:
-                video_count = acm.video_count
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                video_count = ""
-            try:
-                last_uploaded = acm.last_uploaded.strftime("%m/%d/%Y")
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                last_uploaded = ""
-            try:
-                last_uploaded_view_count = acm.last_uploaded_view_count
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                last_uploaded_view_count = ''
-            try:
-                last_uploaded_category = self.get_category(acm.last_uploaded_category_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                last_uploaded_category = ''
-            try:
-                default_audio_language = self.get_lang(v.default_audio_language_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                default_audio_language = ""
-            v_word_hits = avp.word_hits
-            if do_inclusion:
-                all_good_hit_words, unique_good_hit_words = self.get_hit_words(v_word_hits, clean=True)
-            else:
-                all_good_hit_words = ""
-                unique_good_hit_words = ""
-            if do_exclusion or (
-                v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion') == ['ytAgeRestricted']):
-                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(v_word_hits, clean=False)
-                title_bad_hit_words = v_word_hits.get('exclusion_title')
-                if title_bad_hit_words:
-                    title_bad_hit_words = ",".join(title_bad_hit_words)
+        self.local_file = "export_files/{}".format(uuid4().hex)
+        with open(self.local_file, 'w+', newline='') as my_file:
+            wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
+            wr.writerow(cols)
+            print("EXPORT {}: starting video processing {}".format(export.id, self.local_file))
+            export.set_current_step("creating_big_dict")
+            stop = False
+            for avp in videos:
+                if stop:
+                    continue
+                vid = avp.video
+                try:
+                    v = vid.auditvideometa
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    v = None
+                v_channel = vid.channel
+                try:
+                    acm = v_channel.auditchannelmeta
+                except Exception:
+                    acm = None
+                try:
+                    language = self.get_lang(v.language_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    language = ""
+                try:
+                    category = self.get_category(v.category_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    category = ""
+                try:
+                    country = self.get_country(acm.country_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    country = ""
+                try:
+                    channel_lang = self.get_lang(acm.language_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    channel_lang = ""
+                try:
+                    video_count = acm.video_count
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    video_count = ""
+                try:
+                    last_uploaded = acm.last_uploaded.strftime("%m/%d/%Y")
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    last_uploaded = ""
+                try:
+                    last_uploaded_view_count = acm.last_uploaded_view_count
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    last_uploaded_view_count = ''
+                try:
+                    last_uploaded_category = self.get_category(acm.last_uploaded_category_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    last_uploaded_category = ''
+                try:
+                    default_audio_language = self.get_lang(v.default_audio_language_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    default_audio_language = ""
+                v_word_hits = avp.word_hits
+                if do_inclusion:
+                    all_good_hit_words, unique_good_hit_words = self.get_hit_words(v_word_hits, clean=True)
                 else:
+                    all_good_hit_words = ""
+                    unique_good_hit_words = ""
+                if do_exclusion or (
+                    v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion') == ['ytAgeRestricted']):
+                    all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(v_word_hits, clean=False)
+                    title_bad_hit_words = v_word_hits.get('exclusion_title')
+                    if title_bad_hit_words:
+                        title_bad_hit_words = ",".join(title_bad_hit_words)
+                    else:
+                        title_bad_hit_words = ""
+                else:
+                    all_bad_hit_words = ""
+                    unique_bad_hit_words = ""
                     title_bad_hit_words = ""
-            else:
-                all_bad_hit_words = ""
-                unique_bad_hit_words = ""
-                title_bad_hit_words = ""
-            try:
-                video_audit = auditor.audit_serialized({
-                    "id": vid.video_id,
-                    "title": v.name,
-                    "description": v.description,
-                    "tags": v.keywords if v.keywords else [],
-                })
-                video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
-                mapped_score = map_brand_safety_score(video_audit_score)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                mapped_score = ""
-                print("Problem calculating video score")
-            try:
-                sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                sentiment = ""
-            data = [
-                "https://www.youtube.com/video/" + vid.video_id,
-                v.name if v else "",
-                language,
-                category,
-                v.views if v else "",
-                v.likes if v else "",
-                v.dislikes if v else "",
-                # 'T' if v and v.emoji else 'F',
-                default_audio_language,
-                self.clean_duration(v.duration) if v and v.duration else "",
-                v.publish_date.strftime("%m/%d/%Y") if v and v.publish_date else "",
-                acm.name if acm else "",
-                "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
-                channel_lang,
-                acm.subscribers if acm else "",
-                country,
-                last_uploaded,
-                last_uploaded_view_count,
-                last_uploaded_category,
-                all_good_hit_words,
-                unique_good_hit_words,
-                all_bad_hit_words,
-                unique_bad_hit_words,
-                title_bad_hit_words,
-                video_count if video_count else "",
-                mapped_score,
-                v.made_for_kids if v else "",
-                "Y" if v and v.age_restricted else "",
-                sentiment,
-                "Y" if v and v.live_broadcast else "",
-                v.aspect_ratio if v and v.aspect_ratio else "",
-            ]
-            try:
-                if len(bad_word_categories) > 0:
-                    bad_word_category_dict = defaultdict(list)
-                    bad_words = unique_bad_hit_words.split(",")
-                    for word in bad_words:
-                        try:
-                            word_category = bad_words_category_mapping.get(word)
-                            bad_word_category_dict[word_category].append(word)
-                        # pylint: disable=broad-except
-                        except Exception:
-                        # pylint: enable=broad-except
-                            pass
-                    for category in bad_word_categories:
-                        if category in bad_word_category_dict:
-                            data.append(len(bad_word_category_dict[category]))
-                        else:
-                            data.append(0)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                pass
-            if audit.params.get('get_tags'):
-                data.extend(v.keywords if v.keywords else "")
-            rows.append(data)
-            num_done += 1
-            if export and num_done % 500 == 0:
-                export.percent_done = int(1.0 * num_done / count * 100) - 5
-                if export.percent_done < 0:
-                    export.percent_done = 0
-                export.save(update_fields=['percent_done'])
-                print("video export {} at {}".format(export.id, export.percent_done))
-        with open(file_name, 'w+', newline='') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerows(rows)
-            # for row in rows:
-            #     wr.writerow(row)
-
-        with open(file_name) as myfile:
+                try:
+                    video_audit = auditor.audit_serialized({
+                        "id": vid.video_id,
+                        "title": v.name,
+                        "description": v.description,
+                        "tags": v.keywords if v.keywords else [],
+                    })
+                    video_audit_score = getattr(video_audit, "brand_safety_score").overall_score
+                    mapped_score = map_brand_safety_score(video_audit_score)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    mapped_score = ""
+                    print("Problem calculating video score")
+                try:
+                    sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    sentiment = ""
+                data = [
+                    "https://www.youtube.com/video/" + vid.video_id,
+                    v.name if v else "",
+                    language,
+                    category,
+                    v.views if v else "",
+                    v.likes if v else "",
+                    v.dislikes if v else "",
+                    # 'T' if v and v.emoji else 'F',
+                    default_audio_language,
+                    self.clean_duration(v.duration) if v and v.duration else "",
+                    v.publish_date.strftime("%m/%d/%Y") if v and v.publish_date else "",
+                    acm.name if acm else "",
+                    "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
+                    channel_lang,
+                    acm.subscribers if acm else "",
+                    country,
+                    last_uploaded,
+                    last_uploaded_view_count,
+                    last_uploaded_category,
+                    all_good_hit_words,
+                    unique_good_hit_words,
+                    all_bad_hit_words,
+                    unique_bad_hit_words,
+                    title_bad_hit_words,
+                    video_count if video_count else "",
+                    mapped_score,
+                    v.made_for_kids if v else "",
+                    "Y" if v and v.age_restricted else "",
+                    sentiment,
+                    "Y" if v and v.live_broadcast else "",
+                    v.aspect_ratio if v and v.aspect_ratio else "",
+                ]
+                try:
+                    if len(bad_word_categories) > 0:
+                        bad_word_category_dict = defaultdict(list)
+                        bad_words = unique_bad_hit_words.split(",")
+                        for word in bad_words:
+                            try:
+                                word_category = bad_words_category_mapping.get(word)
+                                bad_word_category_dict[word_category].append(word)
+                            # pylint: disable=broad-except
+                            except Exception:
+                            # pylint: enable=broad-except
+                                pass
+                        for category in bad_word_categories:
+                            if category in bad_word_category_dict:
+                                data.append(len(bad_word_category_dict[category]))
+                            else:
+                                data.append(0)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    pass
+                if audit.params.get('get_tags'):
+                    data.extend(v.keywords if v.keywords else "")
+                wr.writerow(data)
+                num_done += 1
+                if export and num_done % 250 == 0:
+                    old_percent = export.percent_done
+                    export.percent_done = int(1.0 * num_done / count * 100) - 5
+                    if export.percent_done < 1:
+                        export.percent_done = 1
+                    if export.percent_done > old_percent:
+                        export.save(update_fields=['percent_done'])
+                    print("video export {} at {}.  {}/{}".format(export.id, export.percent_done, num_done, count))
+                if num_done >= max_rows or num_done >= count:
+                    stop = True
+                    continue
+        export.set_current_step("preparing_to_move_file")
+        with open(self.local_file) as my_file:
             s3_file_name = uuid4().hex
-            download_file_name = file_name
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
+            export.set_current_step("moving_file_to_s3")
+            AuditS3Exporter.export_to_s3(my_file.buffer.raw, s3_file_name, file_name)
+            export.set_current_step("file_copied")
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
-            os.remove(myfile.name)
-        return s3_file_name, download_file_name
+            os.remove(self.local_file)
+        return s3_file_name, file_name
 
     def check_legacy(self, audit):
         empty_channel_avps = AuditVideoProcessor.objects.filter(audit=audit, channel__isnull=True)
         if empty_channel_avps.exists():
+            print("doing legacy update on {} channels".format(empty_channel_avps.count()))
             for avp in empty_channel_avps:
                 try:
                     avp.channel = avp.video.channel
@@ -537,7 +552,9 @@ class AuditExportApiView(APIView):
         #do_exclusion = False
         #if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
         do_exclusion = True
+        export.set_current_step("getting_categories")
         self.get_categories()
+        export.set_current_step("delete_blocklist_channels")
         self.delete_blocklist_channels(audit)
         cols = [
             "Channel Title",
@@ -569,6 +586,7 @@ class AuditExportApiView(APIView):
             "Error",
         ]
         try:
+            export.set_current_step("building_bad_word_category_map")
             bad_word_categories = set(audit.params['exclusion_category'])
             bad_words_category_mapping = dict()
             if "" in bad_word_categories:
@@ -594,10 +612,12 @@ class AuditExportApiView(APIView):
         video_count = {}
         auditchannelmeta_dict = {}
         channel_ids = []
+        export.set_current_step("check_legacy")
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
+        export.set_current_step("processing_initial_objs")
         for cid in channels:
             full_channel_id = cid.channel.channel_id
             channel_ids.append(full_channel_id)
@@ -609,6 +629,7 @@ class AuditExportApiView(APIView):
             if audit.params.get('do_videos'):
                 try:
                     if len(cid.word_hits.get('processed_video_ids')) < audit.get_num_videos() <= channel_videos_count:
+                        print("re-calculating {}".format(str(cid)))
                         self.aggregate_channel_word_hits(audit=audit, acp=cid)
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
                 # pylint: disable=broad-except
@@ -660,6 +681,7 @@ class AuditExportApiView(APIView):
                 except Exception:
                 # pylint: enable=broad-except
                     pass
+        export.set_current_step("getting_channel_scores")
         print("EXPORT: getting channel scores: starting")
         try:
             channel_scores = self.get_scores_for_channels(channel_ids)
@@ -667,145 +689,143 @@ class AuditExportApiView(APIView):
         except Exception:
             channel_scores = {}
             print("EXPORT: problem getting scores, connection issue")
-        rows = [cols]
         count = channels.count()
         num_done = 0
-        # sections = (Sections.MONETIZATION,)
-        print("EXPORT: starting channel processing of export {}".format(export.id))
-        for db_channel in channels:
-            channel = db_channel.channel
-            v = auditchannelmeta_dict.get(channel.channel_id)
-            if not v:
-                v = channel.auditchannelmeta
-            try:
-                language = self.get_lang(v.language_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                language = ""
-            try:
-                country = self.get_country(v.country_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                country = ""
-            try:
-                last_category = self.get_category(v.last_uploaded_category_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                last_category = ""
-            mapped_score = channel_scores.get(channel.channel_id, None)
-            try:
-                error_str = db_channel.word_hits.get('error')
-                if not error_str:
+        self.local_file = "export_files/{}".format(uuid4().hex)
+        with open(self.local_file, 'w+', newline='') as my_file:
+            wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
+            wr.writerow(cols)
+            print("EXPORT: starting channel processing of export {}".format(export.id))
+            export.set_current_step("creating_big_dict")
+            for db_channel in channels:
+                channel = db_channel.channel
+                v = auditchannelmeta_dict.get(channel.channel_id)
+                if not v:
+                    v = channel.auditchannelmeta
+                try:
+                    language = self.get_lang(v.language_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    language = ""
+                try:
+                    country = self.get_country(v.country_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    country = ""
+                try:
+                    last_category = self.get_category(v.last_uploaded_category_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    last_category = ""
+                mapped_score = channel_scores.get(channel.channel_id, None)
+                try:
+                    error_str = db_channel.word_hits.get('error')
+                    if not error_str:
+                        error_str = ""
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
                     error_str = ""
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                error_str = ""
-            try:
-                primary_video_language = self.get_lang(v.primary_video_language_id)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                primary_video_language = ""
-            try:
-                sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                sentiment = ""
-            data = [
-                v.name,
-                "https://www.youtube.com/channel/" + channel.channel_id,
-                v.view_count if v.view_count else "",
-                v.subscribers,
-                'Y' if v.hidden_subscriber_count else '',
-                video_count.get(channel.channel_id) if video_count.get(channel.channel_id) else 0,
-                v.video_count if v.video_count is not None else "",
-                country,
-                language,
-                primary_video_language,
-                v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
-                v.last_uploaded_view_count if v.last_uploaded_view_count else "",
-                last_category,
-                bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
-                kid_videos_count.get(channel.channel_id) if kid_videos_count.get(channel.channel_id) else 0,
-                age_restricted_videos_count.get(channel.channel_id) if age_restricted_videos_count.get(
-                    channel.channel_id) else 0,
-                len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
-                len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
-                    channel.channel_id) else 0,
-                ','.join(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else "",
-                ','.join(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
-                    channel.channel_id) else "",
-                ','.join(bad_video_title_hit_words.get(channel.channel_id)) if bad_video_title_hit_words.get(
-                    channel.channel_id) else "",
-                ','.join(good_hit_words.get(channel.channel_id)) if good_hit_words.get(channel.channel_id) else "",
-                ','.join(good_video_hit_words.get(channel.channel_id)) if good_video_hit_words.get(
-                    channel.channel_id) else "",
-                mapped_score if mapped_score else "",
-                'true' if v.monetised else "",
-                sentiment,
-                error_str,
-            ]
-            try:
-                if len(bad_word_categories) > 0:
-                    bad_word_category_dict = defaultdict(list)
-                    bad_words = set()
-                    if channel.channel_id in bad_hit_words:
-                        bad_words = bad_words.union(bad_hit_words[channel.channel_id])
-                    if channel.channel_id in bad_video_hit_words:
-                        bad_words = bad_words.union(bad_video_hit_words[channel.channel_id])
-                    for word in bad_words:
-                        try:
-                            word_category = bad_words_category_mapping.get(word)
-                            bad_word_category_dict[word_category].append(word)
-                        # pylint: disable=broad-except
-                        except Exception:
-                        # pylint: enable=broad-except
-                            pass
-                    for category in sorted(bad_word_categories):
-                        if category in bad_word_category_dict:
-                            data.append(len(bad_word_category_dict[category]))
-                        else:
-                            data.append(0)
-            # pylint: disable=broad-except
-            except Exception:
-            # pylint: enable=broad-except
-                pass
-            rows.append(data)
-            num_done += 1
-            if export and num_done % 250 == 0:
-                old_percent = export.percent_done
-                export.percent_done = int(num_done / count * 100.0) - 5
-                if export.percent_done < 0:
-                    export.percent_done = 0
-                if export.percent_done > old_percent:
-                    export.save(update_fields=['percent_done'])
-                print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
-        with open(file_name, 'w+', newline='') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerows(rows)
-            print("written rows to {}".format(file_name))
-            # for row in rows:
-            #     wr.writerow(row)
-
-        with open(file_name) as myfile:
+                try:
+                    primary_video_language = self.get_lang(v.primary_video_language_id)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    primary_video_language = ""
+                try:
+                    sentiment = round(v.likes / (v.likes + v.dislikes) * 1.0, 2)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    sentiment = ""
+                data = [
+                    v.name,
+                    "https://www.youtube.com/channel/" + channel.channel_id,
+                    v.view_count if v.view_count else "",
+                    v.subscribers,
+                    'Y' if v.hidden_subscriber_count else '',
+                    video_count.get(channel.channel_id) if video_count.get(channel.channel_id) else 0,
+                    v.video_count if v.video_count is not None else "",
+                    country,
+                    language,
+                    primary_video_language,
+                    v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
+                    v.last_uploaded_view_count if v.last_uploaded_view_count else "",
+                    last_category,
+                    bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
+                    kid_videos_count.get(channel.channel_id) if kid_videos_count.get(channel.channel_id) else 0,
+                    age_restricted_videos_count.get(channel.channel_id) if age_restricted_videos_count.get(
+                        channel.channel_id) else 0,
+                    len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
+                    len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
+                        channel.channel_id) else 0,
+                    ','.join(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else "",
+                    ','.join(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
+                        channel.channel_id) else "",
+                    ','.join(bad_video_title_hit_words.get(channel.channel_id)) if bad_video_title_hit_words.get(
+                        channel.channel_id) else "",
+                    ','.join(good_hit_words.get(channel.channel_id)) if good_hit_words.get(channel.channel_id) else "",
+                    ','.join(good_video_hit_words.get(channel.channel_id)) if good_video_hit_words.get(
+                        channel.channel_id) else "",
+                    mapped_score if mapped_score else "",
+                    'true' if v.monetised else "",
+                    sentiment,
+                    error_str,
+                ]
+                try:
+                    if len(bad_word_categories) > 0:
+                        bad_word_category_dict = defaultdict(list)
+                        bad_words = set()
+                        if channel.channel_id in bad_hit_words:
+                            bad_words = bad_words.union(bad_hit_words[channel.channel_id])
+                        if channel.channel_id in bad_video_hit_words:
+                            bad_words = bad_words.union(bad_video_hit_words[channel.channel_id])
+                        for word in bad_words:
+                            try:
+                                word_category = bad_words_category_mapping.get(word)
+                                bad_word_category_dict[word_category].append(word)
+                            # pylint: disable=broad-except
+                            except Exception:
+                            # pylint: enable=broad-except
+                                pass
+                        for category in sorted(bad_word_categories):
+                            if category in bad_word_category_dict:
+                                data.append(len(bad_word_category_dict[category]))
+                            else:
+                                data.append(0)
+                # pylint: disable=broad-except
+                except Exception:
+                # pylint: enable=broad-except
+                    pass
+                wr.writerow(data)
+                num_done += 1
+                if export and num_done % 250 == 0:
+                    old_percent = export.percent_done
+                    export.percent_done = int(num_done / count * 100.0) - 5
+                    if export.percent_done < 0:
+                        export.percent_done = 0
+                    if export.percent_done > old_percent:
+                        export.save(update_fields=['percent_done'])
+                    print("channel export {} at {}, {}/{}".format(export.id, export.percent_done, num_done, count))
+        export.set_current_step("preparing_to_move_file")
+        with open(self.local_file) as myfile:
             s3_file_name = uuid4().hex
-            download_file_name = file_name
             try:
-                AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
-                os.remove(myfile.name)
+                export.set_current_step("moving_file_to_s3")
+                AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, file_name)
+                os.remove(self.local_file)
+                export.set_current_step("file_copied")
                 print("copied {} to S3".format(file_name))
             except Exception as e:
-                os.remove(myfile.name)
-                raise Exception("problem copying file {} to S3".format(download_file_name))
+                os.remove(self.local_file)
+                raise Exception("problem copying file {} to S3: {}".format(file_name, str(e)))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
-        return s3_file_name, download_file_name
+        return s3_file_name, file_name
 
     def aggregate_channel_word_hits(self, audit, acp):
         if not isinstance(audit, AuditProcessor) or \

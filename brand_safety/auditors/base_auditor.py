@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 
 from .utils import AuditUtils
 from es_components.constants import Sections
@@ -38,9 +38,11 @@ class BaseAuditor:
         if len(audit_results) < 100:
             upsert_retry(es_manager, audit_results, **upsert_params)
         else:
-            args = chunks_generator(audit_results, 100)
-            with ThreadPoolExecutor(max_workers=20) as executor:
-                list(executor.submit(upsert_retry, [es_manager, list(arg)], **upsert_params) for arg in args)
+            args = chunks_generator(audit_results, 500)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(upsert_retry, es_manager, list(arg), **upsert_params) for arg in args]
+                for future in concurrent.futures.as_completed(futures):
+                    future.result()
 
     def _blocklist_handler(self, doc, **__):
         """

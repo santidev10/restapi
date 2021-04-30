@@ -3,7 +3,10 @@ from unittest import mock
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_206_PARTIAL_CONTENT
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_304_NOT_MODIFIED
 
 from oauth.models import Account
 from oauth.models import DV360Advertiser
@@ -67,6 +70,9 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
         response = self.client.get(self._get_url() + "?analyzed=true")
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+        response = self.client.delete(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_analyzed_success(self):
@@ -229,3 +235,33 @@ class PerformIQCampaignListCreateTestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), data=json.dumps(params), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["params"]["score_threshold"], params["score_threshold"])
+
+    def test_delete_iq_campaigns(self):
+        user = self.create_admin_user()
+        gads_oauth, account, gads_campaign = self._create_gads(user.id, user.email)
+        dv360_oauth, advertiser, dv360_campaign = self._create_dv360(user.id, user.email)
+        iq_google = IQCampaign.objects.create(user=user, campaign=gads_campaign)
+        iq_dv360 = IQCampaign.objects.create(user=user, campaign=dv360_campaign)
+        iq_csv = IQCampaign.objects.create(user=user, params=dict(csv_s3_key="test.csv"))
+
+        data = dict(cmp_ids=["0", str(iq_csv.id)])
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_206_PARTIAL_CONTENT)
+
+        empty_data = {'cmp_ids': []}
+        response = self.client.delete(self._get_url(), data=json.dumps(empty_data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        invalid_data = {'cmp_ids': None}
+        response = self.client.delete(self._get_url(), data=json.dumps(invalid_data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_304_NOT_MODIFIED)
+
+        data = dict(cmp_ids=[str(iq_google.id), str(iq_dv360.id)])
+        response = self.client.delete(self._get_url(), data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        count = IQCampaign.objects.filter(id__in=[iq_google.id, iq_dv360.id, iq_csv.id], user=user).count()
+        self.assertEqual(count, 0)
