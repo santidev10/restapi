@@ -33,6 +33,11 @@ MIGRATION_MODULES = {
     "userprofile": None,
 }
 
+FILE_UPLOAD_HANDLERS = (
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler"
+)
+
 for logger_config in LOGGING["handlers"].values():
     logger_config["filters"] = ["hide_all"] \
                                + logger_config.get("filters", [])
