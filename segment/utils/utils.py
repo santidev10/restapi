@@ -6,7 +6,6 @@ import time
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import permissions
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from audit_tool.models import AuditProcessor
