@@ -180,6 +180,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "oauth.tasks.google_ads_update.google_ads_update_task",
         "schedule": crontab(minute="*/10")
     },
+    "oauth_gads_notify": {
+        "task": "oauth.tasks.segment_gads_oauth_notify.segment_gads_oauth_notify_task",
+        "schedule": crontab(minute="*/10")
+    }
 }
 
 

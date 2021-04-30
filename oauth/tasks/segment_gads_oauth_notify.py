@@ -14,7 +14,7 @@ from utils.celery.tasks import celery_lock
 NOTIFY_HOURS_THRESHOLD = 24
 
 
-@celery_app
+@celery_app.task(bind=True)
 @celery_lock("segment_gads_oauth_notify_task", expire=3600, max_retries=0)
 def segment_gads_oauth_notify_task():
     """
