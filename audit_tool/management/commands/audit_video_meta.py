@@ -29,7 +29,6 @@ from audit_tool.models import BlacklistItem
 from audit_tool.utils.regex_trie import get_optimized_regex
 from segment.models import CustomSegment
 from segment.models.constants import Params
-from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.utils import get_content_disposition
 from segment.tasks.generate_sdf import generate_sdf_task
 from utils.lang import fasttext_lang
@@ -109,6 +108,7 @@ class Command(BaseCommand):
         Create export for CTL using audited data
         Will start generate_sdf_task if audit was started from SegmentDV360SyncAPIView
         """
+        from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
             url_separator = "?v="
