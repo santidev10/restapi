@@ -371,7 +371,10 @@ class SegmentPermissionsClass(permissions.BasePermission):
         if not isinstance(request.user, get_user_model()):
             return False
 
-        data = json.loads(request.data.get("data", "{}"))
+        data = request.data
+        if data.get("data", None) is not None:
+            # check if form data to load json
+            data = json.loads(data.get("data"))
 
         if not request.user.has_permission(StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES) \
             and data.get("relevant_primary_categories", None) is True:
