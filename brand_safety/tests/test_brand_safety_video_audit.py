@@ -1,6 +1,8 @@
-import time
 import pickle
+import random
+import time
 from unittest import mock
+from random import randint
 
 from django.utils import timezone
 from elasticsearch_dsl import Index
@@ -8,13 +10,16 @@ from elasticsearch_dsl import Index
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.utils import AuditUtils
 from brand_safety.auditors.utils import remove_tags_punctuation
+from brand_safety.auditors.video_auditor import VideoAuditor
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.auditors.video_auditor import VideoAuditor
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+from es_components.managers import TranscriptManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
+from es_components.models import Transcript
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from utils.unittests.int_iterator import int_iterator
@@ -27,6 +32,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)
     channel_manager = ChannelManager(sections=SECTIONS)
+    transcript_manager = TranscriptManager(sections=(Sections.VIDEO, Sections.GENERAL_DATA, Sections.TEXT))
     video_manager = VideoManager(sections=SECTIONS + (Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES,
                                                       Sections.CHANNEL))
     BS_CATEGORIES = ["test"]
@@ -45,6 +51,43 @@ class BrandSafetyVideoTestCase(ExtendedAPITestCase, ESTestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
+
+    def test_transcript(self, *args, **kwargs):
+        """
+        test scoring on transcripts from the new transcripts index
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        videos = []
+        transcripts = []
+        language_codes = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
+        for _ in range(5):
+            video_id = f"{next(int_iterator)}"
+            video = Video(video_id)
+            video.populate_general_data(
+                title=f"{video_id} title",
+                description=f"{video_id} desc."
+            )
+            videos.append(video)
+            for _ in range(randint(1, 5)):
+                transcript_id = next(int_iterator)
+                transcript = Transcript(transcript_id)
+                transcript.populate_video(id=video_id)
+                transcript.populate_general_data(language_code=random.choice(language_codes))
+                transcript.populate_text(value=f"{transcript_id} text the quick brown fox {self.BS_WORDS[0]}")
+                transcripts.append(transcript)
+
+        self.video_manager.upsert(videos)
+        self.transcript_manager.upsert(transcripts)
+        video_auditor = VideoAuditor()
+        video_ids = [video.main.id for video in videos]
+        video_auditor.process(video_ids)
+
+        updated_videos = self.video_manager.get(video_ids)
+        for video in updated_videos:
+            with self.subTest(video):
+                self.assertTrue(0 < video.brand_safety.overall_score < 100)
 
     def test_audit(self, *_):
         """ Test audit word detection """

@@ -1,4 +1,6 @@
 import re
+from typing import Tuple
+from typing import Union
 
 from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
@@ -46,6 +48,10 @@ class BrandSafetyVideo(Serializer):
     transcript = SerializerMethodField()
     transcript_language = SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
+
     def to_representation(self, instance):
         extra_data = super().to_representation(instance)
         for key, val in extra_data.items():
@@ -79,15 +85,20 @@ class BrandSafetyVideo(Serializer):
         except Exception as e:
         # pylint: enable=broad-except
             vid_lang_code = 'en'
-        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
+        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
         if vid_lang_code:
+            self.lang_code_priorities.insert(0, vid_lang_code.lower())
             lang_code_priorities.insert(0, vid_lang_code.lower())
-        if 'captions' in video and 'items' in video.captions:
-            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
-                                                      captions_items=video.captions.items)
-        if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
-                                                      captions_items=video.custom_captions.items)
+        transcripts = self.context.get("transcripts", {}).get(video.main.id)
+        if transcripts:
+            text = self.get_highest_priority_transcript(transcripts=transcripts)
+        else:
+            if "captions" in video and "items" in video.captions:
+                text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                          captions_items=video.captions.items)
+            if not text and "custom_captions" in video and "items" in video.custom_captions:
+                text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                          captions_items=video.custom_captions.items)
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript
 
@@ -98,7 +109,8 @@ class BrandSafetyVideo(Serializer):
         except Exception as e:
         # pylint: enable=broad-except
             vid_lang_code = 'en'
-        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
+        # copy by value (instead of ref), to prevent priorities list morphing
+        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
         if vid_lang_code:
             lang_code_priorities.insert(0, vid_lang_code.lower())
         transcript_language = None
@@ -134,3 +146,56 @@ class BrandSafetyVideo(Serializer):
                 text = item.text
                 break
         return text
+
+    def get_highest_priority_lang_code(self, transcripts: list) -> Union[str, None]:
+        """
+        equivalent method to get_best_available_language for transcripts from the Transcripts index
+        video.custom_captions.transcripts.items is deprecated
+        :param transcripts:
+        :return: str, None
+        """
+        available_lang_codes = []
+        generator = self._get_transcript_lang_code_generator(transcripts=transcripts)
+        for lang_code, transcript in generator:
+            available_lang_codes.append(lang_code)
+        if not available_lang_codes:
+            return
+
+        for lang_code in self.lang_code_priorities:
+            if lang_code in available_lang_codes:
+                return lang_code
+        return transcripts[0].general_data.language_code.split("-")[0].lower()
+
+    def get_highest_priority_transcript(self, transcripts: list) -> str:
+        """
+        equivalent method to get_best_available_transcript for transcripts from the Transcripts index
+        video.custom_captions.transcripts.items is deprecated
+        :param transcripts:
+        :return:
+        """
+        # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
+        priority_lang_code = self.get_highest_priority_lang_code(transcripts=transcripts)
+        if priority_lang_code is None:
+            return ""
+        generator = self._get_transcript_lang_code_generator(transcripts=transcripts)
+        for transcript_lang_code, transcript in generator:
+            if transcript_lang_code == priority_lang_code:
+                return transcript.text.value
+        return ""
+
+    @staticmethod
+    def _get_transcript_lang_code_generator(transcripts: list) -> Tuple[str, str]:
+        """
+        safe generator to get lang codes and catch invalid transcripts
+        :param transcripts: list
+        :return: (str, str)
+        """
+        for transcript in transcripts:
+            try:
+                raw_lang_code = transcript.general_data.language_code
+            except AttributeError:
+                continue
+            if not raw_lang_code or not isinstance(raw_lang_code, str):
+                continue
+            transcript_lang_code = raw_lang_code.split("-")[0].lower()
+            yield transcript_lang_code, transcript
