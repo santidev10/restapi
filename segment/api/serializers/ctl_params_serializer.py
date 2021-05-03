@@ -176,6 +176,7 @@ class CTLParamsSerializer(serializers.Serializer):
     minimum_subscribers = NullableCharNumeric()
     minimum_videos = NullableCharNumeric()
     minimum_views = NullableCharNumeric()
+    relevant_primary_categories = serializers.NullBooleanField(required=False)
     score_threshold = serializers.IntegerField()
     segment_type = serializers.IntegerField(allow_null=True)
     sentiment = serializers.IntegerField()

@@ -24,6 +24,7 @@ from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
 from segment.api.mixins import ParamsTemplateMixin
+from segment.utils.utils import SegmentPermissionsClass
 from segment.api.serializers import ParamsTemplateSerializer
 from segment.api.serializers import CTLParamsSerializer
 from segment.models.constants import SegmentTypeEnum
@@ -37,6 +38,7 @@ from utils.views import get_object
 
 
 class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
+    permission_classes = (SegmentPermissionsClass,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -59,7 +61,6 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
         """
         deletes ParamsTemplate object for a given id if user is owner
         """
-        self._check_params_template_permissions(request.user)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         params_template = get_object(ParamsTemplate, id=template_id)
@@ -84,7 +85,6 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
             return Response(status=HTTP_200_OK, data=res_data)
         else:
             try:
-                self._check_params_template_permissions(request.user)
                 template_title = request.data.get("template_title", None)
                 self._validate_field(template_title, str)
                 template = self._create_params_template(request.user, template_title, validated_params)
@@ -94,15 +94,15 @@ class SegmentCreateOptionsApiView(APIView, ParamsTemplateMixin):
                 message = {"Error": "Template with that title and CTL type already exists."}
                 return Response(message, status=HTTP_400_BAD_REQUEST)
             except DataError:
-                if isinstance(template_title, str) and len(template_title) > 100:
-                    message = {"Error": "Template title must be 100 characters or less."}
-                    return Response(message, status=HTTP_400_BAD_REQUEST)
+                message = {"Error": "Template title must be 100 characters or less."} \
+                    if isinstance(template_title, str) and len(template_title) > 100 \
+                    else {}
+                return Response(message, status=HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         """
         Updates ParamsTemplate params field for a given id
         """
-        self._check_params_template_permissions(request.user)
         template_id = request.data.get("template_id", None)
         self._validate_field(template_id, int)
         data = set_user_perm_params(request, request.data)

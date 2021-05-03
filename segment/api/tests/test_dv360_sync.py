@@ -13,6 +13,9 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from audit_tool.models import AuditProcessor
 from oauth.constants import OAuthType
 from oauth.models import AdGroup
+from oauth.models import Campaign
+from oauth.models import InsertionOrder
+from oauth.models import LineItem
 from oauth.models import DV360Partner
 from oauth.models import DV360Advertiser
 from saas.urls.namespaces import Namespace
@@ -39,11 +42,15 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         segment = CustomSegment.objects.create(owner=self.user, segment_type=int(SegmentTypeEnum.CHANNEL))
         partner = DV360Partner.objects.create(id=next(int_iterator))
         advertiser = DV360Advertiser.objects.create(id=next(int_iterator), partner=partner)
-        adgroups = [AdGroup.objects.create(id=next(int_iterator), oauth_type=int(OAuthType.DV360)) for _ in range(2)]
+        campaign = Campaign.objects.create(id=next(int_iterator), advertiser=advertiser, oauth_type=int(OAuthType.DV360))
+        io = InsertionOrder.objects.create(id=next(int_iterator), campaign=campaign)
+        line_item = LineItem.objects.create(id=next(int_iterator), insertion_order=io)
+        adgroups = [AdGroup.objects.create(id=next(int_iterator), oauth_type=int(OAuthType.DV360), line_item=line_item)
+                    for _ in range(2)]
         return segment, advertiser, adgroups
 
     def test_invalid_ctl(self):
-        response = self.client.post(self._get_url(None))
+        response = self.client.post(self._get_url(-1))
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_invalid_advertiser(self):

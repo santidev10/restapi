@@ -95,7 +95,7 @@ class DV360Connector:
         self._download(report_fp, report_download_url)
         return response
 
-    def get_line_items_sdf_report(self, advertiser_id: int, target_dir: str) -> str:
+    def get_line_item_sdf_report(self, advertiser_id: int, target_dir: str) -> str:
         """
         SDF reports must be used to retrieve LineItems that contain Youtube Adgroups
         :param advertiser_id: Parent Advertiser

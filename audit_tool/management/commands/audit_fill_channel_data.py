@@ -44,6 +44,15 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("thread_id", type=int)
 
+    def check_for_orphan_channels(self):
+        # this checks for channels without a matching auditchannelmeta
+        pending_channels = AuditChannel.objects.filter(processed_time__isnull=True)
+        for p in pending_channels:
+            try:
+                AuditChannelMeta.objects.create(channel=p)
+            except Exception as e:
+                pass
+
     def handle(self, *args, **options):
         thread_id = options.get("thread_id")
         if not thread_id:
@@ -55,6 +64,7 @@ class Command(BaseCommand):
             if total_to_go == 0:
                 logger.info("No channels to fill.")
                 self.fill_recent_video_timestamp()
+                self.check_for_orphan_channels()
                 raise Exception("No channels to fill.")
             channels = {}
             num = 500
@@ -182,7 +192,7 @@ class Command(BaseCommand):
                 # pylint: disable=broad-except
                 except Exception:
                 # pylint: enable=broad-except
-                    db_channel = AuditChannel.get_or_create(i["id"])
+                    db_channel = AuditChannel.get_or_create(i["id"], create=True, add_meta=True)
                     db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
                 if not i.get("brandingSettings"):
                     continue

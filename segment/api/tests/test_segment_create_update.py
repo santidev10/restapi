@@ -1532,3 +1532,27 @@ class SegmentCreateUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         ctl_params = response.data.get("ctl_params")
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(ctl_params["template_id"], params_template.id)
+
+    def test_relevant_primary_categories_perm(self, mock_generate):
+        user = self.create_test_user()
+        user.perms[StaticPermissions.BUILD__CTL_RELEVANT_PRIMARY_CATEGORIES] = False
+        user.perms[StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST] = True
+        user.perms[StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST] = True
+        user.save()
+        payload = {
+            "title": "test_create_with_channel_source_success",
+            "score_threshold": 0,
+            "content_categories": [],
+            "languages": [],
+            "severity_counts": {},
+            "content_type": 0,
+            "content_quality": 0,
+            "segment_type": 0,
+        }
+        payload = self.get_params(**payload)
+        payload["relevant_primary_categories"] = True
+        form = dict(
+            data=json.dumps(payload)
+        )
+        response = self.client.post(self._get_url(), form)
+        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)

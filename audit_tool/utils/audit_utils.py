@@ -228,17 +228,7 @@ class AuditUtils(object):
         if v_id and len(v_id) < 51:
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
-            try:
-                avp = AuditVideoProcessor.objects.create(
-                    audit=audit,
-                    video=video,
-                )
-            except Exception as e:
-                avp = AuditVideoProcessor.objects.get(
-                    audit=audit,
-                    video=video,
-                )
-            return avp
+            return AuditVideoProcessor(audit=audit, video=video)
 
     @staticmethod
     def get_vetting_data(vetting_model, audit_id, item_ids, data_field):

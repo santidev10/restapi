@@ -12,6 +12,8 @@ from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import VIDEO_CHANNEL_ID_FIELD
+from es_components.iab_categories import IAB_TIER1_CATEGORIES
+from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
@@ -196,9 +198,25 @@ class SegmentQueryBuilder:
             content_queries = Q("bool")
             content_categories = set(self._params["content_categories"]) \
                                  - set(self._params.get("exclude_content_categories", []))
-            for category in content_categories:
-                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
-                    category).get()
+
+            if self._params.get("relevant_primary_categories", None) is True:
+                # documents with relevant primary categories must have matching primary category
+                # and at least one of the requested subcategories
+                primary_categories = [item for item in content_categories if item in IAB_TIER1_CATEGORIES]
+                for primary_category, subcategories in IAB_TIER2_CATEGORIES_MAPPING.items():
+                    if primary_category not in primary_categories:
+                        continue
+
+                    subcategories = [item for item in subcategories if item in content_categories]
+                    must_query = QueryBuilder().build().must().term().field("general_data.primary_category").value(
+                        primary_category).get()
+                    should_query = QueryBuilder().build().should().terms().field("general_data.iab_categories").value(
+                        subcategories).get()
+                    content_queries |= (must_query & should_query)
+            else:
+                for category in content_categories:
+                    content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(
+                        category).get()
             must_queries.append(content_queries)
 
         if self._params.get("countries"):

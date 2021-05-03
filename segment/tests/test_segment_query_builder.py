@@ -254,3 +254,43 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         ids = [item.main.id for item in response]
         self.assertIn(video_doc2.main.id, ids)
         self.assertIn(video_doc1.main.id, ids)
+
+    def test_relevant_primary_categories_filter(self):
+        channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc3 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc4 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc1.populate_general_data(
+            primary_category="Automotive",
+            iab_categories=["Automotive", "Auto Type", "Car Culture"]
+        )
+        channel_doc2.populate_general_data(
+            primary_category="Automotive",
+            iab_categories=["Automotive", "Dash Cam Videos"]
+        )
+        channel_doc3.populate_general_data(
+            primary_category="Books & Literature",
+            iab_categories=["Books & Literature", "Biographies"]
+        )
+        channel_doc4.populate_general_data(
+            primary_category="Education",
+            iab_categories=["Education", "College Education", "Books & Literature"]
+        )
+        self.channel_manager.upsert([channel_doc1, channel_doc2, channel_doc3, channel_doc4])
+        params = dict(
+            segment_type=1,
+            content_categories=[
+                "Automotive",
+                "Books & Literature",
+                "Car Culture",
+                "Biographies"
+            ],
+            relevant_primary_categories=True
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        ids = [item.main.id for item in response]
+        self.assertIn(channel_doc1.main.id, ids)
+        self.assertIn(channel_doc3.main.id, ids)
+        self.assertNotIn(channel_doc2.main.id, ids)
+        self.assertNotIn(channel_doc4.main.id, ids)

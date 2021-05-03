@@ -857,7 +857,6 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             title=f"title_{next(int_iterator)}",
             segment_type=1, owner=user, uuid=uuid4(), list_type=0,
         )
-        with patch("segment.utils.generate_segment.GenerateSegmentUtils",
-                   side_effect=[ConnectionError, IncompleteRead(""), GenerateSegmentUtils(segment)]):
+        with patch("segment.utils.generate_segment.bulk_search", side_effect=[ConnectionError, IncompleteRead(""), [[]]]):
             results = generate_segment(segment, Q(), 1)
         self.assertTrue(results)
