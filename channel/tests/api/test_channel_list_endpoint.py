@@ -14,7 +14,6 @@ from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import IASHistory
 from brand_safety import constants
-from cache.tasks.cache_research_defaults import cache_research_defaults
 from channel.api.urls.names import ChannelPathName
 from channel.models import AuthChannel
 from es_components.constants import Sections
