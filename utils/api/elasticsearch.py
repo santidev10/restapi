@@ -1,5 +1,7 @@
-from django.conf import settings
-
 from elasticsearch_dsl import connections
 
-connections.create_connection(hosts=[settings.ELASTIC_SEARCH_URL], timeout=20)
+from es_components.connections import get_es_connection_configurations
+
+es_connection_config = get_es_connection_configurations()
+es_connection_config["timeout"] = 20
+connections.configure(default=es_connection_config)
