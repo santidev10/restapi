@@ -294,3 +294,28 @@ class SegmentQueryBuilderTestCase(TestCase, ESTestCase):
         self.assertIn(channel_doc3.main.id, ids)
         self.assertNotIn(channel_doc2.main.id, ids)
         self.assertNotIn(channel_doc4.main.id, ids)
+
+    def test_empty_subcategories_relevant_primary_categories(self):
+        channel_doc1 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc2 = self.channel_manager.model(f"channel_{next(int_iterator)}")
+        channel_doc1.populate_general_data(
+            primary_category="Automotive",
+            iab_categories=["Automotive", "Auto Type", "Car Culture"]
+        )
+        channel_doc2.populate_general_data(
+            primary_category="Fine Art",
+            iab_categories=["Automotive", "Fine Art", "Costume"]
+        )
+        self.channel_manager.upsert([channel_doc1, channel_doc2])
+        params = dict(
+            segment_type=1,
+            content_categories=[
+                "Automotive"
+            ],
+            relevant_primary_categories=True
+        )
+        query_builder = SegmentQueryBuilder(params, with_forced_filters=False)
+        response = query_builder.execute()
+        ids = [item.main.id for item in response]
+        self.assertIn(channel_doc1.main.id, ids)
+        self.assertNotIn(channel_doc2.main.id, ids)
