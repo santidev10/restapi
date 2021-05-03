@@ -704,7 +704,7 @@ class ResearchESQuerysetAdapter(ESQuerysetAdapter):
                         target_sort: list = RESEARCH_CHANNELS_DEFAULT_SORT, ) -> Response:
         """
         Get Research data from cache based on request query parameters
-        Cached data is cached proactively in cache.tasks
+        Cached data is cached with celery beat in cache.tasks.cache_research_defaults
 
         Cached responses will only be used if the first page is being requested, the request sorting matches target_sort,
             and no filters are applied
@@ -764,14 +764,14 @@ class ResearchESQuerysetAdapter(ESQuerysetAdapter):
         new_response["hits"] = dict(
             max_score=cached_response.hits.max_score,
             total=cached_response.hits.total,
-            hits=[]
+            hits=[],
         )
         return new_response
 
     def _should_get_cache(self, target_sort: list[dict], start: int) -> bool:
         """
         Determine if cache data should be retrieved
-        Client applies request filters by add key value pairs in request query parameters
+        Client applies request filters by adding key value pairs in request query parameters
             If a section is detected in query params, then filters are being applied. Return False to retrieve
             uncached data
         :param start: Start index of queryset and indicates request page. Refer to _get_from_cache docstring

@@ -1,9 +1,10 @@
 import datetime
-import urllib
 from datetime import timedelta
 from datetime import datetime
-from urllib.parse import urlencode
+import pickle
 from time import sleep
+import urllib
+from urllib.parse import urlencode
 from unittest.mock import patch
 
 from django.test import override_settings
@@ -13,6 +14,7 @@ from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import IASHistory
 from brand_safety import constants
+from cache.tasks.cache_research_defaults import cache_research_defaults
 from channel.api.urls.names import ChannelPathName
 from channel.models import AuthChannel
 from es_components.constants import Sections
@@ -740,40 +742,6 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         mock_set_cache.assert_not_called()
         flush_cache()
 
-    def test_should_set_cache_threshold_expires(self):
-        """ Test should_set_cache returns True only if page being requested is a default page and time to live expires """
-        redis = get_redis_client()
-        flush_cache()
-        self.create_admin_user()
-        url = self.url + "?page=1&fields=main&sort=stats.subscribers:desc"
-        with override_settings(ES_CACHE_ENABLED=True):
-            # Initial request to set cache
-            self.client.get(url)
-        # Manually update ttl for key to be below threshold to refresh cache
-        cache_key = redis.keys(pattern="*get_data*")[0].decode("utf-8")
-        redis.expire(cache_key, 0)
-        # Cache is accessed twice for each get request, for a document count and a list of documents.
-        # Use side effect to return first [0 count, 0 ttl] and [[] documents, 0 ttl]
-        with patch("utils.es_components_cache.get_from_cache", side_effect=[(0, 0), ([], 0)]), \
-             patch("utils.es_components_cache.set_to_cache") as mock_set_cache, \
-                override_settings(ES_CACHE_ENABLED=True):
-            # Normally this would retrieve cached data as the key ttl would still be valid.
-            # However since redis.expire was used to manually reduce ttl, the cache should
-            # be refreshed
-            self.client.get(url)
-        self.assertEqual(mock_set_cache.call_count, 2)
-        flush_cache()
-
-    def test_default_page_extended_timeout(self):
-        """ Test that a default page uses an extended cache timeout e.g. First page of research with no filters """
-        self.create_admin_user()
-        url = self.url + "?page=1&fields=main&sort=stats.subscribers:desc"
-        # Initial request to set cache
-        with patch("utils.es_components_cache.set_to_cache") as mock_set_cache:
-            self.client.get(url)
-        args = mock_set_cache.call_args[1]
-        self.assertEqual(args["timeout"], 14400)
-
     def test_relevancy_score_sorting_with_category_filter(self):
         """
         test that searching for results by relevancy (_score) asc/desc works
@@ -1018,3 +986,25 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.data.get("items_count"), 2)
         self.assertEqual(response.data['items'][0]['main']['id'], ids[0])
         self.assertEqual(response.data['items'][1]['main']['id'], ids[4])
+
+    def test_get_default_cache(self):
+        """ Test channel caching with default sort of stats.subscribers:desc """
+        self.create_admin_user()
+        url = self.url + "?sort=stats.subscribers:desc"
+        with self.subTest("Cache is not used if not first page"),\
+                patch.object(pickle, "loads") as mock_loads:
+            response = self.client.get(url + "&page=2")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_not_called()
+
+        with self.subTest("Cache is not used if filters applied"),\
+                patch.object(pickle, "loads") as mock_loads:
+            response = self.client.get(url + "&brand_safety=Suitable")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_not_called()
+
+        with self.subTest("Cache used if first page with no filters"), \
+                patch.object(pickle, "loads", return_value=[]) as mock_loads:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_called_once()

@@ -1,3 +1,4 @@
+import pickle
 import urllib
 from urllib.parse import urlencode
 from unittest.mock import PropertyMock
@@ -756,3 +757,25 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].get(Sections.GENERAL_DATA, {}).get("language"), "English")
+
+    def test_get_default_cache(self):
+        """ Test video caching with default sort of stats.views:desc """
+        self.create_admin_user()
+        url = self.get_url() + "sort=stats.views:desc"
+        with self.subTest("Cache is not used if not first page"),\
+                patch.object(pickle, "loads") as mock_loads:
+            response = self.client.get(url + "&page=2")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_not_called()
+
+        with self.subTest("Cache is not used if filters applied"),\
+                patch.object(pickle, "loads") as mock_loads:
+            response = self.client.get(url + "&brand_safety=Suitable")
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_not_called()
+
+        with self.subTest("Cache used if first page with no filters"), \
+                patch.object(pickle, "loads", return_value=[]) as mock_loads:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            mock_loads.assert_called_once()
