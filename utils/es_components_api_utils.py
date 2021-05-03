@@ -16,8 +16,11 @@ from rest_framework.serializers import Serializer
 
 import brand_safety.constants as brand_safety_constants
 from cache.constants import RESEARCH_CHANNELS_DEFAULT_CACHE_KEY
+from cache.constants import RESEARCH_VIDEOS_DEFAULT_CACHE_KEY
 from channel.constants import RESEARCH_CHANNELS_DEFAULT_SORT
+from video.constants import RESEARCH_VIDEOS_DEFAULT_SORT
 from es_components.constants import Sections
+from es_components.models import Video
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.query_builder import QueryBuilder
 from es_components.query_repository import get_ias_verified_exists_filter
@@ -679,14 +682,26 @@ class ESQuerysetAdapter:
 class ResearchESQuerysetAdapter(ESQuerysetAdapter):
 
     def get_data(self, start=0, end=None):
+        kwargs_config = {
+            0: {
+                "target_sort": RESEARCH_VIDEOS_DEFAULT_SORT,
+                "cache_key": RESEARCH_VIDEOS_DEFAULT_CACHE_KEY
+            },
+            1: {
+                "target_sort": RESEARCH_CHANNELS_DEFAULT_SORT,
+                "cache_key": RESEARCH_CHANNELS_DEFAULT_CACHE_KEY
+            }
+        }
         try:
-            data = self._get_from_cache(start, end)
+            kwargs = kwargs_config[0] if self.manager.model is Video else kwargs_config[1]
+            data = self._get_from_cache(start, end, **kwargs)
         except ValueError:
             data = super().uncached_get_data(start, end)
         return data
 
-    def _get_from_cache(self, start: int, end: int = DEFAULT_PAGE_SIZE, target_sort: list = RESEARCH_CHANNELS_DEFAULT_SORT,
-                        cache_key: str = RESEARCH_CHANNELS_DEFAULT_CACHE_KEY) -> Response:
+    def _get_from_cache(self, start: int, end: int = DEFAULT_PAGE_SIZE,
+                        cache_key: str = RESEARCH_CHANNELS_DEFAULT_CACHE_KEY,
+                        target_sort: list = RESEARCH_CHANNELS_DEFAULT_SORT, ) -> Response:
         """
         Get Research data from cache based on request query parameters
         Cached data is cached proactively in cache.tasks
@@ -709,7 +724,7 @@ class ResearchESQuerysetAdapter(ESQuerysetAdapter):
         :param cache_key: Key to retrieve cached data from redis
         :return: Elasticsearch DSL Response object
         """
-        if not self._should_get_cache(start, target_sort):
+        if not self._should_get_cache(target_sort, start):
             raise ValueError
         data = None
         try:
@@ -753,7 +768,7 @@ class ResearchESQuerysetAdapter(ESQuerysetAdapter):
         )
         return new_response
 
-    def _should_get_cache(self, start: int, target_sort: list[dict]) -> bool:
+    def _should_get_cache(self, target_sort: list[dict], start: int) -> bool:
         """
         Determine if cache data should be retrieved
         Client applies request filters by add key value pairs in request query parameters
@@ -765,12 +780,12 @@ class ResearchESQuerysetAdapter(ESQuerysetAdapter):
         """
         if start != 0 or self.sort != target_sort:
             return False
-        pattern = "|".join((
+        filters_pattern = "|".join((
             f"({s})" for s in self.manager.allowed_sections
         ))
         get_cache = True
         # Search for filters being applied in in request query params
-        with_filters = re.search(pattern, "".join(self.query_params.keys()))
+        with_filters = re.search(filters_pattern, "".join(self.query_params.keys()))
         if with_filters:
             get_cache = False
         return get_cache

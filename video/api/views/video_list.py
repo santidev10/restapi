@@ -157,4 +157,5 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
         self.ensure_exact_youtube_id_result(manager=VideoManager())
         self.add_fields()
         return ResearchESQuerysetAdapter(self.get_manager_class()(sections),
-                                         cached_aggregations=self.get_cached_aggregations())
+                                         cached_aggregations=self.get_cached_aggregations(),
+                                         query_params=self.request.query_params)
