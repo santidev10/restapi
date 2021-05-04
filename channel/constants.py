@@ -38,3 +38,8 @@ CHANNEL_CSV_HEADERS = [
     "ctr_v",
     "average_cpv",
 ]
+
+RESEARCH_CHANNELS_DEFAULT_SORT = [
+    {"stats.subscribers": {"order": "desc"}},
+    {"main.id": {"order": "asc"}}
+]

@@ -7,3 +7,6 @@ PRICING_TOOL_FILTERS_KEY = "pricing_tool_filters"
 GLOBAL_TRENDS_FILTERS_KEY = "global_trends_filters"
 FORECAST_TOOL_FILTERS_KEY = "forecast_tool_filters"
 PACING_REPORT_FILTERS_KEY = "pacing_report_filters"
+
+RESEARCH_CHANNELS_DEFAULT_CACHE_KEY = "research_channels_default_cache"
+RESEARCH_VIDEOS_DEFAULT_CACHE_KEY = "research_videos_default_cache"

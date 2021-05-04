@@ -210,9 +210,12 @@ class SegmentQueryBuilder:
                     subcategories = [item for item in subcategories if item in content_categories]
                     must_query = QueryBuilder().build().must().term().field("general_data.primary_category").value(
                         primary_category).get()
-                    should_query = QueryBuilder().build().should().terms().field("general_data.iab_categories").value(
-                        subcategories).get()
-                    content_queries |= (must_query & should_query)
+                    if len(subcategories) > 0:
+                        should_query = QueryBuilder().build().should().terms().field("general_data.iab_categories").value(
+                            subcategories).get()
+                        content_queries |= (must_query & should_query)
+                    else:
+                        content_queries |= must_query
             else:
                 for category in content_categories:
                     content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(

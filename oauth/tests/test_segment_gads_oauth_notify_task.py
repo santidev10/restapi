@@ -55,3 +55,21 @@ class SegmentGadsOAuthNotifyTestCase(ExtendedAPITestCase):
             with mock.patch("oauth.tasks.segment_gads_oauth_notify._send_email") as mock_send_email:
                 segment_gads_oauth_notify_task()
             mock_send_email.assert_not_called()
+
+    def test_notification_once(self):
+        """ Test that notification email is only sent once """
+        oauth_data = {
+            OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP: str(
+                now_in_default_tz() - datetime.timedelta(hours=NOTIFY_HOURS_THRESHOLD + 1))
+        }
+        OAuthAccount.objects.create(
+            oauth_type=int(OAuthType.GOOGLE_ADS), is_enabled=True, synced=True, data=oauth_data, user=self.user
+        )
+        with mock.patch("oauth.tasks.segment_gads_oauth_notify._send_email") as mock_first_send_email:
+            segment_gads_oauth_notify_task()
+        mock_first_send_email.assert_called_once()
+
+        with mock.patch("oauth.tasks.segment_gads_oauth_notify._send_email") as mock_second_send_email:
+            segment_gads_oauth_notify_task()
+        mock_second_send_email.assert_not_called()
+
