@@ -6,4 +6,4 @@ from oauth.models import Account
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
-        fields = ["id", "name"]
+        fields = "__all__"

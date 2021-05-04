@@ -43,4 +43,8 @@ urlpatterns = [
     url(r"^insertion_orders/$",
         views.InsertionOrderListAPIView.as_view(),
         name=path_names.INSERTION_ORDER_LIST),
+
+    url(r"^line_items/$",
+        views.LineItemListAPIView.as_view(),
+        name=path_names.LINE_ITEM_LIST),
 ]

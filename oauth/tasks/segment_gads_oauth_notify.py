@@ -27,9 +27,12 @@ def segment_gads_oauth_notify_task():
         should_notify = False
         gads_oauth_timestamp = oauth.data.get(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP)
         try:
-            if gads_oauth_timestamp is not True and \
+            if isinstance(gads_oauth_timestamp, str) and \
                     parser.parse(gads_oauth_timestamp) < now_in_default_tz() - timedelta(hours=NOTIFY_HOURS_THRESHOLD):
                 should_notify = True
+                # Set to False to avoid sending multiple notification emails
+                oauth.data[OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP] = False
+                oauth.save(update_fields=["data"])
         except (TypeError, parser.ParserError):
             pass
         if should_notify is True:
