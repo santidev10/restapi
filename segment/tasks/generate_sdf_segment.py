@@ -37,7 +37,7 @@ MAX_PLACEMENTS = 20000
 
 
 @celery_app.task
-def generate_sdf_task(user_id: get_user_model().id, audit_id, segment_id: CustomSegment.pk, advertiser_id: DV360Advertiser.id,
+def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id: CustomSegment.pk, advertiser_id: DV360Advertiser.id,
                       adgroup_ids: list[AdGroup.id]):
     """
     Generate Ad group SDF with CustomSegment data as Ad group placements
