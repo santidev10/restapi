@@ -53,7 +53,7 @@ def _revoked(oauth_account):
 
 @celery_app.task
 def sync_dv360():
-    is_acquired = REDIS_CLIENT.lock(SYNC_DV360_TASK_LOCK).acquire(blocking=False)
+    is_acquired = REDIS_CLIENT.lock(SYNC_DV360_TASK_LOCK, timeout=3600 * 2).acquire(blocking=False)
     if is_acquired:
         sync_dv_partners()
         sync_dv_advertisers()

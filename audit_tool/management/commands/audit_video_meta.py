@@ -31,7 +31,7 @@ from segment.models import CustomSegment
 from segment.models.constants import Params
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.utils.utils import get_content_disposition
-from segment.tasks.generate_sdf import generate_sdf_task
+from segment.tasks.generate_sdf_segment import generate_sdf_segment_task
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import chunks_generator
@@ -107,7 +107,7 @@ class Command(BaseCommand):
     def update_ctl(self):
         """
         Create export for CTL using audited data
-        Will start generate_sdf_task if audit was started from SegmentDV360SyncAPIView
+        Will start generate_sdf_segment_task if audit was started from SegmentDV360SyncAPIView
         """
         segment = CustomSegment.objects.get(id=self.audit.params["segment_id"])
         if self.audit.audit_type == 1:
@@ -163,7 +163,7 @@ class Command(BaseCommand):
             os.remove(admin_export_fp)
             dv360_params = self.audit.params.get(Params.DV360_SYNC_DATA)
             if dv360_params:
-                generate_sdf_task.delay(self.audit.params["user_id"], segment.id,
+                generate_sdf_segment_task.delay(self.audit.params["user_id"], segment.id,
                                         dv360_params[Params.ADVERTISER_ID], dv360_params[Params.ADGROUP_IDS])
         # pylint: enable=broad-except
         finally:

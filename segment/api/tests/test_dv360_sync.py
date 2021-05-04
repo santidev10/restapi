@@ -201,7 +201,7 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
             audit = self._create_audit_with_dv360(advertiser.id, ag_ids)
             segment.update_params(audit.id, Params.DV360_SYNC_DATA, data_field=Params.META_AUDIT_ID, save=True)
             with mock.patch.object(GenerateSegmentUtils, "start_audit") as mock_start_audit,\
-                    mock.patch("segment.api.views.custom_segment.segment_dv360_sync.generate_sdf_task.delay") as mock_generate_sdf:
+                    mock.patch("segment.api.views.custom_segment.segment_dv360_sync.generate_sdf_segment_task.delay") as mock_generate_sdf:
                 response = self.client.post(self._get_url(segment.id), payload, content_type="application/json")
                 self.assertEqual(response.status_code, HTTP_200_OK)
             mock_generate_sdf.assert_called_once()
