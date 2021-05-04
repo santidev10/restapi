@@ -2,6 +2,7 @@ from .base_auditor import BaseAuditor
 from .constants import CHANNEL_SOURCE
 from .constants import VIDEO_SOURCE
 from brand_safety.auditors.serializers import BrandSafetyVideo
+from brand_safety.auditors.utils import AuditUtils
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from es_components.models import Channel
@@ -146,13 +147,7 @@ class VideoAuditor(BaseAuditor):
         :return: dict
         """
         transcripts = self.transcripts_manager.get_by_video_ids(video_ids=video_ids)
-        transcripts_by_video_id = {}
-        for transcript in transcripts:
-            video_id = str(transcript.video.id)
-            video_transcripts = transcripts_by_video_id.get(video_id, [])
-            video_transcripts.append(transcript)
-            transcripts_by_video_id[video_id] = video_transcripts
-        return transcripts_by_video_id
+        return AuditUtils.map_transcripts_by_video_id(transcripts=transcripts)
 
     def _check_rescore_channels(self, channels: list) -> None:
         """

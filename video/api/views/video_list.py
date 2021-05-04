@@ -33,6 +33,7 @@ from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import AggregationFiltersPermission
 from utils.permissions import BrandSafetyDataVisible
 from video.api.serializers.video import VideoSerializer
+from video.api.views.video_view_transcript_mixin import VideoTranscriptSerializerContextMixin
 from video.constants import EXISTS_FILTER
 from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
@@ -40,7 +41,7 @@ from video.constants import TERMS_FILTER
 
 
 class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMixin, AddFieldsMixin, ValidYoutubeIdMixin,
-                       APIViewMixin, ListAPIView):
+                       APIViewMixin, VideoTranscriptSerializerContextMixin, ListAPIView):
     permission_classes = (AggregationFiltersPermission,)
 
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
@@ -108,6 +109,7 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
         channel_manager = ChannelManager([Sections.CUSTOM_PROPERTIES,Sections.GENERAL_DATA])
         channel_ids = [video.channel.id for video in self.paginator.page.object_list if video.channel.id is not None]
         channels = channel_manager.get(channel_ids, skip_none=True)
+        video_ids = [video.main.id for video in self.paginator.page.object_list]
         context = {
             "user": self.request.user,
             "channel_blocklist": {
@@ -119,6 +121,7 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
                 for channel in channels
             },
             "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
+            "transcripts": self.get_transcripts_serializer_context(video_ids=video_ids),
         }
         return context
 
