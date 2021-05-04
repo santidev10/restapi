@@ -6,4 +6,4 @@ from oauth.models import DV360Advertiser
 class AdvertiserSerializer(serializers.ModelSerializer):
     class Meta:
         model = DV360Advertiser
-        fields = ["id", "display_name"]
+        fields = "__all__"

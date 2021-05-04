@@ -6,6 +6,7 @@ class OAuthPathName:
     GADS_ACCOUNTS = "gads_account_list"
     GADS_OAUTH = "gads_oauth"
     INSERTION_ORDER_LIST = "insertion_order_list"
+    LINE_ITEM_LIST = "line_item_list"
     OAUTH_ACCOUNT_UPDATE = "oauth_account_update"
     OAUTH_ACCOUNT_LIST = "oauth_account_list"
 
