@@ -23,16 +23,16 @@ def segment_gads_oauth_notify_task():
     """
     oauth_accounts = OAuthAccount.objects.filter(oauth_type=int(OAuthType.GOOGLE_ADS), is_enabled=True, synced=True,
                                                  revoked_access=False)
+    notify_threshold = now_in_default_tz() - timedelta(hours=NOTIFY_HOURS_THRESHOLD)
     for oauth in oauth_accounts:
         should_notify = False
         gads_oauth_timestamp = oauth.data.get(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP)
         try:
             if isinstance(gads_oauth_timestamp, str) and \
-                    parser.parse(gads_oauth_timestamp) < now_in_default_tz() - timedelta(hours=NOTIFY_HOURS_THRESHOLD):
+                    parser.parse(gads_oauth_timestamp) < notify_threshold:
                 should_notify = True
                 # Set to False to avoid sending multiple notification emails
-                oauth.data[OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP] = False
-                oauth.save(update_fields=["data"])
+                oauth.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, False)
         except (TypeError, parser.ParserError):
             pass
         if should_notify is True:
@@ -49,10 +49,12 @@ def _send_email(oauth_account: OAuthAccount) -> None:
     text_content = "You recently started an authorization process for ViewIQ Placement Targeting within Build. " \
                    "Please complete the synchronization of your account to enable the ability to upload Placement " \
                    "Targeting from our platform."
+    link = f"\n\nYou can review the steps necessary at the below link. " \
+           f"\n<a href={settings.HOST}/build/>Click here</a>"
     send_html_email(
         subject=subject,
-        to=[oauth_account.user.email],
+        to=[oauth_account.email],
         text_header=subject,
-        text_content=text_content,
+        text_content=text_content + link,
         from_email=settings.EXPORTS_EMAIL_ADDRESS
     )

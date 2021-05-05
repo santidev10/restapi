@@ -1,13 +1,12 @@
-from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.views import APIView
 
 from oauth.constants import OAuthData
 from oauth.constants import OAuthType
 from oauth.models import OAuthAccount
 from userprofile.constants import StaticPermissions
 from utils.permissions import or_permission_classes
-from utils.views import get_object
 from utils.datetime import now_in_default_tz
 
 
@@ -23,8 +22,11 @@ class SegmentGadsScriptAPIView(APIView):
     )
 
     def get(self, request, *args, **kwargs):
-        oauth_account = get_object(OAuthAccount, user=request.user, oauth_type=OAuthType.GOOGLE_ADS.value,
-                                   message="You must OAuth with Google Ads", code=HTTP_400_BAD_REQUEST)
+        oauth_account = OAuthAccount.objects.filter(user=request.user, oauth_type=OAuthType.GOOGLE_ADS.value,
+                                                    revoked_access=False, is_enabled=True).first()
+        if not oauth_account:
+            raise ValidationError("You must OAuth with Google Ads")
+
         script_fp = "segment/utils/request_create_placements.js"
         with open(script_fp, "r") as file:
             func = file.read()
