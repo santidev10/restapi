@@ -21,11 +21,12 @@ class CTLGadsScriptCodeTestCase(ExtendedAPITestCase):
         })
         self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value)
 
-    def test_fail_not_oauthed(self):
-        """ Test fails if user has not oauthed yet """
+    def test_not_oauthed_empty(self):
+        """ Test empty response if user has not oauthed """
         self.oauth_account.delete()
         response = self.client.get(self._url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data, None)
 
     def test_get_success(self):
         """ Test that code is retrieved and VIQ_KEY is replaced with user viq_key """
