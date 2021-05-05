@@ -52,14 +52,25 @@ class SegmentGadsSyncAPIView(APIView):
                 .distinct() \
                 .values_list("cid", flat=True)
             res = cid_ids
-            self._update_linked_mcc_oauths(oauth_account)
+
+            """
+            Update OAuthAccounts that also have access to the MCC Accounts the current oauth account being processed has
+            access to.
+            Multiple OAuthAccounts can have access to the same MCC, and if at least one MCC in an OAuthAccount has been
+            synced with Google Ads, we consider the segment Build OAuth process to be complete for all related
+            OAuthAccounts as the Google Ads sync script only needs to be applied once
+            """
+            mccs = Account.objects.filter(oauth_accounts=oauth_account, can_manage_clients=True)
+            linked_mcc_oauth_accounts = OAuthAccount.objects.filter(gads_accounts__in=mccs).distinct()
+            self._update_linked_oauths(linked_mcc_oauth_accounts)
         else:
             code = get_gads_sync_code(account)
             res = {
                 "code": code,
             }
         # Set GADS_OAUTH_TIMESTAMP value to True to indicate that Google Ads has successfully synced with OAuthAccount
-        oauth_account.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, True)
+        # Users may have many OAuthAccounts
+        self._update_linked_oauths(OAuthAccount.get_enabled(user=request.user, oauth_type=int(OAuthType.GOOGLE_ADS)))
         return Response(res)
 
     def post(self, request, *args, **kwargs):
@@ -104,18 +115,11 @@ class SegmentGadsSyncAPIView(APIView):
         account = get_object(Account, id=int(self.kwargs.get("pk", -1)))
         return account
 
-    def _update_linked_mcc_oauths(self, oauth_account: OAuthAccount) -> None:
+    def _update_linked_oauths(self, linked_oauth_qs) -> None:
         """
-        Update OAuthAccounts that also have access to the MCC Accounts the current oauth account being processed has
-            access to.
-        Multiple OAuthAccounts can have access to the same MCC, and if at least one MCC in an OAuthAccount has been
-            synced with Google Ads, we consider the segment Build OAuth process to be complete for all related
-            OAuthAccounts as the Google Ads sync script only needs to be applied once
-        :param oauth_account: OAuthAccount being processed with viq_key
-        :return: None
+        Update sync status of linked OAuthAccounts
+        :param linked_oauth_qs: OAuthAccounts that are linked to user
         """
-        mccs = Account.objects.filter(oauth_accounts=oauth_account, can_manage_clients=True)
-        linked_oauth_accounts = OAuthAccount.objects.filter(gads_accounts__in=mccs).distinct()
-        for oauth in linked_oauth_accounts:
+        for oauth in linked_oauth_qs:
             oauth.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, True)
-        OAuthAccount.objects.bulk_update(linked_oauth_accounts, fields=["data"])
+        OAuthAccount.objects.bulk_update(linked_oauth_qs, fields=["data"])

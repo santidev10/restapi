@@ -52,6 +52,20 @@ class OAuthAccount(OAuthBase):
         if save is True:
             self.save(update_fields=["data"])
 
+    @staticmethod
+    def get_enabled(filtered=True, **kwargs):
+        filters = {
+            "is_enabled": True,
+            "revoked_access": False,
+            **kwargs
+        }
+        manager_method = "filter" if filtered is True else "get"
+        try:
+            oauth = getattr(OAuthAccount.objects.order_by("-created_at"), manager_method)(**filters)
+        except OAuthAccount.DoesNotExist:
+            oauth = None
+        return oauth
+
 
 class Account(models.Model):
     id = models.BigAutoField(primary_key=True)

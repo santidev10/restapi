@@ -25,7 +25,7 @@ class SegmentGadsScriptAPIView(APIView):
         oauth_account = OAuthAccount.objects.filter(user=request.user, oauth_type=OAuthType.GOOGLE_ADS.value,
                                                     revoked_access=False, is_enabled=True).first()
         if not oauth_account:
-            raise ValidationError("You must OAuth with Google Ads")
+            return Response()
 
         script_fp = "segment/utils/request_create_placements.js"
         with open(script_fp, "r") as file:

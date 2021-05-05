@@ -8,5 +8,5 @@ class OAuthPathName:
     INSERTION_ORDER_LIST = "insertion_order_list"
     LINE_ITEM_LIST = "line_item_list"
     OAUTH_ACCOUNT_UPDATE = "oauth_account_update"
-    OAUTH_ACCOUNT_LIST = "oauth_account_list"
+    OAUTH_ACCOUNT_LIST_UPDATE = "oauth_account_list_update"
 
