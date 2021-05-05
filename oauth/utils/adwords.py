@@ -100,9 +100,10 @@ def update_accounts(oauth_account, account_data, id_field="customerId", name_fie
             container = to_update
         else:
             container = to_create
-        container.append(Account(id=account[id_field], name=account[name_field]))
+        container.append(Account(id=account[id_field], name=account[name_field],
+                                 can_manage_clients=account["canManageClients"]))
     safe_bulk_create(Account, to_create)
-    Account.objects.bulk_update(to_update, fields=["name"])
+    Account.objects.bulk_update(to_update, fields=["name", "can_manage_clients"])
     oauth_account.gads_accounts.add(*ids)
 
 

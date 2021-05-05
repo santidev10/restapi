@@ -163,6 +163,10 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             # pylint: enable=broad-except
                 pass
             next_item.save(update_fields=['checked_out_at'])
+            # Allow client to refresh page with new vetting id. Client will experience a 400 error if attempting to
+            # update an already submitted vetting id, as other clients may receive the same vetting id if CHECKOUT_THRESHOLD
+            # has elapsed
+            data["expires"] = CHECKOUT_THRESHOLD
         else:
             data = {
                 "message": "All items are checked out. Please request from a different list."

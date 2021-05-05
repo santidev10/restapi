@@ -1,6 +1,8 @@
+from abc import abstractmethod
 import hashlib
 import json
 import logging
+import re
 from abc import abstractmethod
 from typing import Union
 from urllib.parse import unquote
@@ -9,11 +11,18 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from elasticsearch_dsl import Q
+from elasticsearch_dsl.response import Response
+from redis.exceptions import ConnectionError
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
 
 import brand_safety.constants as brand_safety_constants
+from cache.constants import RESEARCH_CHANNELS_DEFAULT_CACHE_KEY
+from cache.constants import RESEARCH_VIDEOS_DEFAULT_CACHE_KEY
+from channel.constants import RESEARCH_CHANNELS_DEFAULT_SORT
+from video.constants import RESEARCH_VIDEOS_DEFAULT_SORT
 from es_components.constants import Sections
+from es_components.models import Video
 from es_components.iab_categories import IAB_TIER1_CATEGORIES
 from es_components.query_builder import QueryBuilder
 from es_components.query_repository import get_ias_verified_exists_filter
@@ -23,10 +32,13 @@ from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
+from utils.es_components_cache import redis
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
 from utils.utils import slice_generator
 import video.constants as video_constants
+
+import pickle
 
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
@@ -564,7 +576,7 @@ class BlackListSerializerMixin:
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, is_default_page=None, **__):
+    def __init__(self, manager, *_, cached_aggregations=None, from_cache=None, query_params=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -576,7 +588,7 @@ class ESQuerysetAdapter:
         self.cached_aggregations = cached_aggregations
         # Additional control if cached methods should use cache
         self.from_cache = from_cache
-        self.is_default_page = is_default_page
+        self.query_params = query_params
 
     @cached_method(timeout=7200)
     def count(self):
@@ -683,6 +695,118 @@ class ESQuerysetAdapter:
             yield from self.manager.scan(
                 filters=self.filter_query,
             )
+
+
+class ResearchESQuerysetAdapter(ESQuerysetAdapter):
+
+    def get_data(self, start=0, end=None):
+        kwargs_config = {
+            0: {
+                "target_sort": RESEARCH_VIDEOS_DEFAULT_SORT,
+                "cache_key": RESEARCH_VIDEOS_DEFAULT_CACHE_KEY
+            },
+            1: {
+                "target_sort": RESEARCH_CHANNELS_DEFAULT_SORT,
+                "cache_key": RESEARCH_CHANNELS_DEFAULT_CACHE_KEY
+            }
+        }
+        try:
+            kwargs = kwargs_config[0] if self.manager.model is Video else kwargs_config[1]
+            data = self._get_from_cache(start, end, **kwargs)
+        except ValueError:
+            data = super().uncached_get_data(start, end)
+        return data
+
+    def _get_from_cache(self, start: int, end: int = DEFAULT_PAGE_SIZE,
+                        cache_key: str = RESEARCH_CHANNELS_DEFAULT_CACHE_KEY,
+                        target_sort: list = RESEARCH_CHANNELS_DEFAULT_SORT, ) -> Response:
+        """
+        Get Research data from cache based on request query parameters
+        Cached data is cached with celery beat in cache.tasks.cache_research_defaults
+
+        Cached responses will only be used if the first page is being requested, the request sorting matches target_sort,
+            and no filters are applied
+            e.g. First page of Research Channels is defined as page 1, no filters, and sorting of
+                RESEARCH_CHANNELS_DEFAULT_SORT
+                If the request matches those conditions, we will retrieve cached data
+
+        :param start: int -> The start index of the response data. If 0, then the first page is being requested.
+            This will be multiples of the request page size "end"
+            e.g. page size requested = 50
+            page 1 start = 0
+            page 2 start = 50
+            page 3 start = 100
+            ...
+        :param end: The size of the requested page, which determines the sliced index end
+        :param target_sort: The sort value to check if we should use cached data
+        :param cache_key: Key to retrieve cached data from redis
+        :return: Elasticsearch DSL Response object
+        """
+        if not self._should_get_cache(target_sort, start):
+            raise ValueError
+        data = None
+        try:
+            cached_data = pickle.loads(redis.get(cache_key))
+            updated_response = self._get_response_body(cached_data)
+            # Build new response body depending on request query params as cached data caches all ES model sections
+            # with different page size
+            for i in range(len(cached_data.hits)):
+                dict_doc = cached_data.hits.hits._l_[i]
+                # Copy sections requested by client
+                dict_doc["_source"] = {
+                    key: val for key, val in dict_doc["_source"].items() if key in self.fields_to_load
+                }
+                updated_response["hits"]["hits"].append(dict_doc)
+                # Copy until the target page size
+                if i >= end - 1:
+                    break
+            # Build new elasticsearch_dsl Response object. By default Research uses forced filters for all queries
+            data = Response(self.manager.search(self.manager.forced_filters()), updated_response)
+        except (pickle.PickleError, ConnectionError, IndexError):
+            pass
+        finally:
+            if data is None:
+                raise ValueError
+        return data
+
+    def _get_response_body(self, cached_response: Response):
+        """
+        Prepare new dict response body to add "hits" data to
+        hits must be processed in case client is requesting different ES model sections or page size
+        :param cached_response: elasticsearch_dsl Response
+        """
+        new_response = {
+            key: getattr(cached_response, key)
+            for key in dir(cached_response) if key != "hits"
+        }
+        new_response["hits"] = dict(
+            max_score=cached_response.hits.max_score,
+            total=cached_response.hits.total,
+            hits=[],
+        )
+        return new_response
+
+    def _should_get_cache(self, target_sort: list[dict], start: int) -> bool:
+        """
+        Determine if cache data should be retrieved
+        Client applies request filters by adding key value pairs in request query parameters
+            If a section is detected in query params, then filters are being applied. Return False to retrieve
+            uncached data
+        :param start: Start index of queryset and indicates request page. Refer to _get_from_cache docstring
+        :param target_sort: Request sorting. Refer to _get_from_cache docstring
+        :return: bool -> Whether or not data should be retrieved from cache
+        """
+        if start != 0 or self.sort != target_sort:
+            return False
+        filters_pattern = "|".join((
+            f"({s})" for s in self.manager.allowed_sections
+        ))
+        get_cache = True
+        # Search for filters being applied in in request query params
+        with_filters = re.search(filters_pattern, "".join(self.query_params.keys()))
+        if with_filters:
+            get_cache = False
+        return get_cache
 
 
 class ESFilterBackend(BaseFilterBackend):
@@ -826,13 +950,6 @@ class APIViewMixin:
         if self.request.user.has_permission(StaticPermissions.RESEARCH__BRAND_SUITABILITY_HIGH_RISK):
             return self.admin_manager_class
         return self.manager_class
-
-    def is_default_page(self):
-        query_params = self.request.query_params
-        is_default_page = False
-        if query_params.get("page") == "1" and set(query_params.keys()).issubset({"page", "sort", "fields", "size"}):
-            is_default_page = True
-        return is_default_page
 
 
 class PaginatorWithAggregationMixin:

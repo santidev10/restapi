@@ -2,6 +2,7 @@ import json
 from unittest import mock
 
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -241,7 +242,7 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
 
     def test_as_mcc(self):
         """ Test that as MCC, managed CID account ids are retrieved to execute script for each individual CID """
-        mcc = Account.objects.create()
+        mcc = Account.objects.create(can_manage_clients=True)
         self.oauth_account.gads_accounts.add(mcc)
 
         # CID accounts
@@ -262,3 +263,29 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             response = self.client.get(self._get_url(mcc.id, self.oauth_account.viq_key) + "&as_mcc=true")
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(list(response.data), [])
+
+    def test_mcc_sync_updates_related_oauths(self):
+        """ Test that an MCC sync updates the OAuth process status for all other OAuthAccounts that also have access """
+        mcc = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
+        oauth_accounts = [
+            OAuthAccount.objects.create(user=get_user_model().objects.create(email=f"test_{next(int_iterator)}"),
+                                        oauth_type=OAuthType.GOOGLE_ADS.value) for _ in range(3)
+        ]
+        linked_oauth = [self.oauth_account, *oauth_accounts[:-1]]
+        # OAuthAccount that does not have access to mcc
+        non_linked = oauth_accounts[-1]
+        for oauth in linked_oauth:
+            oauth.gads_accounts.add(mcc)
+        response = self.client.get(self._get_url(mcc.id, self.oauth_account.viq_key) + "&as_mcc=true")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        # Get the segment OAuth completion status value on SEGMENT_GADS_OAUTH_TIMESTAMP. Value of True indicates
+        # the OAuthAccount has completed the oauth process
+        oauth_process_values = set()
+        for oauth in linked_oauth:
+            oauth.refresh_from_db()
+            oauth_process_values.add(oauth.data[OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP])
+        self.assertEqual(oauth_process_values, {True})
+
+        # Non linked OAuthAccount should not have OAuthProcess updated
+        non_linked.refresh_from_db()
+        self.assertIsNone(non_linked.data.get(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP))

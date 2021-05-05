@@ -16,7 +16,7 @@ from oauth.models import AdGroup
 from segment.models.constants import Params
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models import CustomSegment
-from segment.tasks.generate_sdf import generate_sdf_task
+from segment.tasks.generate_sdf_segment import generate_sdf_segment_task
 from utils.views import get_object
 from utils.datetime import now_in_default_tz
 
@@ -58,7 +58,7 @@ class SegmentDV360SyncAPIView(APIView):
             # Save audit id on CustomSegment to later check if we can use same audit to generate SDF in this view
             segment.update_params(created_audit.id, Params.DV360_SYNC_DATA, data_field=Params.META_AUDIT_ID, save=True)
         else:
-            generate_sdf_task.delay(self.request.user.id, audit.id, segment.id, advertiser.id, adgroup_ids)
+            generate_sdf_segment_task.delay(self.request.user.id, audit.id, segment.id, advertiser.id, adgroup_ids)
         return segment
 
     def _validate(self) -> tuple:

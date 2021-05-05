@@ -27,7 +27,7 @@ from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
-from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import ResearchESQuerysetAdapter
 from utils.es_components_api_utils import FlagsParamAdapter
 from utils.es_components_api_utils import SentimentParamAdapter
 from utils.permissions import AggregationFiltersPermission
@@ -156,13 +156,9 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
                     self.request.query_params["brand_safety"] = None
 
         self.guard_vetting_data_perm_aggregations()
-
         self.guard_brand_suitability_high_risk_filters()
-
         self.ensure_exact_youtube_id_result(manager=VideoManager())
-
         self.add_fields()
-        is_default_page = self.is_default_page()
-        return ESQuerysetAdapter(self.get_manager_class()(sections),
-                                 cached_aggregations=self.get_cached_aggregations(),
-                                 is_default_page=is_default_page)
+        return ResearchESQuerysetAdapter(self.get_manager_class()(sections),
+                                         cached_aggregations=self.get_cached_aggregations(),
+                                         query_params=self.request.query_params)

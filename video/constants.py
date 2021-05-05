@@ -46,3 +46,9 @@ WELL_LIKED = "At least 90% liked"
 AVERAGE = "At least 79% liked"
 ALL = "All"
 CUSTOM = "Custom"
+
+RESEARCH_VIDEOS_DEFAULT_SORT = [
+    {"stats.views": {"order": "desc"}},
+    {"main.id": {"order": "asc"}}
+]
+

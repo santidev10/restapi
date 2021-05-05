@@ -6,4 +6,4 @@ from oauth.models import InsertionOrder
 class InsertionOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = InsertionOrder
-        fields = ["id", "name", "campaign"]
+        fields = "__all__"
