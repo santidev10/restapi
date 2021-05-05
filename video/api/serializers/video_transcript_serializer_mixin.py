@@ -68,13 +68,15 @@ class VideoTranscriptSerializerMixin:
                 language = self._get_best_available_language(captions_items=captions_items)
         return language
 
-    def _get_best_available_language(self, captions_items):
+    def _get_best_available_language(self, captions_items) -> Union[str, None]:
         """
         NOTE: Deprecated
         helper function for getting old-style transcript language (attached to video object)
         :param captions_items:
         :return:
         """
+        if not captions_items:
+            return
         try:
             available_lang_codes = [item.language_code.split('-')[0].lower() for item in captions_items]
         except AttributeError:

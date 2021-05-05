@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 from abc import abstractmethod
-from typing import Tuple
+from typing import Union
 from urllib.parse import unquote
 
 from django.contrib.auth import get_user_model
@@ -289,7 +289,7 @@ class QueryGenerator:
         return filters
 
     @staticmethod
-    def adapt_transcript_filters(filters: list, value: Tuple[str, bool]) -> None:
+    def adapt_transcript_filters(filters: list, value: Union[str, bool]) -> None:
         """
         adapt the transcripts=true query param into an exists/!exists filter
         :param filters:
