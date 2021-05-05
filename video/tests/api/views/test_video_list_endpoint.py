@@ -833,3 +833,55 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
                 transcript = item.get("transcript")
                 self.assertTrue(isinstance(transcript, str))
                 self.assertEqual(transcript, f"correct transcript for video with language: {lang_code}")
+
+    def test_transcripts_filtering(self):
+        """
+        ensure that the transcripts exists filter works across all trancript types
+        :return:
+        """
+        videos = []
+
+        has_custom_caption_items = Video(next(int_iterator))
+        has_custom_caption_items.populate_general_data(title="has custom caption items",
+                                                       description="this video has custom caption items")
+        custom_caption_item = dict(text="asdf", language_code="en", source=TranscriptSourceTypeEnum.TTS_URL.value,
+                                   is_asr=True)
+        has_custom_caption_items.populate_custom_captions(items=[custom_caption_item])
+        videos.append(has_custom_caption_items)
+
+        has_caption_items = Video(next(int_iterator))
+        has_caption_items.populate_general_data(title="has caption items", description="this video has caption items")
+        caption_item = dict(text="asdf", name="asdf", language_code="en", status="asdf", caption_id="asdf",
+                            youtube_updated_at=timezone.now())
+        has_caption_items.populate_captions(items=[caption_item])
+        # upserting the captions section makes it true, since items are disabled
+        VideoManager(upsert_sections=(Sections.GENERAL_DATA, Sections.CAPTIONS)).upsert([has_caption_items])
+
+        has_transcripts = Video(next(int_iterator))
+        has_transcripts.populate_general_data(title="has transcripts", description="this video has transcripts")
+        has_transcripts.populate_custom_captions(has_transcripts=True)
+        videos.append(has_transcripts)
+
+        missing_transcripts = Video(next(int_iterator))
+        missing_transcripts.populate_general_data(title="missing transcripts",
+                                                 description="this video has no transcripts of any kind (how boring!).")
+        videos.append(missing_transcripts)
+
+        video_manager = VideoManager(upsert_sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.CUSTOM_CAPTIONS,))
+        video_manager.upsert(videos)
+
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+            StaticPermissions.RESEARCH__TRANSCRIPTS: True,
+        })
+        exists_url = self.get_url(transcripts="true")
+        exists_response = self.client.get(exists_url)
+
+        self.assertEqual(exists_response.status_code, HTTP_200_OK)
+        self.assertEqual(exists_response.data.get("items_count"), 3)
+
+        missing_url = self.get_url(transcripts="false")
+        missing_response = self.client.get(missing_url)
+        self.assertEqual(missing_response.status_code, HTTP_200_OK)
+        self.assertEqual(missing_response.data.get("items_count"), 1)
