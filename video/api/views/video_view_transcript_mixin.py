@@ -12,7 +12,7 @@ class VideoTranscriptSerializerContextMixin:
         :param video_ids:
         :return:
         """
-        video_ids = [id for id in video_ids if isinstance(id, str)]
+        video_ids = [str(id) for id in video_ids if id is not None]
         transcripts_manager = TranscriptManager(sections=[Sections.VIDEO, Sections.TEXT, Sections.GENERAL_DATA])
         transcripts = transcripts_manager.get_by_video_ids(video_ids=video_ids)
         return AuditUtils.map_transcripts_by_video_id(transcripts=transcripts)
