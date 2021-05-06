@@ -36,7 +36,7 @@ class CTLDV360SyncTestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_SYNC_DV360, kwargs=dict(pk=segment_id))
 
     def setUp(self) -> None:
-        self.user = self.create_test_user()
+        self.user = self.create_admin_user()
 
     def _mock_data(self):
         segment = CustomSegment.objects.create(owner=self.user, segment_type=int(SegmentTypeEnum.CHANNEL))

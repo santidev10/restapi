@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from saas import celery_app
 from segment.models import CustomSegment
-from segment.models.constants import Results
 from segment.utils.generate_segment import generate_segment
 from segment.utils.generate_segment import CTLGenerateException
 from segment.utils.send_export_email import send_export_email
