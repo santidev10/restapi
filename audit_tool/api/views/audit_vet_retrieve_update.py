@@ -141,10 +141,16 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             Q(checked_out_at__isnull=True)
             | Q(checked_out_at__lt=now - timedelta(minutes=CHECKOUT_THRESHOLD))
         )
-        try:
-            next_item = vetting_items[randint(0, vetting_items.count() - 1)]
-        except (IndexError, ValueError):
-            next_item = None
+        next_item = None
+        total_remains = vetting_items.count() - 1
+        # Try to find first available vetting item
+        for _ in range(total_remains):
+            try:
+                next_item = vetting_items[randint(0, total_remains - 1)]
+            except (IndexError, ValueError):
+                continue
+            else:
+                break
         # If next item is None, then all are checked out
         if next_item:
             try:
