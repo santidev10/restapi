@@ -1,5 +1,6 @@
 import csv
 import os
+import shutil
 
 from django.db.models import F
 from django.core.exceptions import ObjectDoesNotExist
@@ -102,6 +103,7 @@ def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id
             _remove_error_fields(row, remove_erroneous_idx)
             writer.writerow(row)
     finalize_results(segment, output_fp, user.email)
+    shutil.rmtree(target_dir)
 
 
 @retry(count=5, delay=10)
