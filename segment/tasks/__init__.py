@@ -1,4 +1,5 @@
 from .generate_persistent_segments import generate_persistent_segments
+from .generate_sdf_segment import generate_sdf_segment_task
 from .generate_vetted_segment import generate_vetted_segment
 from .regenerate_custom_segments import regenerate_custom_segments_with_lock
 from .update_custom_segment import update_custom_segment
