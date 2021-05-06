@@ -823,6 +823,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         for i in range(range_max):
             audit_video = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
             audit_videos.append(audit_video)
+            # Last indexed items will be checked out "after", meaning they have expired and will be able to be
+            # checked out
             checked_out_at = before if i + 1 < range_max else after
             video_vets.append(AuditVideoVet(audit=video_audit, video=audit_video, checked_out_at=checked_out_at))
         for i in range(range_max):
@@ -843,7 +845,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 self.mock_get_document.return_value = mock_video_doc
                 url = self._get_url(kwargs=dict(pk=video_audit.id))
                 response = self.client.get(url)
-                if audit_video == audit_videos[-1]:
+                if audit_video.video_id == audit_videos[-1].video_id:
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     self.assertIn("message", response.data.keys())
                     self.assertIn("All items are checked out.", response.data.get("message", ""))
@@ -861,7 +863,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                 self.mock_get_document.return_value = mock_channel_doc
                 url = self._get_url(kwargs=dict(pk=channel_audit.id))
                 response = self.client.get(url)
-                if audit_channel == audit_channels[-1]:
+                if audit_channel.channel_id == audit_channels[-1].channel_id:
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     self.assertIn("message", response.data.keys())
                     self.assertIn("All items are checked out.", response.data.get("message", ""))
@@ -872,3 +874,80 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
                     vetting_id = response.data.get("vetting_id")
                     valid_channel_vet_ids = [channel_vet.id for channel_vet in channel_vets[:-1]]
                     self.assertIn(vetting_id, valid_channel_vet_ids)
+
+    def test_vetting_checkout_random(self, *args):
+        """ Test that checking out vetting items is randomized to reduce the chance two clients may be requesting
+        the resource at the same time and resulting in checking out the same vetting item
+        """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.VIDEO.value, title="test_vetting_checkout_random"))
+
+        self.mock_get_document.return_value = None
+        vets = []
+        for i in range(50):
+            vets.append(AuditVideoVet(audit=audit))
+        AuditVideoVet.objects.bulk_create(vets)
+        vetting_ids = []
+        for _ in range(len(vets)):
+            url = self._get_url(kwargs=dict(pk=audit.id))
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            vetting_ids.append(response.data["vetting_id"])
+        self.assertNotEqual(vetting_ids, list(sorted(vetting_ids)))
+
+    def test_checkout_submit_success(self, *args):
+        """ Test that all items are able to be checked out and all items are able to be submitted """
+        user = self.create_admin_user()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(
+            segment_type=SegmentTypeEnum.CHANNEL.value, title="test_checkout_submit_success"))
+
+        self.mock_get_document.return_value = None
+        vets = []
+        for i in range(25):
+            audit_obj = AuditChannel.objects.create(channel_id=f"channel{next(int_iterator)}".zfill(24))
+            vets.append(AuditChannelVet(audit=audit, channel=audit_obj))
+        AuditChannelVet.objects.bulk_create(vets)
+        vetting_ids = []
+        for _ in range(len(vets)):
+            url = self._get_url(kwargs=dict(pk=audit.id))
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            vetting_ids.append(response.data["vetting_id"])
+
+        for _id in vetting_ids:
+            payload = {
+                "vetting_id": _id,
+                "age_group": 0,
+                "brand_safety": [
+                    12
+                ],
+                "content_type": 0,
+                "content_quality": 0,
+                "gender": 0,
+                "iab_categories": [
+                    "Automotive"
+                ],
+                "primary_category": "Automotive",
+                "is_monetizable": True,
+                "language": "en",
+                "suitable": False
+            }
+            url = self._get_url(kwargs=dict(pk=audit.id))
+            with patch.object(AuditChannelVetSerializer, "save_elasticsearch"),\
+                    patch.object(AuditChannelVetSerializer, "_update_videos"):
+                response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                data = response.data
+                self.assertIsNone(data["checked_out_at"])
+                self.assertTrue(data["processed"])
+
+        # Ensure all vetting items have been processed
+        if AuditChannelVet.objects.filter(audit=audit, processed__isnull=True).count() == 0:
+            segment.is_vetting_complete = True
+            segment.save(update_fields=["is_vetting_complete"])
+        # All items have been processed
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue("Vetting for this list is complete" in response.data["message"])
