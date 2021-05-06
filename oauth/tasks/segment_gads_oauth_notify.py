@@ -53,7 +53,7 @@ def _send_email(oauth_account: OAuthAccount) -> None:
            f"\n<a href={settings.HOST}/build/>Click here</a>"
     send_html_email(
         subject=subject,
-        to=[oauth_account.email],
+        to=[oauth_account.user.email],
         text_header=subject,
         text_content=text_content + link,
         from_email=settings.EXPORTS_EMAIL_ADDRESS
