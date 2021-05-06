@@ -1,5 +1,6 @@
 from datetime import timedelta
 from operator import attrgetter
+from random import randint
 
 from django.db.models import Q
 from django.utils import timezone
@@ -19,6 +20,7 @@ from segment.tasks import update_segment_statistics
 from userprofile.constants import StaticPermissions
 from utils.views import get_object
 from utils.views import validate_fields
+from utils.datetime import now_in_default_tz
 
 
 CHECKOUT_THRESHOLD = 10
@@ -130,31 +132,47 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         :param audit: AuditProcesssor
         :return: dict | str
         """
+        now = now_in_default_tz()
         # id_key = video.video_id, channel.channel_id
         id_key = segment.config.DATA_FIELD + "." + segment.config.DATA_FIELD + "_id"
         # get the next vetting model for this audit, that wasn't processed, that has either: never been checked out OR
         # was checked out over CHECKOUT_THRESHOLD minutes ago
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(
+        vetting_items = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(
             Q(checked_out_at__isnull=True)
-            | Q(checked_out_at__lt=timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD))
-        ).first()
+            | Q(checked_out_at__lt=now - timedelta(minutes=CHECKOUT_THRESHOLD))
+        )
+        try:
+            next_item = vetting_items[randint(0, vetting_items.count() - 1)]
+        except (IndexError, ValueError):
+            next_item = None
         # If next item is None, then all are checked out
         if next_item:
             try:
                 item_id = attrgetter(id_key)(next_item)
             except AttributeError:
                 raise MissingItemException(next_item.id)
+            next_item.checked_out_at = now
+            next_item.save(update_fields=["checked_out_at"])
+
             segment.es_manager.sections = self.ES_SECTIONS
             response = self._get_document(segment.es_manager, item_id, next_item.id)
             data = segment.audit_utils.serializer(response, context={"segment": segment}).data
             data["vetting_id"] = next_item.id
             if response:
-                data["title"] = response.general_data.title
-                data['data_type'] = segment.config.DATA_FIELD
-            data["suitable"] = next_item.clean
-            data["checked_out_at"] = next_item.checked_out_at = timezone.now()
-            data["instructions"] = audit.params.get("instructions")
-            data['iab_categories'] = self.filter_invalid_iab_categories(data['iab_categories'])
+                data.update({
+                    "title": response.general_data.title,
+                    "data_type": segment.config.DATA_FIELD
+                })
+            data.update({
+                "suitable": next_item.clean,
+                "checked_out_at": now,
+                "instructions": audit.params.get("instructions"),
+                "iab_categories": self.filter_invalid_iab_categories(data['iab_categories']),
+                # Allow client to refresh page with new vetting id. Client will experience a 400 error if attempting to
+                # update an already submitted vetting id, as other clients may receive the same vetting id if CHECKOUT_THRESHOLD
+                # has elapsed
+                "expires": CHECKOUT_THRESHOLD,
+            })
             try:
                 o = getattr(next_item, segment.config.DATA_FIELD)
                 data['YT_id'] = getattr(o, "{}_id".format(segment.config.DATA_FIELD))
@@ -162,11 +180,6 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             except Exception:
             # pylint: enable=broad-except
                 pass
-            next_item.save(update_fields=['checked_out_at'])
-            # Allow client to refresh page with new vetting id. Client will experience a 400 error if attempting to
-            # update an already submitted vetting id, as other clients may receive the same vetting id if CHECKOUT_THRESHOLD
-            # has elapsed
-            data["expires"] = CHECKOUT_THRESHOLD
         else:
             data = {
                 "message": "All items are checked out. Please request from a different list."
