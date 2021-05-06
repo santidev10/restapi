@@ -7,4 +7,4 @@ from .dv360_advertiser_list import OAuthDV360AdvertiserListAPIView
 from .insertion_order_list import InsertionOrderListAPIView
 from .line_item_list import LineItemListAPIView
 from .oauth_account_update import OAuthAccountUpdateAPIView
-from .oauth_accounts_list import OAuthAccountListPIView
+from .oauth_accounts_list_update import OAuthAccountListUpdateAPIView
