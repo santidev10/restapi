@@ -3,7 +3,6 @@ from datetime import timedelta
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db.models import F
-from django.db.models.functions import Coalesce
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,11 +16,19 @@ from segment.models.constants import Params
 from segment.models.utils.generate_segment_utils import GenerateSegmentUtils
 from segment.models import CustomSegment
 from segment.tasks.generate_sdf_segment import generate_sdf_segment_task
-from utils.views import get_object
+from userprofile.constants import StaticPermissions
 from utils.datetime import now_in_default_tz
+from utils.permissions import or_permission_classes
+from utils.views import get_object
 
 
 class SegmentDV360SyncAPIView(APIView):
+    permission_classes = (
+        or_permission_classes(
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST),
+            StaticPermissions.has_perms(StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST),
+        ),
+    )
 
     def post(self, request, *args, **kwargs):
         """

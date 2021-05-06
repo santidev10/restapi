@@ -13,7 +13,7 @@ from utils.datetime import now_in_default_tz
 
 class OAuthAccountsAPITestCase(ExtendedAPITestCase):
     def _get_url(self):
-        return reverse(Namespace.OAUTH + ":" + OAuthPathName.OAUTH_ACCOUNT_LIST)
+        return reverse(Namespace.OAUTH + ":" + OAuthPathName.OAUTH_ACCOUNT_LIST_UPDATE)
 
     def setUp(self):
         super().setUp()
