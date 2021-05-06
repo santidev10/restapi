@@ -163,7 +163,7 @@ class Command(BaseCommand):
             os.remove(admin_export_fp)
             dv360_params = self.audit.params.get(Params.DV360_SYNC_DATA)
             if dv360_params:
-                generate_sdf_segment_task(self.audit.params["user_id"], segment.id,
+                generate_sdf_segment_task.delay(self.audit.params["user_id"], segment.id,
                                           dv360_params[Params.ADVERTISER_ID], dv360_params[Params.ADGROUP_IDS])
         # pylint: enable=broad-except
         finally:
