@@ -54,7 +54,7 @@ class UserAuthApiView(APIView):
         password = data.get("password")
         session = data.get("session")
         mfa_type = data.get("mfa_type")
-        is_temp_auth = auth_token.startswith("temp")
+        is_temp_auth = isinstance(auth_token, str) and auth_token.startswith("temp")
 
         # If auth_token, check if valid token before any operations
         if auth_token:

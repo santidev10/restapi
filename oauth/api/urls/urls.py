@@ -21,8 +21,8 @@ urlpatterns = [
         name=path_names.OAUTH_ACCOUNT_UPDATE),
 
     url(r"^oauth_accounts/$",
-        views.OAuthAccountListPIView.as_view(),
-        name=path_names.OAUTH_ACCOUNT_LIST),
+        views.OAuthAccountListUpdateAPIView.as_view(),
+        name=path_names.OAUTH_ACCOUNT_LIST_UPDATE),
 
     url(r"^gads_accounts/$",
         views.GAdsAccountListAPIView.as_view(),

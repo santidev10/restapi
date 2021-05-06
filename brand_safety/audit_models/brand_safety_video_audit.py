@@ -41,10 +41,12 @@ class BrandSafetyVideoAudit(object):
         ])
         transcript_text = video.transcript or ""
         audit_metadata = {}
-        if not video.general_data.lang_code:
-            audit_metadata["language"] = self.audit_utils.get_language(text)
-        else:
+        if video.general_data.primary_lang_code:
+            audit_metadata["language"] = video.general_data.primary_lang_code
+        elif video.general_data.lang_code:
             audit_metadata["language"] = video.general_data.lang_code
+        else:
+            audit_metadata["language"] = self.audit_utils.get_language(text)
 
         # if transcript_text and not data.get("transcript_language"):
         if transcript_text and not video.transcript_language:

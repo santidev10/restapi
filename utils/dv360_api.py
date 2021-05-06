@@ -143,7 +143,7 @@ class DV360Connector:
                 "filterIds": line_item_ids,
             })
         self.get_sdf_report(report_filter, target_dir)
-        ad_group_sdf_fp = f"{target_dir}/SDF-Adgroups.csv"
+        ad_group_sdf_fp = f"{target_dir}/SDF-AdGroups.csv"
         return ad_group_sdf_fp
 
     def get_sdf_report(self, report_filter: dict, target_dir: str) -> list:
