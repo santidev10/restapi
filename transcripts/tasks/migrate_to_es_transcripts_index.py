@@ -42,9 +42,8 @@ logger = logging.getLogger(__name__)
 UPSERT_BACKOFF_EXCEPTIONS = (TransportError, TransportException, ReadTimeoutError, BulkIndexError,)
 CACHED_CEILING_NAME = "migrate_to_es_transcripts_index_ceiling"
 CACHED_CURSOR_NAME = "migrate_to_es_transcripts_index_cursor"
-# limit update to only items that have
-# VIDEO_VIEWS_THRESHOLD = 10000000
-VIDEO_VIEWS_THRESHOLD = 0
+# limit update to only Videos with view count over 10M on RC. No limit for Prod
+VIDEO_VIEWS_THRESHOLD = settings.TRANSCRIPTS_MIGRATION_VIDEO_VIEWS_THRESHOLD
 
 
 class Task:
