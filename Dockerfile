@@ -6,6 +6,13 @@ COPY ./requirements.txt /tmp/
 COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
 RUN pip install -r /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.es_componenets.txt
+
+# Install pycld2 in the container
+RUN git clone https://github.com/aboSamoor/pycld2 /tmp/pycld2
+RUN sed -i "s/\"-m64\",//g" /tmp/pycld2/setup.py
+WORKDIR /tmp/pycld2/
+RUN python /tmp/pycld2/setup.py install
+
 WORKDIR /app
 ENV PYTHONPATH=/app
 RUN chown -R www-data:www-data /app
