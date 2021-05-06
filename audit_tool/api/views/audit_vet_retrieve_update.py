@@ -142,7 +142,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             | Q(checked_out_at__lt=now - timedelta(minutes=CHECKOUT_THRESHOLD))
         )
         next_item = None
-        total_remains = vetting_items.count() - 1
+        total_remains = vetting_items.count()
         # Try to find first available vetting item
         for _ in range(total_remains):
             try:
