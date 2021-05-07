@@ -80,7 +80,7 @@ class AuditSaveApiView(APIView):
                 raise ValidationError("year must be between 2000 and {}".format(datetime.now().year))
         if move_to_top and audit_id:
             try:
-                audit = AuditProcessor.objects.get(id=audit_id)
+                audit = AuditProcessor.objects.get(source=0, id=audit_id)
                 lowest_priority = \
                 AuditProcessor.objects.filter(source=0, completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
                 audit.pause = lowest_priority.pause - 1
@@ -89,7 +89,7 @@ class AuditSaveApiView(APIView):
             # pylint: disable=broad-except
             except Exception as e:
             # pylint: enable=broad-except
-                raise ValidationError("invalid audit_id")
+                raise ValidationError("invalid request")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
             if max_recommended > 500000:
