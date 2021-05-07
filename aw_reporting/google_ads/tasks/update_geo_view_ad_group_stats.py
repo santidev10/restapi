@@ -186,10 +186,25 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
                 continue
 
             stats = self._get_stats_from_row(row)
+            if self._skip_stats_creation(stats):
+                continue
             self.create_queue.append(AdGroupGeoViewStatistic(**stats))
             # create stats if threshold met/exceeded. we don't want a huge queue of stuff to create.
             # not doing this could cause memory issues
             self._create_stats_if_threshold_met()
+
+    @staticmethod
+    def _skip_stats_creation(self, stats: dict) -> bool:
+        """
+        given a stats dictionary, representing a serialized report row, determine whether or not to discard the data
+        we want to save db space by discarding data that has no impact on pricing, like when cost is zero
+        :return:
+        """
+        if not stats.get("cost"):
+            return True
+        if not stats.get("impressions"):
+            return True
+        return False
 
     def _create_stats_if_threshold_met(self) -> None:
         """
