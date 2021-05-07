@@ -38,8 +38,8 @@ MAX_PLACEMENTS = 20000
 
 
 @celery_app.task
-def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id: CustomSegment.pk, advertiser_id: DV360Advertiser.id,
-                      adgroup_ids: list[AdGroup.id]):
+def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id: CustomSegment.pk,
+                              advertiser_id: DV360Advertiser.id, adgroup_ids: list[AdGroup.id]):
     """
     Generate Ad group SDF with CustomSegment data as Ad group placements
         This task retrieves SDF data for the target Ad Groups from the DV360 API to ensure that the only resources
@@ -102,7 +102,7 @@ def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id
             row[placements_remove_idx] = ""
             _remove_error_fields(row, remove_erroneous_idx)
             writer.writerow(row)
-    finalize_results(segment, output_fp, user.email)
+    finalize_results(segment, output_fp, user.email, adgroup_ids)
     shutil.rmtree(target_dir)
 
 
@@ -113,19 +113,20 @@ def get_adgroup_sdf(connector, advertiser_id, target_dir, adgroup_ids):
 
 
 @retry(count=5, delay=10)
-def finalize_results(segment: CustomSegment, result_fp: str, user_email: str):
+def finalize_results(segment: CustomSegment, result_fp: str, user_email: str, adgroup_ids: list[int]):
     """
     Upload SDF result and notify user
     :param segment: CustomSegment instance
     :param result_fp: Filepath of completed SDF
     :param user_email: Completion recipient
+    :param adgroup_ids: Target AdGroup ids to update placements for
     :return:
     """
     content_disposition = segment.s3.get_content_disposition(f"{segment.title}_SDF_AdGroups.csv")
     s3_key = f"{uuid4()}.csv"
     segment.s3.export_file_to_s3(result_fp, s3_key, extra_args=dict(ContentDisposition=content_disposition))
     segment.update_statistics(s3_key, Results.DV360_SYNC_DATA, Results.EXPORT_FILENAME, save=True)
-    send_export_email(user_email, segment.title, segment.s3.generate_temporary_url(s3_key), message_type=1)
+    _send_email(user_email, segment, s3_key, adgroup_ids)
 
 
 def _remove_error_fields(row, idx) -> None:
@@ -174,3 +175,14 @@ def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> list
             break
     return to_export
 
+
+def _send_email(recipient_email: str, segment: CustomSegment, s3_key: str, adgroup_ids: list[int]) -> None:
+    """ Send notification email to user with completed results """
+    extra_content = "\n\nCampaign Selections" \
+        + '<ul style="list-style-position: inside; padding-left: 0;">' \
+        + "".join([f"<li>{ag.display_name}</li>" for ag in AdGroup.objects.filter(id__in=adgroup_ids)]) \
+        + "<ul>"
+    subject = f"ViewIQ: Your {segment.title} SDF File"
+    download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24)
+    send_export_email(recipient_email, subject, download_url, message_type=1,
+                      extra_content=extra_content)

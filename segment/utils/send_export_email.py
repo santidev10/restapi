@@ -9,10 +9,9 @@ MESSAGES = {
 }
 
 
-def send_export_email(recipients, export_title, download_url, message_type=0):
-    subject = "{}".format(export_title)
-    text_header = MESSAGES[message_type].format(export_title)
-    text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
+def send_export_email(recipients, subject, download_url, message_type=0, extra_content=""):
+    text_header = MESSAGES[message_type].format(subject)
+    text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url) + extra_content
     send_html_email(
         subject=subject,
         to=recipients,
