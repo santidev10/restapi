@@ -7,6 +7,9 @@ from video.api.serializers.video import VideoSerializer
 
 class VideoSerializerTestCase(TestCase):
 
+    # used by BlackListSerializerMixin
+    databases = ["audit", "default"]
+
     def test_transcript_serialization(self):
         """
         ensure that videos with an empty custom_captions.items fails gracefully, by producing an empty `transcript`

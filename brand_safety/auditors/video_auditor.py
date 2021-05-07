@@ -43,7 +43,9 @@ class VideoAuditor(BaseAuditor):
             tags=video_dict.get("tags"),
         )
         # Attributes added to video instance required for audit
-        with_data = BrandSafetyVideo(video).to_representation(video)
+        transcripts_mapping = self._get_transcript_mapping([video.main.id])
+        context = {"transcripts": transcripts_mapping}
+        with_data = BrandSafetyVideo(video, context=context).to_representation(video)
         audit = BrandSafetyVideoAudit(with_data, self.audit_utils)
         audit.run()
         return audit
@@ -71,7 +73,9 @@ class VideoAuditor(BaseAuditor):
         """
         videos = self.video_manager.get(video_ids, skip_none=True, source=VIDEO_SOURCE)
         channel_mapping = channel_mapping or self._get_channel_mapping({v.channel.id for v in videos if v.channel.id is not None})
-        with_data = BrandSafetyVideo(videos, many=True, context=dict(channels=channel_mapping)).data
+        transcript_mapping = self._get_transcript_mapping(video_ids=video_ids)
+        with_data = BrandSafetyVideo(videos, many=True, context=dict(channels=channel_mapping,
+                                                                     transcripts=transcript_mapping)).data
         return with_data, channel_mapping
 
     def process_for_channel(self, channel: Channel, videos: list, index=True) -> list:
@@ -83,9 +87,12 @@ class VideoAuditor(BaseAuditor):
         :param index: bool -> Determines whether to index video audit results or not
         """
         all_audits = []
-        channel_mapping = {"channels": {channel.main.id: channel}}
+        context = {"channels": {channel.main.id: channel}}
         for batch in self.audit_utils.batch(videos, self.VIDEO_BATCH_SIZE):
-            with_data = BrandSafetyVideo(batch, many=True, context=channel_mapping).data
+            video_ids = [video.main.id for video in batch]
+            transcripts_mapping = self._get_transcript_mapping(video_ids=video_ids)
+            context["transcripts"] = transcripts_mapping
+            with_data = BrandSafetyVideo(batch, many=True, context=context).data
             video_audits = [self.audit_video(video) for video in with_data]
             all_audits.extend(video_audits)
             if index:
@@ -131,6 +138,15 @@ class VideoAuditor(BaseAuditor):
             for channel in channels
         }
         return channel_map
+
+    def _get_transcript_mapping(self, video_ids: list) -> dict:
+        """
+        get a mapping of video transcripts by video id for video audits
+        :param video_ids: [str, ...]
+        :return: dict
+        """
+        transcripts = self.transcripts_manager.get_by_video_ids(video_ids=video_ids)
+        return self.audit_utils.map_transcripts_by_video_id(transcripts=transcripts)
 
     def _check_rescore_channels(self, channels: list) -> None:
         """

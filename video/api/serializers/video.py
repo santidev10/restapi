@@ -1,12 +1,9 @@
 import re
 
 from django.contrib.auth import get_user_model
-from elasticsearch_dsl.utils import AttrList
 from rest_framework.fields import SerializerMethodField
 
-from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
-from es_components.models.video import Video
 from userprofile.constants import StaticPermissions
 from utils.brand_safety import get_brand_safety_data
 from utils.datetime import date_to_chart_data_str
@@ -14,12 +11,12 @@ from utils.es_components_api_utils import BlackListSerializerMixin
 from utils.es_components_api_utils import ESDictSerializer
 from utils.es_components_api_utils import VettedStatusSerializerMixin
 from utils.serializers.fields import ParentDictValueField
+from video.api.serializers.video_transcript_serializer_mixin import VideoTranscriptSerializerMixin
 
 
-REGEX_TO_REMOVE_TIMEMARKS = r"^\s*$|((\r\n|\n|\r|\,|)(\d+(\:\d+\:\d+[.,]\d+|))(\s+-->\s+\d+\:\d+\:\d+[.,]\d+|))"
+class VideoSerializer(VideoTranscriptSerializerMixin, VettedStatusSerializerMixin, BlackListSerializerMixin,
+                      ESDictSerializer):
 
-
-class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSerializerMixin):
     chart_data = SerializerMethodField()
     transcript = SerializerMethodField()
     brand_safety_data = SerializerMethodField()
@@ -71,80 +68,6 @@ class VideoSerializer(ESDictSerializer, VettedStatusSerializerMixin, BlackListSe
             })
 
         return chart_data
-
-    def get_transcript(self, video: Video) -> str:
-        """
-        given a Video instance, get the transcript from the video
-        :param video:
-        :return: str
-        """
-        text = ""
-        try:
-            vid_lang_code = video.general_data.lang_code
-        # pylint: disable=broad-except
-        except Exception:
-            vid_lang_code = "en"
-        # pylint: enable=broad-except
-        # copy by value (instead of ref), to prevent priorities list morphing
-        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
-        if vid_lang_code and isinstance(vid_lang_code, str):
-            lang_code_priorities.insert(0, vid_lang_code.lower())
-        if "captions" in video and "items" in video.captions:
-            validated_caption_items = self._validate_caption_items(video.captions.items)
-            text = self._get_best_available_transcript(lang_code_priorities=lang_code_priorities,
-                                                       captions_items=validated_caption_items)
-        if not text and "custom_captions" in video and "items" in video.custom_captions:
-            validated_caption_items = self._validate_caption_items(video.custom_captions.items)
-            text = self._get_best_available_transcript(lang_code_priorities=lang_code_priorities,
-                                                       captions_items=validated_caption_items)
-        transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
-        return transcript
-
-    @staticmethod
-    def _validate_caption_items(caption_items: AttrList) -> list:
-        """
-        get a list of caption items and validate each item, returns only valid items
-        :param caption_items:
-        :return:
-        """
-        validated = [item for item in caption_items
-                     if hasattr(item, "language_code")
-                     and isinstance(item.language_code, str)]
-        return validated
-
-    def _get_best_available_transcript(self, lang_code_priorities: list, captions_items: list) -> str:
-        """
-        given a list of language codes ordered by priority, and a list of caption items, get the highest ranked caption
-        text by language priority
-        :param lang_code_priorities:
-        :param captions_items:
-        :return: str
-        """
-        text = ""
-        if not len(captions_items):
-            return text
-
-        # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
-        best_lang_code = self._get_best_available_language(lang_code_priorities, captions_items)
-        for item in captions_items:
-            if item.language_code.split("-")[0].lower() == best_lang_code:
-                text = item.text
-                break
-        return text
-
-    @staticmethod
-    def _get_best_available_language(lang_code_priorities: list, captions_items: list) -> str:
-        """
-        given a list of language codes ordered by priority, get the first available language code
-        :param lang_code_priorities:
-        :param captions_items:
-        :return:
-        """
-        available_lang_codes = [item.language_code.split("-")[0].lower() for item in captions_items]
-        for lang_code in lang_code_priorities:
-            if lang_code in available_lang_codes:
-                return lang_code
-        return captions_items[0].language_code
 
     @staticmethod
     def get_brand_safety_data(channel) -> dict:

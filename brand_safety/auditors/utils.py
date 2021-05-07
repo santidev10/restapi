@@ -290,3 +290,18 @@ class AuditUtils(object):
         ]
         manager.upsert(updated)
 
+    @staticmethod
+    def map_transcripts_by_video_id(transcripts: list) -> dict:
+        """
+        given a list of transcript objects, return a map of transcripts by video id
+        :param transcripts:
+        :return:
+        """
+        transcripts_by_video_id = {}
+        for transcript in transcripts:
+            video_id = str(transcript.video.id)
+            video_transcripts = transcripts_by_video_id.get(video_id, [])
+            video_transcripts.append(transcript)
+            transcripts_by_video_id[video_id] = video_transcripts
+        return transcripts_by_video_id
+

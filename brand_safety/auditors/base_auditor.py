@@ -1,11 +1,13 @@
 import concurrent.futures
 
 from .utils import AuditUtils
+from brand_safety.auditors.constants import TRANSCRIPT_SOURCE
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+from es_components.managers import TranscriptManager
 from es_components.managers import VideoManager
-from utils.utils import chunks_generator
 from utils.exception import upsert_retry
+from utils.utils import chunks_generator
 
 
 class BaseAuditor:
@@ -21,6 +23,10 @@ class BaseAuditor:
         self.video_manager = VideoManager(
             sections=None,
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
+        )
+        self.transcripts_manager = TranscriptManager(
+            sections=TRANSCRIPT_SOURCE,
+            upsert_sections=None,
         )
 
     def index_audit_results(self, es_manager, audit_results: list) -> None:
