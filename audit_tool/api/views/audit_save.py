@@ -6,6 +6,7 @@ from io import StringIO
 from uuid import uuid4
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
