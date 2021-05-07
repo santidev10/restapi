@@ -54,7 +54,9 @@ def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
             futures = [executor.submit(get_report, *args) for args in all_args]
             reports_data = [f.result() for f in concurrent.futures.as_completed(futures)]
         for account_id, report in reports_data:
-            update_create_campaigns(report, account_id, oauth_account.refresh_token)
+            # Account is invalid if get_report return None. Do not continue processing
+            if report is not None:
+                update_create_campaigns(report, account_id, oauth_account.refresh_token)
 
 
 def update_cid_campaigns(account_id, oauth_account: OAuthAccount) -> None:
@@ -89,10 +91,10 @@ def update_create_campaigns(report, account_id, refresh_token):
 
 def get_report(account_id: int, refresh_token: str):
     """ Retrieve Campaign report for Google Ads account id"""
-    client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
-    fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks", "CampaignStatus"]
     try:
+        client = get_client(client_customer_id=account_id, refresh_token=refresh_token)
+        fields = [*CAMPAIGN_REPORT_FIELDS_MAPPING.values(), "Clicks", "CampaignStatus"]
         report = get_campaign_report(client, fields, predicates=CAMPAIGN_REPORT_PREDICATES)
     except AccountInactiveError:
-        report = []
+        report = None
     return account_id, report
