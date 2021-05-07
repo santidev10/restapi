@@ -179,9 +179,11 @@ def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> list
 def _send_email(recipient_email: str, segment: CustomSegment, s3_key: str, adgroup_ids: list[int]) -> None:
     """ Send notification email to user with completed results """
     extra_content = "\n\nCampaign Selections" \
-        + '<ul style="list-style-position: inside; padding-left: 0;">' \
-        + "".join([f"<li>{ag.display_name}</li>" for ag in AdGroup.objects.filter(id__in=adgroup_ids)]) \
-        + "<ul>"
+                    + '<div style="display:flex; justify-content:center;">' \
+                    + '<ul style="text-align:left;">' \
+                    + "".join([f'<li>{ag.display_name}</li>' for ag in
+                               AdGroup.objects.filter(id__in=adgroup_ids)]) \
+                    + "<ul></div>"
     subject = f"ViewIQ: Your {segment.title} SDF File"
     download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24)
     send_export_email(recipient_email, subject, download_url, message_type=1,
