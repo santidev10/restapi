@@ -18,9 +18,11 @@ from utils.api.mutate_query_params import AddFieldsMixin
 from utils.es_components_api_utils import get_fields
 from utils.utils import prune_iab_categories
 from video.api.serializers.video import VideoSerializer
+from video.api.views.video_view_transcript_mixin import VideoTranscriptSerializerContextMixin
 
 
-class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin):
+class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixin,
+                                 VideoTranscriptSerializerContextMixin):
     permission_classes = (StaticPermissions.has_perms(StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA),)
 
     __video_manager = VideoManager
@@ -51,7 +53,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        context = self._get_serializer_context(video.channel.id)
+        context = self._get_serializer_context(channel_id=video.channel.id, video_id=video.main.id)
         result = VideoSerializer(video, context=context).data
 
         try:
@@ -68,7 +70,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
 
         return Response(result)
 
-    def _get_serializer_context(self, channel_id):
+    def _get_serializer_context(self, channel_id: str, video_id: str) -> dict:
         try:
             channel = ChannelManager(Sections.CUSTOM_PROPERTIES).get([channel_id], skip_none=True)[0]
             channel_blocklist = channel.custom_properties.blocklist
@@ -80,5 +82,6 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin, AddFieldsMixi
                 channel_id: channel_blocklist
             },
             "languages_map": {code.lower(): name for code, name in LANGUAGES.items()},
+            "transcripts": self.get_transcripts_serializer_context(video_ids=[video_id]),
         }
         return context

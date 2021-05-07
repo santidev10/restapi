@@ -136,20 +136,13 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
             if vid_id not in successful_vid_ids:
                 failure = transcripts_scraper.failure_reasons[vid_id]
                 if isinstance(failure, ValidationError) and failure.message == 'All proxies have been blocked.':
+                    # save unsaved work before stopping
                     if updated_videos:
                         upsert_start = time.perf_counter()
-                        video_manager.upsert(updated_videos)
+                        video_manager.upsert(updated_videos, ignore_update_time_sections=[Sections.BRAND_SAFETY])
                         upsert_end = time.perf_counter()
                         upsert_time = upsert_end - upsert_start
                         logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
-                    # if vid_ids_to_rescore:
-                    #     rescore_start = time.perf_counter()
-                    #     rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-                    #     video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
-                    #     rescore_end = time.perf_counter()
-                    #     rescore_time = rescore_end - rescore_start
-                    #     logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} "
-                    #                 f"seconds.")
                     logger.info(failure.message)
                     transcripts_scraper.send_yt_blocked_email()
                     # store count of successes over a period of time, notify if none over that period
@@ -171,19 +164,14 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
             pg_transcript = AuditVideoTranscript.update_or_create_with_parent(
                 video_id=vid_id, lang_code=lang_code, defaults={"source": SourceTypeIdEnum.TTS_URL.value,
                                                                 "transcript": raw_response})
-            # TODO for > 5.15: once we've completely migrated over to using the Transcripts index, we can remove this
-            # we'll store the processed transcript in ES for display
-            processed_text = transcripts_scraper.successful_vids[vid_id].captions
-            populate_video_custom_captions(vid_obj, [processed_text], [lang_code], source="tts_url",
-                                           asr_lang=lang_code)
+            # we'll mark the Video for rescore, and set some flags
             vid_obj.populate_brand_safety(rescore=True)
+            vid_obj.populate_custom_captions(has_transcripts=True, transcripts_checked_tts_url=True)
             updated_videos.append(vid_obj)
-            # if "task_us_data" not in vid_obj:
-            #     vid_ids_to_rescore.append(vid_id)
-
             # save ES Transcript record in the new Transcripts index, instead of on the video
             es_transcript = Transcript(pg_transcript.id)
             es_transcript.populate_video(id=vid_id)
+            processed_text = transcripts_scraper.successful_vids[vid_id].captions
             es_transcript.populate_text(value=processed_text)
             es_transcript.populate_general_data(language_code=lang_code, source_type=SourceTypeEnum.TTS_URL.value,
                                                 is_asr=True, processor_version=PROCESSOR_VERSION,
@@ -200,13 +188,6 @@ def pull_tts_url_transcripts(query: Type[Query], num_vids: int = settings.TRANSC
         upsert_end = time.perf_counter()
         upsert_time = upsert_end - upsert_start
         logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
-        # if vid_ids_to_rescore:
-        #     rescore_start = time.perf_counter()
-        #     rescore_filter = get_video_ids_query(vid_ids_to_rescore)
-        #     video_manager.update_rescore(filter_query=rescore_filter, rescore=True)
-        #     rescore_end = time.perf_counter()
-        #     rescore_time = rescore_end - rescore_start
-        #     logger.info(f"Updated {len(vid_ids_to_rescore)} Video IDs to be rescored in {rescore_time} seconds.")
 
     # store count of successes over a period of time, notify if none over that period
     notify_if_no_successes()

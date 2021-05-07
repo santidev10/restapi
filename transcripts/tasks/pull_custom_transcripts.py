@@ -117,7 +117,10 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict: dict, trans
     lang_codes = []
     es_transcripts = []
     if not lang_codes_soups_dict:
-        populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source=SourceTypeEnum.CUSTOM.value)
+        # NOTE: George did a populate_video_custom_captions call here, with empty texts/codes. Seems the outcome was
+        # to mark transcripts_checked_v2 and continue, so that's what we're doing here, now that transcripts will go
+        # in their own index
+        vid_obj.populate_custom_captions(transcripts_checked_v2=True)
         return es_transcripts, transcripts_counter
     vid_id = vid_obj.main.id
     top_5_transcripts = get_top_5_transcripts(lang_codes_soups_dict, vid_obj.general_data.lang_code)
@@ -141,7 +144,8 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict: dict, trans
                                             is_asr=False, processor_version=PROCESSOR_VERSION,
                                             processed_at=timezone.now())
         es_transcripts.append(es_transcript)
-    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source=SourceTypeEnum.CUSTOM.value)
+    # we're only going to set a few booleans here, instead of adding the items for the new transcripts index
+    vid_obj.populate_custom_captions(has_transcripts=True, transcripts_checked_v2=True)
     return es_transcripts, transcripts_counter
 
 

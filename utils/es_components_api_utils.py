@@ -1,8 +1,10 @@
 from abc import abstractmethod
-import json
 import hashlib
+import json
 import logging
 import re
+from abc import abstractmethod
+from typing import Union
 from urllib.parse import unquote
 
 from django.contrib.auth import get_user_model
@@ -298,20 +300,36 @@ class QueryGenerator:
             filters.append(query)
         return filters
 
-    def adapt_transcript_filters(self, filters, value):
-        if value is True or value == "true":
-            q1 = QueryBuilder().build()
-            q1 = q1.should().exists().field("custom_captions.items").get()
-            q2 = QueryBuilder().build()
-            q2 = q2.should().exists().field("captions").get()
-            filters.append(q1 | q2)
-        elif value is False or value == "false":
-            q1 = QueryBuilder().build()
-            filters.append(q1.must_not().exists().field("custom_captions.items").get())
-            q2 = QueryBuilder().build()
-            filters.append(q2.must_not().exists().field("captions").get())
-        else:
-            return
+    @staticmethod
+    def adapt_transcript_filters(filters: list, value: Union[str, bool]) -> None:
+        """
+        adapt the transcripts=true query param into an exists/!exists filter
+        :param filters:
+        :param value:
+        :return:
+        """
+        # handle the case of an exists filter
+        if value is True or (isinstance(value, str) and value.lower() == "true"):
+            custom_caption_items_query = QueryBuilder().build().must().exists()\
+                .field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
+            captions_section_query = QueryBuilder().build().must().exists().field(f"{Sections.CAPTIONS}").get()
+            # new transcripts index query
+            has_transcripts_query = QueryBuilder().build().must().term()\
+                .field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts").value(True).get()
+            filters.append(custom_caption_items_query | captions_section_query | has_transcripts_query)
+        # handle not exists filter
+        elif value is False or (isinstance(value, str) and value.lower() == "false"):
+            custom_caption_items_query = QueryBuilder().build().must_not().exists()\
+                .field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
+            captions_section_query = QueryBuilder().build().must_not().exists().field(f"{Sections.CAPTIONS}").get()
+            # new transcripts index query
+            has_transcripts_query = Q("bool")
+            has_transcripts_query |= QueryBuilder().build().must_not().exists()\
+                .field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts").get()
+            has_transcripts_query |= QueryBuilder().build().must().term()\
+                .field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts").value(False).get()
+            for query in [custom_caption_items_query, captions_section_query, has_transcripts_query]:
+                filters.append(query)
 
     def adapt_ias_filters(self, filters, value):
         """
@@ -321,7 +339,7 @@ class QueryGenerator:
         :param value:
         :return:
         """
-        if value is True or value == "true":
+        if value is True or (isinstance(value, str) and value.lower() == "true"):
             timestamp = self.context.get("ias_last_ingested_timestamp")
             query = get_ias_verified_exists_filter(timestamp)
             filters.append(query)

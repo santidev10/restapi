@@ -1,5 +1,8 @@
 import pickle
+import random
 import urllib
+from random import randint
+from random import shuffle
 from urllib.parse import urlencode
 from unittest.mock import PropertyMock
 from unittest.mock import patch
@@ -9,11 +12,15 @@ from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 
 from brand_safety import constants
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
+from es_components.managers import TranscriptManager
 from es_components.managers import VideoManager
+from es_components.models import Transcript
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from transcripts.constants import TranscriptSourceTypeEnum
 from userprofile.constants import StaticPermissions
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 from utils.api.research import ResearchPaginator
@@ -721,6 +728,128 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         items = response.data["items"]
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].get(Sections.GENERAL_DATA, {}).get("language"), "English")
+
+    def test_transcripts(self):
+        """
+        test that we retrieve new style (transcripts index) transcripts, then successfully fall back to old style
+        (transcript items in a Video) transcripts
+        :return:
+        """
+        videos = []
+        languages = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
+        for _ in range(8):
+            video_id = next(int_iterator)
+            # new transcripts even IDs, old transcripts odd IDs
+            use_new_transcripts = True if video_id % 2 == 0 else False
+            video = Video(video_id)
+            video_language = random.choice(languages)
+            video.populate_general_data(
+                title=f"{video_id} title",
+                description=f"{video_id} desc.",
+                lang_code=video_language
+            )
+            transcript_text = f"correct transcript for video with language: {video_language}"
+            shuffle(languages)
+            transcripts_count = randint(2, 5)
+            transcript_languages = [video_language] + languages[:transcripts_count - 1]
+            # old style transcripts
+            if not use_new_transcripts:
+                transcripts = []
+                for language in transcript_languages:
+                    transcript = dict(
+                        text=transcript_text if language == video_language else "asdf",
+                        language_code=language,
+                        source=TranscriptSourceTypeEnum.TTS_URL.value,
+                        is_asr=True
+                    )
+                    transcripts.append(transcript)
+                video.populate_custom_captions(items=transcripts)
+            # new style transcripts
+            else:
+                transcripts = []
+                for language in transcript_languages:
+                    transcript_id = next(int_iterator)
+                    transcript = Transcript(transcript_id)
+                    transcript.populate_video(id=video_id)
+                    transcript.populate_general_data(language_code=language)
+                    transcript.populate_text(value=transcript_text if language == video_language else "asdf")
+                    transcripts.append(transcript)
+            videos.append(video)
+            video_manager = VideoManager(sections=[Sections.GENERAL_DATA, Sections.CUSTOM_CAPTIONS])
+            video_manager.upsert(videos)
+            if use_new_transcripts:
+                transcript_manager = TranscriptManager(sections=[Sections.GENERAL_DATA, Sections.VIDEO, Sections.TEXT])
+                transcript_manager.upsert(transcripts)
+
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
+        response = self.client.get(self.get_url())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data["items"]
+        video_ids = [video.main.id for video in videos]
+        for item in items:
+            with self.subTest(item):
+                video_id = item.get("main", {}).get("id")
+                self.assertIn(video_id, video_ids)
+                lang_code = item.get("general_data", {}).get("lang_code")
+                self.assertTrue(lang_code)
+                transcript = item.get("transcript")
+                self.assertTrue(isinstance(transcript, str))
+                self.assertEqual(transcript, f"correct transcript for video with language: {lang_code}")
+
+    def test_transcripts_filtering(self):
+        """
+        ensure that the transcripts exists filter works across all trancript types
+        :return:
+        """
+        videos = []
+
+        has_custom_caption_items = Video(next(int_iterator))
+        has_custom_caption_items.populate_general_data(title="has custom caption items",
+                                                       description="this video has custom caption items")
+        custom_caption_item = dict(text="asdf", language_code="en", source=TranscriptSourceTypeEnum.TTS_URL.value,
+                                   is_asr=True)
+        has_custom_caption_items.populate_custom_captions(items=[custom_caption_item])
+        videos.append(has_custom_caption_items)
+
+        has_caption_items = Video(next(int_iterator))
+        has_caption_items.populate_general_data(title="has caption items", description="this video has caption items")
+        caption_item = dict(text="asdf", name="asdf", language_code="en", status="asdf", caption_id="asdf",
+                            youtube_updated_at=timezone.now())
+        has_caption_items.populate_captions(items=[caption_item])
+        # upserting the captions section makes it true, since items are disabled
+        VideoManager(upsert_sections=(Sections.GENERAL_DATA, Sections.CAPTIONS)).upsert([has_caption_items])
+
+        has_transcripts = Video(next(int_iterator))
+        has_transcripts.populate_general_data(title="has transcripts", description="this video has transcripts")
+        has_transcripts.populate_custom_captions(has_transcripts=True)
+        videos.append(has_transcripts)
+
+        missing_transcripts = Video(next(int_iterator))
+        missing_transcripts.populate_general_data(title="missing transcripts",
+                                                 description="this video has no transcripts of any kind (how boring!).")
+        videos.append(missing_transcripts)
+
+        video_manager = VideoManager(upsert_sections=(Sections.MAIN, Sections.GENERAL_DATA, Sections.CUSTOM_CAPTIONS,))
+        video_manager.upsert(videos)
+
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+            StaticPermissions.RESEARCH__TRANSCRIPTS: True,
+        })
+        exists_url = self.get_url(transcripts="true")
+        exists_response = self.client.get(exists_url)
+
+        self.assertEqual(exists_response.status_code, HTTP_200_OK)
+        self.assertEqual(exists_response.data.get("items_count"), 3)
+
+        missing_url = self.get_url(transcripts="false")
+        missing_response = self.client.get(missing_url)
+        self.assertEqual(missing_response.status_code, HTTP_200_OK)
+        self.assertEqual(missing_response.data.get("items_count"), 1)
 
     def test_get_default_cache(self):
         """ Test video caching with default sort of stats.views:desc """
