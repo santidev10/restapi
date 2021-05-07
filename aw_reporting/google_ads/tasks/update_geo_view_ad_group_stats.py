@@ -194,7 +194,7 @@ class PricingToolAccountAdGroupStatsUpdater(UpdateMixin):
             self._create_stats_if_threshold_met()
 
     @staticmethod
-    def _skip_stats_creation(self, stats: dict) -> bool:
+    def _skip_stats_creation(stats: dict) -> bool:
         """
         given a stats dictionary, representing a serialized report row, determine whether or not to discard the data
         we want to save db space by discarding data that has no impact on pricing, like when cost is zero
