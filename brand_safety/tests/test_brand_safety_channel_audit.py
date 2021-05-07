@@ -1,6 +1,8 @@
 import time
 import mock
 import pickle
+import random
+from random import randint
 
 from django.utils import timezone
 from elasticsearch_dsl import Index
@@ -8,12 +10,15 @@ from elasticsearch_dsl import Index
 from audit_tool.models import AuditLanguage
 from brand_safety.auditors.channel_auditor import ChannelAuditor
 from brand_safety.auditors.utils import AuditUtils
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+from es_components.managers import TranscriptManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
+from es_components.models import Transcript
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from utils.unittests.int_iterator import int_iterator
@@ -26,6 +31,7 @@ from utils.unittests.test_case import ExtendedAPITestCase
 class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = (Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS, Sections.TASK_US_DATA, Sections.CUSTOM_PROPERTIES)
     channel_manager = ChannelManager(sections=SECTIONS)
+    transcript_manager = TranscriptManager(sections=(Sections.VIDEO, Sections.GENERAL_DATA, Sections.TEXT))
     video_manager = VideoManager(sections=SECTIONS + (Sections.CHANNEL,))
     BS_CATEGORIES = ["channel_test"]
     BS_WORDS = ["channel", "bad", "words"]
@@ -67,6 +73,41 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         swedish_hits = swedish_keywords_processor.extract_keywords(swedish_video.general_data.description)
         self.assertEqual(english_hits, ["mma"])
         self.assertEqual(swedish_hits, [])
+
+    def test_transcripts(self, *args, **kwargs):
+        """
+        test audit of channel videos
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        channel_id = next(int_iterator)
+        channel = Channel(channel_id)
+        language_codes = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
+        videos = []
+        transcripts = []
+        for word in self.BS_WORDS:
+            video_id = next(int_iterator)
+            video = Video(f"{video_id}")
+            video.populate_general_data(description=f"{video_id} desc.")
+            video.populate_channel(id=channel_id)
+            videos.append(video)
+            for _ in range(randint(1, 5)):
+                transcript_id = next(int_iterator)
+                transcript = Transcript(transcript_id)
+                transcript.populate_video(id=video_id)
+                transcript.populate_general_data(language_code=random.choice(language_codes))
+                transcript.populate_text(value=f"{transcript_id} text the quick brown fox {word}")
+                transcripts.append(transcript)
+        self.channel_manager.upsert([channel])
+        self.video_manager.upsert(videos)
+        self.transcript_manager.upsert(transcripts)
+
+        channel_auditor = ChannelAuditor()
+        channel_auditor.process([channel.main.id])
+        Index(Channel._index._name).refresh()
+        updated = self.channel_manager.get([channel.main.id])[0]
+        self.assertTrue(0 < updated.brand_safety.overall_score < 100)
 
     def test_audit_metadata(self, *_):
         """ Test channel audit metadata detection """

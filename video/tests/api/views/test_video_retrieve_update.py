@@ -1,14 +1,21 @@
 # pylint: disable=cyclic-import
+import random
+from random import randint
+from random import shuffle
 from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from es_components.constants import Sections
+from es_components.managers import TranscriptManager
 from es_components.managers import VideoManager
+from es_components.models.transcript import Transcript
 from es_components.models.video import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from transcripts.constants import TranscriptSourceTypeEnum
 from userprofile.constants import StaticPermissions
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.reverse import reverse
@@ -137,3 +144,64 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data.get(Sections.GENERAL_DATA, {}).get("language"), "English")
+
+    def test_transcripts(self):
+        """
+        test that transcripts are retrieved from the new index, and fallback to the old video caption_items records
+        :return:
+        """
+        video_id = next(int_iterator)
+        # new transcripts even IDs, old transcripts odd IDs
+        video = Video(video_id)
+        languages = TRANSCRIPTS_LANGUAGE_PRIORITY.copy()
+        video_language = random.choice(languages)
+        video.populate_general_data(
+            title=f"{video_id} title",
+            description=f"{video_id} desc.",
+            lang_code=video_language
+        )
+        transcript_text = f"correct transcript for video with language: {video_language}"
+        shuffle(languages)
+        transcripts_count = randint(2, 5)
+        transcript_languages = [video_language] + languages[:transcripts_count - 1]
+
+        old_transcripts = []
+        for language in transcript_languages:
+            transcript = dict(
+                text="incorrect transcript",
+                language_code=language,
+                source=TranscriptSourceTypeEnum.TTS_URL.value,
+                is_asr=True
+            )
+            old_transcripts.append(transcript)
+        video.populate_custom_captions(items=old_transcripts)
+        video_manager = VideoManager(sections=[Sections.GENERAL_DATA, Sections.CUSTOM_CAPTIONS])
+        video_manager.upsert([video])
+
+        new_transcripts = []
+        for language in transcript_languages:
+            transcript_id = next(int_iterator)
+            transcript = Transcript(transcript_id)
+            transcript.populate_video(id=video_id)
+            transcript.populate_general_data(language_code=language)
+            transcript.populate_text(value=transcript_text if language == video_language else "asdf")
+            new_transcripts.append(transcript)
+
+        transcript_manager = TranscriptManager(sections=[Sections.GENERAL_DATA, Sections.VIDEO, Sections.TEXT])
+        transcript_manager.upsert(new_transcripts)
+
+        self.create_test_user(perms={
+            StaticPermissions.RESEARCH: True,
+            StaticPermissions.RESEARCH__CHANNEL_VIDEO_DATA: True,
+        })
+        url = self._get_url(video.main.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        res_video_id = data.get("main", {}).get("id")
+        self.assertEqual(res_video_id, video_id)
+        lang_code = data.get("general_data", {}).get("lang_code")
+        self.assertTrue(lang_code)
+        transcript = data.get("transcript")
+        self.assertTrue(isinstance(transcript, str))
+        self.assertEqual(transcript, f"correct transcript for video with language: {lang_code}")

@@ -755,7 +755,7 @@ class BlacklistItem(models.Model):
             item_ids = [item_ids]
         data = []
         items = BlacklistItem.objects.filter(item_type=item_type,
-                                             item_id_hash__in=[get_hash_name(_id) for _id in item_ids],
+                                             item_id_hash__in=[get_hash_name(str(_id)) for _id in item_ids],
                                              blocklist=blocklist)
         for item in items:
             if item.item_id in item_ids:
