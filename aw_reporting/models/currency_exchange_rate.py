@@ -9,3 +9,8 @@ class CurrencyExchangeRate(models.Model):
     from_code = models.CharField(max_length=3, db_index=True)
     to_code = models.CharField(max_length=3, db_index=True)
     rate = models.DecimalField(max_digits=30, decimal_places=15)
+
+    class Meta:
+        index_together = [
+            ("date", "from_code", "to_code"),
+        ]
