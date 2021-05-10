@@ -120,7 +120,7 @@ class SegmentDV360SyncAPIView(APIView):
         }
         # Audit.temp_stop will be False once seed file is uploaded with start_audit method
         audit = AuditProcessor.objects.create(source=2, audit_type=audit_type, name=segment.title.lower(),
-                                              params=audit_params, temp_stop=True)
+                                              params=audit_params, temp_stop=True, pause=-100)
         GenerateSegmentUtils(segment).start_audit(segment_export_fp, audit)
         return audit
 
