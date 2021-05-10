@@ -39,6 +39,7 @@ def google_ads_update_task(oauth_account_ids=None):
     for oauth in oauth_accounts:
         try:
             mcc_accounts, cid_accounts = get_accounts(oauth.refresh_token)
+            update_accounts(oauth, mcc_accounts + cid_accounts, name_field="descriptiveName")
         except (GoogleAdsServerFault, RefreshError):
             logger.warning(f"Error google_ads_update_task for OAuthAccount id: {oauth.id}")
             continue
@@ -46,7 +47,6 @@ def google_ads_update_task(oauth_account_ids=None):
         for mcc_id in get_to_update(mcc_accounts, update_threshold):
             update_with_lock(update_mcc_campaigns, mcc_id, oauth)
 
-        update_accounts(oauth, cid_accounts, name_field="descriptiveName")
         for cid_id in get_to_update(cid_accounts, update_threshold):
             update_with_lock(update_cid_campaigns, cid_id, oauth)
 
