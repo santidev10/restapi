@@ -48,11 +48,10 @@ VIDEO_VIEWS_THRESHOLD = settings.TRANSCRIPTS_MIGRATION_VIDEO_VIEWS_THRESHOLD
 
 class Task:
 
-    CHUNK_SIZE = 10
+    CHUNK_SIZE = 5000
     SLEEP_SECONDS = 0
     EMAIL_LOCK_NAME = "migrate_to_es_transcripts_index_email"
-    # EMAIL_LIST = ["andrew.wong@channelfactory.com", "alex.peace@channelfactory.com"]
-    EMAIL_LIST = ["andrew.wong@channelfactory.com",]
+    EMAIL_LIST = ["andrew.wong@channelfactory.com", "alex.peace@channelfactory.com"]
 
     def __init__(self):
         self.cursor = 0
@@ -215,6 +214,7 @@ class Task:
         message = (
             "\n"
             f"total transcripts progress: {total_pct}% (cursor: {self.cursor:,} ceiling: {self.ceiling:,}) \n"
+            f"----- video views threshold: {VIDEO_VIEWS_THRESHOLD:,} \n"
             f"----- chunks processed this run: {self.chunks_count:,} \n"
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
             f"----- average chunk duration: {timedelta(seconds=self.avg_chunk_dur_secs.get(pretty=False))} \n"
@@ -310,8 +310,6 @@ class Task:
                 .get()
         es_videos = self.video_manager.search(query=query)
         logger.info(f"got {es_videos.count():,} Videos from ES after constraints")
-        print(f"video ids count: {len(video_ids)}")
-        print(f"filtered videos count: {es_videos.count()}")
         self.es_video_by_video_id = {video.main.id: video for video in es_videos
                                      if hasattr(video, "main") and hasattr(video.main, "id")}
 
@@ -321,7 +319,6 @@ class Task:
         :param video:
         :return:
         """
-        print(f"video id: {video_id}")
         transcripts = self.pg_transcripts_by_video_id.get(video_id, [])
         if not transcripts:
             self.videos_skipped_count += 1

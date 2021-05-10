@@ -193,7 +193,9 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         service_mock = client_mock.get_service()
         row_factory = RowFactory()
         row_count = random.randrange(10, 25)
-        service_mock.search.return_value = [row_factory.make() for _ in range(row_count)]
+        rows = [row_factory.make() for _ in range(row_count)]
+        rows_without_skipped = self._exclude_skipped_rows(rows)
+        service_mock.search.return_value = rows
         with patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.get_client",
                    return_value=client_mock):
 
@@ -201,7 +203,7 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
             updater.run()
 
             new_stats_count = AdGroupGeoViewStatistic.objects.count()
-            self.assertEqual(new_stats_count - existing_stats_count, row_count)
+            self.assertEqual(new_stats_count - existing_stats_count, len(rows_without_skipped))
 
     def test_stats_dropped_only_once(self):
         """
@@ -214,7 +216,9 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         service_mock = client_mock.get_service()
         row_count = 20
         row_factory = RowFactory(days_diff=row_count)
-        service_mock.search.return_value = [row_factory.make() for _ in range(row_count)]
+        rows = [row_factory.make() for _ in range(row_count)]
+        rows_without_skipped = self._exclude_skipped_rows(rows)
+        service_mock.search.return_value = rows
         create_threshold = 3
         with patch("aw_reporting.google_ads.tasks.update_geo_view_ad_group_stats.get_client",
                    return_value=client_mock),\
@@ -225,7 +229,7 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
             updater.run()
 
             new_stats_count = AdGroupGeoViewStatistic.objects.count()
-            self.assertEqual(new_stats_count - existing_stats_count, row_count)
+            self.assertEqual(new_stats_count - existing_stats_count, len(rows_without_skipped))
 
     def _get_stats_instances(self, days_diffs: list, row_factory: RowFactory) -> list:
         """
@@ -258,8 +262,9 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
         service_mock = client_mock.get_service()
         row_count = 20
         row_factory = RowFactory(days_diff=row_count)
-        service_mock.search.return_value = [row_factory.make() for _ in range(row_count)]
-
+        rows = [row_factory.make() for _ in range(row_count)]
+        service_mock.search.return_value = rows
+        rows_without_skipped = self._exclude_skipped_rows(rows)
         # create records that will persist, because they're outside the deletion range
         days_diffs = list(range(AD_WORDS_STABILITY_STATS_DAYS_COUNT + 1,
                                 AD_WORDS_STABILITY_STATS_DAYS_COUNT + 10))
@@ -288,5 +293,14 @@ class PricingToolAdGroupStatsUpdaterTestCase(TransactionTestCase):
                     self.assertIn(record.id, all_ids)
 
             new_stats_count = AdGroupGeoViewStatistic.objects.count()
-            expected_stats_count = existing_stats_count - len(wont_persist) + row_count
+            expected_stats_count = existing_stats_count - len(wont_persist) + len(rows_without_skipped)
             self.assertEqual(expected_stats_count, new_stats_count)
+
+    @staticmethod
+    def _exclude_skipped_rows(rows: list):
+        """
+        exclude rows that would be skipped for creation, i.e.: those with zero impressions or zero cost
+        :param rows:
+        :return:
+        """
+        return [row for row in rows if row.metrics.impressions and row.metrics.cost_micros]
