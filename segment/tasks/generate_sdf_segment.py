@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from uuid import uuid4
 
+from administration.notifications import send_html_email
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
@@ -184,7 +185,12 @@ def _send_email(recipient_email: str, segment: CustomSegment, s3_key: str, adgro
                     + "".join([f'<li>{ag.display_name}</li>' for ag in
                                AdGroup.objects.filter(id__in=adgroup_ids)]) \
                     + "<ul></div>"
-    subject = f"ViewIQ: Your {segment.title} SDF File"
     download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24)
-    send_export_email(recipient_email, subject, download_url, message_type=1,
-                      extra_content=extra_content)
+    text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url) + extra_content
+    send_html_email(
+        subject=f"ViewIQ: Your {segment.title} SDF File",
+        to=recipient_email,
+        text_header=f"Your {segment.title} SDF File is ready",
+        text_content=text_content,
+        from_email=settings.EXPORTS_EMAIL_ADDRESS
+    )
