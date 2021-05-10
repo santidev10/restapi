@@ -214,6 +214,7 @@ class Task:
         message = (
             "\n"
             f"total transcripts progress: {total_pct}% (cursor: {self.cursor:,} ceiling: {self.ceiling:,}) \n"
+            f"----- video views threshold: {VIDEO_VIEWS_THRESHOLD:,} \n"
             f"----- chunks processed this run: {self.chunks_count:,} \n"
             f"----- latest chunk duration: {timedelta(seconds=self.latest_chunk_dur_seconds)} \n"
             f"----- average chunk duration: {timedelta(seconds=self.avg_chunk_dur_secs.get(pretty=False))} \n"
