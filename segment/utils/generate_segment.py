@@ -151,7 +151,7 @@ def generate_segment(segment, query_dict, size, sort=None, s3_key=None, admin_s3
             segment.s3.export_file_to_s3(admin_filename, admin_s3_key, extra_args={"ContentDisposition": content_disposition})
             if segment.is_vetting is False:
                 segment.s3.export_file_to_s3(filename, s3_key, extra_args={"ContentDisposition": content_disposition})
-            download_url = segment.s3.generate_temporary_url(admin_s3_key, time_limit=3600 * 24 * 7)
+            download_url = segment.s3.generate_temporary_url(admin_s3_key, time_limit=3600 * 24)
             results = {
                 "statistics": statistics,
                 "download_url": download_url,
