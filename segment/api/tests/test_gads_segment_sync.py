@@ -43,7 +43,8 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
             StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
         })
-        self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value)
+        self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value, 
+                                                         email=self.user.email)
 
     def _mock_data(self, oauth_account=None):
         oauth_account = oauth_account or self.oauth_account
@@ -267,10 +268,12 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
     def test_mcc_sync_updates_related_oauths(self):
         """ Test that an MCC sync updates the OAuth process status for all other OAuthAccounts that also have access """
         mcc = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
-        oauth_accounts = [
-            OAuthAccount.objects.create(user=get_user_model().objects.create(email=f"test_{next(int_iterator)}"),
-                                        oauth_type=OAuthType.GOOGLE_ADS.value) for _ in range(3)
-        ]
+        oauth_accounts = []
+        for _ in range(3):
+            user = get_user_model().objects.create(email=f"test_{next(int_iterator)}")
+            oauth = OAuthAccount.objects.create(user=user, oauth_type=OAuthType.GOOGLE_ADS.value, email=user.email)
+            oauth_accounts.append(oauth)
+
         linked_oauth = [self.oauth_account, *oauth_accounts[:-1]]
         # OAuthAccount that does not have access to mcc
         non_linked = oauth_accounts[-1]
