@@ -1,4 +1,4 @@
-VIQ_KEY = '{VIQ_KEY}'
+var VIQ_KEY = '{VIQ_KEY}'
 
 function main() {
   try {

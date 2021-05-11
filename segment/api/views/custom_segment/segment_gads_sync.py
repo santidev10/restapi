@@ -70,7 +70,8 @@ class SegmentGadsSyncAPIView(APIView):
             }
         # Set GADS_OAUTH_TIMESTAMP value to True to indicate that Google Ads has successfully synced with OAuthAccount
         # Users may have many OAuthAccounts
-        self._update_linked_oauths(OAuthAccount.get_enabled(user=request.user, oauth_type=int(OAuthType.GOOGLE_ADS)))
+        linked_oauths = OAuthAccount.get_enabled(email=oauth_account.email, oauth_type=int(OAuthType.GOOGLE_ADS)) or []
+        self._update_linked_oauths(linked_oauths)
         return Response(res)
 
     def post(self, request, *args, **kwargs):
@@ -121,5 +122,5 @@ class SegmentGadsSyncAPIView(APIView):
         :param linked_oauth_qs: OAuthAccounts that are linked to user
         """
         for oauth in linked_oauth_qs:
-            oauth.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, True)
+            oauth.update_data(OAuthData.SEGMENT_GADS_OAUTH_TIMESTAMP, True, save=False)
         OAuthAccount.objects.bulk_update(linked_oauth_qs, fields=["data"])
