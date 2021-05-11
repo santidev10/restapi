@@ -27,7 +27,6 @@ from transcripts.constants import TranscriptSourceTypeEnum as SourceTypeEnum
 from transcripts.utils import get_formatted_captions_from_soup
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from utils.transform import populate_video_custom_captions
 
 logger = logging.getLogger(__name__)
 
