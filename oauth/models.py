@@ -55,6 +55,7 @@ class OAuthAccount(OAuthBase):
     @staticmethod
     def get_enabled(filtered=True, **kwargs):
         filters = {
+            "email__isnull": False,
             "is_enabled": True,
             "revoked_access": False,
             **kwargs
