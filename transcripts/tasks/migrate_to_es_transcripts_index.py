@@ -113,7 +113,7 @@ class Task:
             self.avg_transcripts_per_chunk_count.update(self.latest_chunk_transcripts_ct)
             try:
                 self._report()
-            except ClientError:
+            except (ClientError, ZeroDivisionError) as e:
                 pass  # issue with SES emailer. proceed
 
             if self.SLEEP_SECONDS:
