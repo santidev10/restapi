@@ -57,16 +57,6 @@ class GAdsUpdateSchedulerTestCase(ExtendedAPITestCase):
         account.refresh_from_db()
         self.assertTrue(account.updated_at > outdated)
 
-    def test_account_recently_updated_ignore(self, *_):
-        """ Test that account is not updated if it is not outdated """
-        account = Account.objects.create(id=12345, updated_at=now_in_default_tz(), can_manage_clients=True)
-        mock_mcc_data = self.mock_customer_data([account])
-        # First element in return value is list of mcc ids
-        with mock.patch("oauth.tasks.google_ads_update.get_accounts", return_value=(mock_mcc_data, [])),\
-                mock.patch("oauth.tasks.google_ads_update.update_mcc_campaigns") as mock_mcc_update:
-            google_ads_update_task([self.oauth_account.id])
-        mock_mcc_update.assert_not_called()
-
     def test_non_existent_accounts_updated(self, *_):
         """ Test that accounts not in ViewIQ are updated """
         mock_account_id = "123456"

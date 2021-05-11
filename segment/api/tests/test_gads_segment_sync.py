@@ -43,7 +43,8 @@ class CTLGadsSyncTestCase(ExtendedAPITestCase):
             StaticPermissions.BUILD__CTL_CREATE_CHANNEL_LIST: True,
             StaticPermissions.BUILD__CTL_CREATE_VIDEO_LIST: True,
         })
-        self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value)
+        self.oauth_account = OAuthAccount.objects.create(user=self.user, oauth_type=OAuthType.GOOGLE_ADS.value, 
+                                                         email=self.user.email)
 
     def _mock_data(self, oauth_account=None):
         oauth_account = oauth_account or self.oauth_account
