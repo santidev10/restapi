@@ -37,18 +37,20 @@ CAMPAIGN_REPORT_PREDICATES = [
 ]
 
 
-def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount):
+def update_mcc_campaigns(mcc_id: int, oauth_account: OAuthAccount, cids=None):
     """
     Update campaigns for MCC account
     :param mcc_id: Google Ads MCC account id
     :param oauth_account: OAuthAccount
+    :param cids: CID Account ids under MCC
     :return:
     """
-    client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
-    all_customers = get_all_customers(client)
-    all_ids = [a["customerId"] for a in all_customers]
-    update_accounts(oauth_account, all_customers, name_field="name")
-    for batch in chunks_generator(all_ids, size=MAX_THREADS):
+    if not cids:
+        client = get_client(client_customer_id=mcc_id, refresh_token=oauth_account.refresh_token)
+        all_customers = get_all_customers(client)
+        cids = [a["customerId"] for a in all_customers]
+        update_accounts(oauth_account, all_customers)
+    for batch in chunks_generator(cids, size=MAX_THREADS):
         with concurrent.futures.thread.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
             all_args = [(cid, oauth_account.refresh_token) for cid in batch]
             futures = [executor.submit(get_report, *args) for args in all_args]
