@@ -113,7 +113,7 @@ class Task:
             self.avg_transcripts_per_chunk_count.update(self.latest_chunk_transcripts_ct)
             try:
                 self._report()
-            except ClientError:
+            except (ClientError, ZeroDivisionError) as e:
                 pass  # issue with SES emailer. proceed
 
             if self.SLEEP_SECONDS:
@@ -339,9 +339,6 @@ class Task:
             self.no_es_record_count += 1
             return
 
-        es_video.populate_custom_captions(items=[{}], has_transcripts=True)
-        self.video_upsert_queue.append(es_video)
-
         custom_transcripts = []
         tts_url_transcripts = []
         watson_transcripts = []
@@ -380,9 +377,17 @@ class Task:
             transcripts_to_create.append(watson_transcript)
             self.watson_transcripts_count += 1
 
+        transcripts_to_upsert = []
         for pg_transcript in transcripts_to_create:
-            soup = BeautifulSoup(pg_transcript.transcript, "xml")
-            transcript_text = get_formatted_captions_from_soup(soup)
+            # watson transcripts source is not xml, use the raw text
+            if pg_transcript.source == AuditVideoTranscriptSourceTypeIdEnum.WATSON.value:
+                transcript_text = pg_transcript.transcript
+            else:
+                soup = BeautifulSoup(pg_transcript.transcript, "xml")
+                transcript_text = get_formatted_captions_from_soup(soup)
+            # don't create a transcript when the text is falsy
+            if not transcript_text:
+                continue
             es_transcript = Transcript(id=pg_transcript.id)
             es_transcript.populate_video(id=pg_transcript.video.video_id)
             es_transcript.populate_text(value=transcript_text)
@@ -394,7 +399,18 @@ class Task:
                 processor_version=PROCESSOR_VERSION,
                 processed_at=timezone.now()
             )
-            self.transcripts_upsert_queue.append(es_transcript)
+            transcripts_to_upsert.append(es_transcript)
+
+        # add the video to the upsert queue, set has_transcripts depending on if we're going to upsert any
+        if not len(transcripts_to_upsert):
+            es_video.populate_custom_captions(items=[{}], has_transcripts=False)
+            self.video_upsert_queue.append(es_video)
+            return
+        es_video.populate_custom_captions(items=[{}], has_transcripts=True)
+        self.video_upsert_queue.append(es_video)
+
+        # add this video's transcripts to the upsert queue
+        self.transcripts_upsert_queue.extend(transcripts_to_upsert)
 
         self.videos_processed_count += 1
 
