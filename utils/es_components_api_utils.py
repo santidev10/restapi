@@ -310,26 +310,26 @@ class QueryGenerator:
         """
         # handle the case of an exists filter
         if value is True or (isinstance(value, str) and value.lower() == "true"):
-            query = Q("bool")
-            query |= QueryBuilder().build().must().exists().field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
-            query |= QueryBuilder().build().must().exists().field(f"{Sections.CAPTIONS}").get()
+            # query = Q("bool")
+            # query |= QueryBuilder().build().must().exists().field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
+            # query |= QueryBuilder().build().must().exists().field(f"{Sections.CAPTIONS}").get()
             # new transcripts index query
-            query |= QueryBuilder().build().must().term().field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts")\
+            query = QueryBuilder().build().must().term().field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts")\
                 .value(True).get()
             filters.append(query)
         # handle not exists filter
         elif value is False or (isinstance(value, str) and value.lower() == "false"):
-            query = Q("bool")
-            query &= QueryBuilder().build().must_not().exists().field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
-            query &= QueryBuilder().build().must_not().exists().field(f"{Sections.CAPTIONS}").get()
+            # query = Q("bool")
+            # query &= QueryBuilder().build().must_not().exists().field(f"{Sections.CUSTOM_CAPTIONS}.items").get()
+            # query &= QueryBuilder().build().must_not().exists().field(f"{Sections.CAPTIONS}").get()
             # new transcripts index query
             has_transcripts_query = Q("bool")
             has_transcripts_query |= QueryBuilder().build().must_not().exists()\
                 .field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts").get()
             has_transcripts_query |= QueryBuilder().build().must().term()\
                 .field(f"{Sections.CUSTOM_CAPTIONS}.has_transcripts").value(False).get()
-            query &= has_transcripts_query
-            filters.append(query)
+            # query &= has_transcripts_query
+            filters.append(has_transcripts_query)
 
     def adapt_ias_filters(self, filters, value):
         """
