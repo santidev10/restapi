@@ -44,6 +44,10 @@ UPSERT_BACKOFF_EXCEPTIONS = (TransportError, TransportException, ReadTimeoutErro
 
 
 class Updater:
+    """
+    If using this post-5.16, refactor to create ES Transcript records.
+    See transcripts.tasks.migrate_to_es_transcripts_index
+    """
 
     CHUNK_SIZE = 5000
     SLEEP_SECONDS = 0
@@ -422,8 +426,15 @@ class Updater:
         transcript_texts = []
         lang_codes = []
         for language, transcript in top_5_transcripts_by_language.items():
-            soup = BeautifulSoup(transcript.transcript, "xml")
-            transcript_text = get_formatted_captions_from_soup(soup)
+            # watson transcripts aren't xml, we can use the raw string
+            if transcript.source == AuditVideoTranscriptSourceTypeIdEnum.WATSON.value:
+                transcript_text = transcript.transcript
+            else:
+                soup = BeautifulSoup(transcript.transcript, "xml")
+                transcript_text = get_formatted_captions_from_soup(soup)
+            # don't create transcript records from empty strings
+            if not transcript_text:
+                continue
             transcript_texts.append(transcript_text)
             lang_codes.append(language)
 

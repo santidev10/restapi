@@ -35,6 +35,7 @@ def get_formatted_captions_from_soup(soup: BeautifulSoup) -> str:
     # with the first and second group bisected by a space.
     # This upgrades the simple period, exclaim, question space appending with something a tad smarter
     captions = re.sub(r"([\.\?\!\"]+)([a-zA-Z0-9]+)", r"\1 \2", captions)
+    captions = captions.strip()
     return captions
 
 
@@ -243,6 +244,8 @@ class YTVideo(object):
                 self.get_response_through_proxy(self.scraper, self.captions_url)
             soup = BeautifulSoup(self.captions_url_response, 'xml')
             captions = get_formatted_captions_from_soup(soup)
+            if not captions:
+                raise ValueError("Caption is an empty string")
             self.captions = captions
             self.captions_language = self.get_captions_language(self.captions_url)
         # pylint: disable=broad-except
