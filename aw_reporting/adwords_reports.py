@@ -40,6 +40,7 @@ class AWErrorType:
     NOT_ACTIVE = "AuthorizationError.CUSTOMER_NOT_ACTIVE"
     PERMISSIONS_DENIED = "AuthorizationError.USER_PERMISSION_DENIED"
     REPORT_TYPE_MISMATCH = "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH"
+    CUSTOMER_NOT_FOUND = "AuthenticationError.CUSTOMER_NOT_FOUND"
 
 
 FATAL_AW_ERRORS = (AWErrorType.PERMISSIONS_DENIED, AWErrorType.REPORT_TYPE_MISMATCH,)
@@ -91,7 +92,7 @@ def _get_report(client, name, selector, date_range_type=None, include_zero_impre
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
                 logger.warning(e)
-                if e.type == AWErrorType.NOT_ACTIVE:
+                if e.type in {AWErrorType.NOT_ACTIVE, AWErrorType.CUSTOMER_NOT_FOUND}:
                     raise AccountInactiveError()
                 if e.type in FATAL_AW_ERRORS:
                     return None

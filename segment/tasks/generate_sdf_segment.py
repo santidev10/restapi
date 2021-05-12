@@ -53,8 +53,8 @@ def generate_sdf_segment_task(user_id: get_user_model().id, audit_id, segment_id
     try:
         user = get_user_model().objects.get(id=user_id)
         segment = CustomSegment.objects.get(id=segment_id)
-        oauth_account = OAuthAccount.objects.get(email=user.email, oauth_type=1)
-    except (ObjectDoesNotExist, KeyError):
+        oauth_account = OAuthAccount.get_enabled(email=user.email, oauth_type=1).last()
+    except (ObjectDoesNotExist, KeyError, IndexError):
         return
     connector = DV360Connector(oauth_account.token, oauth_account.refresh_token)
     # Prepare directory where SDF will be downloaded to as we must download SDF files as zip files
