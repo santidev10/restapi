@@ -179,12 +179,11 @@ def _get_placements(segment: CustomSegment, audit_id: AuditProcessor.pk) -> list
 
 def _send_email(recipient_email: str, segment: CustomSegment, s3_key: str, adgroup_ids: list[int]) -> None:
     """ Send notification email to user with completed results """
-    extra_content = "\n\nCampaign Selections" \
-                    + '<div style="display:flex; justify-content:center;">' \
-                    + '<ul style="text-align:left;">' \
-                    + "".join([f'<li>{ag.display_name}</li>' for ag in
+    extra_content = '\n\n<p style="margin: 10px">Campaign Selections</p>' \
+                    + '<table style="margin-top: 0 !important;">' \
+                    + "".join([f'<tr><td text-align: left;"><p style="display: list-item; margin: 0; text-align: left;">{ag.display_name}</p></td></tr>' for ag in
                                AdGroup.objects.filter(id__in=adgroup_ids)]) \
-                    + "<ul></div>"
+                    + "</table>"
     download_url = segment.s3.generate_temporary_url(s3_key, time_limit=3600 * 24)
     text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url) + extra_content
     send_html_email(
