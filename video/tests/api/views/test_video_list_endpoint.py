@@ -801,7 +801,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
 
     def test_transcripts_filtering(self):
         """
-        ensure that the transcripts exists filter works across all trancript types
+        ensure that the transcripts exists filter works only on the new has_transcripts field
         :return:
         """
         videos = []
@@ -844,12 +844,14 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         exists_response = self.client.get(exists_url)
 
         self.assertEqual(exists_response.status_code, HTTP_200_OK)
-        self.assertEqual(exists_response.data.get("items_count"), 3)
+        # we're only filtering on has_transcripts, now
+        self.assertEqual(exists_response.data.get("items_count"), 1)
 
         missing_url = self.get_url(transcripts="false")
         missing_response = self.client.get(missing_url)
         self.assertEqual(missing_response.status_code, HTTP_200_OK)
-        self.assertEqual(missing_response.data.get("items_count"), 1)
+        # we're only filtering on has_transcripts, now
+        self.assertEqual(missing_response.data.get("items_count"), 3)
 
     def test_get_default_cache(self):
         """ Test video caching with default sort of stats.views:desc """

@@ -136,8 +136,8 @@ class VideoListApiView(BrandSuitabilityFiltersMixin, VettingAdminAggregationsMix
             with mutate_query_params(self.request.query_params):
                 self.request.query_params["channel.id"] = [channel_id]
 
-        if not self.request.user.has_permission(StaticPermissions.RESEARCH__TRANSCRIPTS) and \
-            not self.request.user.has_permission(StaticPermissions.ADMIN):
+        if not self.request.user.has_permission(StaticPermissions.RESEARCH__TRANSCRIPTS) \
+           and not self.request.user.has_permission(StaticPermissions.ADMIN):
             if "transcripts" in self.request.query_params:
                 with mutate_query_params(self.request.query_params):
                     self.request.query_params["transcripts"] = None
